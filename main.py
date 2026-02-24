@@ -51,3 +51,34 @@ def create_patient(patient: Patient, db: Session = Depends(get_db)):
 def get_patients(db: Session = Depends(get_db)):
     patients = db.query(PatientModel).all()
     return patients
+
+ 
+ # create endpoint to delete patient
+@app.delete("/patients/{patient_id}")
+def delete_patient(patient_id: int, db: Session = Depends(get_db)):
+    patient = db.query(PatientModel).filter(PatientModel.id == patient_id).first()
+
+    if not patient:
+        return {"message": "Patient not found"}
+
+    db.delete(patient)
+    db.commit()
+
+    return {"message": "Patient deleted successfully"}
+from fastapi import HTTPException
+@app.put("/patients/{patient_id}")
+def update_patient(patient_id: int, updated_patient: Patient, db: Session = Depends(get_db)):
+    patient = db.query(PatientModel).filter(PatientModel.id == patient_id).first()
+
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    patient.nom = updated_patient.nom
+    patient.prenom = updated_patient.prenom
+    patient.age = updated_patient.age
+    patient.sexe = updated_patient.sexe
+
+    db.commit()
+    db.refresh(patient)
+
+    return patient
