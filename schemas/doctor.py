@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 
 class DoctorBase(BaseModel):
+    user_id: int
     name: str
     specialty: str
 

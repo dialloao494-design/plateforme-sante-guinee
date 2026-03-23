@@ -3,22 +3,25 @@ from sqlalchemy.orm import Session
 from typing import List
 import models
 import schemas
-from database import SessionLocal
+from database import get_db
+from security import get_current_admin, require_roles
 
 router = APIRouter(prefix="/patients", tags=["Patients"])
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 @router.post("/", response_model=schemas.PatientResponse)
-def create_patient(patient: schemas.PatientCreate, db: Session = Depends(get_db)):
-    new_patient = models.Patient(**patient.dict())
+def create_patient(
+    patient: schemas.PatientCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_admin),
+):
+    new_patient = models.Patient(
+        user_id=patient.user_id,
+        first_name=patient.first_name,
+        last_name=patient.last_name,
+        age=patient.age,
+        gender=patient.gender
+    )
     db.add(new_patient)
     db.commit()
     db.refresh(new_patient)
@@ -26,12 +29,19 @@ def create_patient(patient: schemas.PatientCreate, db: Session = Depends(get_db)
 
 
 @router.get("/", response_model=List[schemas.PatientResponse])
-def get_patients(db: Session = Depends(get_db)):
+def get_patients(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["admin", "doctor"])),
+):
     return db.query(models.Patient).all()
 
 
 @router.get("/{patient_id}", response_model=schemas.PatientResponse)
-def get_patient(patient_id: int, db: Session = Depends(get_db)):
+def get_patient(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["admin", "doctor", "patient"])),
+):
     patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -39,10 +49,25 @@ def get_patient(patient_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/{patient_id}")
-def delete_patient(patient_id: int, db: Session = Depends(get_db)):
+def delete_patient(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_admin),
+):
     patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     db.delete(patient)
     db.commit()
     return {"detail": "Patient deleted successfully"}
+
+
+@router.get("/me", response_model=schemas.PatientResponse)
+def get_my_patient_profile(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["patient"])),
+):
+    patient = db.query(models.Patient).filter(models.Patient.user_id == current_user.id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient profile not found")
+    return patient
