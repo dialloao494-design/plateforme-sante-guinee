@@ -18,8 +18,7 @@ from security import (
     validate_role
 )
 from fastapi.security import OAuth2PasswordRequestForm
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 def get_current_user(token: str = Depends(  oauth2_scheme), db: Session = Depends(get_db)):
 
     credentials_exception = HTTPException(
@@ -68,10 +67,11 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 # raise HTTPException(status_code=400, detail=str(e))
     
     # Validate password strength
-    try:
-        validate_password(user.password)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    
+   # try:
+# validate_password(user.password)
+# except ValueError as e:
+# raise HTTPException(status_code=400, detail=str(e))
     
     # Check if email already exists
     existing_user = db.query(User).filter(User.email == user.email).first()
@@ -107,17 +107,18 @@ def create_token_response(user: User):
 
 
 
-
 @router.post("/login")
-def login(user: UserLogin, db: Session = Depends(get_db)):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
 
-    existing_user = db.query(User).filter(User.email == user.email).first()
+ existing_user = db.query(User).filter(User.email == form_data.username).first()
 
-    if not existing_user:
-        raise HTTPException(status_code=400, detail="Invalid credentials")
+ if not existing_user:
+  raise HTTPException(status_code=400, detail="Invalid credentials")
 
-    if not verify_password(user.password, existing_user.hashed_password):
-        raise HTTPException(status_code=400, detail="Invalid credentials")
+ if not verify_password(form_data.password, existing_user.hashed_password):
+   raise HTTPException(status_code=400, detail="Invalid credentials")
+ return create_token_response(existing_user)
 
-    return create_token_response(existing_user)
-
+@router.get("/me")
+def read_current_user(current_user: User = Depends(get_current_user)):
+    return current_user

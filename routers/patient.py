@@ -31,7 +31,7 @@ def create_patient(
 @router.get("/", response_model=List[schemas.PatientResponse])
 def get_patients(
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "doctor"])),
+    current_user=Depends(require_roles(["admin", "doctor", "patient"])),
 ):
     return db.query(models.Patient).all()
 
