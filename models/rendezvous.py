@@ -11,7 +11,7 @@ class RendezVous(Base):
     date = Column(DateTime, nullable=False, index=True)
     duration_minutes = Column(Integer, default=30, nullable=False)  # 30, 60, 90, 120 minutes
     status = Column(String, default="pending", nullable=False, index=True)  # pending, confirmed, completed, cancelled
-    payment_status = Column(String, default="unpaid", nullable=False, index=True)  # unpaid, paid
+    payment_status = Column(String, default="pending", nullable=False, index=True)  # pending, paid, failed
     price = Column(Float, default=0.0, nullable=False)  # Appointment price in GNF or local currency
     payment_intent_id = Column(String, nullable=True, index=True)  # Stripe payment intent ID
     

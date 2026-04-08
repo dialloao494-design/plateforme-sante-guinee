@@ -62,6 +62,26 @@ def delete_patient(
     return {"detail": "Patient deleted successfully"}
 
 
+@router.put("/{patient_id}", response_model=schemas.PatientResponse)
+def update_patient(
+    patient_id: int,
+    patient_update: schemas.PatientCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_admin),
+):
+    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    patient.user_id = patient_update.user_id
+    patient.first_name = patient_update.first_name
+    patient.last_name = patient_update.last_name
+    patient.age = patient_update.age
+    patient.gender = patient_update.gender
+    db.commit()
+    db.refresh(patient)
+    return patient
+
+
 @router.get("/me", response_model=schemas.PatientResponse)
 def get_my_patient_profile(
     db: Session = Depends(get_db),

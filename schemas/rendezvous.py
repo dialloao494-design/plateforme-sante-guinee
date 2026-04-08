@@ -28,11 +28,58 @@ class RendezVousResponse(BaseModel):
     date: datetime = Field(..., description="Appointment start time")
     duration_minutes: int = Field(..., description="Duration in minutes")
     status: str = Field(..., description="Current status (pending, confirmed, completed, cancelled)")
-    payment_status: str = Field(..., description="Payment status (unpaid, paid)")
+    payment_status: str = Field(..., description="Payment status (pending, paid, failed)")
     price: float = Field(..., description="Appointment price")
     payment_intent_id: Optional[str] = Field(None, description="Stripe payment intent ID")
     patient_id: int
     doctor_id: int
+    created_at: datetime = Field(..., description="When appointment was created")
+    updated_at: datetime = Field(..., description="Last update time")
+
+    class Config:
+        from_attributes = True
+
+
+class PatientSummary(BaseModel):
+    id: int
+    user_id: int
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class DoctorSummary(BaseModel):
+    id: int
+    user_id: int
+    name: Optional[str] = None
+    specialty: Optional[str] = None
+    consultation_fee: float
+
+    class Config:
+        from_attributes = True
+
+
+class RendezVousWithParticipants(RendezVousResponse):
+    patient: PatientSummary
+    doctor: DoctorSummary
+
+    class Config:
+        from_attributes = True
+
+
+class PaymentResponse(BaseModel):
+    id: int
+    date: datetime = Field(..., description="Appointment start time")
+    price: float = Field(..., description="Appointment price")
+    payment_status: str = Field(..., description="Payment status (pending, paid, failed)")
+    payment_intent_id: Optional[str] = Field(None, description="Stripe payment intent ID")
+    patient: PatientSummary
+    doctor: DoctorSummary
+    status: str = Field(..., description="Appointment status")
     created_at: datetime = Field(..., description="When appointment was created")
     updated_at: datetime = Field(..., description="Last update time")
 
@@ -68,6 +115,11 @@ class PaymentConfirmation(BaseModel):
     appointment_id: int = Field(..., description="Appointment ID")
     payment_method: Optional[str] = Field(None, description="Payment method used (optional)")
     transaction_id: Optional[str] = Field(None, description="External transaction ID (optional)")
+
+
+class PaymentIntentCreate(BaseModel):
+    """Request to create a Stripe payment intent."""
+    appointment_id: int = Field(..., description="Appointment ID to generate payment for")
 
 
 class PaymentIntentResponse(BaseModel):

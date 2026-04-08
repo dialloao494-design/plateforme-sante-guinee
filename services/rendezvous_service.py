@@ -126,6 +126,36 @@ class RendezVousService:
         }
 
     @staticmethod
+    def list_appointments_for_user(current_user, db: Session):
+        """Return appointments scoped according to user role."""
+        if current_user.role == "patient":
+            patient = db.query(models.Patient).filter(
+                models.Patient.user_id == current_user.id
+            ).first()
+            if not patient:
+                return []
+            return db.query(models.RendezVous).filter(
+                models.RendezVous.patient_id == patient.id
+            ).all()
+
+        if current_user.role == "doctor":
+            doctor = db.query(models.Doctor).filter(
+                models.Doctor.user_id == current_user.id
+            ).first()
+            if not doctor:
+                return []
+            return db.query(models.RendezVous).filter(
+                models.RendezVous.doctor_id == doctor.id
+            ).all()
+
+        return db.query(models.RendezVous).all()
+
+    @staticmethod
+    def list_payments_for_user(current_user, db: Session):
+        """Return payment-related appointments scoped by role."""
+        return RendezVousService.list_appointments_for_user(current_user, db)
+
+    @staticmethod
     def check_overlap_with_duration(
         doctor_id: int,
         start_time: datetime,
@@ -263,12 +293,14 @@ class RendezVousService:
         Steps:
         1. Validate all business rules
         2. Set price from doctor's consultation fee
-        3. Create appointment record with default status "pending" and payment_status "unpaid"
+        3. Create appointment record with default status "pending" and payment_status "pending"
         4. Commit to database
         5. Refresh and return
         """
         # Comprehensive validation
         RendezVousService.validate_appointment(rdv, patient, doctor, db)
+
+        validation_result = RendezVousService.validate_appointment(rdv, patient, doctor, db)
 
         # Create appointment with price from doctor's consultation fee
         new_rdv = models.RendezVous(
@@ -277,15 +309,40 @@ class RendezVousService:
             patient_id=patient.id,
             doctor_id=doctor.id,
             status="pending",
-            payment_status="unpaid",
-            price=doctor.consultation_fee,  # Set price from doctor's consultation fee
+            payment_status="pending",
+            price=doctor.consultation_fee,
         )
 
         db.add(new_rdv)
         db.commit()
         db.refresh(new_rdv)
 
+        # Mark a matching availability slot unavailable if the appointment consumes it exactly.
+        availability_slot = validation_result.get("availability_slot")
+        if availability_slot:
+            appointment_end = rdv.date + timedelta(minutes=rdv.duration_minutes)
+            RendezVousService.reserve_availability_slot(availability_slot, rdv.date, appointment_end, db)
+
         return new_rdv
+
+    @staticmethod
+    def reserve_availability_slot(
+        availability_slot: models.DoctorAvailability,
+        appointment_start: datetime,
+        appointment_end: datetime,
+        db: Session,
+    ) -> None:
+        """Mark the exact availability slot unavailable after booking."""
+        if not availability_slot:
+            return
+
+        if (
+            availability_slot.start_time == appointment_start.time()
+            and availability_slot.end_time == appointment_end.time()
+        ):
+            availability_slot.is_active = False
+            db.commit()
+            db.refresh(availability_slot)
 
     @staticmethod
     def update_appointment_status(
@@ -384,31 +441,31 @@ class RendezVousService:
         return rdv
 
     @staticmethod
-    def mark_appointment_as_unpaid(
+    def mark_appointment_payment_failed(
         rdv_id: int,
         db: Session
     ) -> models.RendezVous:
         """
-        Mark appointment as unpaid (e.g., payment failed or was refunded).
-        
+        Mark appointment payment as failed.
+
         Only updates payment_status, not appointment status.
-        
+
         Returns: Updated appointment
         """
         rdv = db.query(models.RendezVous).filter(models.RendezVous.id == rdv_id).first()
-        
+
         if not rdv:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Appointment not found"
             )
-        
-        rdv.payment_status = "unpaid"
+
+        rdv.payment_status = "failed"
         rdv.updated_at = datetime.utcnow()
-        
+
         db.commit()
         db.refresh(rdv)
-        
+
         return rdv
 
     @staticmethod
@@ -457,11 +514,17 @@ class RendezVousService:
                 detail="Appointment not found"
             )
         
-        # Prevent creating payment intent if payment already confirmed
+        # Prevent creating payment intent for already completed payment or cancelled appointments
         if appointment.payment_status == "paid":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Payment has already been made for this appointment"
+            )
+
+        if appointment.status == "cancelled":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot create payment intent for a cancelled appointment"
             )
         
         # Get patient and doctor info for payment intent
@@ -479,12 +542,16 @@ class RendezVousService:
                 detail="Patient or doctor not found"
             )
         
+        patient_name = " ".join(
+            filter(None, [patient.first_name, patient.last_name])
+        ).strip() or (patient.user.email if patient.user else "Patient")
+
         # Create Stripe payment intent
         payment_intent = StripeService.create_payment_intent(
             appointment_id=appointment_id,
             appointment_price=appointment.price,
             patient_email=patient.user.email if patient.user else "patient@example.com",
-            patient_name=patient.user.username if patient.user else "Patient",
+            patient_name=patient_name,
             doctor_name=doctor.name,
             appointment_date=appointment.date.isoformat(),
             db=db
@@ -502,7 +569,7 @@ class RendezVousService:
         
         Processes payment status changes:
         - payment_intent.succeeded: Confirm appointment and mark as paid
-        - payment_intent.payment_failed: Mark as unpaid
+        - payment_intent.payment_failed: Mark as failed
         
         Args:
             event: Parsed Stripe webhook event

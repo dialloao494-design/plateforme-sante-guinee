@@ -1,17 +1,50 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, field_validator
+import re
+
 
 class UserCreate(BaseModel):
-    email: EmailStr
+    email: str
     password: str
-    role: str
+    role: str = "patient"
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        email = v.strip().lower()
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            raise ValueError("Invalid email address")
+        return email
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 6:
+            raise ValueError("Password must be at least 6 characters long")
+        return v
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v: str) -> str:
+        if v not in {"patient", "doctor", "admin"}:
+            raise ValueError("Role must be one of: patient, doctor, admin")
+        return v
+
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: str
     password: str
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    role: str
+    email: str
+
 
 class UserResponse(BaseModel):
     id: int
-    email: EmailStr
+    email: str
     role: str
 
     class Config:

@@ -287,18 +287,18 @@ def confirm_appointment_payment(
     return appointment
 
 
-@router.post("/{rdv_id}/mark-unpaid", response_model=rendezvous_schemas.RendezVousResponse)
-def mark_appointment_unpaid(
+@router.post("/{rdv_id}/mark-payment-failed", response_model=rendezvous_schemas.RendezVousResponse)
+def mark_appointment_payment_failed(
     rdv_id: int,
     db: Session = Depends(get_db),
     current_user=Depends(require_roles(["admin"])),
 ):
     """
-    Mark appointment as unpaid (e.g., payment failed or was refunded).
-    
+    Mark appointment payment as failed.
+
     Only admins can perform this action.
     Updates only the payment_status field, not the appointment status.
-    
+
     Raises 404 if appointment not found.
     """
     rdv = db.query(models.RendezVous).filter(
@@ -311,8 +311,8 @@ def mark_appointment_unpaid(
             detail="Appointment not found"
         )
 
-    # Use service to handle marking as unpaid
-    appointment = RendezVousService.mark_appointment_as_unpaid(rdv_id, db)
+    # Use service to handle marking payment as failed
+    appointment = RendezVousService.mark_appointment_payment_failed(rdv_id, db)
 
     return appointment
 

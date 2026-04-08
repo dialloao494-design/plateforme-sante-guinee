@@ -1,0 +1,156 @@
+.patients-page {
+  min-height: 100vh;
+  padding: 40px;
+  background: #f5f7fa;
+  font-family: 'Inter', sans-serif;
+}
+
+.patients-header h1 {
+  margin: 0;
+  font-size: 28px;
+  color: #1f2937;
+}
+
+.patients-header p {
+  color: #4b5563;
+  margin: 8px 0 20px;
+}
+
+.patients-controls {
+  margin-bottom: 24px;
+}
+
+.patients-search input,
+.patients-form input {
+  width: 100%;
+  max-width: 340px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  margin-bottom: 12px;
+  outline: none;
+}
+
+.patients-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.patients-form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.patient-list {
+  margin-top: 16px;
+}
+
+.patients-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+}
+
+.patient-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0px 10px 25px rgba(15, 23, 42, 0.05);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.patient-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.patient-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: #4f46e5;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.patient-name {
+  margin: 0;
+  color: #111827;
+  font-size: 1.1rem;
+}
+
+.patient-info p {
+  margin: 0;
+  color: #4b5563;
+}
+
+.patient-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-primary {
+  background: #4f46e5;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #4338ca;
+}
+
+.btn-ghost {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.btn-danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #b91c1c;
+}
+
+.no-patients {
+  text-align: center;
+  margin-top: 32px;
+  color: #6b7280;
+}
+
+@media (max-width: 768px) {
+  .patients-page {
+    padding: 20px;
+  }
+
+  .patients-form {
+    grid-template-columns: 1fr;
+  }
+
+  .patients-form-actions {
+    justify-content: stretch;
+    flex-direction: column;
+  }
+}

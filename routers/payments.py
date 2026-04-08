@@ -11,7 +11,7 @@ All business logic is delegated to RendezVousService and StripeService.
 
 from fastapi import APIRouter, HTTPException, Depends, Request, status
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import List, Optional
 import json
 
 from database import get_db
@@ -28,57 +28,52 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 # PAYMENT INTENT CREATION
 # ===============================
 
-@router.post("/create-intent/{rdv_id}", response_model=rendezvous_schemas.PaymentIntentResponse)
+@router.post("/create-intent", response_model=rendezvous_schemas.PaymentIntentResponse)
 def create_payment_intent(
-    rdv_id: int,
+    request: rendezvous_schemas.PaymentIntentCreate,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_patient),
 ):
     """
     Create a Stripe payment intent for an appointment.
-    
+
     - Creates a payment intent with the appointment price
     - Stores payment_intent_id in the appointment record
+    - Sets appointment payment_status to pending
     - Does NOT confirm the appointment yet
     - Patient must own the appointment
-    
-    Returns:
-    - client_secret: For frontend payment processing
-    - payment_intent_id: Stripe ID
-    - amount: Price in cents
-    - status: Payment intent status
     """
     # Get patient profile
     patient = db.query(models.Patient).filter(
         models.Patient.user_id == current_user.id
     ).first()
-    
+
     if not patient:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Patient profile not found"
         )
-    
+
     # Verify patient owns this appointment
     appointment = db.query(models.RendezVous).filter(
-        models.RendezVous.id == rdv_id
+        models.RendezVous.id == request.appointment_id
     ).first()
-    
+
     if not appointment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Appointment not found"
         )
-    
+
     if appointment.patient_id != patient.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied: This is not your appointment"
         )
-    
+
     # Create payment intent via service
-    payment_intent = RendezVousService.create_payment_intent(rdv_id, db)
-    
+    payment_intent = RendezVousService.create_payment_intent(request.appointment_id, db)
+
     return payment_intent
 
 
@@ -87,25 +82,25 @@ def create_payment_intent(
 # ===============================
 
 @router.post("/webhook")
-def stripe_webhook(
+async def stripe_webhook(
     request: Request,
     db: Session = Depends(get_db),
 ):
     """
     Handle Stripe webhook events.
-    
+
     Stripe sends webhook notifications for payment events:
     - payment_intent.succeeded: Payment successful → confirm appointment
-    - payment_intent.payment_failed: Payment failed → mark as unpaid
-    
+    - payment_intent.payment_failed: Payment failed → mark as failed
+
     Security:
     - Verifies webhook signature using STRIPE_WEBHOOK_SECRET
     - Returns 200 OK for all valid signatures
     - Returns 401 for invalid signatures
-    
+
     Note: Read raw body for signature verification
     """
-    payload = request.body
+    payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
     
     if not sig_header:
@@ -240,13 +235,22 @@ def manual_confirm_payment(
 
 
 # ===============================
-# LEGACY ENDPOINTS
+# PAYMENT LISTING
 # ===============================
 
-@router.get("/")
-def list_payments(current_user=Depends(require_roles(["admin", "doctor", "patient"]))):
-    """List payments (placeholder - use appointment endpoints instead)"""
-    return {"message": "Use appointment endpoints for payment information"}
+@router.get("/", response_model=List[rendezvous_schemas.PaymentResponse])
+def list_payments(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["admin", "doctor", "patient"])),
+):
+    """List payment records scoped by user role.
+
+    - Admins see all payments
+    - Doctors see payments for their own appointments
+    - Patients see payments for their own appointments
+    """
+    appointments = RendezVousService.list_payments_for_user(current_user, db)
+    return appointments
 
 
 @router.post("/charge")

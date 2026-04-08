@@ -98,6 +98,7 @@ class StripeService:
                 ).first()
                 if appointment:
                     appointment.payment_intent_id = payment_intent.id
+                    appointment.payment_status = "pending"
                     appointment.updated_at = datetime.utcnow()
                     db.commit()
                     db.refresh(appointment)
@@ -141,18 +142,21 @@ class StripeService:
             )
 
         try:
-            # Verify signature
-            expected_sig = hmac.new(
-                StripeService.STRIPE_WEBHOOK_SECRET.encode(),
-                payload,
-                hashlib.sha256
-            ).hexdigest()
+            stripe.Webhook.construct_event(
+                payload=payload,
+                sig_header=signature,
+                secret=StripeService.STRIPE_WEBHOOK_SECRET,
+            )
+            return True
 
-            return hmac.compare_digest(expected_sig, signature)
-
-        except Exception as e:
+        except stripe.error.SignatureVerificationError as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Webhook verification failed: {str(e)}"
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Webhook verification failed: {str(e)}"
             )
 
@@ -166,7 +170,7 @@ class StripeService:
 
         Supported events:
         - payment_intent.succeeded: Payment successful → confirm appointment
-        - payment_intent.payment_failed: Payment failed → mark as unpaid
+        - payment_intent.payment_failed: Payment failed → mark as failed
 
         Args:
             event: Parsed webhook event from Stripe
@@ -221,7 +225,7 @@ class StripeService:
                     "status": "success",
                     "event": event_type,
                     "appointment_id": str(appointment.id),
-                    "message": "Appointment marked as unpaid"
+                    "message": "Appointment marked as payment failed"
                 }
 
             else:
@@ -271,11 +275,10 @@ class StripeService:
     ) -> models.RendezVous:
         """
         Handle failed payment.
-        
-        Marks appointment as unpaid, keeps status as pending.
+
+        Marks appointment as failed and keeps appointment pending.
         """
-        # Mark payment as unpaid but keep appointment pending
-        appointment.payment_status = "unpaid"
+        appointment.payment_status = "failed"
         appointment.updated_at = datetime.utcnow()
 
         db.commit()

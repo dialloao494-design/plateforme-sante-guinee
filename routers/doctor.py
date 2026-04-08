@@ -35,7 +35,7 @@ def create_doctor(
 @router.get("/", response_model=list[DoctorResponse])
 def get_doctors(
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "doctor"])),
+    current_user=Depends(require_roles(["admin", "doctor", "patient"])),
 ):
     return db.query(Doctor).all()
 

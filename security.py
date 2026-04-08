@@ -127,12 +127,3 @@ def get_current_patient(current_user: User = Depends(get_current_user)):
             detail="Patient privileges required",
         )
     return current_user
-
-
-def get_current_patient(current_user: User = Depends(get_current_user)):
-    if current_user.role != "patient":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Patient privileges required",
-        )
-    return current_user

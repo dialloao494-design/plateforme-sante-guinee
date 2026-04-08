@@ -1,0 +1,21 @@
+.patient-list h2 {
+  color: #1e293b;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.patients-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.no-patients {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+}
+
+.no-patients p {
+  font-size: 1.1rem;
+}
