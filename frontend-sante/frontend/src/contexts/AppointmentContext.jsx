@@ -8,6 +8,29 @@ const normalizeAppointment = (appointment) => ({
   id: appointment.id,
 });
 
+const extractErrorMessage = (err, fallbackMessage) => {
+  const detail = err?.response?.data?.detail;
+  if (typeof detail === 'string' && detail.trim()) {
+    return detail;
+  }
+  if (Array.isArray(detail) && detail.length > 0) {
+    return detail
+      .map((item) => (typeof item === 'string' ? item : item?.msg || JSON.stringify(item)))
+      .join(' | ');
+  }
+
+  const message = err?.response?.data?.message;
+  if (typeof message === 'string' && message.trim()) {
+    return message;
+  }
+
+  if (typeof err?.message === 'string' && err.message.trim()) {
+    return err.message;
+  }
+
+  return fallbackMessage;
+};
+
 export const AppointmentProvider = ({ children }) => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -21,7 +44,7 @@ export const AppointmentProvider = ({ children }) => {
       const normalized = data.map(normalizeAppointment);
       setAppointments(normalized);
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.response?.data?.message || err.message || 'Erreur réseau');
+      setError(extractErrorMessage(err, 'Erreur lors du chargement des rendez-vous'));
     } finally {
       setLoading(false);
     }
@@ -40,7 +63,7 @@ export const AppointmentProvider = ({ children }) => {
       setAppointments((prev) => [normalized, ...prev]);
       return normalized;
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.response?.data?.message || err.message || 'Erreur création');
+      setError(extractErrorMessage(err, 'Erreur création'));
       throw err;
     } finally {
       setLoading(false);
@@ -54,7 +77,7 @@ export const AppointmentProvider = ({ children }) => {
       await appointmentsAPI.cancel(id);
       setAppointments((prev) => prev.filter((a) => a.id !== id));
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.response?.data?.message || err.message || 'Erreur suppression');
+      setError(extractErrorMessage(err, 'Erreur suppression'));
       throw err;
     } finally {
       setLoading(false);
@@ -70,7 +93,7 @@ export const AppointmentProvider = ({ children }) => {
       setAppointments((prev) => prev.map((a) => (a.id === id ? normalized : a)));
       return normalized;
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.response?.data?.message || err.message || 'Erreur mise à jour');
+      setError(extractErrorMessage(err, 'Erreur mise à jour'));
       throw err;
     } finally {
       setLoading(false);

@@ -4,6 +4,15 @@
   background: #f8fafc;
 }
 
+.app-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0f172a;
+  font-weight: 600;
+}
+
 .app-main {
   flex: 1;
   padding: 20px 24px 40px 280px;

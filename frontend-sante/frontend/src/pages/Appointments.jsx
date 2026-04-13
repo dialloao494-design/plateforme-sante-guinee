@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAppointmentContext } from '../contexts/AppointmentContext.jsx';
-import { doctorsAPI, paymentsAPI } from '../services/api.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import api, { doctorsAPI, paymentsAPI } from '../services/api.js';
 import './Appointments.css';
 
 const Appointments = () => {
-  const { appointments, loading, error, addAppointment, deleteAppointment } = useAppointmentContext();
+  const { user } = useAuth();
+  const isPatient = user?.role === 'patient';
+  const isDoctor = user?.role === 'doctor';
+  const isAdmin = user?.role === 'admin';
+  const { appointments, loading, error, addAppointment, deleteAppointment, fetchAppointments } = useAppointmentContext();
   const [doctors, setDoctors] = useState([]);
   const [formData, setFormData] = useState({ doctorId: '', date: '', duration: 30 });
   const [selectedDoctorFilter, setSelectedDoctorFilter] = useState('');
@@ -14,16 +19,69 @@ const Appointments = () => {
   const [lastAppointment, setLastAppointment] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
+  const [paymentAttemptStarted, setPaymentAttemptStarted] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState('');
   const [paymentError, setPaymentError] = useState('');
+  const [isCreatingAppointment, setIsCreatingAppointment] = useState(false);
   const [searchParams] = useSearchParams();
+
+  const getApiErrorMessage = (err, fallback) => {
+    const detail = err?.response?.data?.detail;
+    if (typeof detail === 'string' && detail.trim()) {
+      return detail;
+    }
+    if (Array.isArray(detail) && detail.length > 0) {
+      return detail
+        .map((item) => (typeof item === 'string' ? item : item?.msg || JSON.stringify(item)))
+        .join(' | ');
+    }
+    const message = err?.response?.data?.message;
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+    return err?.message || fallback;
+  };
+
+  const normalizeDoctor = (item) => {
+    const id = Number(item?.id);
+    if (!id) return null;
+
+    const role = String(item?.role || item?.user_role || '').toLowerCase();
+    if (role && role !== 'doctor') return null;
+
+    const fullName =
+      item?.name || `${item?.first_name || ''} ${item?.last_name || ''}`.trim() || item?.email || `Docteur #${id}`;
+
+    return {
+      id,
+      name: fullName,
+    };
+  };
 
   const fetchDoctors = async () => {
     try {
       const { data } = await doctorsAPI.getAll();
-      setDoctors(data);
+      const fromDoctorsEndpoint = (Array.isArray(data) ? data : [])
+        .map(normalizeDoctor)
+        .filter(Boolean);
+
+      if (fromDoctorsEndpoint.length > 0) {
+        setDoctors(fromDoctorsEndpoint);
+        return;
+      }
+
+      // Fallback: if /doctors returns empty, try /users and keep only doctor-role users.
+      const usersResponse = await api.get('/users');
+      const fromUsersEndpoint = (Array.isArray(usersResponse.data) ? usersResponse.data : [])
+        .filter((userItem) => String(userItem?.role || userItem?.user_role || '').toLowerCase() === 'doctor')
+        .map(normalizeDoctor)
+        .filter(Boolean);
+
+      setDoctors(fromUsersEndpoint);
     } catch (err) {
+      console.error('Failed to load doctors:', err);
       setActionError(err?.response?.data?.detail || err?.response?.data?.message || err.message || 'Impossible de charger les médecins');
+      setDoctors([]);
     }
   };
 
@@ -37,6 +95,7 @@ const Appointments = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsCreatingAppointment(true);
     setActionError('');
     setSuccess('');
     setPaymentMessage('');
@@ -44,21 +103,28 @@ const Appointments = () => {
 
     if (!formData.doctorId || !formData.date) {
       setActionError('Choisissez un médecin et une date.');
+      setIsCreatingAppointment(false);
       return;
     }
 
     try {
-      const appointment = await addAppointment({
+      const payload = {
         doctor_id: Number(formData.doctorId),
         date: formData.date,
         duration_minutes: Number(formData.duration),
-      });
+      };
+      console.log('Submitting appointment:', payload);
+      const appointment = await addAppointment(payload);
+      console.log('Appointment created:', appointment);
+      await fetchAppointments();
       setLastAppointment(appointment);
       setShowConfirmation(true);
-      setSuccess('Rendez-vous ajouté avec succès !');
+      setSuccess('Rendez-vous créé avec succès. Vous pouvez maintenant procéder au paiement.');
       setFormData({ doctorId: '', date: '', duration: 30 });
     } catch (err) {
-      setActionError(err?.response?.data?.detail || err?.response?.data?.message || err.message || 'Erreur création');
+      setActionError(getApiErrorMessage(err, 'Erreur lors de la création du rendez-vous.'));
+    } finally {
+      setIsCreatingAppointment(false);
     }
   };
 
@@ -77,7 +143,7 @@ const Appointments = () => {
         setShowConfirmation(false);
       }
     } catch (err) {
-      setActionError(err?.response?.data?.detail || err?.response?.data?.message || err.message || 'Erreur annulation');
+      setActionError(getApiErrorMessage(err, 'Erreur lors de l’annulation du rendez-vous.'));
     }
   };
 
@@ -92,9 +158,44 @@ const Appointments = () => {
       : appointments;
   }, [appointments, selectedDoctorFilter]);
 
-  const getDoctorName = (id) => {
+  const getDoctorName = (appointmentOrId) => {
+    if (typeof appointmentOrId === 'object' && appointmentOrId !== null) {
+      const appointmentDoctor = appointmentOrId.doctor;
+      if (appointmentDoctor?.name) {
+        return appointmentDoctor.name;
+      }
+      const composed = `${appointmentDoctor?.first_name || ''} ${appointmentDoctor?.last_name || ''}`.trim();
+      if (composed) {
+        return `Dr ${composed}`;
+      }
+    }
+
+    const id = typeof appointmentOrId === 'object' && appointmentOrId !== null
+      ? appointmentOrId.doctor_id
+      : appointmentOrId;
+
     const doctor = doctors.find((doc) => doc.id === Number(id));
-    return doctor ? doctor.name : `Médecin #${id}`;
+    if (!doctor) {
+      return `Dr #${id}`;
+    }
+    return doctor.name;
+  };
+
+  const getStatusClassName = (statusValue) => {
+    const normalized = String(statusValue || '').toLowerCase();
+    if (normalized === 'confirmed' || normalized === 'confirmé') return 'status-pill status-confirmed';
+    if (normalized === 'cancelled') return 'status-pill status-cancelled';
+    return 'status-pill status-pending';
+  };
+
+  const canCancel = (appointment) => {
+    if (!user) return false;
+    if (isAdmin) return true;
+    if (isDoctor) return appointment.status !== 'cancelled';
+    if (isPatient) {
+      return appointment.status !== 'cancelled' && new Date(appointment.date) > new Date();
+    }
+    return false;
   };
 
   const handlePayNow = async () => {
@@ -106,20 +207,21 @@ const Appointments = () => {
     setPaymentError('');
     setPaymentMessage('');
     setIsPaying(true);
+    setPaymentAttemptStarted(true);
 
     try {
       const response = await paymentsAPI.createIntent(lastAppointment.id);
-      const { client_secret } = response.data;
+      const { checkout_url } = response.data;
 
-      setPaymentMessage(
-        'Payment intent created. Please proceed with payment on Stripe. Client secret: ' + client_secret
-      );
+      if (!checkout_url) {
+        throw new Error('Checkout URL missing from backend response.');
+      }
 
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      setPaymentMessage('Payment processed. Your appointment is confirmed.');
+      window.location.href = checkout_url;
     } catch (err) {
       const errorMsg = err?.response?.data?.detail || err?.message || 'Failed to process payment.';
       setPaymentError(errorMsg);
+      setPaymentAttemptStarted(false);
     } finally {
       setIsPaying(false);
     }
@@ -130,6 +232,7 @@ const Appointments = () => {
     setLastAppointment(null);
     setPaymentMessage('');
     setPaymentError('');
+    setPaymentAttemptStarted(false);
   };
 
   return (
@@ -141,7 +244,7 @@ const Appointments = () => {
         </div>
       </header>
 
-      {showConfirmation && lastAppointment && (
+      {isPatient && showConfirmation && lastAppointment && (
         <div className="confirmation-card">
           <div className="confirmation-top">
             <div>
@@ -155,7 +258,7 @@ const Appointments = () => {
           <div className="confirmation-details">
             <div>
               <p className="detail-label">Doctor</p>
-              <p>{getDoctorName(lastAppointment.doctor_id)}</p>
+              <p>{getDoctorName(lastAppointment)}</p>
             </div>
             <div>
               <p className="detail-label">Date & Time</p>
@@ -175,7 +278,12 @@ const Appointments = () => {
               type="button"
               className="button-pay"
               onClick={handlePayNow}
-              disabled={isPaying}
+              disabled={
+                isPaying ||
+                paymentAttemptStarted ||
+                lastAppointment.status !== 'pending' ||
+                lastAppointment.payment_status === 'paid'
+              }
             >
               {isPaying ? 'Processing payment...' : 'Pay with Stripe'}
             </button>
@@ -185,6 +293,7 @@ const Appointments = () => {
         </div>
       )}
 
+      {isPatient && (
       <form onSubmit={handleSubmit} className="appointment-form">
         <h2>Ajouter un rendez-vous</h2>
 
@@ -229,10 +338,11 @@ const Appointments = () => {
           </select>
         </div>
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Enregistrement...' : 'Valider le rendez-vous'}
+        <button type="submit" disabled={isCreatingAppointment}>
+          {isCreatingAppointment ? 'Création en cours...' : 'Valider le rendez-vous'}
         </button>
       </form>
+      )}
 
       {(actionError || error) && <p className="error">{actionError || error}</p>}
       {success && <p className="success">{success}</p>}
@@ -264,22 +374,26 @@ const Appointments = () => {
                 <li key={appointment.id} className="appointment-item">
                   <div className="appointment-info">
                     <p>
-                      Médecin : <strong>{getDoctorName(appointment.doctor_id)}</strong>
+                      Médecin : <strong>{getDoctorName(appointment)}</strong>
                     </p>
                     <p>Date : {new Date(appointment.date).toLocaleString()}</p>
-                    <p>Statut : {appointment.status}</p>
+                    <p>
+                      Statut : <span className={getStatusClassName(appointment.status)}>{appointment.status}</span>
+                    </p>
                     <p>Payé : {appointment.payment_status}</p>
                     <p>Durée : {appointment.duration_minutes} minutes</p>
                     <p>Prix : {appointment.price} GNF</p>
                   </div>
                   <div className="appointment-actions">
-                    <button
-                      onClick={() => handleDelete(appointment.id)}
-                      disabled={loading}
-                      className="delete-btn"
-                    >
-                      Annuler
-                    </button>
+                    {canCancel(appointment) && (
+                      <button
+                        onClick={() => handleDelete(appointment.id)}
+                        disabled={loading || !canCancel(appointment)}
+                        className="delete-btn"
+                      >
+                        Annuler
+                      </button>
+                    )}
                   </div>
                 </li>
               ))}

@@ -3,10 +3,11 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database import engine, Base
+from database import engine, Base, SessionLocal
 import models
 from routers import patient, rendezvous, doctor, auth, payments, teleconsultation, notifications
 from routers import users, appointments
+from security import hash_password, verify_password
 import os
 import logging
 
@@ -45,9 +46,211 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)  
 
 # Create tables
 Base.metadata.create_all(bind=engine)
+
+
+def seed_demo_doctors():
+    db = SessionLocal()
+    try:
+        doctor_count = db.query(models.Doctor).count()
+        if doctor_count > 0:
+            return
+
+        demo_doctors = [
+            {
+                "email": "dr.amu@example.com",
+                "password": "Doctor123!",
+                "first_name": "Amina",
+                "last_name": "Mamadou",
+                "specialty": "Pediatrics",
+                "location": "Conakry",
+                "phone": "+224620000001",
+                "photo_url": "https://api.dicebear.com/7.x/female/svg?seed=Amina",
+                "consultation_fee": 40000,
+            },
+            {
+                "email": "dr.soulaiman@example.com",
+                "password": "Doctor123!",
+                "first_name": "Souleymane",
+                "last_name": "Diallo",
+                "specialty": "General Medicine",
+                "location": "Conakry",
+                "phone": "+224620000002",
+                "photo_url": "https://api.dicebear.com/7.x/male/svg?seed=Souleymane",
+                "consultation_fee": 35000,
+            },
+            {
+                "email": "dr.fatou@example.com",
+                "password": "Doctor123!",
+                "first_name": "Fatou",
+                "last_name": "Kaba",
+                "specialty": "Dermatology",
+                "location": "Kindia",
+                "phone": "+224620000003",
+                "photo_url": "https://api.dicebear.com/7.x/female/svg?seed=Fatou",
+                "consultation_fee": 38000,
+            },
+        ]
+
+        for doc_data in demo_doctors:
+            user = db.query(models.User).filter(models.User.email == doc_data["email"]).first()
+            if not user:
+                user = models.User(
+                    email=doc_data["email"],
+                    hashed_password=hash_password(doc_data["password"]),
+                    role="doctor",
+                )
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+
+            existing_doctor = db.query(models.Doctor).filter(models.Doctor.user_id == user.id).first()
+            if existing_doctor:
+                continue
+
+            doctor = models.Doctor(
+                user_id=user.id,
+                first_name=doc_data["first_name"],
+                last_name=doc_data["last_name"],
+                specialty=doc_data["specialty"],
+                city=doc_data["location"],
+                phone=doc_data["phone"],
+                photo_url=doc_data["photo_url"],
+                consultation_fee=doc_data["consultation_fee"],
+            )
+            db.add(doctor)
+
+        db.commit()
+        logger.info("Demo doctors seeded successfully.")
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Failed to seed demo doctors: {exc}")
+    finally:
+        db.close()
+
+
+def seed_test_patient():
+    db = SessionLocal()
+    try:
+        patient = db.query(models.Patient).filter(models.Patient.id == 1).first()
+        if patient:
+            logger.info("Test patient already exists with id=1")
+            return
+
+        user = db.query(models.User).filter(models.User.email == "test.patient@example.com").first()
+        if not user:
+            user = models.User(
+                email="test.patient@example.com",
+                hashed_password=hash_password("Patient123!"),
+                role="patient",
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        test_patient = db.query(models.Patient).filter(models.Patient.user_id == user.id).first()
+        if not test_patient:
+            test_patient = models.Patient(
+                id=1,
+                user_id=user.id,
+                first_name="Test",
+                last_name="Patient",
+                age=30,
+                gender="other",
+            )
+            db.add(test_patient)
+            db.commit()
+            db.refresh(test_patient)
+            logger.info("Seeded test patient with id=1")
+        else:
+            logger.info("Test patient profile exists for user %s", user.email)
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"Failed to seed test patient: {exc}")
+    finally:
+        db.close()
+
+
+def ensure_dev_test_user():
+    """Create or repair a default development login user and its patient profile."""
+    db = SessionLocal()
+    email = "test@test.com"
+    plain_password = "test123"
+
+    try:
+        user = db.query(models.User).filter(models.User.email == email).first()
+
+        if not user:
+            user = models.User(
+                email=email,
+                hashed_password=hash_password(plain_password),
+                role="patient",
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            logger.info("Seeded development test user: %s", email)
+        else:
+            update_required = False
+
+            try:
+                password_ok = verify_password(plain_password, user.hashed_password)
+            except Exception:
+                password_ok = False
+
+            if not password_ok:
+                user.hashed_password = hash_password(plain_password)
+                update_required = True
+
+            if user.role != "patient":
+                user.role = "patient"
+                update_required = True
+
+            if update_required:
+                db.commit()
+                db.refresh(user)
+                logger.info("Updated development test user credentials/role: %s", email)
+            else:
+                logger.info("Development test user already valid: %s", email)
+
+        # Ensure the dev user has a linked Patient profile so payment endpoints work
+        patient_profile = db.query(models.Patient).filter(
+            models.Patient.user_id == user.id
+        ).first()
+        if not patient_profile:
+            patient_profile = models.Patient(
+                user_id=user.id,
+                first_name="Test",
+                last_name="Dev",
+                age=30,
+                gender="other",
+            )
+            db.add(patient_profile)
+            db.commit()
+            logger.info("Created patient profile for dev test user: %s", email)
+
+    except Exception as exc:
+        db.rollback()
+        logger.error("Failed to ensure development test user: %s", exc)
+    finally:
+        db.close()
+
+
+@app.on_event("startup")
+def on_startup():
+    seed_demo_doctors()
+    seed_test_patient()
+    ensure_dev_test_user()
+
 
 # Include routers
 app.include_router(patient.router)

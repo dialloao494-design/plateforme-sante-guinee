@@ -23,6 +23,25 @@ api.interceptors.request.use(
   }
 );
 
+// Add response interceptor to enforce global auth handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.status === 401) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user_role');
+      localStorage.removeItem('user_id');
+
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/login' && currentPath !== '/signup') {
+        window.location.href = '/login';
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 // Auth API
 export const authAPI = {
   login: (email, password) => {
@@ -51,20 +70,34 @@ export const patientsAPI = {
 
 // Doctors API
 export const doctorsAPI = {
-  getAll: () => api.get('/doctors'),
+  getAll: (location, specialty) => {
+    const params = new URLSearchParams();
+    if (location) params.append('location', location);
+    if (specialty) params.append('specialty', specialty);
+    const queryString = params.toString();
+    return api.get(`/doctors${queryString ? '?' + queryString : ''}`);
+  },
+  getById: (id) => api.get(`/doctors/${id}`),
+  create: (doctorData) => api.post('/doctors', doctorData),
+  update: (id, doctorData) => api.put(`/doctors/${id}`, doctorData),
+  delete: (id) => api.delete(`/doctors/${id}`),
+  getSchedule: (id) => api.get(`/doctors/${id}/schedule`),
+  getAvailability: (id) => api.get(`/doctors/${id}/availability`),
 };
 
 // Appointments API
 export const appointmentsAPI = {
-  getAll: () => api.get('/rendezvous'),
-  getById: (id) => api.get(`/rendezvous/${id}`),
-  create: (appointmentData) => api.post('/rendezvous/', appointmentData),
-  updateStatus: (id, status) => api.patch(`/rendezvous/${id}`, { status }),
-  cancel: (id) => api.post(`/rendezvous/${id}/cancel`),
+  getAll: () => api.get('/appointments/'),
+  getById: (id) => api.get(`/appointments/${id}`),
+  create: (appointmentData) => api.post('/appointments/', appointmentData),
+  updateStatus: (id, status) => api.put(`/appointments/${id}`, { status }),
+  cancel: (id) => api.delete(`/appointments/${id}`),
+  getMyAppointments: () => api.get('/appointments/'),
 };
 
 export const paymentsAPI = {
   createIntent: (appointmentId) => api.post('/payments/create-intent', { appointment_id: appointmentId }),
+  confirmCheckout: (sessionId) => api.post('/payments/confirm-checkout', { session_id: sessionId }),
   getStatus: (appointmentId) => api.get(`/payments/${appointmentId}/status`),
 };
 

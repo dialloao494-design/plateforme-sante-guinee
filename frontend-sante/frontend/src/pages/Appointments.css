@@ -319,6 +319,21 @@
   font-weight: 700;
 }
 
+.status-pending {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.status-confirmed {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.status-cancelled {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
 .status-small {
   background: #f8fafc;
 }

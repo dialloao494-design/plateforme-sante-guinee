@@ -6,7 +6,7 @@ from typing import Optional
 class RendezVousBase(BaseModel):
     date: datetime = Field(..., description="Appointment start time (UTC)")
     doctor_id: int = Field(..., description="Doctor ID")
-    duration_minutes: int = Field(default=30, description="Appointment duration in minutes (30, 60, 90, 120)")
+    duration_minutes: int = Field(default=30, ge=15, description="Appointment duration in minutes (minimum 15)")
 
 
 class RendezVousCreate(RendezVousBase):
@@ -18,7 +18,7 @@ class RendezVousUpdate(BaseModel):
     """Schema for updating appointment status"""
     status: Optional[str] = Field(
         None, 
-        description="New status (pending, confirmed, completed, cancelled)"
+        description="New status (pending, confirmed, cancelled)"
     )
 
 
@@ -27,8 +27,9 @@ class RendezVousResponse(BaseModel):
     id: int
     date: datetime = Field(..., description="Appointment start time")
     duration_minutes: int = Field(..., description="Duration in minutes")
-    status: str = Field(..., description="Current status (pending, confirmed, completed, cancelled)")
-    payment_status: str = Field(..., description="Payment status (pending, paid, failed)")
+    status: str = Field(..., description="Current status (pending, confirmé, cancelled)")
+    payment_status: str = Field(..., description="Payment status (paid, unpaid)")
+    is_paid: bool = Field(..., description="True when payment is confirmed")
     price: float = Field(..., description="Appointment price")
     payment_intent_id: Optional[str] = Field(None, description="Stripe payment intent ID")
     patient_id: int
@@ -56,6 +57,8 @@ class DoctorSummary(BaseModel):
     id: int
     user_id: int
     name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     specialty: Optional[str] = None
     consultation_fee: float
 
@@ -75,7 +78,7 @@ class PaymentResponse(BaseModel):
     id: int
     date: datetime = Field(..., description="Appointment start time")
     price: float = Field(..., description="Appointment price")
-    payment_status: str = Field(..., description="Payment status (pending, paid, failed)")
+    payment_status: str = Field(..., description="Payment status (paid, unpaid)")
     payment_intent_id: Optional[str] = Field(None, description="Stripe payment intent ID")
     patient: PatientSummary
     doctor: DoctorSummary
@@ -137,3 +140,15 @@ class PaymentIntentStatusResponse(BaseModel):
     status: str = Field(..., description="Payment status")
     amount: int = Field(..., description="Amount in cents")
     currency: str = Field(..., description="Currency code")
+
+
+class CheckoutSessionResponse(BaseModel):
+    """Response containing Stripe Checkout session data."""
+    checkout_url: str = Field(..., description="Hosted Stripe Checkout URL")
+    session_id: str = Field(..., description="Stripe Checkout session ID")
+    status: Optional[str] = Field(None, description="Checkout session status")
+
+
+class CheckoutSessionConfirmRequest(BaseModel):
+    """Request to validate and confirm a Stripe Checkout payment."""
+    session_id: str = Field(..., description="Stripe Checkout session ID")

@@ -4,7 +4,7 @@ import { authAPI } from '../services/api.js';
 import './Signup.css';
 
 const Signup = () => {
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [formData, setFormData] = useState({ email: '', password: '', role: 'patient' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -18,7 +18,7 @@ const Signup = () => {
     setLoading(true);
     setError(null);
     try {
-      await authAPI.signup({ ...formData, role: 'patient' });
+      await authAPI.signup(formData);
       navigate('/login');
     } catch (err) {
       setError(err?.response?.data?.detail || err.message || 'Registration failed');
@@ -51,6 +51,13 @@ const Signup = () => {
               onChange={handleChange}
               required
             />
+          </div>
+          <div className="form-group">
+            <label>Role:</label>
+            <select name="role" value={formData.role} onChange={handleChange}>
+              <option value="patient">Patient</option>
+              <option value="doctor">Doctor</option>
+            </select>
           </div>
           {error && <p className="error">{error}</p>}
           <button type="submit" disabled={loading}>

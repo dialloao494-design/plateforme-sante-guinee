@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, time
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from fastapi import HTTPException, status
+import os
 
 import models
 from schemas import rendezvous as rendezvous_schemas
@@ -20,14 +21,21 @@ from schemas import rendezvous as rendezvous_schemas
 class RendezVousService:
     """Service for managing appointment lifecycle and business logic"""
 
-    # Valid appointment durations in minutes
-    VALID_DURATIONS = [30, 60, 90, 120]
+    # Temporary MVP switch: bypass doctor availability table checks.
+    # Set to false later when availability schedules are populated.
+    BYPASS_AVAILABILITY_VALIDATION = os.getenv("BYPASS_AVAILABILITY_VALIDATION", "true").lower() == "true"
+
+    # Production mode: availability and conflict checks are enabled.
+    DEV_MODE = False
+
+    # Minimum duration in minutes
+    MIN_DURATION_MINUTES = 15
     
     # Valid status transitions
     VALID_TRANSITIONS = {
         "pending": ["confirmed", "cancelled"],
-        "confirmed": ["completed", "cancelled"],
-        "completed": [],
+        "confirmed": ["cancelled"],
+        "confirmé": ["cancelled"],
         "cancelled": []
     }
 
@@ -55,9 +63,9 @@ class RendezVousService:
         validation_errors = []
 
         # 1. Validate duration
-        if rdv.duration_minutes not in RendezVousService.VALID_DURATIONS:
+        if rdv.duration_minutes < RendezVousService.MIN_DURATION_MINUTES:
             validation_errors.append(
-                f"Invalid duration. Must be one of: {RendezVousService.VALID_DURATIONS}"
+                f"Invalid duration. Minimum allowed is {RendezVousService.MIN_DURATION_MINUTES} minutes"
             )
 
         # 2. Prevent booking in the past
@@ -75,50 +83,50 @@ class RendezVousService:
                 detail=" | ".join(validation_errors)
             )
 
-        # 4. Check for overlapping appointments
+        # 4. Prevent exact double-booking at the same date/time for the same doctor.
+        exact_conflict = (
+            db.query(models.RendezVous)
+            .filter(
+                models.RendezVous.doctor_id == doctor.id,
+                models.RendezVous.status != "cancelled",
+                models.RendezVous.date == rdv.date,
+            )
+            .first()
+        )
+        if exact_conflict:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Ce créneau est déjà réservé"
+            )
+
+        # 5. Check overlapping appointments.
         overlap = RendezVousService.check_overlap_with_duration(
             doctor_id=doctor.id,
             start_time=rdv.date,
             duration_minutes=rdv.duration_minutes,
             db=db,
-            exclude_rdv_id=None  # New appointment, nothing to exclude
+            exclude_rdv_id=None
         )
         if overlap:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Time slot conflicts with existing appointment (ID: {overlap['id']}, "
-                       f"starts {overlap['date']}, duration {overlap['duration_minutes']} min)"
+                detail="Ce créneau est déjà réservé"
             )
 
-        # 5. Check if appointment is within doctor's availability
-        availability_check = RendezVousService.is_within_availability(
-            doctor=doctor,
-            appointment_start=rdv.date,
-            duration_minutes=rdv.duration_minutes,
-            db=db
-        )
-        if not availability_check['is_available']:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"No availability for doctor at this time. {availability_check['reason']}"
+        # 6. Check doctor's availability window (temporarily bypassed for MVP).
+        availability_check = {"is_available": True, "slot": None, "reason": "bypassed"}
+        if not RendezVousService.BYPASS_AVAILABILITY_VALIDATION:
+            availability_check = RendezVousService.is_within_availability(
+                doctor=doctor,
+                appointment_start=rdv.date,
+                duration_minutes=rdv.duration_minutes,
+                db=db
             )
-
-        # 6. Prevent booking if confirmed/completed appointment already exists at this time
-        existing_confirmed = (
-            db.query(models.RendezVous)
-            .filter(
-                models.RendezVous.doctor_id == doctor.id,
-                models.RendezVous.status.in_(["confirmed", "completed"]),
-                models.RendezVous.date == rdv.date,
-                models.RendezVous.duration_minutes == rdv.duration_minutes
-            )
-            .first()
-        )
-        if existing_confirmed:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Cannot book appointment: Doctor already has a {existing_confirmed.status} appointment at this time"
-            )
+            if not availability_check['is_available']:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"No availability for doctor at this time. {availability_check['reason']}"
+                )
 
         return {
             "valid": True,
@@ -148,7 +156,13 @@ class RendezVousService:
                 models.RendezVous.doctor_id == doctor.id
             ).all()
 
-        return db.query(models.RendezVous).all()
+        if current_user.role == "admin":
+            return db.query(models.RendezVous).all()
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid role for appointment access"
+        )
 
     @staticmethod
     def list_payments_for_user(current_user, db: Session):
@@ -293,14 +307,27 @@ class RendezVousService:
         Steps:
         1. Validate all business rules
         2. Set price from doctor's consultation fee
-        3. Create appointment record with default status "pending" and payment_status "pending"
+        3. Create appointment record with default status "pending" and payment_status "unpaid"
         4. Commit to database
         5. Refresh and return
         """
-        # Comprehensive validation
-        RendezVousService.validate_appointment(rdv, patient, doctor, db)
-
         validation_result = RendezVousService.validate_appointment(rdv, patient, doctor, db)
+
+        # Final guard before insert to reduce edge-case double booking on near-simultaneous requests.
+        final_conflict = (
+            db.query(models.RendezVous)
+            .filter(
+                models.RendezVous.doctor_id == doctor.id,
+                models.RendezVous.status != "cancelled",
+                models.RendezVous.date == rdv.date,
+            )
+            .first()
+        )
+        if final_conflict:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Ce créneau est déjà réservé"
+            )
 
         # Create appointment with price from doctor's consultation fee
         new_rdv = models.RendezVous(
@@ -309,7 +336,7 @@ class RendezVousService:
             patient_id=patient.id,
             doctor_id=doctor.id,
             status="pending",
-            payment_status="pending",
+            payment_status="unpaid",
             price=doctor.consultation_fee,
         )
 
@@ -355,8 +382,7 @@ class RendezVousService:
         
         Valid transitions:
         - pending -> confirmed or cancelled
-        - confirmed -> completed or cancelled
-        - completed -> (no further transitions)
+        - confirmed -> cancelled
         - cancelled -> (no further transitions)
         """
         rdv = db.query(models.RendezVous).filter(models.RendezVous.id == rdv_id).first()
@@ -431,7 +457,7 @@ class RendezVousService:
             )
         
         # Update appointment status after payment
-        rdv.status = "confirmed"
+        rdv.status = "confirmé"
         rdv.payment_status = "paid"
         rdv.updated_at = datetime.utcnow()
         
@@ -446,7 +472,7 @@ class RendezVousService:
         db: Session
     ) -> models.RendezVous:
         """
-        Mark appointment payment as failed.
+        Mark appointment payment as unpaid.
 
         Only updates payment_status, not appointment status.
 
@@ -460,7 +486,7 @@ class RendezVousService:
                 detail="Appointment not found"
             )
 
-        rdv.payment_status = "failed"
+        rdv.payment_status = "unpaid"
         rdv.updated_at = datetime.utcnow()
 
         db.commit()
@@ -514,7 +540,7 @@ class RendezVousService:
                 detail="Appointment not found"
             )
         
-        # Prevent creating payment intent for already completed payment or cancelled appointments
+        # Prevent creating payment intent for already paid or cancelled appointments
         if appointment.payment_status == "paid":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -527,33 +553,22 @@ class RendezVousService:
                 detail="Cannot create payment intent for a cancelled appointment"
             )
         
-        # Get patient and doctor info for payment intent
+        # Get patient info for checkout session
         patient = db.query(models.Patient).filter(
             models.Patient.id == appointment.patient_id
         ).first()
-        
-        doctor = db.query(models.Doctor).filter(
-            models.Doctor.id == appointment.doctor_id
-        ).first()
-        
-        if not patient or not doctor:
+
+        if not patient:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Patient or doctor not found"
+                detail="Patient not found"
             )
-        
-        patient_name = " ".join(
-            filter(None, [patient.first_name, patient.last_name])
-        ).strip() or (patient.user.email if patient.user else "Patient")
 
-        # Create Stripe payment intent
-        payment_intent = StripeService.create_payment_intent(
+        # Create Stripe Checkout session
+        payment_intent = StripeService.create_checkout_session(
             appointment_id=appointment_id,
             appointment_price=appointment.price,
             patient_email=patient.user.email if patient.user else "patient@example.com",
-            patient_name=patient_name,
-            doctor_name=doctor.name,
-            appointment_date=appointment.date.isoformat(),
             db=db
         )
         

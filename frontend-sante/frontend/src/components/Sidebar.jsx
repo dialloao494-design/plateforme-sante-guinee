@@ -1,20 +1,34 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import './Sidebar.css';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
-  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const { logout, user, authLoading } = useAuth();
+  const role = user?.role || user?.user_role;
 
   const menuItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊' },
-    { path: '/doctors', label: 'Doctors', icon: '👥' },
-    { path: '/appointments', label: 'Appointments', icon: '📅' }
+    { path: '/dashboard', label: 'Dashboard', icon: '📊', roles: ['patient', 'doctor', 'admin'] },
+    { path: '/appointments', label: 'Rendez-vous', icon: '📅', roles: ['patient'] },
+    { path: '/patients', label: 'Patients', icon: '🧾', roles: ['doctor'] },
+    { path: '/appointments', label: 'Agenda', icon: '🗓️', roles: ['doctor'] },
+    { path: '/users', label: 'Utilisateurs', icon: '🛡️', roles: ['admin'] },
   ];
+
+  console.log('[Sidebar] user:', user);
+  console.log('[Sidebar] role:', role);
+
+  const visibleItems = authLoading
+    ? []
+    : menuItems.filter((item) => role && item.roles.includes(role));
 
   const handleLogout = () => {
     logout();
-    onClose();
+    if (typeof onClose === 'function') {
+      onClose();
+    }
+    navigate('/login');
   };
 
   return (
@@ -32,8 +46,9 @@ const Sidebar = ({ isOpen, onClose }) => {
         </div>
 
         <nav className="sidebar-nav">
+          {authLoading && <p>Chargement...</p>}
           <ul>
-            {menuItems.map((item) => (
+            {visibleItems.map((item) => (
               <li key={item.path}>
                 <Link
                   to={item.path}

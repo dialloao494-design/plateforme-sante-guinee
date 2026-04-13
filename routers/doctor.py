@@ -1,12 +1,12 @@
 # FastAPI router for Doctor CRUD with SQLAlchemy
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from database import get_db
 from models.doctor import Doctor
 from models.availability import DoctorAvailability
-from schemas.doctor import DoctorCreate, DoctorResponse
+from schemas.doctor import DoctorCreate, DoctorResponse, DoctorUpdate
 from schemas.availability import DoctorAvailabilityCreate, DoctorAvailabilityResponse, DoctorAvailabilityUpdate
-from security import get_current_admin, require_roles
+from security import get_current_doctor, get_current_admin, require_roles, get_current_user_or_none
 from services.availability_service import AvailabilityService
 
 router = APIRouter(
@@ -19,12 +19,22 @@ router = APIRouter(
 def create_doctor(
     doctor: DoctorCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
+    current_user=Depends(get_current_doctor),
 ):
+    """Create a new doctor profile for the authenticated doctor user."""
+    existing_doctor = db.query(Doctor).filter(Doctor.user_id == current_user.id).first()
+    if existing_doctor:
+        raise HTTPException(status_code=400, detail="Doctor profile already exists for this user")
+    
     new_doctor = Doctor(
-        user_id=doctor.user_id,
-        name=doctor.name,
+        user_id=current_user.id,
+        first_name=doctor.first_name,
+        last_name=doctor.last_name,
         specialty=doctor.specialty,
+        city=doctor.location,
+        phone=doctor.phone,
+        photo_url=doctor.photo_url,
+        consultation_fee=doctor.consultation_fee,
     )
     db.add(new_doctor)
     db.commit()
@@ -34,18 +44,40 @@ def create_doctor(
 
 @router.get("/", response_model=list[DoctorResponse])
 def get_doctors(
+    location: str | None = Query(None, description="Filter doctors by location"),
+    specialty: str | None = Query(None, description="Filter doctors by specialty"),
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "doctor", "patient"])),
 ):
-    return db.query(Doctor).all()
+    """
+    Get list of all doctors with optional filtering.
+
+    Public endpoint - accessible without authentication.
+    Query Parameters:
+    - location: Filter by location name (optional)
+    - specialty: Filter by specialty (optional)
+    """
+    query = db.query(Doctor)
+    
+    if location:
+        query = query.filter(Doctor.city.ilike(f"%{location}%"))
+    
+    if specialty:
+        query = query.filter(Doctor.specialty.ilike(f"%{specialty}%"))
+    
+    return query.all()
 
 
 @router.get("/{doctor_id}", response_model=DoctorResponse)
 def get_doctor(
     doctor_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "doctor"])),
+    current_user=Depends(get_current_user_or_none),
 ):
+    """
+    Get detailed information about a specific doctor.
+    
+    Public endpoint - accessible to patients without authentication.
+    """
     doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
@@ -55,16 +87,31 @@ def get_doctor(
 @router.put("/{doctor_id}", response_model=DoctorResponse)
 def update_doctor(
     doctor_id: int,
-    doctor_update: DoctorCreate,
+    doctor_update: DoctorUpdate,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_admin),
 ):
+    """Update doctor profile (Admin only)."""
     doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
-    doctor.user_id = doctor_update.user_id
-    doctor.name = doctor_update.name
-    doctor.specialty = doctor_update.specialty
+    
+    # Update only provided fields
+    if doctor_update.first_name is not None:
+        doctor.first_name = doctor_update.first_name
+    if doctor_update.last_name is not None:
+        doctor.last_name = doctor_update.last_name
+    if doctor_update.specialty is not None:
+        doctor.specialty = doctor_update.specialty
+    if doctor_update.location is not None:
+        doctor.city = doctor_update.location
+    if doctor_update.phone is not None:
+        doctor.phone = doctor_update.phone
+    if doctor_update.photo_url is not None:
+        doctor.photo_url = doctor_update.photo_url
+    if doctor_update.consultation_fee is not None:
+        doctor.consultation_fee = doctor_update.consultation_fee
+    
     db.commit()
     db.refresh(doctor)
     return doctor
@@ -233,7 +280,7 @@ def delete_doctor_availability(
 def get_doctor_schedule(
     doctor_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "doctor", "patient"])),
+    current_user=Depends(get_current_user_or_none),
 ):
     """Get doctor's complete weekly schedule (working hours).
     
@@ -253,7 +300,7 @@ def get_doctor_schedule(
     schedule = AvailabilityService.get_doctor_schedule(doctor_id, db)
     return {
         "doctor_id": doctor_id,
-        "doctor_name": doctor.name,
+        "doctor_name": f"{doctor.first_name} {doctor.last_name}",
         "schedule": schedule
     }
 

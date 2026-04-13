@@ -12,7 +12,7 @@ const Login = () => {
 
   useEffect(() => {
     if (user) {
-      const role = localStorage.getItem('user_role');
+      const role = user?.role;
       if (role === 'doctor') {
         navigate('/doctors');
       } else if (role === 'admin') {
@@ -29,7 +29,7 @@ const Login = () => {
 
     const result = await login(email, password);
     if (result.success) {
-      const role = localStorage.getItem('user_role');
+      const role = result.role || user?.role;
       if (role === 'doctor') {
         navigate('/doctors');
       } else if (role === 'admin') {

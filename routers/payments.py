@@ -25,22 +25,21 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
 # ===============================
-# PAYMENT INTENT CREATION
+# CHECKOUT SESSION CREATION
 # ===============================
 
-@router.post("/create-intent", response_model=rendezvous_schemas.PaymentIntentResponse)
+@router.post("/create-intent", response_model=rendezvous_schemas.CheckoutSessionResponse)
 def create_payment_intent(
     request: rendezvous_schemas.PaymentIntentCreate,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_patient),
 ):
     """
-    Create a Stripe payment intent for an appointment.
+    Create a Stripe Checkout session for an appointment.
 
-    - Creates a payment intent with the appointment price
-    - Stores payment_intent_id in the appointment record
-    - Sets appointment payment_status to pending
-    - Does NOT confirm the appointment yet
+    - Creates hosted Stripe checkout page URL
+    - Stores payment linkage in the appointment/payment tables
+    - Does NOT confirm the appointment yet (confirmation requires Stripe validation)
     - Patient must own the appointment
     """
     # Get patient profile
@@ -71,10 +70,32 @@ def create_payment_intent(
             detail="Access denied: This is not your appointment"
         )
 
-    # Create payment intent via service
+    # Create checkout session via service
     payment_intent = RendezVousService.create_payment_intent(request.appointment_id, db)
 
     return payment_intent
+
+
+@router.post("/confirm-checkout", response_model=rendezvous_schemas.RendezVousResponse)
+def confirm_checkout_payment(
+    payload: rendezvous_schemas.CheckoutSessionConfirmRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_patient),
+):
+    """Confirm payment after successful Stripe Checkout redirection.
+
+    Security:
+    - Session is revalidated server-side against Stripe
+    - Appointment is confirmed only if Stripe reports payment_status=paid
+    - Patient can confirm only their own appointment
+    """
+    appointment = StripeService.confirm_checkout_session(
+        session_id=payload.session_id,
+        db=db,
+        expected_patient_user_id=current_user.id,
+    )
+
+    return appointment
 
 
 # ===============================

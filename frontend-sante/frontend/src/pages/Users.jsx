@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import api from '../services/api.js';
+import axiosInstance from '../api/axiosInstance.js';
 
 const Users = () => {
   const [users, setUsers] = useState([]);

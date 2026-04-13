@@ -1,8 +1,12 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from typing import Optional
 from database import get_db
 from models.user import User
+import models
 from schemas.user import UserCreate, UserLogin, UserResponse, Token
 from security import (
     get_current_user,
@@ -13,6 +17,7 @@ from security import (
 from fastapi.security import OAuth2PasswordRequestForm
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/register", response_model=UserResponse, status_code=201)
@@ -48,6 +53,42 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
+
+        # Auto-create a Patient profile for every patient-role user so that
+        # appointment booking and payment endpoints can always find a linked profile.
+        if new_user.role == "patient":
+            existing_profile = db.query(models.Patient).filter(
+                models.Patient.user_id == new_user.id
+            ).first()
+            if not existing_profile:
+                patient_profile = models.Patient(
+                    user_id=new_user.id,
+                    first_name=None,
+                    last_name=None,
+                    age=None,
+                    gender=None,
+                )
+                db.add(patient_profile)
+                db.commit()
+
+        if new_user.role == "doctor":
+            existing_doctor_profile = db.query(models.Doctor).filter(
+                models.Doctor.user_id == new_user.id
+            ).first()
+            if not existing_doctor_profile:
+                doctor_profile = models.Doctor(
+                    user_id=new_user.id,
+                    first_name="Doctor",
+                    last_name=f"User{new_user.id}",
+                    specialty="General Medicine",
+                    city="Conakry",
+                    phone="000000000",
+                    photo_url=None,
+                    consultation_fee=0.0,
+                )
+                db.add(doctor_profile)
+                db.commit()
+
         return new_user
     except IntegrityError as e:
         db.rollback()
@@ -74,12 +115,22 @@ def authenticate_user(email: str, password: str, db: Session, attempt_limit: int
     
     db_user = db.query(User).filter(User.email == email).first()
     if not db_user:
+        logger.warning("Login failed for %s: user not found", email)
         # Use constant-time comparison with dummy hash to prevent timing attacks
         verify_password(password, hash_password("dummy"))
         return None
-        
-    if not verify_password(password, db_user.hashed_password):
+
+    try:
+        password_ok = verify_password(password, db_user.hashed_password)
+    except Exception:
+        logger.exception("Login failed for %s: stored password hash is invalid", email)
         return None
+
+    if not password_ok:
+        logger.warning("Login failed for %s: invalid password", email)
+        return None
+
+    logger.info("Login success for %s", email)
         
     return db_user
 
@@ -94,10 +145,12 @@ def create_token_response(user: User):
     - role: User's role (patient, doctor, admin)
     - email: User's email address
     """
-    access_token = create_access_token(data={"sub": user.email, "role": user.role})
+    access_token = create_access_token(data={"sub": user.email, "user_id": user.id, "user_role": user.role, "role": user.role})
     return {
         "access_token": access_token,
         "token_type": "bearer",
+        "user_id": user.id,
+        "user_role": user.role,
         "role": user.role,
         "email": user.email,
     }
@@ -180,14 +233,13 @@ def read_current_user(current_user: User = Depends(get_current_user)):
     """
     Get current authenticated user's profile.
     
-    **Authentication:** Requires valid Bearer token in Authorization header
+    **Authentication:** Requires valid Bearer token
     
-    **Returns:**
+    **Returns:** Authenticated user profile
     - id: User's unique identifier
     - email: User's email address
     - role: User's role (patient, doctor, admin)
     
-    **Errors:**
-    - 401: No token provided or invalid token
+    **Errors:** 401 when token is invalid or missing
     """
     return current_user

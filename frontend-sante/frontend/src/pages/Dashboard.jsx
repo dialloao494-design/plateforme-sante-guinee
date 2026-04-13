@@ -4,7 +4,7 @@ import './Dashboard.css';
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const role = localStorage.getItem('user_role');
+  const role = user?.role;
 
   return (
     <div className="dashboard">

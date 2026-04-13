@@ -1,15 +1,19 @@
 from passlib.context import CryptContext
-from jose import JWTError, jwt
+from jose import jwt
 from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
 from database import get_db
 from sqlalchemy.orm import Session
 from models.user import User
 from fastapi.security import OAuth2PasswordBearer
+from dotenv import load_dotenv
 import os
 import re
 
+load_dotenv()
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=False)
 
 # ==============================
 # PASSWORD CONFIG
@@ -49,9 +53,12 @@ def validate_role(role: str):
 # JWT CONFIG
 # ==============================
 
-SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production-use-env-variable")
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable is required")
 
 
 def create_access_token(data: dict):
@@ -74,17 +81,27 @@ def get_current_user(
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("user_id")
+        token_role = payload.get("user_role") or payload.get("role")
         email: str = payload.get("sub")
 
-        if email is None:
+        if user_id is None and email is None:
             raise credentials_exception
 
-    except JWTError:
+    except Exception:
         raise credentials_exception
 
-    user = db.query(User).filter(User.email == email).first()
+    user = None
+    if user_id is not None:
+        user = db.query(User).filter(User.id == user_id).first()
+
+    if user is None and email is not None:
+        user = db.query(User).filter(User.email == email).first()
 
     if user is None:
+        raise credentials_exception
+
+    if token_role and token_role != user.role:
         raise credentials_exception
 
     return user
@@ -127,3 +144,57 @@ def get_current_patient(current_user: User = Depends(get_current_user)):
             detail="Patient privileges required",
         )
     return current_user
+
+
+def require_patient(current_user: User = Depends(get_current_user)):
+    if current_user.role != "patient":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Patient privileges required",
+        )
+    return current_user
+
+
+def require_doctor(current_user: User = Depends(get_current_user)):
+    if current_user.role != "doctor":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Doctor privileges required",
+        )
+    return current_user
+
+
+def require_admin(current_user: User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required",
+        )
+    return current_user
+
+
+def get_current_user_or_none(
+    token: str | None = Depends(oauth2_scheme_optional),
+    db: Session = Depends(get_db),
+):
+    """Optional authentication dependency. Returns None if no token is provided or valid."""
+    if token is None:
+        return None
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("user_id")
+        email: str = payload.get("sub")
+
+        if user_id is None and email is None:
+            return None
+
+    except Exception:
+        return None
+
+    user = None
+    if user_id is not None:
+        user = db.query(User).filter(User.id == user_id).first()
+    if user is None and email is not None:
+        user = db.query(User).filter(User.email == email).first()
+    return user

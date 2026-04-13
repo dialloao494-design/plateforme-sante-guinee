@@ -25,9 +25,10 @@ class UserCreate(BaseModel):
     @field_validator("role")
     @classmethod
     def validate_role(cls, v: str) -> str:
-        if v not in {"patient", "doctor", "admin"}:
+        role = v.strip().lower()
+        if role not in {"patient", "doctor", "admin"}:
             raise ValueError("Role must be one of: patient, doctor, admin")
-        return v
+        return role
 
 
 class UserLogin(BaseModel):
@@ -38,6 +39,8 @@ class UserLogin(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    user_id: int
+    user_role: str
     role: str
     email: str
 

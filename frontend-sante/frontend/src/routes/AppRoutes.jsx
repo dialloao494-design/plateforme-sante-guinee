@@ -5,6 +5,9 @@ import Signup from "../pages/Signup";
 import Dashboard from "../pages/Dashboard";
 import Doctors from "../pages/Doctors";
 import Appointments from "../pages/Appointments";
+import PaymentSuccess from "../pages/PaymentSuccess";
+import PaymentCancel from "../pages/PaymentCancel";
+import Patients from "../pages/Patients";
 import Users from "../pages/Users";
 import ProtectedRoute from "./ProtectedRoute";
 
@@ -17,7 +20,7 @@ const AppRoutes = () => {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["patient", "doctor", "admin"]}>
             <Dashboard />
           </ProtectedRoute>
         }
@@ -25,7 +28,7 @@ const AppRoutes = () => {
       <Route
         path="/doctors"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["doctor", "admin"]}>
             <Doctors />
           </ProtectedRoute>
         }
@@ -33,16 +36,40 @@ const AppRoutes = () => {
       <Route
         path="/appointments"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["patient", "doctor", "admin"]}>
             <Appointments />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/success"
+        element={
+          <ProtectedRoute allowedRoles={["patient"]}>
+            <PaymentSuccess />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/cancel"
+        element={
+          <ProtectedRoute allowedRoles={["patient"]}>
+            <PaymentCancel />
           </ProtectedRoute>
         }
       />
       <Route
         path="/users"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <Users />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patients"
+        element={
+          <ProtectedRoute allowedRoles={["doctor"]}>
+            <Patients />
           </ProtectedRoute>
         }
       />
