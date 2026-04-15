@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, validator
 import re
 
 
@@ -7,23 +7,20 @@ class UserCreate(BaseModel):
     password: str
     role: str = "patient"
 
-    @field_validator("email")
-    @classmethod
+    @validator("email")
     def validate_email(cls, v: str) -> str:
         email = v.strip().lower()
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             raise ValueError("Invalid email address")
         return email
 
-    @field_validator("password")
-    @classmethod
+    @validator("password")
     def validate_password(cls, v: str) -> str:
         if len(v) < 6:
             raise ValueError("Password must be at least 6 characters long")
         return v
 
-    @field_validator("role")
-    @classmethod
+    @validator("role")
     def validate_role(cls, v: str) -> str:
         role = v.strip().lower()
         if role not in {"patient", "doctor", "admin"}:

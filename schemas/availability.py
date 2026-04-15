@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, validator
 from datetime import time
 
 
@@ -8,15 +8,13 @@ class DoctorAvailabilityBase(BaseModel):
     start_time: time
     end_time: time
 
-    @field_validator("day_of_week")
-    @classmethod
+    @validator("day_of_week")
     def validate_day_of_week(cls, v):
         if not 0 <= v <= 6:
             raise ValueError("day_of_week must be between 0 (Monday) and 6 (Sunday)")
         return v
 
-    @field_validator("end_time")
-    @classmethod
+    @validator("end_time")
     def validate_times(cls, v, values):
         if "start_time" in values and v <= values["start_time"]:
             raise ValueError("end_time must be after start_time")
