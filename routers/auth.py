@@ -89,7 +89,12 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
                 db.add(doctor_profile)
                 db.commit()
 
-        return new_user
+        if new_user is None or new_user.id is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="User creation failed unexpectedly.",
+            )
+        return UserResponse(id=new_user.id, email=new_user.email, role=new_user.role)
     except IntegrityError as e:
         db.rollback()
         if "email" in str(e).lower():

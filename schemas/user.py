@@ -48,4 +48,4 @@ class UserResponse(BaseModel):
     role: str
 
     class Config:
-        from_attributes = True
+        orm_mode = True
