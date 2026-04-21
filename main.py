@@ -3,7 +3,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database import engine, Base, SessionLocal
+from database import SessionLocal
 import models
 from routers import patient, rendezvous, doctor, auth, payments, teleconsultation, notifications
 from routers import users, appointments
@@ -46,16 +46,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)  
 
-# Create tables
-Base.metadata.create_all(bind=engine)
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def seed_demo_doctors():
@@ -245,11 +242,41 @@ def ensure_dev_test_user():
         db.close()
 
 
-@app.on_event("startup")
-def on_startup():
-    seed_demo_doctors()
-    seed_test_patient()
-    ensure_dev_test_user()
+def _ensure_production_test_user():
+    """Idempotently create the production test user (test123@gmail.com / 123456)."""
+    db = SessionLocal()
+    email = "test123@gmail.com"
+    plain_password = "123456"
+    try:
+        user = db.query(models.User).filter(models.User.email == email).first()
+        if user is None:
+            user = models.User(
+                email=email,
+                hashed_password=hash_password(plain_password),
+                role="patient",
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            logger.info("Production test user created: %s (id=%s)", email, user.id)
+        else:
+            # Repair password if it doesn't match
+            try:
+                ok = verify_password(plain_password, user.hashed_password)
+            except Exception:
+                ok = False
+            if not ok:
+                user.hashed_password = hash_password(plain_password)
+                db.commit()
+                logger.info("Production test user password repaired: %s", email)
+            else:
+                logger.info("Production test user already valid: %s (id=%s)", email, user.id)
+    except Exception as exc:
+        db.rollback()
+        logger.error("Failed to ensure production test user: %s", exc)
+        raise
+    finally:
+        db.close()
 
 
 # Include routers
@@ -321,17 +348,39 @@ def root():
 @app.on_event("startup")
 async def startup_event():
     """Run on app startup"""
+    from database import engine, DATABASE_URL
+    # Import all model modules so their tables are registered on Base
+    import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability
+
+    # Always create tables if they don't exist (safe / idempotent)
+    try:
+        from database import Base
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables verified / created.")
+    except Exception as exc:
+        logger.error("Failed to create tables: %s", exc)
+
+    # Always ensure the production test user exists
+    try:
+        _ensure_production_test_user()
+    except Exception as exc:
+        logger.error("Failed to ensure production test user: %s", exc)
+
+    if _env_flag("ENABLE_STARTUP_SEED", default=False):
+        seed_demo_doctors()
+        seed_test_patient()
+        ensure_dev_test_user()
+        logger.info("Startup seed routines completed.")
+    else:
+        logger.info("Optional startup seed routines skipped (ENABLE_STARTUP_SEED not set).")
+
     debug_mode = os.getenv("DEBUG", "False").lower() == "true"
-    logger.info("╔════════════════════════════════════════╗")
-    logger.info("║  Healthcare Platform API Starting     ║")
-    logger.info("╚════════════════════════════════════════╝")
-    logger.info(f"Debug Mode: {debug_mode}")
-    logger.info(f"API URL: http://0.0.0.0:{os.getenv('PORT', '8000')}")
+    logger.info("Healthcare Platform API startup complete")
+    logger.info("Debug Mode: %s", debug_mode)
+    logger.info("API URL: http://0.0.0.0:%s", os.getenv("PORT", "8000"))
     logger.info("Interactive API Docs: http://localhost:8000/docs")
     logger.info("Health Check: http://localhost:8000/health")
-    logger.info("Database Tables: Created successfully")
-    logger.info("CORS Origins: " + ", ".join(allowed_origins))
-    logger.info("Ready to accept requests")
+    logger.info("CORS Origins: %s", ", ".join(allowed_origins))
 
 
 @app.on_event("shutdown")
