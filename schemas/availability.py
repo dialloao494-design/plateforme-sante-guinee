@@ -30,7 +30,7 @@ class DoctorAvailabilityResponse(DoctorAvailabilityBase):
     is_active: bool
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 class DoctorAvailabilityUpdate(BaseModel):
@@ -40,4 +40,4 @@ class DoctorAvailabilityUpdate(BaseModel):
     is_active: bool | None = None
 
     class Config:
-        from_attributes = True
+        orm_mode = True

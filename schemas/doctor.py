@@ -31,4 +31,4 @@ class DoctorResponse(DoctorBase):
     name: str | None = None
 
     class Config:
-        from_attributes = True
+        orm_mode = True

@@ -38,7 +38,7 @@ class RendezVousResponse(BaseModel):
     updated_at: datetime = Field(..., description="Last update time")
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 class PatientSummary(BaseModel):
@@ -50,7 +50,7 @@ class PatientSummary(BaseModel):
     gender: Optional[str] = None
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 class DoctorSummary(BaseModel):
@@ -63,7 +63,7 @@ class DoctorSummary(BaseModel):
     consultation_fee: float
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 class RendezVousWithParticipants(RendezVousResponse):
@@ -71,7 +71,7 @@ class RendezVousWithParticipants(RendezVousResponse):
     doctor: DoctorSummary
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 class PaymentResponse(BaseModel):
@@ -87,7 +87,7 @@ class PaymentResponse(BaseModel):
     updated_at: datetime = Field(..., description="Last update time")
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 class RendezVousDetailedResponse(RendezVousResponse):
