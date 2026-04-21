@@ -25,11 +25,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS allowlist for local frontend and deployed API host.
+# CORS handled only by FastAPI CORSMiddleware.
 allowed_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://web-production-ad6a36.up.railway.app",
 ]
 
 app.add_middleware(
