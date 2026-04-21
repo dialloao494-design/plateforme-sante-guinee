@@ -25,19 +25,12 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS: allow frontend localhost origins for local development
-# For production, update allow_origins with your actual domain
+# CORS allowlist for local frontend and deployed API host.
 allowed_origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://web-production-ad6a36.up.railway.app",
 ]
-
-# Add production domain if specified in env
-prod_url = os.getenv("FRONTEND_PRODUCTION_URL")
-if prod_url:
-    allowed_origins.append(prod_url)
 
 app.add_middleware(
     CORSMiddleware,
