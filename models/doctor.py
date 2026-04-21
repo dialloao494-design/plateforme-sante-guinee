@@ -31,5 +31,8 @@ class Doctor(Base):
         # Public API-friendly display name.
         return f"Dr {self.full_name}".strip()
 
+    def __repr__(self) -> str:
+        return f'<Doctor id={self.id} name="{self.name}" specialty="{self.specialty}">'
+
     rendezvous = relationship("RendezVous", back_populates="doctor")
     availabilities = relationship("DoctorAvailability", back_populates="doctor", cascade="all, delete-orphan")

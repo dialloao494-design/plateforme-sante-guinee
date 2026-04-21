@@ -25,10 +25,10 @@ class DoctorUpdate(BaseModel):
     consultation_fee: float | None = None
 
 
-class DoctorResponse(DoctorBase):
+class DoctorResponse(BaseModel):
     id: int
-    user_id: int
-    name: str | None = None
+    name: str
+    specialty: str
 
     class Config:
         orm_mode = True

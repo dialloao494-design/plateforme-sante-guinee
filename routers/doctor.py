@@ -1,5 +1,5 @@
 # FastAPI router for Doctor CRUD with SQLAlchemy
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from models.doctor import Doctor
@@ -43,28 +43,10 @@ def create_doctor(
 
 
 @router.get("/", response_model=list[DoctorResponse])
-def get_doctors(
-    location: str | None = Query(None, description="Filter doctors by location"),
-    specialty: str | None = Query(None, description="Filter doctors by specialty"),
-    db: Session = Depends(get_db),
-):
-    """
-    Get list of all doctors with optional filtering.
-
-    Public endpoint - accessible without authentication.
-    Query Parameters:
-    - location: Filter by location name (optional)
-    - specialty: Filter by specialty (optional)
-    """
-    query = db.query(Doctor)
-    
-    if location:
-        query = query.filter(Doctor.city.ilike(f"%{location}%"))
-    
-    if specialty:
-        query = query.filter(Doctor.specialty.ilike(f"%{specialty}%"))
-    
-    return query.all()
+def get_doctors(db: Session = Depends(get_db)):
+    doctors = db.query(Doctor).all()
+    print("DOCTORS:", doctors)
+    return doctors
 
 
 @router.get("/{doctor_id}", response_model=DoctorResponse)
