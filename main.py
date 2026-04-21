@@ -366,11 +366,16 @@ async def startup_event():
     except Exception as exc:
         logger.error("Failed to ensure production test user: %s", exc)
 
-    if _env_flag("ENABLE_STARTUP_SEED", default=False):
+    # Always seed demo doctors so the list is never empty
+    try:
         seed_demo_doctors()
+    except Exception as exc:
+        logger.error("Failed to seed demo doctors: %s", exc)
+
+    if _env_flag("ENABLE_STARTUP_SEED", default=False):
         seed_test_patient()
         ensure_dev_test_user()
-        logger.info("Startup seed routines completed.")
+        logger.info("Optional startup seed routines completed.")
     else:
         logger.info("Optional startup seed routines skipped (ENABLE_STARTUP_SEED not set).")
 
