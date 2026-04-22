@@ -169,3 +169,21 @@ def delete_appointment(
 
     _assert_can_access_appointment(db, appointment, current_user)
     return RendezVousService.cancel_appointment(appointment_id, db)
+
+
+@router.post("/{appointment_id}/cancel", response_model=rendezvous_schemas.RendezVousResponse)
+def cancel_appointment(
+    appointment_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    appointment = db.query(models.RendezVous).filter(models.RendezVous.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
+
+    _assert_can_access_appointment(db, appointment, current_user)
+
+    if appointment.status == "cancelled":
+        return appointment
+
+    return RendezVousService.cancel_appointment(appointment_id, db)

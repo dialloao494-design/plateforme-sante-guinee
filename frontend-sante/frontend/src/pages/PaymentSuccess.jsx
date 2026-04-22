@@ -24,8 +24,8 @@ const PaymentSuccess = () => {
         const response = await paymentsAPI.confirmCheckout(sessionId);
         const confirmed = response?.data;
         await fetchAppointments();
-        const paidLabel = confirmed?.is_paid ? 'payé' : 'non payé';
-        setMessage(`Paiement confirmé. Rendez-vous ${confirmed?.status || 'confirmé'} (${paidLabel}).`);
+        const paidLabel = confirmed?.is_paid ? 'Payé' : 'Impayé';
+        setMessage(`Paiement confirmé. Rendez-vous ${confirmed?.status || 'Confirmé'} (${paidLabel}).`);
       } catch (err) {
         setError(err?.response?.data?.detail || err?.message || 'Failed to confirm payment.');
       } finally {

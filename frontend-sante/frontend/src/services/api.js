@@ -100,7 +100,7 @@ export const appointmentsAPI = {
   getById: (id) => API.get(`/appointments/${id}/`),
   create: (data) => API.post('/appointments/', data),
   updateStatus: (id, status) => API.put(`/appointments/${id}/`, { status }),
-  cancel: (id) => API.delete(`/appointments/${id}/`),
+  cancel: (id) => API.post(`/appointments/${id}/cancel`),
   getMyAppointments: () => API.get('/appointments/me'),
 };
 
