@@ -5,7 +5,7 @@ from typing import List
 from sqlalchemy.orm import Session
 import models
 from database import get_db
-from security import get_current_user
+from security import get_current_user, get_current_patient
 from schemas import rendezvous as rendezvous_schemas
 from services.rendezvous_service import RendezVousService
 
@@ -59,7 +59,7 @@ def list_appointments(
 def create_appointment(
     rdv: rendezvous_schemas.RendezVousCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_patient),
 ):
     """
     Create a new appointment for the authenticated patient.
@@ -67,20 +67,20 @@ def create_appointment(
     logger.info("Received POST /appointments/ request")
     logger.debug("Appointment payload: %s", rdv)
 
-    if current_user.role != "patient":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only patients can create appointments"
-        )
-
     patient = db.query(models.Patient).filter(
         models.Patient.user_id == current_user.id
     ).first()
     if not patient:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Patient profile not found for authenticated user."
+        patient = models.Patient(
+            user_id=current_user.id,
+            first_name="Patient",
+            last_name=f"User{current_user.id}",
+            age=0,
+            gender="unknown",
         )
+        db.add(patient)
+        db.commit()
+        db.refresh(patient)
 
     doctor = db.query(models.Doctor).filter(models.Doctor.id == rdv.doctor_id).first()
     if not doctor:

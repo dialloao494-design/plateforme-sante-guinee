@@ -22,6 +22,24 @@ def _get_patient_for_user(db: Session, user_id: int) -> models.Patient | None:
     return db.query(models.Patient).filter(models.Patient.user_id == user_id).first()
 
 
+def _get_or_create_patient_for_user(db: Session, user_id: int) -> models.Patient:
+    patient = _get_patient_for_user(db, user_id)
+    if patient:
+        return patient
+
+    patient = models.Patient(
+        user_id=user_id,
+        first_name="Patient",
+        last_name=f"User{user_id}",
+        age=0,
+        gender="unknown",
+    )
+    db.add(patient)
+    db.commit()
+    db.refresh(patient)
+    return patient
+
+
 def _get_doctor_for_user(db: Session, user_id: int) -> models.Doctor | None:
     return db.query(models.Doctor).filter(models.Doctor.user_id == user_id).first()
 
@@ -31,8 +49,8 @@ def _assert_can_access_appointment(db: Session, appointment: models.RendezVous, 
         return
 
     if current_user.role == "patient":
-        patient = _get_patient_for_user(db, current_user.id)
-        if not patient or appointment.patient_id != patient.id:
+        patient = _get_or_create_patient_for_user(db, current_user.id)
+        if appointment.patient_id != patient.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         return
 
@@ -58,12 +76,7 @@ def create_appointment(
             detail="Only patients can create appointments"
         )
 
-    patient = _get_patient_for_user(db, current_user.id)
-    if not patient:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Patient profile not found"
-        )
+    patient = _get_or_create_patient_for_user(db, current_user.id)
 
     doctor = db.query(models.Doctor).filter(models.Doctor.id == rdv.doctor_id).first()
     if not doctor:

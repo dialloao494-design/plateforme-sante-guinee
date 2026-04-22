@@ -89,5 +89,14 @@ def get_my_patient_profile(
 ):
     patient = db.query(models.Patient).filter(models.Patient.user_id == current_user.id).first()
     if not patient:
-        raise HTTPException(status_code=404, detail="Patient profile not found")
+        patient = models.Patient(
+            user_id=current_user.id,
+            first_name="Patient",
+            last_name=f"User{current_user.id}",
+            age=0,
+            gender="unknown",
+        )
+        db.add(patient)
+        db.commit()
+        db.refresh(patient)
     return patient

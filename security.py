@@ -5,6 +5,7 @@ from fastapi import Depends, HTTPException, status
 from database import get_db
 from sqlalchemy.orm import Session
 from models.user import User
+import models
 from fastapi.security import OAuth2PasswordBearer
 from dotenv import load_dotenv
 import os
@@ -137,12 +138,31 @@ def get_current_doctor(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-def get_current_patient(current_user: User = Depends(get_current_user)):
+def get_current_patient(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     if current_user.role != "patient":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Patient privileges required",
         )
+
+    # Self-heal legacy accounts: create missing patient profile on first protected access.
+    patient_profile = db.query(models.Patient).filter(
+        models.Patient.user_id == current_user.id
+    ).first()
+    if not patient_profile:
+        patient_profile = models.Patient(
+            user_id=current_user.id,
+            first_name="Patient",
+            last_name=f"User{current_user.id}",
+            age=0,
+            gender="unknown",
+        )
+        db.add(patient_profile)
+        db.commit()
+
     return current_user
 
 

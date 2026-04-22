@@ -24,6 +24,26 @@ from schemas import rendezvous as rendezvous_schemas
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
+def _get_or_create_patient_profile(db: Session, user_id: int) -> models.Patient:
+    patient = db.query(models.Patient).filter(
+        models.Patient.user_id == user_id
+    ).first()
+    if patient:
+        return patient
+
+    patient = models.Patient(
+        user_id=user_id,
+        first_name="Patient",
+        last_name=f"User{user_id}",
+        age=0,
+        gender="unknown",
+    )
+    db.add(patient)
+    db.commit()
+    db.refresh(patient)
+    return patient
+
+
 # ===============================
 # CHECKOUT SESSION CREATION
 # ===============================
@@ -43,15 +63,7 @@ def create_payment_intent(
     - Patient must own the appointment
     """
     # Get patient profile
-    patient = db.query(models.Patient).filter(
-        models.Patient.user_id == current_user.id
-    ).first()
-
-    if not patient:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Patient profile not found"
-        )
+    patient = _get_or_create_patient_profile(db, current_user.id)
 
     # Verify patient owns this appointment
     appointment = db.query(models.RendezVous).filter(
@@ -189,10 +201,8 @@ def get_payment_status(
     
     # Access control
     if current_user.role == "patient":
-        patient = db.query(models.Patient).filter(
-            models.Patient.user_id == current_user.id
-        ).first()
-        if not patient or appointment.patient_id != patient.id:
+        patient = _get_or_create_patient_profile(db, current_user.id)
+        if appointment.patient_id != patient.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied"
