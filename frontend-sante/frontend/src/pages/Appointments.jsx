@@ -380,20 +380,27 @@ const Appointments = () => {
           {!loading && appointments.length === 0 && <p>Aucun rendez-vous trouvé.</p>}
 
           {filteredAppointments.length > 0 && (
-            <ul>
+            <ul className="appointments-cards">
               {filteredAppointments.map((appointment) => (
                 <li key={appointment.id} className="appointment-item">
                   <div className="appointment-info">
+                    <p className="appointment-title">{getDoctorName(appointment)}</p>
                     <p>
-                      Médecin : <strong>{getDoctorName(appointment)}</strong>
+                      <span className="appointment-label">Date</span>
+                      <span className="appointment-value">{new Date(appointment.date).toLocaleString()}</span>
                     </p>
-                    <p>Date : {new Date(appointment.date).toLocaleString()}</p>
                     <p>
-                      Statut : <span className={getStatusClassName(appointment.status).className}>{getStatusClassName(appointment.status).label}</span>
+                      <span className="appointment-label">Duree</span>
+                      <span className="appointment-value">{appointment.duration_minutes} minutes</span>
                     </p>
-                    <p>Payé : {appointment.payment_status}</p>
-                    <p>Durée : {appointment.duration_minutes} minutes</p>
-                    <p>Prix : {appointment.price} GNF</p>
+                    <p>
+                      <span className="appointment-label">Prix</span>
+                      <span className="appointment-value">{appointment.price} GNF</span>
+                    </p>
+                    <p>
+                      <span className="appointment-label">Statut</span>
+                      <span className={getStatusClassName(appointment.status).className}>{getStatusClassName(appointment.status).label}</span>
+                    </p>
                   </div>
                   <div className="appointment-actions">
                     {canCancel(appointment) && (
