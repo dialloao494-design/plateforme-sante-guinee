@@ -55,6 +55,15 @@ def list_appointments(
     return RendezVousService.list_appointments_for_user(current_user, db)
 
 
+@router.get("/me", response_model=List[rendezvous_schemas.RendezVousWithParticipants])
+def list_my_appointments(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Return appointments for the currently authenticated user."""
+    return RendezVousService.list_appointments_for_user(current_user, db)
+
+
 @router.post("/", response_model=rendezvous_schemas.RendezVousResponse, status_code=status.HTTP_201_CREATED)
 def create_appointment(
     rdv: rendezvous_schemas.RendezVousCreate,

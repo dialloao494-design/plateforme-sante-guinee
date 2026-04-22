@@ -101,7 +101,11 @@ export const appointmentsAPI = {
   create: (data) => API.post('/appointments/', data),
   updateStatus: (id, status) => API.put(`/appointments/${id}/`, { status }),
   cancel: (id) => API.delete(`/appointments/${id}/`),
-  getMyAppointments: () => API.get('/appointments/'),
+  getMyAppointments: () => API.get('/appointments/me'),
+};
+
+export const doctorDashboardAPI = {
+  getAppointments: () => API.get('/doctor/appointments'),
 };
 
 export const paymentsAPI = {

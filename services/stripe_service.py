@@ -120,7 +120,6 @@ class StripeService:
     @staticmethod
     def configure_stripe() -> str | None:
         """Apply the current API key to the Stripe SDK and return it."""
-        print("STRIPE KEY:", os.getenv("STRIPE_SECRET_KEY"))
         stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
         return stripe.api_key
 
@@ -575,17 +574,23 @@ class StripeService:
         
         Confirms appointment and marks as paid.
         """
-        # Only process if appointment is still pending
-        if appointment.status != "pending":
-            if appointment.status in {"confirmed", "confirmé"} and appointment.payment_status == "paid":
+        # Only process if appointment is still pending/paid-in-progress.
+        if appointment.status not in {"pending", "paid"}:
+            if appointment.status == "confirmed" and appointment.payment_status == "paid":
                 return appointment
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Cannot confirm payment for appointment with status {appointment.status}"
             )
 
-        appointment.status = "confirmé"
+        appointment.status = "paid"
         appointment.payment_status = "paid"
+        appointment.updated_at = datetime.utcnow()
+
+        db.commit()
+        db.refresh(appointment)
+
+        appointment.status = "confirmed"
         appointment.updated_at = datetime.utcnow()
 
         db.commit()

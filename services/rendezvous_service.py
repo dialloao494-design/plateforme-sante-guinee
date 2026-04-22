@@ -33,10 +33,13 @@ class RendezVousService:
     
     # Valid status transitions
     VALID_TRANSITIONS = {
-        "pending": ["confirmed", "cancelled"],
-        "confirmed": ["cancelled"],
-        "confirmé": ["cancelled"],
-        "cancelled": []
+        "pending": ["paid", "confirmed", "cancelled"],
+        "paid": ["confirmed", "cancelled"],
+        "confirmed": ["completed", "cancelled"],
+        "completed": [],
+        "cancelled": [],
+        # Legacy compatibility for old records.
+        "confirmé": ["completed", "cancelled"],
     }
 
     @staticmethod
@@ -449,15 +452,22 @@ class RendezVousService:
                 detail="Appointment not found"
             )
         
-        # Check if appointment is in pending status
-        if rdv.status != "pending":
+        # Check if appointment can still be confirmed through payment flow.
+        if rdv.status not in {"pending", "paid"}:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot confirm payment for appointment with status '{rdv.status}'. Only pending appointments can be confirmed via payment."
+                detail=f"Cannot confirm payment for appointment with status '{rdv.status}'."
             )
-        
-        # Update appointment status after payment
-        rdv.status = "confirmé"
+
+        # Persist paid then confirmed, as required by payment lifecycle.
+        rdv.status = "paid"
+        rdv.payment_status = "paid"
+        rdv.updated_at = datetime.utcnow()
+
+        db.commit()
+        db.refresh(rdv)
+
+        rdv.status = "confirmed"
         rdv.payment_status = "paid"
         rdv.updated_at = datetime.utcnow()
         

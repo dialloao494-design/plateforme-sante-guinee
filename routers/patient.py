@@ -31,7 +31,7 @@ def create_patient(
 @router.get("/", response_model=List[schemas.PatientResponse])
 def get_patients(
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["doctor"])),
+    current_user=Depends(require_roles(["doctor", "admin"])),
 ):
     return db.query(models.Patient).all()
 
@@ -40,7 +40,7 @@ def get_patients(
 def get_patient(
     patient_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["doctor"])),
+    current_user=Depends(require_roles(["doctor", "admin"])),
 ):
     patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not patient:

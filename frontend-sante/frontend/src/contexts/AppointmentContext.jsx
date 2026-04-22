@@ -40,7 +40,7 @@ export const AppointmentProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await appointmentsAPI.getAll();
+      const { data } = await appointmentsAPI.getMyAppointments();
       const normalized = data.map(normalizeAppointment);
       setAppointments(normalized);
     } catch (err) {

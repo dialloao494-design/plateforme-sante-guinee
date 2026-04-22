@@ -5,6 +5,14 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { doctorsAPI, paymentsAPI } from '../services/api.js';
 import './Appointments.css';
 
+const STATUS_META = {
+  pending: { label: '🟡 En attente', className: 'status-badge status-pending' },
+  paid: { label: '🟢 Paye', className: 'status-badge status-paid' },
+  confirmed: { label: '🟢 Confirme', className: 'status-badge status-confirmed' },
+  completed: { label: '🟢 Termine', className: 'status-badge status-confirmed' },
+  cancelled: { label: '🔴 Annule', className: 'status-badge status-cancelled' },
+};
+
 const Appointments = () => {
   const { user } = useAuth();
   const isPatient = user?.role === 'patient';
@@ -174,12 +182,10 @@ const Appointments = () => {
     return doctor.name;
   };
 
-  const getStatusClassName = (statusValue) => {
-    const normalized = String(statusValue || '').toLowerCase();
-    if (normalized === 'confirmed' || normalized === 'confirmé') return 'status-pill status-confirmed';
-    if (normalized === 'cancelled') return 'status-pill status-cancelled';
-    return 'status-pill status-pending';
-  };
+    const getStatusClassName = (statusValue) => {
+      const normalized = String(statusValue || '').toLowerCase().replace('é', 'e');
+      return STATUS_META[normalized] || STATUS_META.pending;
+    };
 
   const canCancel = (appointment) => {
     if (!user) return false;
@@ -263,23 +269,31 @@ const Appointments = () => {
             </div>
             <div>
               <p className="detail-label">Status</p>
-              <p>{lastAppointment.status || 'pending'}</p>
+              <span className={getStatusClassName(lastAppointment.status).className}>
+                {getStatusClassName(lastAppointment.status).label}
+              </span>
             </div>
           </div>
           <div className="confirmation-actions">
-            <button
-              type="button"
-              className="button-pay"
-              onClick={handlePayNow}
-              disabled={
-                isPaying ||
-                paymentAttemptStarted ||
-                lastAppointment.status !== 'pending' ||
-                lastAppointment.payment_status === 'paid'
-              }
-            >
-              {isPaying ? 'Processing payment...' : 'Pay with Stripe'}
-            </button>
+            {['paid', 'confirmed', 'completed'].includes(String(lastAppointment.status || '').toLowerCase()) && (
+              <button type="button" className="button-secondary" onClick={() => setShowConfirmation(false)}>
+                Voir mes rendez-vous
+              </button>
+            )}
+            {String(lastAppointment.status || '').toLowerCase() === 'pending' && (
+              <button
+                type="button"
+                className="button-pay"
+                onClick={handlePayNow}
+                disabled={
+                  isPaying ||
+                  paymentAttemptStarted ||
+                  lastAppointment.payment_status === 'paid'
+                }
+              >
+                {isPaying ? 'Traitement...' : 'Payer'}
+              </button>
+            )}
             {paymentMessage && <p className="success">{paymentMessage}</p>}
             {paymentError && <p className="error">{paymentError}</p>}
           </div>
@@ -375,7 +389,7 @@ const Appointments = () => {
                     </p>
                     <p>Date : {new Date(appointment.date).toLocaleString()}</p>
                     <p>
-                      Statut : <span className={getStatusClassName(appointment.status)}>{appointment.status}</span>
+                      Statut : <span className={getStatusClassName(appointment.status).className}>{getStatusClassName(appointment.status).label}</span>
                     </p>
                     <p>Payé : {appointment.payment_status}</p>
                     <p>Durée : {appointment.duration_minutes} minutes</p>

@@ -12,7 +12,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: '/dashboard', label: 'Dashboard', icon: '📊', roles: ['patient', 'doctor', 'admin'] },
     { path: '/appointments', label: 'Rendez-vous', icon: '📅', roles: ['patient'] },
     { path: '/patients', label: 'Patients', icon: '🧾', roles: ['doctor'] },
-    { path: '/appointments', label: 'Agenda', icon: '🗓️', roles: ['doctor'] },
+    { path: '/doctor/dashboard', label: 'Agenda', icon: '🗓️', roles: ['doctor'] },
     { path: '/users', label: 'Utilisateurs', icon: '🛡️', roles: ['admin'] },
   ];
 

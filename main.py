@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import SessionLocal
 import models
-from routers import patient, rendezvous, doctor, auth, payments, teleconsultation, notifications
+from routers import patient, rendezvous, doctor, doctor_dashboard, auth, payments, teleconsultation, notifications
 from routers import users, appointments
 from security import hash_password, verify_password
 import os
@@ -279,6 +279,7 @@ def _ensure_production_test_user():
 app.include_router(patient.router)
 app.include_router(rendezvous.router)
 app.include_router(doctor.router)
+app.include_router(doctor_dashboard.router)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(appointments.router)

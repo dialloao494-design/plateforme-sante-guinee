@@ -5,6 +5,7 @@ import Signup from "../pages/Signup";
 import Dashboard from "../pages/Dashboard";
 import Doctors from "../pages/Doctors";
 import Appointments from "../pages/Appointments";
+import DoctorDashboard from "../pages/DoctorDashboard";
 import PaymentSuccess from "../pages/PaymentSuccess";
 import PaymentCancel from "../pages/PaymentCancel";
 import Patients from "../pages/Patients";
@@ -36,8 +37,16 @@ const AppRoutes = () => {
       <Route
         path="/appointments"
         element={
-          <ProtectedRoute allowedRoles={["patient", "doctor", "admin"]}>
+          <ProtectedRoute allowedRoles={["patient", "admin"]}>
             <Appointments />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/doctor/dashboard"
+        element={
+          <ProtectedRoute allowedRoles={["doctor"]}>
+            <DoctorDashboard />
           </ProtectedRoute>
         }
       />

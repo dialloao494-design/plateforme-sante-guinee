@@ -27,7 +27,7 @@ class RendezVousResponse(BaseModel):
     id: int
     date: datetime = Field(..., description="Appointment start time")
     duration_minutes: int = Field(..., description="Duration in minutes")
-    status: str = Field(..., description="Current status (pending, confirmé, cancelled)")
+    status: str = Field(..., description="Current status (pending, paid, confirmed, completed, cancelled)")
     payment_status: str = Field(..., description="Payment status (paid, unpaid)")
     is_paid: bool = Field(..., description="True when payment is confirmed")
     price: float = Field(..., description="Appointment price")
