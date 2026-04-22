@@ -7,10 +7,10 @@ import './Appointments.css';
 
 const STATUS_META = {
   pending: { label: '🟡 En attente', className: 'status-badge status-pending' },
-  paid: { label: '🟢 Paye', className: 'status-badge status-paid' },
-  confirmed: { label: '🟢 Confirme', className: 'status-badge status-confirmed' },
-  completed: { label: '🟢 Termine', className: 'status-badge status-confirmed' },
-  cancelled: { label: '🔴 Annule', className: 'status-badge status-cancelled' },
+  paid: { label: '🟢 Confirmé', className: 'status-badge status-paid' },
+  confirmed: { label: '🟢 Confirmé', className: 'status-badge status-confirmed' },
+  completed: { label: '🟢 Confirmé', className: 'status-badge status-confirmed' },
+  cancelled: { label: '🔴 Annulé', className: 'status-badge status-cancelled' },
 };
 
 const Appointments = () => {
@@ -182,6 +182,15 @@ const Appointments = () => {
     return doctor.name;
   };
 
+  const formatGNF = (amount) => {
+    const value = Number(amount || 0);
+    return `${new Intl.NumberFormat('fr-FR').format(value)} GNF`;
+  };
+
+  const getPaymentLabel = (paymentStatus) => {
+    return String(paymentStatus || '').toLowerCase() === 'paid' ? 'Payé' : 'Impayé';
+  };
+
     const getStatusClassName = (statusValue) => {
       const normalized = String(statusValue || '').toLowerCase().replace('é', 'e');
       return STATUS_META[normalized] || STATUS_META.pending;
@@ -268,6 +277,14 @@ const Appointments = () => {
               <p>{lastAppointment.duration_minutes} minutes</p>
             </div>
             <div>
+              <p className="detail-label">Paiement</p>
+              <p>{getPaymentLabel(lastAppointment.payment_status)}</p>
+            </div>
+            <div>
+              <p className="detail-label">Prix</p>
+              <p>{formatGNF(lastAppointment.price)}</p>
+            </div>
+            <div>
               <p className="detail-label">Status</p>
               <span className={getStatusClassName(lastAppointment.status).className}>
                 {getStatusClassName(lastAppointment.status).label}
@@ -280,16 +297,12 @@ const Appointments = () => {
                 Voir mes rendez-vous
               </button>
             )}
-            {String(lastAppointment.status || '').toLowerCase() === 'pending' && (
+            {String(lastAppointment.status || '').toLowerCase() === 'pending' && String(lastAppointment.payment_status || '').toLowerCase() !== 'paid' && (
               <button
                 type="button"
                 className="button-pay"
                 onClick={handlePayNow}
-                disabled={
-                  isPaying ||
-                  paymentAttemptStarted ||
-                  lastAppointment.payment_status === 'paid'
-                }
+                disabled={isPaying || paymentAttemptStarted}
               >
                 {isPaying ? 'Traitement...' : 'Payer'}
               </button>
@@ -390,12 +403,16 @@ const Appointments = () => {
                       <span className="appointment-value">{new Date(appointment.date).toLocaleString()}</span>
                     </p>
                     <p>
-                      <span className="appointment-label">Duree</span>
+                      <span className="appointment-label">Durée</span>
                       <span className="appointment-value">{appointment.duration_minutes} minutes</span>
                     </p>
                     <p>
                       <span className="appointment-label">Prix</span>
-                      <span className="appointment-value">{appointment.price} GNF</span>
+                      <span className="appointment-value">{formatGNF(appointment.price)}</span>
+                    </p>
+                    <p>
+                      <span className="appointment-label">Paiement</span>
+                      <span className="appointment-value">{getPaymentLabel(appointment.payment_status)}</span>
                     </p>
                     <p>
                       <span className="appointment-label">Statut</span>
