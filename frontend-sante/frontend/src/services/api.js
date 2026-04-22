@@ -1,104 +1,113 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+export const API_BASE_URL = 'https://web-production-ad6a36.up.railway.app';
 
-const api = axios.create({
+// Single axios instance — token attached automatically via interceptor
+const API = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
-// Add request interceptor to include auth token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('access_token');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+API.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-);
+  return config;
+});
 
-// Add response interceptor to enforce global auth handling
-api.interceptors.response.use(
+API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error?.response?.status === 401) {
+      localStorage.removeItem('token');
       localStorage.removeItem('access_token');
       localStorage.removeItem('user_role');
       localStorage.removeItem('user_id');
-
-      const currentPath = window.location.pathname;
-      if (currentPath !== '/login' && currentPath !== '/signup') {
-        window.location.href = '/login';
-      }
     }
-
     return Promise.reject(error);
   }
 );
 
-// Auth API
+// Legacy compatibility shim — used by AuthContext and other contexts
+const api = {
+  get: (path) => API.get(path),
+  post: (path, body) => API.post(path, body),
+  put: (path, body) => API.put(path, body),
+  delete: (path) => API.delete(path),
+};
+
+// Login uses form-encoded POST (OAuth2PasswordRequestForm — must NOT use axios here)
+export const login = async (email, password) => {
+  const body = new URLSearchParams();
+  body.append('username', email);
+  body.append('password', password);
+
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+
+  const text = await response.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = text ? { message: text } : null; }
+
+  if (!response.ok) {
+    const err = new Error(data?.detail || data?.message || 'Login failed');
+    err.response = { status: response.status, data };
+    throw err;
+  }
+  return data;
+};
+
+export const getAuthenticatedUser = async () => {
+  const { data } = await API.get('/auth/me');
+  return data;
+};
+
 export const authAPI = {
-  login: (email, password) => {
-    const credentials = new URLSearchParams();
-    credentials.append('username', email);
-    credentials.append('password', password);
-    return api.post('/auth/login', credentials.toString(), {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    });
-  },
-  loginJson: (email, password) => api.post('/auth/login-json', { email, password }),
-  me: () => api.get('/auth/me'),
-  signup: (userData) => api.post('/auth/register', userData),
+  login,
+  me: getAuthenticatedUser,
+  signup: (userData) => API.post('/auth/register', userData),
 };
 
-// Patients API
 export const patientsAPI = {
-  getAll: () => api.get('/patients'),
-  getById: (id) => api.get(`/patients/${id}`),
-  create: (patientData) => api.post('/patients', patientData),
-  update: (id, patientData) => api.put(`/patients/${id}`, patientData),
-  delete: (id) => api.delete(`/patients/${id}`),
+  getAll: () => API.get('/patients/'),
+  getById: (id) => API.get(`/patients/${id}/`),
+  create: (data) => API.post('/patients/', data),
+  update: (id, data) => API.put(`/patients/${id}/`, data),
+  delete: (id) => API.delete(`/patients/${id}/`),
 };
 
-// Doctors API
 export const doctorsAPI = {
   getAll: (location, specialty) => {
     const params = new URLSearchParams();
     if (location) params.append('location', location);
     if (specialty) params.append('specialty', specialty);
-    const queryString = params.toString();
-    return api.get(`/doctors${queryString ? '?' + queryString : ''}`);
+    const qs = params.toString();
+    return API.get(`/doctors/${qs ? `?${qs}` : ''}`);
   },
-  getById: (id) => api.get(`/doctors/${id}`),
-  create: (doctorData) => api.post('/doctors', doctorData),
-  update: (id, doctorData) => api.put(`/doctors/${id}`, doctorData),
-  delete: (id) => api.delete(`/doctors/${id}`),
-  getSchedule: (id) => api.get(`/doctors/${id}/schedule`),
-  getAvailability: (id) => api.get(`/doctors/${id}/availability`),
+  getById: (id) => API.get(`/doctors/${id}/`),
+  create: (data) => API.post('/doctors/', data),
+  update: (id, data) => API.put(`/doctors/${id}/`, data),
+  delete: (id) => API.delete(`/doctors/${id}/`),
+  getSchedule: (id) => API.get(`/doctors/${id}/schedule/`),
+  getAvailability: (id) => API.get(`/doctors/${id}/availability/`),
 };
 
-// Appointments API
 export const appointmentsAPI = {
-  getAll: () => api.get('/appointments/'),
-  getById: (id) => api.get(`/appointments/${id}`),
-  create: (appointmentData) => api.post('/appointments/', appointmentData),
-  updateStatus: (id, status) => api.put(`/appointments/${id}`, { status }),
-  cancel: (id) => api.delete(`/appointments/${id}`),
-  getMyAppointments: () => api.get('/appointments/'),
+  getAll: () => API.get('/appointments/'),
+  getById: (id) => API.get(`/appointments/${id}/`),
+  create: (data) => API.post('/appointments/', data),
+  updateStatus: (id, status) => API.put(`/appointments/${id}/`, { status }),
+  cancel: (id) => API.delete(`/appointments/${id}/`),
+  getMyAppointments: () => API.get('/appointments/'),
 };
 
 export const paymentsAPI = {
-  createIntent: (appointmentId) => api.post('/payments/create-intent', { appointment_id: appointmentId }),
-  confirmCheckout: (sessionId) => api.post('/payments/confirm-checkout', { session_id: sessionId }),
-  getStatus: (appointmentId) => api.get(`/payments/${appointmentId}/status`),
+  createIntent: (appointmentId) => API.post('/payments/create-intent/', { appointment_id: appointmentId }),
+  confirmCheckout: (sessionId) => API.post('/payments/confirm-checkout/', { session_id: sessionId }),
+  getStatus: (appointmentId) => API.get(`/payments/${appointmentId}/status/`),
 };
 
 export default api;

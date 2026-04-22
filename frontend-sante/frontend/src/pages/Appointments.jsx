@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAppointmentContext } from '../contexts/AppointmentContext.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
-import api, { doctorsAPI, paymentsAPI } from '../services/api.js';
+import { doctorsAPI, paymentsAPI } from '../services/api.js';
 import './Appointments.css';
 
 const Appointments = () => {
@@ -12,6 +12,8 @@ const Appointments = () => {
   const isAdmin = user?.role === 'admin';
   const { appointments, loading, error, addAppointment, deleteAppointment, fetchAppointments } = useAppointmentContext();
   const [doctors, setDoctors] = useState([]);
+  const [loadingDoctors, setLoadingDoctors] = useState(false);
+  const [doctorsError, setDoctorsError] = useState('');
   const [formData, setFormData] = useState({ doctorId: '', date: '', duration: 30 });
   const [selectedDoctorFilter, setSelectedDoctorFilter] = useState('');
   const [success, setSuccess] = useState('');
@@ -59,29 +61,20 @@ const Appointments = () => {
   };
 
   const fetchDoctors = async () => {
+    setLoadingDoctors(true);
+    setDoctorsError('');
     try {
       const { data } = await doctorsAPI.getAll();
       const fromDoctorsEndpoint = (Array.isArray(data) ? data : [])
         .map(normalizeDoctor)
         .filter(Boolean);
-
-      if (fromDoctorsEndpoint.length > 0) {
-        setDoctors(fromDoctorsEndpoint);
-        return;
-      }
-
-      // Fallback: if /doctors returns empty, try /users and keep only doctor-role users.
-      const usersResponse = await api.get('/users');
-      const fromUsersEndpoint = (Array.isArray(usersResponse.data) ? usersResponse.data : [])
-        .filter((userItem) => String(userItem?.role || userItem?.user_role || '').toLowerCase() === 'doctor')
-        .map(normalizeDoctor)
-        .filter(Boolean);
-
-      setDoctors(fromUsersEndpoint);
+      setDoctors(fromDoctorsEndpoint);
     } catch (err) {
       console.error('Failed to load doctors:', err);
-      setActionError(err?.response?.data?.detail || err?.response?.data?.message || err.message || 'Impossible de charger les médecins');
+      setDoctorsError(err?.response?.data?.detail || err?.message || 'Impossible de charger les médecins');
       setDoctors([]);
+    } finally {
+      setLoadingDoctors(false);
     }
   };
 
@@ -299,12 +292,16 @@ const Appointments = () => {
 
         <div className="form-group">
           <label>Médecin</label>
+          {doctorsError && <p className="error" style={{marginBottom: '6px'}}>{doctorsError}</p>}
           <select
             value={formData.doctorId}
             onChange={(e) => setFormData((prev) => ({ ...prev, doctorId: e.target.value }))}
             required
+            disabled={loadingDoctors}
           >
-            <option value="">Sélectionnez un médecin</option>
+            <option value="">
+              {loadingDoctors ? 'Chargement des médecins...' : 'Sélectionnez un médecin'}
+            </option>
             {doctorOptions.map((doctor) => (
               <option key={doctor.id} value={doctor.id}>
                 {doctor.name}
@@ -338,7 +335,7 @@ const Appointments = () => {
           </select>
         </div>
 
-        <button type="submit" disabled={isCreatingAppointment}>
+        <button type="submit" disabled={isCreatingAppointment || loadingDoctors}>
           {isCreatingAppointment ? 'Création en cours...' : 'Valider le rendez-vous'}
         </button>
       </form>
