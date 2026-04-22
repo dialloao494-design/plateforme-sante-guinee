@@ -31,6 +31,10 @@ allowed_origins = [
     "http://127.0.0.1:5173",
 ]
 
+frontend_production_url = os.getenv("FRONTEND_PRODUCTION_URL")
+if frontend_production_url:
+    allowed_origins.append(frontend_production_url)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,

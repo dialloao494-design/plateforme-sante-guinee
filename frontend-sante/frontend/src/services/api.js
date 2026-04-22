@@ -105,9 +105,9 @@ export const appointmentsAPI = {
 };
 
 export const paymentsAPI = {
-  createIntent: (appointmentId) => API.post('/payments/create-intent/', { appointment_id: appointmentId }),
-  confirmCheckout: (sessionId) => API.post('/payments/confirm-checkout/', { session_id: sessionId }),
-  getStatus: (appointmentId) => API.get(`/payments/${appointmentId}/status/`),
+  createIntent: (appointmentId) => API.post('/payments/create-intent', { appointment_id: appointmentId }),
+  confirmCheckout: (sessionId) => API.post('/payments/confirm-checkout', { session_id: sessionId }),
+  getStatus: (appointmentId) => API.get(`/payments/${appointmentId}/status`),
 };
 
 export default api;
