@@ -16,8 +16,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
+from dotenv import load_dotenv
 
 import models
+
+
+load_dotenv()
 
 
 class StripeService:
@@ -116,6 +120,7 @@ class StripeService:
     @staticmethod
     def configure_stripe() -> str | None:
         """Apply the current API key to the Stripe SDK and return it."""
+        print("STRIPE KEY:", os.getenv("STRIPE_SECRET_KEY"))
         stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
         return stripe.api_key
 
@@ -160,7 +165,6 @@ class StripeService:
         StripeService.validate_stripe_config()
 
         try:
-            print("STRIPE KEY USED:", stripe.api_key[:20])
             # Create payment intent
             payment_intent = stripe.PaymentIntent.create(
                 amount=amount_cents,
