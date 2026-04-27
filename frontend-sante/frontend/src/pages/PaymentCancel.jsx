@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom';
 const PaymentCancel = () => {
   return (
     <div style={{ padding: 24 }}>
-      <h1>Payment Canceled</h1>
-      <p>Payment cancelled. Your appointment remains pending and unpaid.</p>
+      <h1>Paiement annulé</h1>
+      <p>Le paiement a été interrompu. Votre rendez-vous reste en attente et non payé.</p>
       <p>
-        <Link to="/appointments">Back to Appointments</Link>
+        <Link to="/appointments">Retour aux rendez-vous</Link>
       </p>
       <p>
-        <Link to="/appointments">Retry payment</Link>
+        <Link to="/appointments">Réessayer le paiement</Link>
       </p>
     </div>
   );

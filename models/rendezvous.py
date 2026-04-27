@@ -25,6 +25,7 @@ class RendezVous(Base):
     doctor = relationship("Doctor", back_populates="rendezvous")
     patient = relationship("Patient", back_populates="rendezvous")
     payments = relationship("Payment", back_populates="appointment", cascade="all, delete-orphan")
+    messages = relationship("Message", back_populates="appointment", cascade="all, delete-orphan")
 
     @property
     def is_paid(self) -> bool:

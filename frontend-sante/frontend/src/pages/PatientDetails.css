@@ -1,0 +1,83 @@
+.patient-details-page {
+  min-height: 100vh;
+  background: #eff4fb;
+  padding: 24px 20px 36px;
+}
+
+.patient-details-header {
+  max-width: 980px;
+  margin: 0 auto 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.patient-details-header h1 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.patient-details-header p {
+  margin: 6px 0 0;
+  color: #475569;
+}
+
+.patient-card {
+  max-width: 980px;
+  margin: 0 auto 12px;
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.patient-card h2 {
+  margin: 0 0 10px;
+  color: #0f172a;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.history-list li {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.patient-card textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.notes-actions {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.saved-note {
+  color: #166534;
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .history-list li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

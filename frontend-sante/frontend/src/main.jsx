@@ -5,6 +5,7 @@ import App from './App.jsx'
 import { PatientProvider } from './contexts/PatientContext.jsx'
 import { AppointmentProvider } from './contexts/AppointmentContext.jsx'
 import { AuthProvider } from './contexts/AuthContext.jsx'
+import 'react-toastify/dist/ReactToastify.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

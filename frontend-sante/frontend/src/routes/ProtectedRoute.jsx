@@ -8,7 +8,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     return <div>Chargement...</div>;
   }
 
-  const token = localStorage.getItem('access_token');
+  const token = localStorage.getItem('token') || localStorage.getItem('access_token');
   if (!isAuthenticated || !token) {
     return <Navigate to="/login" replace />;
   }

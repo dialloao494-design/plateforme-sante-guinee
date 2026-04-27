@@ -6,22 +6,28 @@ const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, user, authLoading } = useAuth();
-  const role = user?.role || user?.user_role;
+  const role = String(user?.role || user?.user_role || localStorage.getItem('user_role') || '').toLowerCase();
 
-  const menuItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊', roles: ['patient', 'doctor', 'admin'] },
-    { path: '/appointments', label: 'Rendez-vous', icon: '📅', roles: ['patient'] },
-    { path: '/patients', label: 'Patients', icon: '🧾', roles: ['doctor'] },
-    { path: '/doctor/dashboard', label: 'Agenda', icon: '🗓️', roles: ['doctor'] },
-    { path: '/users', label: 'Utilisateurs', icon: '🛡️', roles: ['admin'] },
+  const patientAdminMenu = [
+    { path: '/dashboard', label: 'Dashboard', icon: '📊', roles: ['patient', 'admin'], fallbackVisible: true },
+    { path: '/appointments', label: 'Rendez-vous', icon: '📅', roles: ['patient', 'admin'], fallbackVisible: true },
+    { path: '/dashboard', label: 'Profil', icon: '👤', roles: ['patient', 'admin'], fallbackVisible: true },
+    { path: '/users', label: 'Utilisateurs', icon: '🛡️', roles: ['admin'], fallbackVisible: false },
   ];
 
-  console.log('[Sidebar] user:', user);
-  console.log('[Sidebar] role:', role);
+  const doctorMenu = [
+    { path: '/doctor/dashboard', label: 'Dashboard', icon: '📊', roles: ['doctor'], fallbackVisible: false },
+    { path: '/doctor/appointments', label: 'Rendez-vous', icon: '📅', roles: ['doctor'], fallbackVisible: false },
+    { path: '/doctor/messages', label: 'Messagerie', icon: '💬', roles: ['doctor'], fallbackVisible: false },
+    { path: '/patients', label: 'Patients', icon: '🧑‍⚕️', roles: ['doctor'], fallbackVisible: false },
+    { path: '/doctors', label: 'Profil', icon: '👤', roles: ['doctor'], fallbackVisible: false },
+  ];
+
+  const menuItems = role === 'doctor' ? doctorMenu : patientAdminMenu;
 
   const visibleItems = authLoading
     ? []
-    : menuItems.filter((item) => role && item.roles.includes(role));
+    : menuItems.filter((item) => (role ? item.roles.includes(role) : item.fallbackVisible));
 
   const handleLogout = () => {
     logout();
@@ -63,7 +69,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               </li>
             ))}
           </ul>
-          <button className="logout-btn" onClick={handleLogout}>Logout</button>
+          <button className="logout-btn" onClick={handleLogout}>Déconnexion</button>
         </nav>
 
       </aside>

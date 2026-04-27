@@ -1,19 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { useAppointmentContext } from '../contexts/AppointmentContext.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
-import { doctorsAPI, paymentsAPI } from '../services/api.js';
+import AppointmentCard from '../components/AppointmentCard.jsx';
+import PaymentConfirmationModal from '../components/PaymentConfirmationModal.jsx';
+import { doctorsAPI } from '../services/api.js';
+import { canPayAppointment, formatGNF, getPaymentLabel, getStatusMeta, isPendingAppointment } from '../utils/appointmentPresentation.js';
+import { loadSimulatedPayments, saveSimulatedPayments } from '../utils/simulatedPaymentsStorage.js';
 import './Appointments.css';
 
-const STATUS_META = {
-  pending: { label: '🟡 En attente', className: 'status-badge status-pending' },
-  paid: { label: '🟢 Confirmé', className: 'status-badge status-paid' },
-  confirmed: { label: '🟢 Confirmé', className: 'status-badge status-confirmed' },
-  completed: { label: '🟢 Confirmé', className: 'status-badge status-confirmed' },
-  cancelled: { label: '🔴 Annulé', className: 'status-badge status-cancelled' },
-};
-
 const Appointments = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const isPatient = user?.role === 'patient';
   const isDoctor = user?.role === 'doctor';
@@ -30,12 +29,19 @@ const Appointments = () => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [paymentAttemptStarted, setPaymentAttemptStarted] = useState(false);
-  const [paymentMessage, setPaymentMessage] = useState('');
   const [paymentError, setPaymentError] = useState('');
   const [isCreatingAppointment, setIsCreatingAppointment] = useState(false);
+  const [payingAppointmentId, setPayingAppointmentId] = useState(null);
+  const [cancellingAppointmentId, setCancellingAppointmentId] = useState(null);
+  const [paymentModalAppointment, setPaymentModalAppointment] = useState(null);
+  const [simulatedPayments, setSimulatedPayments] = useState({});
   const [searchParams] = useSearchParams();
 
   const getApiErrorMessage = (err, fallback) => {
+    if (!err?.response && /network|failed to fetch/i.test(String(err?.message || ''))) {
+      return 'Erreur de connexion. Veuillez réessayer.';
+    }
+
     const detail = err?.response?.data?.detail;
     if (typeof detail === 'string' && detail.trim()) {
       return detail;
@@ -78,8 +84,7 @@ const Appointments = () => {
         .filter(Boolean);
       setDoctors(fromDoctorsEndpoint);
     } catch (err) {
-      console.error('Failed to load doctors:', err);
-      setDoctorsError(err?.response?.data?.detail || err?.message || 'Impossible de charger les médecins');
+      setDoctorsError(getApiErrorMessage(err, 'Impossible de charger les médecins.'));
       setDoctors([]);
     } finally {
       setLoadingDoctors(false);
@@ -94,12 +99,19 @@ const Appointments = () => {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    setSimulatedPayments(loadSimulatedPayments());
+  }, []);
+
+  useEffect(() => {
+    saveSimulatedPayments(simulatedPayments);
+  }, [simulatedPayments]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsCreatingAppointment(true);
     setActionError('');
     setSuccess('');
-    setPaymentMessage('');
     setPaymentError('');
 
     if (!formData.doctorId || !formData.date) {
@@ -114,16 +126,17 @@ const Appointments = () => {
         date: formData.date,
         duration_minutes: Number(formData.duration),
       };
-      console.log('Submitting appointment:', payload);
       const appointment = await addAppointment(payload);
-      console.log('Appointment created:', appointment);
       await fetchAppointments();
       setLastAppointment(appointment);
       setShowConfirmation(true);
-      setSuccess('Rendez-vous créé avec succès. Vous pouvez maintenant procéder au paiement.');
+      setSuccess('Rendez-vous créé avec succès');
+      toast.success('Rendez-vous créé avec succès');
       setFormData({ doctorId: '', date: '', duration: 30 });
     } catch (err) {
-      setActionError(getApiErrorMessage(err, 'Erreur lors de la création du rendez-vous.'));
+      const message = getApiErrorMessage(err, 'Impossible de créer le rendez-vous.');
+      setActionError(message);
+      toast.error(message);
     } finally {
       setIsCreatingAppointment(false);
     }
@@ -136,15 +149,21 @@ const Appointments = () => {
 
     setActionError('');
     setSuccess('');
+    setCancellingAppointmentId(id);
     try {
       await deleteAppointment(id);
-      setSuccess('Rendez-vous annulé avec succès !');
+      setSuccess('Rendez-vous annulé');
+      toast.success('Rendez-vous annulé');
       if (lastAppointment?.id === id) {
         setLastAppointment(null);
         setShowConfirmation(false);
       }
     } catch (err) {
-      setActionError(getApiErrorMessage(err, 'Erreur lors de l’annulation du rendez-vous.'));
+      const message = getApiErrorMessage(err, 'Impossible d’annuler le rendez-vous.');
+      setActionError(message);
+      toast.error(message);
+    } finally {
+      setCancellingAppointmentId(null);
     }
   };
 
@@ -158,6 +177,25 @@ const Appointments = () => {
       ? appointments.filter((appointment) => String(appointment.doctor_id) === selectedDoctorFilter)
       : appointments;
   }, [appointments, selectedDoctorFilter]);
+
+  const withSimulatedPayment = (appointment) => {
+    if (!appointment || !simulatedPayments[appointment.id]) {
+      return appointment;
+    }
+
+    return {
+      ...appointment,
+      payment_status: 'paid',
+      status: appointment.status === 'cancelled' ? 'cancelled' : 'paid',
+    };
+  };
+
+  const displayedAppointments = useMemo(
+    () => filteredAppointments.map(withSimulatedPayment),
+    [filteredAppointments, simulatedPayments]
+  );
+
+  const displayedLastAppointment = lastAppointment ? withSimulatedPayment(lastAppointment) : null;
 
   const getDoctorName = (appointmentOrId) => {
     if (typeof appointmentOrId === 'object' && appointmentOrId !== null) {
@@ -182,63 +220,54 @@ const Appointments = () => {
     return doctor.name;
   };
 
-  const formatGNF = (amount) => {
-    const value = Number(amount || 0);
-    return `${new Intl.NumberFormat('fr-FR').format(value)} GNF`;
-  };
-
-  const getPaymentLabel = (paymentStatus) => {
-    return String(paymentStatus || '').toLowerCase() === 'paid' ? 'Payé' : 'Impayé';
-  };
-
-    const getStatusClassName = (statusValue) => {
-      const normalized = String(statusValue || '').toLowerCase().replace('é', 'e');
-      return STATUS_META[normalized] || STATUS_META.pending;
-    };
-
   const canCancel = (appointment) => {
     if (!user) return false;
+    if (!isPendingAppointment(appointment)) return false;
     if (isAdmin) return true;
-    if (isDoctor) return appointment.status !== 'cancelled';
+    if (isDoctor) return true;
     if (isPatient) {
-      return appointment.status !== 'cancelled' && new Date(appointment.date) > new Date();
+      return new Date(appointment.date) > new Date();
     }
     return false;
   };
 
-  const handlePayNow = async () => {
-    if (!lastAppointment || !lastAppointment.id) {
-      setPaymentError('Invalid appointment.');
+  const openPaymentModal = (appointment = lastAppointment) => {
+    setPaymentError('');
+    setPaymentModalAppointment(appointment);
+  };
+
+  const handleConfirmPayment = async (appointment) => {
+    if (!appointment?.id) {
+      setPaymentError('Rendez-vous introuvable pour le paiement.');
       return;
     }
 
-    setPaymentError('');
-    setPaymentMessage('');
     setIsPaying(true);
+    setPayingAppointmentId(appointment.id);
     setPaymentAttemptStarted(true);
 
     try {
-      const response = await paymentsAPI.createIntent(lastAppointment.id);
-      const { checkout_url } = response.data;
-
-      if (!checkout_url) {
-        throw new Error('Checkout URL missing from backend response.');
+      setSimulatedPayments((prev) => ({ ...prev, [appointment.id]: true }));
+      if (lastAppointment?.id === appointment.id) {
+        setLastAppointment((prev) => (prev ? { ...prev, payment_status: 'paid', status: 'paid' } : prev));
       }
-
-      window.location.href = checkout_url;
+      setSuccess('Paiement effectué avec succès');
+      toast.success('Paiement effectué avec succès');
+      setPaymentModalAppointment(null);
     } catch (err) {
-      const errorMsg = err?.response?.data?.detail || err?.message || 'Failed to process payment.';
-      setPaymentError(errorMsg);
+      const message = getApiErrorMessage(err, 'Paiement échoué.');
+      setPaymentError(message);
+      toast.error(message);
       setPaymentAttemptStarted(false);
     } finally {
       setIsPaying(false);
+      setPayingAppointmentId(null);
     }
   };
 
   const handleNewBooking = () => {
     setShowConfirmation(false);
     setLastAppointment(null);
-    setPaymentMessage('');
     setPaymentError('');
     setPaymentAttemptStarted(false);
   };
@@ -247,67 +276,69 @@ const Appointments = () => {
     <div className="appointments-page">
       <header className="appointments-header">
         <div>
-          <h1>Appointments</h1>
-          <p>Book a doctor, review your schedule, and confirm payment when ready.</p>
+          <h1>Rendez-vous</h1>
+          <p>Planifiez vos consultations et payez via Mobile Money en toute simplicité.</p>
         </div>
       </header>
 
-      {isPatient && showConfirmation && lastAppointment && (
+      {isPatient && showConfirmation && displayedLastAppointment && (
         <div className="confirmation-card">
           <div className="confirmation-top">
             <div>
-              <p className="tag">Booking confirmed</p>
-              <h2>Appointment summary</h2>
+              <p className="tag">Rendez-vous enregistré</p>
+              <h2>Résumé du rendez-vous</h2>
             </div>
             <button className="button-secondary" onClick={handleNewBooking}>
-              Book another
+              Réserver un autre
             </button>
           </div>
           <div className="confirmation-details">
             <div>
-              <p className="detail-label">Doctor</p>
-              <p>{getDoctorName(lastAppointment)}</p>
+              <p className="detail-label">Médecin</p>
+              <p>{getDoctorName(displayedLastAppointment)}</p>
             </div>
             <div>
-              <p className="detail-label">Date & Time</p>
-              <p>{new Date(lastAppointment.date).toLocaleString()}</p>
+              <p className="detail-label">Date et heure</p>
+              <p>{new Date(displayedLastAppointment.date).toLocaleString('fr-FR')}</p>
             </div>
             <div>
-              <p className="detail-label">Duration</p>
-              <p>{lastAppointment.duration_minutes} minutes</p>
+              <p className="detail-label">Durée</p>
+              <p>{displayedLastAppointment.duration_minutes} minutes</p>
             </div>
             <div>
               <p className="detail-label">Paiement</p>
-              <p>{getPaymentLabel(lastAppointment.payment_status)}</p>
+              <p>{getPaymentLabel(displayedLastAppointment.payment_status)}</p>
             </div>
             <div>
               <p className="detail-label">Prix</p>
-              <p>{formatGNF(lastAppointment.price)}</p>
+              <p>{formatGNF(displayedLastAppointment.price)}</p>
             </div>
             <div>
-              <p className="detail-label">Status</p>
-              <span className={getStatusClassName(lastAppointment.status).className}>
-                {getStatusClassName(lastAppointment.status).label}
+              <p className="detail-label">Statut</p>
+              <span className={getStatusMeta(displayedLastAppointment.status).className}>
+                {getStatusMeta(displayedLastAppointment.status).label}
               </span>
             </div>
           </div>
           <div className="confirmation-actions">
-            {['paid', 'confirmed', 'completed'].includes(String(lastAppointment.status || '').toLowerCase()) && (
+            {['paid', 'confirmed', 'completed'].includes(String(displayedLastAppointment.status || '').toLowerCase()) && (
               <button type="button" className="button-secondary" onClick={() => setShowConfirmation(false)}>
                 Voir mes rendez-vous
               </button>
             )}
-            {String(lastAppointment.status || '').toLowerCase() === 'pending' && String(lastAppointment.payment_status || '').toLowerCase() !== 'paid' && (
+            {isPendingAppointment(displayedLastAppointment) && (
               <button
                 type="button"
                 className="button-pay"
-                onClick={handlePayNow}
-                disabled={isPaying || paymentAttemptStarted}
+                onClick={() => openPaymentModal(displayedLastAppointment)}
+                disabled={isPaying || paymentAttemptStarted || payingAppointmentId === displayedLastAppointment.id}
               >
-                {isPaying ? 'Traitement...' : 'Payer'}
+                {isPaying ? 'Traitement...' : 'Payer via Mobile Money'}
               </button>
             )}
-            {paymentMessage && <p className="success">{paymentMessage}</p>}
+            {isPendingAppointment(displayedLastAppointment) && (
+              <small className="payment-helper-text">Simulation de paiement</small>
+            )}
             {paymentError && <p className="error">{paymentError}</p>}
           </div>
         </div>
@@ -392,50 +423,35 @@ const Appointments = () => {
 
           {!loading && appointments.length === 0 && <p>Aucun rendez-vous trouvé.</p>}
 
-          {filteredAppointments.length > 0 && (
+          {displayedAppointments.length > 0 && (
             <ul className="appointments-cards">
-              {filteredAppointments.map((appointment) => (
-                <li key={appointment.id} className="appointment-item">
-                  <div className="appointment-info">
-                    <p className="appointment-title">{getDoctorName(appointment)}</p>
-                    <p>
-                      <span className="appointment-label">Date</span>
-                      <span className="appointment-value">{new Date(appointment.date).toLocaleString()}</span>
-                    </p>
-                    <p>
-                      <span className="appointment-label">Durée</span>
-                      <span className="appointment-value">{appointment.duration_minutes} minutes</span>
-                    </p>
-                    <p>
-                      <span className="appointment-label">Prix</span>
-                      <span className="appointment-value">{formatGNF(appointment.price)}</span>
-                    </p>
-                    <p>
-                      <span className="appointment-label">Paiement</span>
-                      <span className="appointment-value">{getPaymentLabel(appointment.payment_status)}</span>
-                    </p>
-                    <p>
-                      <span className="appointment-label">Statut</span>
-                      <span className={getStatusClassName(appointment.status).className}>{getStatusClassName(appointment.status).label}</span>
-                    </p>
-                  </div>
-                  <div className="appointment-actions">
-                    {canCancel(appointment) && (
-                      <button
-                        onClick={() => handleDelete(appointment.id)}
-                        disabled={loading || !canCancel(appointment)}
-                        className="delete-btn"
-                      >
-                        Annuler
-                      </button>
-                    )}
-                  </div>
-                </li>
+              {displayedAppointments.map((appointment) => (
+                <AppointmentCard
+                  key={appointment.id}
+                  appointment={appointment}
+                  title={getDoctorName(appointment)}
+                  onPay={openPaymentModal}
+                  onCancel={(item) => handleDelete(item.id)}
+                  onOpenMessages={(item) => navigate(`/messages/${item.id}`)}
+                  canPay={canPayAppointment(appointment)}
+                  canCancel={canCancel(appointment)}
+                  canMessage={Boolean(appointment?.id) && (isPatient || isDoctor)}
+                  isPaying={isPaying && payingAppointmentId === appointment.id}
+                  isCancelling={cancellingAppointmentId === appointment.id}
+                />
               ))}
             </ul>
           )}
         </div>
       </div>
+
+      <PaymentConfirmationModal
+        isOpen={Boolean(paymentModalAppointment)}
+        appointment={paymentModalAppointment}
+        onConfirm={handleConfirmPayment}
+        onClose={() => setPaymentModalAppointment(null)}
+        isProcessing={isPaying}
+      />
     </div>
   );
 };

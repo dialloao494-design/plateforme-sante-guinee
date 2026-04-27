@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { doctorsAPI } from '../services/api.js';
 import './Doctors.css';
 
 const Doctors = () => {
+  const navigate = useNavigate();
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -10,15 +12,12 @@ const Doctors = () => {
   useEffect(() => {
     const fetchDoctors = async () => {
       try {
-        console.log('🔍 Fetching doctors from API...');
         setLoading(true);
         const response = await doctorsAPI.getAll();
-        console.log('✅ Doctors fetched successfully:', response.data);
         setDoctors(response.data);
         setError(null);
       } catch (err) {
-        console.error('❌ Error fetching doctors:', err);
-        setError(err?.response?.data?.detail || err.message || 'Erreur lors du chargement des médecins');
+        setError(err?.response?.data?.detail || err.message || 'Impossible de charger les médecins.');
         setDoctors([]);
       } finally {
         setLoading(false);
@@ -31,7 +30,7 @@ const Doctors = () => {
   if (loading) {
     return (
       <div className="doctors-page">
-        <div style={{ padding: '40px', textAlign: 'center' }}>
+        <div className="page-state">
           <p>Chargement des médecins...</p>
         </div>
       </div>
@@ -41,7 +40,7 @@ const Doctors = () => {
   if (error) {
     return (
       <div className="doctors-page">
-        <div style={{ padding: '40px', textAlign: 'center', color: 'red' }}>
+        <div className="page-error">
           <p>Erreur: {error}</p>
         </div>
       </div>
@@ -51,8 +50,8 @@ const Doctors = () => {
   if (!doctors || doctors.length === 0) {
     return (
       <div className="doctors-page">
-        <div style={{ padding: '40px', textAlign: 'center' }}>
-          <p>Aucun médecin trouvé</p>
+        <div className="no-doctors">
+          <p>No doctors available</p>
         </div>
       </div>
     );
@@ -65,30 +64,23 @@ const Doctors = () => {
         <p>Trouvez un spécialiste et prenez rendez-vous</p>
       </header>
 
-      <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-          gap: '20px'
-        }}>
+      <div className="doctors-container">
+        <div className="doctors-grid">
           {doctors.map((doctor) => (
-            <div
-              key={doctor.id}
-              style={{
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                padding: '20px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-              }}
-            >
-              <h3>{doctor.first_name} {doctor.last_name}</h3>
-              <p><strong>Spécialité:</strong> {doctor.specialty}</p>
-              <p><strong>Lieu:</strong> {doctor.location}</p>
-              <p><strong>Téléphone:</strong> {doctor.phone}</p>
-              {doctor.consultation_fee && (
-                <p><strong>Tarif:</strong> {doctor.consultation_fee} GNF</p>
-              )}
-            </div>
+            <article key={doctor.id} className="doctor-list-card">
+              <h3 className="doctor-list-name">{doctor.first_name} {doctor.last_name}</h3>
+              <p className="doctor-list-specialty">
+                <span>Spécialité</span>
+                <strong>{doctor.specialty || 'Généraliste'}</strong>
+              </p>
+              <button
+                type="button"
+                className="doctor-list-book"
+                onClick={() => navigate('/appointments', { state: { doctorId: doctor.id } })}
+              >
+                Book appointment
+              </button>
+            </article>
           ))}
         </div>
       </div>

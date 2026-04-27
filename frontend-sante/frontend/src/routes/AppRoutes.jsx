@@ -6,8 +6,12 @@ import Dashboard from "../pages/Dashboard";
 import Doctors from "../pages/Doctors";
 import Appointments from "../pages/Appointments";
 import DoctorDashboard from "../pages/DoctorDashboard";
+import DoctorAppointments from "../pages/DoctorAppointments";
+import DoctorMessages from "../pages/DoctorMessages";
+import PatientDetails from "../pages/PatientDetails";
 import PaymentSuccess from "../pages/PaymentSuccess";
 import PaymentCancel from "../pages/PaymentCancel";
+import Messages from "../pages/Messages";
 import Patients from "../pages/Patients";
 import Users from "../pages/Users";
 import ProtectedRoute from "./ProtectedRoute";
@@ -29,7 +33,7 @@ const AppRoutes = () => {
       <Route
         path="/doctors"
         element={
-          <ProtectedRoute allowedRoles={["doctor", "admin"]}>
+          <ProtectedRoute allowedRoles={["patient", "doctor", "admin"]}>
             <Doctors />
           </ProtectedRoute>
         }
@@ -44,16 +48,36 @@ const AppRoutes = () => {
       />
       <Route
         path="/doctor/dashboard"
+        element={<DoctorDashboard />}
+      />
+      <Route
+        path="/doctor/appointments"
         element={
           <ProtectedRoute allowedRoles={["doctor"]}>
-            <DoctorDashboard />
+            <DoctorAppointments />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/doctor/messages"
+        element={
+          <ProtectedRoute allowedRoles={["doctor"]}>
+            <DoctorMessages />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/doctor/patient/:id"
+        element={
+          <ProtectedRoute allowedRoles={["doctor"]}>
+            <PatientDetails />
           </ProtectedRoute>
         }
       />
       <Route
         path="/success"
         element={
-          <ProtectedRoute allowedRoles={["patient"]}>
+          <ProtectedRoute allowedRoles={["patient", "doctor"]}>
             <PaymentSuccess />
           </ProtectedRoute>
         }
@@ -61,8 +85,16 @@ const AppRoutes = () => {
       <Route
         path="/cancel"
         element={
-          <ProtectedRoute allowedRoles={["patient"]}>
+          <ProtectedRoute allowedRoles={["patient", "doctor"]}>
             <PaymentCancel />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/messages/:appointmentId"
+        element={
+          <ProtectedRoute allowedRoles={["patient", "doctor"]}>
+            <Messages />
           </ProtectedRoute>
         }
       />

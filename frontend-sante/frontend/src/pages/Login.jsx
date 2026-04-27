@@ -12,14 +12,7 @@ const Login = () => {
 
   useEffect(() => {
     if (user) {
-      const role = user?.role;
-      if (role === 'doctor') {
-        navigate('/doctors');
-      } else if (role === 'admin') {
-        navigate('/users');
-      } else {
-        navigate('/appointments');
-      }
+      navigate('/dashboard');
     }
   }, [user, navigate]);
 
@@ -29,14 +22,7 @@ const Login = () => {
 
     const result = await login(email, password);
     if (result.success) {
-      const role = result.role || user?.role;
-      if (role === 'doctor') {
-        navigate('/doctors');
-      } else if (role === 'admin') {
-        navigate('/users');
-      } else {
-        navigate('/appointments');
-      }
+      navigate('/dashboard');
     } else {
       setSubmitError(result.error || 'Échec de la connexion');
     }

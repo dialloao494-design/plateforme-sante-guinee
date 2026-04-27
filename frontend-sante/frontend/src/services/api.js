@@ -1,39 +1,11 @@
-import axios from 'axios';
-
-export const API_BASE_URL = 'https://web-production-ad6a36.up.railway.app';
-
-// Single axios instance — token attached automatically via interceptor
-const API = axios.create({
-  baseURL: API_BASE_URL,
-});
-
-API.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-API.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error?.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user_role');
-      localStorage.removeItem('user_id');
-    }
-    return Promise.reject(error);
-  }
-);
+import httpClient, { API_BASE_URL } from './httpClient.js';
 
 // Legacy compatibility shim — used by AuthContext and other contexts
 const api = {
-  get: (path) => API.get(path),
-  post: (path, body) => API.post(path, body),
-  put: (path, body) => API.put(path, body),
-  delete: (path) => API.delete(path),
+  get: (path) => httpClient.get(path),
+  post: (path, body) => httpClient.post(path, body),
+  put: (path, body) => httpClient.put(path, body),
+  delete: (path) => httpClient.delete(path),
 };
 
 // Login uses form-encoded POST (OAuth2PasswordRequestForm — must NOT use axios here)
@@ -61,22 +33,22 @@ export const login = async (email, password) => {
 };
 
 export const getAuthenticatedUser = async () => {
-  const { data } = await API.get('/auth/me');
+  const { data } = await httpClient.get('/auth/me');
   return data;
 };
 
 export const authAPI = {
   login,
   me: getAuthenticatedUser,
-  signup: (userData) => API.post('/auth/register', userData),
+  signup: (userData) => httpClient.post('/auth/register', userData),
 };
 
 export const patientsAPI = {
-  getAll: () => API.get('/patients/'),
-  getById: (id) => API.get(`/patients/${id}/`),
-  create: (data) => API.post('/patients/', data),
-  update: (id, data) => API.put(`/patients/${id}/`, data),
-  delete: (id) => API.delete(`/patients/${id}/`),
+  getAll: () => httpClient.get('/patients/'),
+  getById: (id) => httpClient.get(`/patients/${id}/`),
+  create: (data) => httpClient.post('/patients/', data),
+  update: (id, data) => httpClient.put(`/patients/${id}/`, data),
+  delete: (id) => httpClient.delete(`/patients/${id}/`),
 };
 
 export const doctorsAPI = {
@@ -85,33 +57,40 @@ export const doctorsAPI = {
     if (location) params.append('location', location);
     if (specialty) params.append('specialty', specialty);
     const qs = params.toString();
-    return API.get(`/doctors/${qs ? `?${qs}` : ''}`);
+    return httpClient.get(`/doctors/${qs ? `?${qs}` : ''}`);
   },
-  getById: (id) => API.get(`/doctors/${id}/`),
-  create: (data) => API.post('/doctors/', data),
-  update: (id, data) => API.put(`/doctors/${id}/`, data),
-  delete: (id) => API.delete(`/doctors/${id}/`),
-  getSchedule: (id) => API.get(`/doctors/${id}/schedule/`),
-  getAvailability: (id) => API.get(`/doctors/${id}/availability/`),
+  getById: (id) => httpClient.get(`/doctors/${id}/`),
+  create: (data) => httpClient.post('/doctors/', data),
+  update: (id, data) => httpClient.put(`/doctors/${id}/`, data),
+  delete: (id) => httpClient.delete(`/doctors/${id}/`),
+  getSchedule: (id) => httpClient.get(`/doctors/${id}/schedule/`),
+  getAvailability: (id) => httpClient.get(`/doctors/${id}/availability/`),
 };
 
 export const appointmentsAPI = {
-  getAll: () => API.get('/appointments/'),
-  getById: (id) => API.get(`/appointments/${id}/`),
-  create: (data) => API.post('/appointments/', data),
-  updateStatus: (id, status) => API.put(`/appointments/${id}/`, { status }),
-  cancel: (id) => API.post(`/appointments/${id}/cancel`),
-  getMyAppointments: () => API.get('/appointments/me'),
+  getAll: () => httpClient.get('/appointments/'),
+  getById: (id) => httpClient.get(`/appointments/${id}/`),
+  create: (data) => httpClient.post('/appointments/', data),
+  updateStatus: (id, status) => httpClient.put(`/appointments/${id}/`, { status }),
+  cancel: (id) => httpClient.post(`/appointments/${id}/cancel`),
+  getMyAppointments: () => httpClient.get('/appointments/me'),
 };
 
 export const doctorDashboardAPI = {
-  getAppointments: () => API.get('/doctor/appointments'),
+  getAppointments: () => httpClient.get('/doctor/appointments'),
 };
 
 export const paymentsAPI = {
-  createIntent: (appointmentId) => API.post('/payments/create-intent', { appointment_id: appointmentId }),
-  confirmCheckout: (sessionId) => API.post('/payments/confirm-checkout', { session_id: sessionId }),
-  getStatus: (appointmentId) => API.get(`/payments/${appointmentId}/status`),
+  createIntent: (appointmentId) => httpClient.post('/payments/create-intent', { appointment_id: appointmentId }),
+  confirmCheckout: (sessionId) => httpClient.post('/payments/confirm-checkout', { session_id: sessionId }),
+  getStatus: (appointmentId) => httpClient.get(`/payments/${appointmentId}/status`),
+};
+
+export const messagesAPI = {
+  getByAppointment: (appointmentId) => httpClient.get(`/messages/${appointmentId}`),
+  sendToAppointment: (appointmentId, formData) => httpClient.post(`/messages/${appointmentId}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
 };
 
 export default api;

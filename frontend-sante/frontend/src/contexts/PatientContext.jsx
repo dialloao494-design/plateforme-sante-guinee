@@ -25,7 +25,7 @@ export const PatientProvider = ({ children }) => {
       const normalized = data.map(normalizePatient);
       setPatients(normalized);
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.response?.data?.message || err.message || 'Erreur réseau');
+      setError(err?.response?.data?.detail || err?.response?.data?.message || err.message || 'Erreur de connexion. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }

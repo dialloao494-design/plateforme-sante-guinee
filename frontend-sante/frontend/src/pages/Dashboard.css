@@ -30,11 +30,14 @@
   align-items: center;
   justify-content: center;
   min-width: 180px;
+  min-height: 44px;
   padding: 14px 22px;
   background-color: #2563eb;
   color: white;
   text-decoration: none;
   border-radius: 14px;
+  border: none;
+  cursor: pointer;
   font-weight: 600;
   transition: background 0.2s ease, transform 0.2s ease;
 }
@@ -42,4 +45,41 @@
 .action-button:hover {
   background-color: #1d4ed8;
   transform: translateY(-1px);
+}
+
+.dashboard-preview {
+  margin-top: 26px;
+}
+
+.dashboard-preview h3 {
+  margin: 0 0 14px;
+  color: #0f172a;
+}
+
+.dashboard-preview-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .dashboard {
+    padding: 18px 12px;
+  }
+
+  .user-info {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .dashboard-actions {
+    gap: 10px;
+  }
+
+  .action-button {
+    width: 100%;
+    min-width: 0;
+  }
 }

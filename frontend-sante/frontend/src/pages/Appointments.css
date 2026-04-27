@@ -2,7 +2,7 @@
   min-height: 100vh;
   padding: 40px 24px 60px;
   background: #eff4fb;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Segoe UI', 'Roboto', sans-serif;
 }
 
 @media (min-width: 768px) {
@@ -38,6 +38,12 @@
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
   border: 1px solid rgba(148, 163, 184, 0.16);
   text-align: left;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.confirmation-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 24px 56px rgba(15, 23, 42, 0.12);
 }
 
 .confirmation-top {
@@ -123,6 +129,12 @@
   border-radius: 18px;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
   border: 1px solid rgba(148, 163, 184, 0.18);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.appointment-form:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 20px 46px rgba(15, 23, 42, 0.11);
 }
 
 .appointment-form h2 {
@@ -196,6 +208,7 @@
   padding: 14px 22px;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-height: 44px;
 }
 
 .button-primary,
@@ -210,7 +223,7 @@
 }
 
 .button-pay {
-  background: #805ad5;
+  background: #2563eb;
   color: white;
 }
 
@@ -259,6 +272,12 @@
   padding: 28px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.appointments-panel:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 22px 44px rgba(15, 23, 42, 0.1);
 }
 
 .appointments-panel h2 {
@@ -393,6 +412,39 @@
 }
 
 @media (max-width: 640px) {
+  .appointments-page {
+    padding: 20px 14px 36px;
+  }
+
+  .appointments-header {
+    margin-bottom: 16px;
+    padding: 0 4px;
+  }
+
+  .appointments-header h1 {
+    font-size: 1.6rem;
+  }
+
+  .confirmation-card,
+  .appointment-form,
+  .appointments-panel {
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .confirmation-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .confirmation-actions .button-pay,
+  .confirmation-actions .button-secondary,
+  .appointment-form button {
+    width: 100%;
+    min-width: 0;
+  }
+
   .appointment-item {
     flex-direction: column;
   }

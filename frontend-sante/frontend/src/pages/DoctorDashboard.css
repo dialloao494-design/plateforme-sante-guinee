@@ -22,53 +22,138 @@
   color: #475569;
 }
 
-.doctor-appointments-list {
-  list-style: none;
-  margin: 18px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
+.doctor-dashboard-card .error,
+.doctor-dashboard-card .success {
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin-top: 12px;
+}
+
+.doctor-dashboard-card .error {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.doctor-dashboard-card .success {
+  color: #166534;
+  background: #ecfdf5;
+}
+
+.doctor-summary-grid {
+  margin-top: 16px;
+  display: grid;
   gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.doctor-appointment-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+.summary-card {
   background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 14px 16px;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  padding: 14px;
 }
 
-.line-title {
-  margin: 0 0 4px;
+.summary-card h3 {
+  margin: 0 0 8px;
+  color: #334155;
+  font-size: 0.95rem;
+}
+
+.summary-card p {
+  margin: 0;
+  font-size: 1.8rem;
   color: #0f172a;
   font-weight: 700;
 }
 
-.status-badge {
-  display: inline-block;
-  padding: 7px 12px;
-  border-radius: 999px;
-  font-size: 0.84rem;
+.doctor-sections {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.doctor-section-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.section-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #0f172a;
+}
+
+.compact-appointments,
+.recent-messages-list,
+.patients-preview-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.compact-appointments li,
+.recent-messages-list li,
+.patients-preview-list li {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.compact-appointments li.urgent {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.2);
+}
+
+.row-title {
+  margin: 0;
+  color: #0f172a;
   font-weight: 700;
-  white-space: nowrap;
 }
 
-.status-pending {
-  background: #fef3c7;
-  color: #92400e;
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.status-paid,
-.status-confirmed {
-  background: #dcfce7;
-  color: #166534;
+.recent-message-btn {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  cursor: pointer;
 }
 
-.status-cancelled {
-  background: #fee2e2;
-  color: #991b1b;
+.message-preview {
+  color: #334155;
+}
+
+@media (max-width: 900px) {
+  .doctor-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .doctor-sections {
+    grid-template-columns: 1fr;
+  }
 }

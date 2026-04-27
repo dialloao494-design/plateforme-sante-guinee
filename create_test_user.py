@@ -1,50 +1,79 @@
 #!/usr/bin/env python3
-"""
-Script to create a test user in the database.
-"""
+"""Create or repair a test user in the active database."""
 
-from database import SessionLocal, engine
+from __future__ import annotations
+
+import os
+import sys
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+from database import DATABASE_URL, SessionLocal
 from models.user import User
-from security import hash_password
+from security import hash_password, verify_password
 
-def create_test_user():
-    """Create a test user with email: test@test.com, password: test123"""
 
-    # Create database session
+DEFAULT_EMAIL = "test123@gmail.com"
+DEFAULT_PASSWORD = "123456"
+DEFAULT_ROLE = "patient"
+
+
+def create_test_user(email: str = DEFAULT_EMAIL, password: str = DEFAULT_PASSWORD, role: str = DEFAULT_ROLE) -> None:
+    """Create the requested test user or update the password if it already exists."""
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is required")
+
+    print("Using database:", DATABASE_URL)
     db = SessionLocal()
 
     try:
-        # Check if user already exists
-        existing_user = db.query(User).filter(User.email == "test@test.com").first()
-        if existing_user:
-            print("Test user already exists!")
-            return
+        user = db.query(User).filter(User.email == email).first()
+        if user is None:
+            user = User(
+                email=email,
+                hashed_password=hash_password(password),
+                role=role,
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            status = "created"
+        else:
+            password_ok = False
+            try:
+                password_ok = verify_password(password, user.hashed_password)
+            except Exception:
+                password_ok = False
 
-        # Hash the password
-        hashed_password = hash_password("test123")
+            changed = False
+            if not password_ok:
+                user.hashed_password = hash_password(password)
+                changed = True
+            if user.role != role:
+                user.role = role
+                changed = True
+            if changed:
+                db.commit()
+                db.refresh(user)
+            status = "existing" if not changed else "updated"
 
-        # Create the test user
-        test_user = User(
-            email="test@test.com",
-            hashed_password=hashed_password,
-            role="patient"  # Default role for testing
-        )
-
-        # Add to database
-        db.add(test_user)
-        db.commit()
-        db.refresh(test_user)
-
-        print("✅ Test user created successfully!")
-        print(f"   Email: {test_user.email}")
-        print(f"   Role: {test_user.role}")
-        print(f"   ID: {test_user.id}")
-
-    except Exception as e:
-        print(f"❌ Error creating test user: {e}")
+        print("✅ Test user ready")
+        print(f"   Status: {status}")
+        print(f"   Email: {user.email}")
+        print(f"   Role: {user.role}")
+        print(f"   ID: {user.id}")
+    except Exception as exc:
         db.rollback()
+        print(f"❌ Error creating test user: {exc}")
+        raise
     finally:
         db.close()
 
+
 if __name__ == "__main__":
-    create_test_user()
+    email = os.getenv("TEST_USER_EMAIL") or (sys.argv[1] if len(sys.argv) > 1 else DEFAULT_EMAIL)
+    password = os.getenv("TEST_USER_PASSWORD") or (sys.argv[2] if len(sys.argv) > 2 else DEFAULT_PASSWORD)
+    role = os.getenv("TEST_USER_ROLE") or (sys.argv[3] if len(sys.argv) > 3 else DEFAULT_ROLE)
+    create_test_user(email=email, password=password, role=role)

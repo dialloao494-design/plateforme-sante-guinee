@@ -1,11 +1,14 @@
 from dotenv import load_dotenv 
 load_dotenv()
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from database import SessionLocal
 import models
-from routers import patient, rendezvous, doctor, doctor_dashboard, auth, payments, teleconsultation, notifications
+from routers import patient, rendezvous, doctor, auth, payments, teleconsultation, notifications, messages
 from routers import users, appointments
 from security import hash_password, verify_password
 import os
@@ -31,10 +34,6 @@ allowed_origins = [
     "http://127.0.0.1:5173",
 ]
 
-frontend_production_url = os.getenv("FRONTEND_PRODUCTION_URL")
-if frontend_production_url:
-    allowed_origins.append(frontend_production_url)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -42,6 +41,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+uploads_dir = Path("uploads")
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -279,13 +282,13 @@ def _ensure_production_test_user():
 app.include_router(patient.router)
 app.include_router(rendezvous.router)
 app.include_router(doctor.router)
-app.include_router(doctor_dashboard.router)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(appointments.router)
 app.include_router(payments.router)
 app.include_router(teleconsultation.router)
 app.include_router(notifications.router)
+app.include_router(messages.router)
 
 
 # ==========================================
@@ -347,7 +350,7 @@ async def startup_event():
     """Run on app startup"""
     from database import engine, DATABASE_URL
     # Import all model modules so their tables are registered on Base
-    import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability
+    import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message
 
     # Always create tables if they don't exist (safe / idempotent)
     try:

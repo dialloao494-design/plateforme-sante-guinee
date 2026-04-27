@@ -1,0 +1,127 @@
+.messages-page {
+  min-height: 100vh;
+  padding: 24px;
+  background: #eff4fb;
+}
+
+.messages-header {
+  max-width: 980px;
+  margin: 0 auto 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.messages-header h1 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.messages-header p {
+  margin: 6px 0 0;
+  color: #475569;
+}
+
+.messages-thread {
+  max-width: 980px;
+  margin: 0 auto;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  padding: 16px;
+  min-height: 400px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.messages-empty {
+  color: #64748b;
+}
+
+.message-row {
+  display: flex;
+  margin-bottom: 10px;
+}
+
+.message-row.mine {
+  justify-content: flex-end;
+}
+
+.message-row.other {
+  justify-content: flex-start;
+}
+
+.message-bubble {
+  max-width: 75%;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.message-row.mine .message-bubble {
+  background: #dbeafe;
+  border-color: #bfdbfe;
+}
+
+.message-meta {
+  margin: 0 0 6px;
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.message-content {
+  margin: 0;
+  color: #0f172a;
+  white-space: pre-wrap;
+}
+
+.message-attachment {
+  margin-top: 8px;
+  display: inline-block;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.message-composer {
+  max-width: 980px;
+  margin: 14px auto 0;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.message-composer textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px;
+  font-family: inherit;
+}
+
+.composer-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .messages-page {
+    padding: 14px;
+  }
+
+  .message-bubble {
+    max-width: 90%;
+  }
+
+  .composer-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

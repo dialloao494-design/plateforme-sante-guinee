@@ -9,6 +9,10 @@ const normalizeAppointment = (appointment) => ({
 });
 
 const extractErrorMessage = (err, fallbackMessage) => {
+  if (!err?.response && /network|failed to fetch/i.test(String(err?.message || ''))) {
+    return 'Erreur de connexion. Veuillez réessayer.';
+  }
+
   const detail = err?.response?.data?.detail;
   if (typeof detail === 'string' && detail.trim()) {
     return detail;
@@ -63,7 +67,7 @@ export const AppointmentProvider = ({ children }) => {
       setAppointments((prev) => [normalized, ...prev]);
       return normalized;
     } catch (err) {
-      setError(extractErrorMessage(err, 'Erreur création'));
+      setError(extractErrorMessage(err, 'Impossible de créer le rendez-vous.'));
       throw err;
     } finally {
       setLoading(false);
@@ -77,7 +81,7 @@ export const AppointmentProvider = ({ children }) => {
       await appointmentsAPI.cancel(id);
       setAppointments((prev) => prev.filter((a) => a.id !== id));
     } catch (err) {
-      setError(extractErrorMessage(err, 'Erreur suppression'));
+      setError(extractErrorMessage(err, 'Impossible d’annuler le rendez-vous.'));
       throw err;
     } finally {
       setLoading(false);
@@ -93,7 +97,7 @@ export const AppointmentProvider = ({ children }) => {
       setAppointments((prev) => prev.map((a) => (a.id === id ? normalized : a)));
       return normalized;
     } catch (err) {
-      setError(extractErrorMessage(err, 'Erreur mise à jour'));
+      setError(extractErrorMessage(err, 'Mise à jour du rendez-vous impossible.'));
       throw err;
     } finally {
       setLoading(false);

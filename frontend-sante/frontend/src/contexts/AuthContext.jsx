@@ -36,20 +36,24 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const accessToken = localStorage.getItem('access_token');
-    if (!accessToken) {
+    const storedToken = localStorage.getItem('token') || localStorage.getItem('access_token');
+    if (!storedToken) {
       setAuthLoading(false);
       return;
     }
 
+    if (!localStorage.getItem('token')) {
+      localStorage.setItem('token', storedToken);
+    }
+
     authAPI
       .me()
-      .then((response) => {
-        const normalizedUser = normalizeAndStoreUser(response.data);
-        console.log('[AuthContext] /auth/me user:', normalizedUser);
+      .then((data) => {
+        const normalizedUser = normalizeAndStoreUser(data);
         setUser(normalizedUser);
       })
       .catch(() => {
+        localStorage.removeItem('token');
         localStorage.removeItem('access_token');
         localStorage.removeItem('user_role');
         localStorage.removeItem('user_id');
@@ -64,28 +68,28 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const response = await authAPI.login(email, password);
-      const { access_token, user_id, user_role, role, email: userEmail } = response.data;
+      const { access_token, user_id, user_role, role, email: userEmail } = response;
       const resolvedRole = user_role || role;
-      localStorage.setItem('access_token', access_token);
+      localStorage.setItem('token', access_token);
+      localStorage.removeItem('access_token');
       if (user_id) {
         localStorage.setItem('user_id', String(user_id));
       }
       if (resolvedRole && userEmail) {
         localStorage.setItem('user_role', resolvedRole);
         const normalizedUser = normalizeAndStoreUser({ id: user_id, user_role: resolvedRole, email: userEmail });
-        console.log('[AuthContext] login user:', normalizedUser);
         setUser(normalizedUser);
         return { success: true, role: normalizedUser?.role };
       } else {
         const meResponse = await authAPI.me();
-        const normalizedUser = normalizeAndStoreUser(meResponse.data);
-        console.log('[AuthContext] login fallback /auth/me user:', normalizedUser);
+        const normalizedUser = normalizeAndStoreUser(meResponse);
         setUser(normalizedUser);
         return { success: true, role: normalizedUser?.role };
       }
     } catch (err) {
+      console.error('Login failed:', err);
       const message =
-        err?.response?.data?.detail || err?.response?.data?.message || 'Impossible de se connecter';
+        err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Impossible de se connecter';
       setError(message);
       return { success: false, error: message };
     } finally {
@@ -94,12 +98,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    localStorage.removeItem('token');
     localStorage.removeItem('access_token');
     localStorage.removeItem('user_role');
     localStorage.removeItem('user_id');
     setUser(null);
     setError(null);
-    console.log('[AuthContext] logout: cleared user state and localStorage');
   };
 
   const value = {
