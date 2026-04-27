@@ -23,9 +23,11 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
-    title="Healthcare Platform API",
-    description="Comprehensive healthcare appointment and payment system",
-    version="1.0.0"
+title="Healthcare Platform API",
+description="Comprehensive healthcare appointment and payment API",
+version="1.0.0",
+docs_url="/docs",
+redoc_url="/redoc"
 )
 
 @app.get("/")
