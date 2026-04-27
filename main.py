@@ -33,7 +33,12 @@ openapi_url="/openapi.json",
 
 @app.get("/")
 def root():
- return {"message": "API is running"}
+    return {"message": "API is running"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 # CORS handled only by FastAPI CORSMiddleware.
 allowed_origins = [
