@@ -348,13 +348,12 @@ def root():
 @app.on_event("startup")
 async def startup_event():
     """Run on app startup"""
-    from database import engine, DATABASE_URL
-    # Import all model modules so their tables are registered on Base
-    import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message
-
-    # Always create tables if they don't exist (safe / idempotent)
     try:
-        from database import Base
+        from database import engine, Base
+        # Import all model modules so their tables are registered on Base
+        import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message
+
+        # Always create tables if they don't exist (safe / idempotent)
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables verified / created.")
     except Exception as exc:
@@ -380,12 +379,12 @@ async def startup_event():
         logger.info("Optional startup seed routines skipped (ENABLE_STARTUP_SEED not set).")
 
     debug_mode = os.getenv("DEBUG", "False").lower() == "true"
-    port = os.getenv("PORT", "8000")
+    port = os.environ.get("PORT")
     logger.info("Healthcare Platform API startup complete")
     logger.info("Debug Mode: %s", debug_mode)
-    logger.info("API URL: http://0.0.0.0:%s", port)
-    logger.info("Interactive API Docs: http://localhost:%s/docs", port)
-    logger.info("Health Check: http://localhost:%s/health", port)
+    logger.info("Bind Port (PORT): %s", port)
+    logger.info("Docs Path: /docs")
+    logger.info("Health Path: /health")
     logger.info("CORS Origins: %s", ", ".join(allowed_origins))
 
 
