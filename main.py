@@ -27,7 +27,8 @@ title="Healthcare Platform API",
 description="Comprehensive healthcare appointment and payment API",
 version="1.0.0",
 docs_url="/docs",
-redoc_url="/redoc"
+redoc_url="/redoc",
+openapi_url="/openapi.json",
 )
 
 @app.get("/")
