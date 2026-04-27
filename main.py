@@ -361,7 +361,6 @@ async def startup_event():
         import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message
 
         # Always create tables if they don't exist (safe / idempotent)
-        from database import Base
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables verified / created.")
     except Exception as exc:
