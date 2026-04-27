@@ -28,6 +28,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
+@app.get("/")
+def root():
+ return {"message": "API is running"}
+
 # CORS handled only by FastAPI CORSMiddleware.
 allowed_origins = [
     "http://localhost:5173",
@@ -354,6 +358,7 @@ async def startup_event():
         import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message
 
         # Always create tables if they don't exist (safe / idempotent)
+        from database import Base
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables verified / created.")
     except Exception as exc:
