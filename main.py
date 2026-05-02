@@ -46,16 +46,35 @@ allowed_origins = [
     "http://127.0.0.1:5173",
 ]
 
-frontend_url = os.getenv("FRONTEND_URL", "").strip()
-frontend_production_url = os.getenv("FRONTEND_PRODUCTION_URL", "").strip()
+def _normalize_origin(origin: str) -> str:
+    return origin.strip().rstrip("/")
+
+
+frontend_url = _normalize_origin(os.getenv("FRONTEND_URL", ""))
+frontend_production_url = _normalize_origin(os.getenv("FRONTEND_PRODUCTION_URL", ""))
+
+# Optional list of origins (comma-separated) for multi-domain deployments.
+extra_frontend_origins = os.getenv("FRONTEND_ALLOWED_ORIGINS", "")
 
 for origin in (frontend_url, frontend_production_url):
     if origin and origin not in allowed_origins:
         allowed_origins.append(origin)
 
+for origin in extra_frontend_origins.split(","):
+    normalized = _normalize_origin(origin)
+    if normalized and normalized not in allowed_origins:
+        allowed_origins.append(normalized)
+
+# Allows Vercel-generated domains (preview/prod) when needed.
+allowed_origin_regex = os.getenv(
+    "FRONTEND_ORIGIN_REGEX",
+    r"^https://.*\.vercel\.app$",
+).strip()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=allowed_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -405,6 +424,7 @@ async def startup_event():
     logger.info("Docs Path: /docs")
     logger.info("Health Path: /health")
     logger.info("CORS Origins: %s", ", ".join(allowed_origins))
+    logger.info("CORS Origin Regex: %s", allowed_origin_regex)
 
 
 @app.on_event("shutdown")
