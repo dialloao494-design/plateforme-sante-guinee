@@ -40,41 +40,16 @@ def root():
 def health():
     return {"status": "ok"}
 
-# CORS handled only by FastAPI CORSMiddleware.
-allowed_origins = [
+# CORS — applied before routers are included.
+origins = [
+    "https://plateforme-sante-guinee-6kbk8jvau-dialloa0494-designs-projects.vercel.app",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
 
-def _normalize_origin(origin: str) -> str:
-    return origin.strip().rstrip("/")
-
-
-frontend_url = _normalize_origin(os.getenv("FRONTEND_URL", ""))
-frontend_production_url = _normalize_origin(os.getenv("FRONTEND_PRODUCTION_URL", ""))
-
-# Optional list of origins (comma-separated) for multi-domain deployments.
-extra_frontend_origins = os.getenv("FRONTEND_ALLOWED_ORIGINS", "")
-
-for origin in (frontend_url, frontend_production_url):
-    if origin and origin not in allowed_origins:
-        allowed_origins.append(origin)
-
-for origin in extra_frontend_origins.split(","):
-    normalized = _normalize_origin(origin)
-    if normalized and normalized not in allowed_origins:
-        allowed_origins.append(normalized)
-
-# Allows Vercel-generated domains (preview/prod) when needed.
-allowed_origin_regex = os.getenv(
-    "FRONTEND_ORIGIN_REGEX",
-    r"^https://.*\.vercel\.app$",
-).strip()
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_origin_regex=allowed_origin_regex,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
