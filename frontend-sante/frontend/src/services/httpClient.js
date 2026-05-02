@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').trim();
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_URL ||
+  'https://web-production-ad6a36.up.railway.app'
+).trim();
 
 const PUBLIC_PATHS = ['/auth/login', '/auth/register'];
 

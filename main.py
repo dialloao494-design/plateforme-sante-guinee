@@ -46,6 +46,13 @@ allowed_origins = [
     "http://127.0.0.1:5173",
 ]
 
+frontend_url = os.getenv("FRONTEND_URL", "").strip()
+frontend_production_url = os.getenv("FRONTEND_PRODUCTION_URL", "").strip()
+
+for origin in (frontend_url, frontend_production_url):
+    if origin and origin not in allowed_origins:
+        allowed_origins.append(origin)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
