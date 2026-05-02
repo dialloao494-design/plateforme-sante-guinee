@@ -1,9 +1,31 @@
 import axios from 'axios';
 
-export const API_BASE_URL = (
-  import.meta.env.VITE_API_URL ||
-  'https://web-production-ad6a36.up.railway.app'
-).trim();
+// Resolve API base URL from environment variable
+// In production (Vercel): VITE_API_URL is injected by Vercel
+// In development: Use .env.development or .env file
+// IMPORTANT: Never use hardcoded localhost:8000 in production
+export const API_BASE_URL = (() => {
+  const url = (import.meta.env.VITE_API_URL || '').trim();
+  
+  if (!url) {
+    // Fallback only for absolute safety - should be set via env var
+    const fallback = import.meta.env.PROD
+      ? 'https://web-production-ad6a36.up.railway.app'
+      : 'http://localhost:8000';
+    console.warn('[API] VITE_API_URL not set, using fallback:', fallback);
+    return fallback;
+  }
+  
+  // Ensure no localhost in production
+  if (import.meta.env.PROD && url.includes('localhost')) {
+    console.error('[API ERROR] Production code contains localhost URL:', url);
+    console.error('[API] Set VITE_API_URL environment variable to Railway backend URL');
+    throw new Error('Invalid API URL in production: localhost is not allowed');
+  }
+  
+  console.log('[API] Using API base URL:', url);
+  return url;
+})();
 
 const PUBLIC_PATHS = ['/auth/login', '/auth/register'];
 
