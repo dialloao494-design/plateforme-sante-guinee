@@ -42,14 +42,16 @@ def health():
 
 # CORS — applied before routers are included.
 origins = [
-    "https://plateforme-sante-guinee-6kbk8jvau-dialloa0494-designs-projects.vercel.app",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
 
+vercel_origin_regex = r"^https://.*\.vercel\.app$"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=vercel_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -399,6 +401,7 @@ async def startup_event():
     logger.info("Docs Path: /docs")
     logger.info("Health Path: /health")
     logger.info("CORS Origins: %s", ", ".join(origins))
+    logger.info("CORS Regex: %s", vercel_origin_regex)
 
 
 @app.on_event("shutdown")
