@@ -398,8 +398,7 @@ async def startup_event():
     logger.info("Bind Port (PORT): %s", port)
     logger.info("Docs Path: /docs")
     logger.info("Health Path: /health")
-    logger.info("CORS Origins: %s", ", ".join(allowed_origins))
-    logger.info("CORS Origin Regex: %s", allowed_origin_regex)
+    logger.info("CORS Origins: %s", ", ".join(origins))
 
 
 @app.on_event("shutdown")
