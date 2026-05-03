@@ -9,11 +9,13 @@ export const API_BASE_URL = (() => {
   
   if (!url) {
     // Fallback only for absolute safety - should be set via env var
-    const fallback = import.meta.env.PROD
-      ? 'https://web-production-ad6a36.up.railway.app'
-      : 'http://localhost:8000';
+    const fallback = 'https://web-production-ad6a36.up.railway.app';
     console.warn('[API] VITE_API_URL not set, using fallback:', fallback);
     return fallback;
+  }
+
+  if (url.startsWith('http://')) {
+    return url.replace('http://', 'https://');
   }
   
   // Ensure no localhost in production
