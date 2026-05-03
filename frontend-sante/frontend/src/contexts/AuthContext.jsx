@@ -15,6 +15,12 @@ export const AuthProvider = ({ children }) => {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const clearPasswordResetFlags = () => {
+    localStorage.removeItem('must_change_password');
+    localStorage.removeItem('password_reset_required');
+    localStorage.removeItem('force_password_change');
+  };
+
   const toUserFriendlyLoginMessage = (err) => {
     const status = err?.response?.status;
     const detail = String(err?.response?.data?.detail || err?.response?.data?.message || err?.message || '').toLowerCase();
@@ -51,6 +57,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    clearPasswordResetFlags();
+
     const storedToken = localStorage.getItem('token') || localStorage.getItem('access_token');
     if (!storedToken) {
       setAuthLoading(false);
@@ -83,6 +91,9 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const response = await authAPI.login(email, password);
+
+      // Ignore any legacy password-reset markers to avoid blocking access after login.
+      clearPasswordResetFlags();
       const { access_token, user_id, user_role, role, email: userEmail } = response;
       const resolvedRole = user_role || role;
       localStorage.setItem('token', access_token);
@@ -112,6 +123,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    clearPasswordResetFlags();
     localStorage.removeItem('token');
     localStorage.removeItem('access_token');
     localStorage.removeItem('user_role');
