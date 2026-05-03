@@ -7,26 +7,42 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitError, setSubmitError] = useState('');
-  const { login, loading, user } = useAuth();
+  const { login, loading, user, authLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
-      navigate('/dashboard');
+    if (!authLoading && user) {
+      navigate('/dashboard', { replace: true });
     }
-  }, [user, navigate]);
+  }, [authLoading, user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setSubmitError('');
 
-    const result = await login(email, password);
-    if (result.success) {
-      navigate('/dashboard');
-    } else {
-      setSubmitError(result.error || 'Échec de la connexion');
+    try {
+      const result = await login(email, password);
+      if (result.success) {
+        navigate('/dashboard', { replace: true });
+      } else {
+        setSubmitError(result.error || 'Une erreur est survenue, veuillez réessayer');
+      }
+    } catch {
+      setSubmitError('Une erreur est survenue, veuillez réessayer');
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="login-page">
+        <div className="login-card">
+          <h1>Connexion</h1>
+          <p>Connexion en cours...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-page">
@@ -40,6 +56,7 @@ const Login = () => {
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            disabled={loading}
             required
           />
 
@@ -50,13 +67,14 @@ const Login = () => {
             placeholder="Mot de passe"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
             required
           />
 
           {submitError && <p className="login-error">{submitError}</p>}
 
           <button type="submit" disabled={loading}>
-            {loading ? 'Connexion...' : 'Se connecter'}
+            {loading ? 'Connexion en cours...' : 'Se connecter'}
           </button>
         </form>
       </div>

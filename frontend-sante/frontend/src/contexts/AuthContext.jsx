@@ -15,6 +15,21 @@ export const AuthProvider = ({ children }) => {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const toUserFriendlyLoginMessage = (err) => {
+    const status = err?.response?.status;
+    const detail = String(err?.response?.data?.detail || err?.response?.data?.message || err?.message || '').toLowerCase();
+
+    if (status === 401 || status === 400) {
+      return 'Email ou mot de passe incorrect';
+    }
+
+    if (/failed to fetch|network|timeout|token|missing authentication/.test(detail)) {
+      return 'Une erreur est survenue, veuillez réessayer';
+    }
+
+    return 'Une erreur est survenue, veuillez réessayer';
+  };
+
   const normalizeAndStoreUser = (data) => {
     if (!data) {
       return null;
@@ -88,8 +103,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('Login failed:', err);
-      const message =
-        err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Impossible de se connecter';
+      const message = toUserFriendlyLoginMessage(err);
       setError(message);
       return { success: false, error: message };
     } finally {

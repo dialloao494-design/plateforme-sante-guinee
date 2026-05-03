@@ -33,6 +33,21 @@ const isPublicRequest = (url = '') => {
   return PUBLIC_PATHS.some((path) => String(url).includes(path));
 };
 
+const toUserFriendlyError = (error) => {
+  const status = error?.response?.status;
+  const detail = String(error?.response?.data?.detail || error?.message || '').toLowerCase();
+
+  if (status === 401 || status === 403) {
+    return 'Email ou mot de passe incorrect';
+  }
+
+  if (/failed to fetch|network|timeout|missing authentication|token/.test(detail)) {
+    return 'Une erreur est survenue, veuillez réessayer';
+  }
+
+  return 'Une erreur est survenue, veuillez réessayer';
+};
+
 const redirectToLogin = () => {
   if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
     window.location.assign('/login');
@@ -59,7 +74,7 @@ httpClient.interceptors.request.use(
     if (!isPublicRequest(config.url)) {
       console.error('[AUTH] Missing token for protected request:', config.url);
       redirectToLogin();
-      return Promise.reject(new Error('Missing authentication token'));
+      return Promise.reject(new Error('Une erreur est survenue, veuillez réessayer'));
     }
 
     return config;
@@ -75,6 +90,8 @@ httpClient.interceptors.response.use(
     const status = error?.response?.status || 'NO_STATUS';
     const detail = error?.response?.data?.detail || error?.message || 'Unknown API error';
     console.error(`[API] ${method} ${url} -> ${status}`, detail);
+
+    error.message = toUserFriendlyError(error);
 
     if (error?.response?.status === 401) {
       localStorage.removeItem('token');
