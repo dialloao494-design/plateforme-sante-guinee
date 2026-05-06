@@ -28,6 +28,28 @@ class StripeService:
     """Service for managing Stripe payment operations"""
 
     @staticmethod
+    def _get_frontend_url() -> str:
+        """Return the frontend base URL normalized for HTTPS Stripe redirects."""
+        frontend_url = (os.getenv("FRONTEND_URL") or "").strip().rstrip("/")
+
+        if not frontend_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="FRONTEND_URL environment variable is not configured"
+            )
+
+        if frontend_url.startswith("http://"):
+            frontend_url = frontend_url.replace("http://", "https://", 1)
+
+        if not frontend_url.startswith("https://"):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="FRONTEND_URL must use HTTPS"
+            )
+
+        return frontend_url
+
+    @staticmethod
     def _ensure_payment_schema(db: Session) -> None:
         """Best-effort schema patch for existing local DBs without migrations."""
         try:
@@ -230,6 +252,7 @@ class StripeService:
     ) -> Dict[str, Any]:
         """Create Stripe Checkout session and persist pending payment linkage."""
         StripeService.validate_stripe_config()
+        frontend_url = StripeService._get_frontend_url()
 
         # Default to 50.00 EUR when appointment has no price configured.
         unit_amount = int(appointment_price * 100) if appointment_price and appointment_price > 0 else 5000
@@ -252,8 +275,8 @@ class StripeService:
                 mode="payment",
                 customer_email=patient_email,
                 metadata={"appointment_id": str(appointment_id)},
-                success_url="http://localhost:5173/success?session_id={CHECKOUT_SESSION_ID}",
-                cancel_url="http://localhost:5173/cancel",
+                success_url=f"{frontend_url}/success?session_id={{CHECKOUT_SESSION_ID}}",
+                cancel_url=f"{frontend_url}/cancel",
             )
 
             appointment = db.query(models.RendezVous).filter(
