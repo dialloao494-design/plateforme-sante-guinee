@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 
 class DoctorBase(BaseModel):
@@ -26,9 +27,29 @@ class DoctorUpdate(BaseModel):
 
 
 class DoctorResponse(BaseModel):
+    """Public doctor response - safe for unauthenticated clients. Does NOT expose phone."""
     id: int
     name: str
     specialty: str
+    location: str
+    photo_url: Optional[str] = None
+    consultation_fee: float = 0.0
+
+    class Config:
+        orm_mode = True
+
+
+class DoctorDetailedResponse(BaseModel):
+    """Internal doctor response - includes sensitive data (phone). Admin/Doctor only."""
+    id: int
+    name: str
+    first_name: str
+    last_name: str
+    specialty: str
+    location: str
+    phone: str
+    photo_url: Optional[str] = None
+    consultation_fee: float = 0.0
 
     class Config:
         orm_mode = True

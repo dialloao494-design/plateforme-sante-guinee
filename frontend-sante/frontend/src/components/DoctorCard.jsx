@@ -27,15 +27,10 @@ const DoctorCard = ({ doctor, onBook }) => {
             <span className="label">Lieu:</span>
             <span className="value">{doctor.location}</span>
           </p>
-          
-          <p className="doctor-phone">
-            <span className="label">Téléphone:</span>
-            <span className="value">{doctor.phone}</span>
-          </p>
 
           {doctor.consultation_fee > 0 && (
             <p className="doctor-fee">
-              <span className="label">Consultation Fee:</span>
+              <span className="label">Consultation:</span>
               <span className="value">{doctor.consultation_fee} GNF</span>
             </p>
           )}

@@ -125,7 +125,10 @@ def update_appointment_status(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles(["admin", "doctor"])),
 ):
-    """Update appointment status (doctor/admin only)."""
+    """Update appointment status (doctor/admin only).
+    
+    SECURITY GATE: Cannot confirm appointment unless payment_status='paid'
+    """
     if not update.status:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Status is required")
 
@@ -138,6 +141,13 @@ def update_appointment_status(
         doctor = _get_doctor_for_user(db, current_user.id)
         if not doctor or appointment.doctor_id != doctor.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    # PAYMENT GATE: Block confirmation of unpaid appointments
+    if update.status == "confirmed" and appointment.payment_status != "paid":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot confirm appointment without payment. Patient must pay first."
+        )
 
     return RendezVousService.update_appointment_status(rdv_id=rdv_id, new_status=update.status, db=db)
 

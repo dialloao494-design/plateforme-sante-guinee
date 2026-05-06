@@ -6,9 +6,8 @@ import { useAppointmentContext } from '../contexts/AppointmentContext.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import AppointmentCard from '../components/AppointmentCard.jsx';
 import PaymentConfirmationModal from '../components/PaymentConfirmationModal.jsx';
-import { doctorsAPI } from '../services/api.js';
+import { doctorsAPI, paymentsAPI } from '../services/api.js';
 import { canPayAppointment, formatGNF, getPaymentLabel, getStatusMeta, isPendingAppointment } from '../utils/appointmentPresentation.js';
-import { loadSimulatedPayments, saveSimulatedPayments } from '../utils/simulatedPaymentsStorage.js';
 import './Appointments.css';
 
 const Appointments = () => {
@@ -34,7 +33,6 @@ const Appointments = () => {
   const [payingAppointmentId, setPayingAppointmentId] = useState(null);
   const [cancellingAppointmentId, setCancellingAppointmentId] = useState(null);
   const [paymentModalAppointment, setPaymentModalAppointment] = useState(null);
-  const [simulatedPayments, setSimulatedPayments] = useState({});
   const [searchParams] = useSearchParams();
 
   const getApiErrorMessage = (err, fallback) => {
@@ -98,14 +96,6 @@ const Appointments = () => {
       setFormData(prev => ({ ...prev, doctorId }));
     }
   }, [searchParams]);
-
-  useEffect(() => {
-    setSimulatedPayments(loadSimulatedPayments());
-  }, []);
-
-  useEffect(() => {
-    saveSimulatedPayments(simulatedPayments);
-  }, [simulatedPayments]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -247,15 +237,22 @@ const Appointments = () => {
     setPaymentAttemptStarted(true);
 
     try {
-      setSimulatedPayments((prev) => ({ ...prev, [appointment.id]: true }));
-      if (lastAppointment?.id === appointment.id) {
-        setLastAppointment((prev) => (prev ? { ...prev, payment_status: 'paid', status: 'paid' } : prev));
-      }
-      setSuccess('Paiement effectué avec succès');
-      toast.success('Paiement effectué avec succès');
+      // Call backend to mark appointment as paid
+      const response = await paymentsAPI.confirmPayment(appointment.id);
+      
+      // Refresh appointments to get updated status from server
+      await fetchAppointments();
+      
+      setSuccess('Paiement effectué avec succès. Le médecin confirmera le rendez-vous.');
+      toast.success('Paiement validé');
       setPaymentModalAppointment(null);
+      
+      // Update last appointment display with response from server
+      if (lastAppointment?.id === appointment.id && response?.data) {
+        setLastAppointment(response.data);
+      }
     } catch (err) {
-      const message = getApiErrorMessage(err, 'Paiement échoué.');
+      const message = getApiErrorMessage(err, 'Erreur lors de la confirmation du paiement.');
       setPaymentError(message);
       toast.error(message);
       setPaymentAttemptStarted(false);

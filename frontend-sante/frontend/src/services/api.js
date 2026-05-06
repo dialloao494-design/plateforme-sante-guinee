@@ -8,28 +8,23 @@ const api = {
   delete: (path) => httpClient.delete(path),
 };
 
-// Login uses form-encoded POST (OAuth2PasswordRequestForm — must NOT use axios here)
+// Login uses form-encoded POST (OAuth2PasswordRequestForm).
 export const login = async (email, password) => {
   const body = new URLSearchParams();
   body.append('username', email);
   body.append('password', password);
 
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-  });
-
-  const text = await response.text();
-  let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch { data = text ? { message: text } : null; }
-
-  if (!response.ok) {
-    const err = new Error(data?.detail || data?.message || 'Login failed');
-    err.response = { status: response.status, data };
-    throw err;
+  try {
+    const response = await httpClient.post('/auth/login', body, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+    return response?.data;
+  } catch (err) {
+    const detail = err?.response?.data?.detail || err?.response?.data?.message;
+    const loginError = new Error(detail || 'Login failed');
+    loginError.response = err?.response;
+    throw loginError;
   }
-  return data;
 };
 
 export const getAuthenticatedUser = async () => {
@@ -83,6 +78,7 @@ export const doctorDashboardAPI = {
 export const paymentsAPI = {
   createIntent: (appointmentId) => httpClient.post('/payments/create-intent', { appointment_id: appointmentId }),
   confirmCheckout: (sessionId) => httpClient.post('/payments/confirm-checkout', { session_id: sessionId }),
+  confirmPayment: (appointmentId) => httpClient.post(`/payments/${appointmentId}/confirm-payment`),
   getStatus: (appointmentId) => httpClient.get(`/payments/${appointmentId}/status`),
 };
 

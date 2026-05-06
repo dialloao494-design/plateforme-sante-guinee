@@ -130,7 +130,9 @@ const DoctorMessages = () => {
 
   const resolveAttachmentHref = (url) => {
     if (!url) return null;
-    if (/^https?:\/\//i.test(url)) return url;
+    if (/^https?:\/\//i.test(url)) {
+      return url.replace(/^http:\/\//i, 'https://');
+    }
     return `${API_BASE_URL}${url}`;
   };
 

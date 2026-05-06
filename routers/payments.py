@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import json
+from datetime import datetime
 
 from database import get_db
 import models
@@ -107,6 +108,49 @@ def confirm_checkout_payment(
         expected_patient_user_id=current_user.id,
     )
 
+    return appointment
+
+
+@router.post("/{rdv_id}/confirm-payment", response_model=rendezvous_schemas.RendezVousResponse)
+def confirm_payment_simple(
+    rdv_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_patient),
+):
+    """
+    Mark appointment as paid (simple payment confirmation endpoint).
+    
+    Security:
+    - Patient can only mark their own appointment as paid
+    - Sets payment_status to 'paid'
+    - Optional: status unaffected (doctor confirms separately)
+    
+    This is used by frontend to finalize payment after backend validates it.
+    """
+    patient = _get_or_create_patient_profile(db, current_user.id)
+    
+    appointment = db.query(models.RendezVous).filter(
+        models.RendezVous.id == rdv_id
+    ).first()
+    
+    if not appointment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Appointment not found"
+        )
+    
+    if appointment.patient_id != patient.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: This is not your appointment"
+        )
+    
+    # Mark as paid
+    appointment.payment_status = "paid"
+    appointment.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(appointment)
+    
     return appointment
 
 
