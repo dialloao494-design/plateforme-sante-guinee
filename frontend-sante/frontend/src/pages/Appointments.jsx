@@ -8,6 +8,7 @@ import AppointmentCard from '../components/AppointmentCard.jsx';
 import PaymentConfirmationModal from '../components/PaymentConfirmationModal.jsx';
 import { doctorsAPI, paymentsAPI } from '../services/api.js';
 import { canPayAppointment, formatGNF, getPaymentLabel, getStatusMeta, isPendingAppointment } from '../utils/appointmentPresentation.js';
+import { loadSimulatedPayments } from '../utils/simulatedPaymentsStorage.js';
 import './Appointments.css';
 
 const Appointments = () => {
@@ -34,6 +35,7 @@ const Appointments = () => {
   const [cancellingAppointmentId, setCancellingAppointmentId] = useState(null);
   const [paymentModalAppointment, setPaymentModalAppointment] = useState(null);
   const [searchParams] = useSearchParams();
+  const [simulatedPayments, setSimulatedPayments] = useState(() => loadSimulatedPayments());
 
   const getApiErrorMessage = (err, fallback) => {
     if (!err?.response && /network|failed to fetch/i.test(String(err?.message || ''))) {
