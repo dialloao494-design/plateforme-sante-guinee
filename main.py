@@ -41,11 +41,15 @@ def health():
     return {"status": "ok"}
 
 # CORS — applied before routers are included.
+# Development origins use http:// (local only), production must be HTTPS.
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://localhost:5173",
+    "https://127.0.0.1:5173",
 ]
 
+# Matches any Vercel preview/production deployment over HTTPS only.
 vercel_origin_regex = r"^https://.*\.vercel\.app$"
 
 app.add_middleware(
@@ -56,6 +60,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Trust Railway's HTTPS proxy so that request.url.scheme is 'https'
+# when Railway terminates TLS and forwards requests to the app over HTTP internally.
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 uploads_dir = Path("uploads")
 uploads_dir.mkdir(parents=True, exist_ok=True)
