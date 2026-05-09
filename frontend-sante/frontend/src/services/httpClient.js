@@ -48,6 +48,14 @@ const httpClient = axios.create({
 
 httpClient.interceptors.request.use(
   (config) => {
+    if (typeof config.baseURL === 'string' && config.baseURL.startsWith('http://')) {
+      config.baseURL = config.baseURL.replace('http://', 'https://');
+    }
+
+    if (typeof config.url === 'string' && /^http:\/\//i.test(config.url)) {
+      config.url = config.url.replace(/^http:\/\//i, 'https://');
+    }
+
     const token = localStorage.getItem('token') || localStorage.getItem('access_token');
     config.headers = config.headers || {};
 
