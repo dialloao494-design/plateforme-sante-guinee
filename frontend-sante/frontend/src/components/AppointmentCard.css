@@ -1,21 +1,21 @@
 .appointment-card {
   background: #ffffff;
-  padding: 22px;
-  border-radius: 12px;
+  padding: 18px;
+  border-radius: 14px;
   border: 1px solid rgba(148, 163, 184, 0.2);
   margin-bottom: 0;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 20px;
+  gap: 16px;
   flex-wrap: wrap;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .appointment-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 12px 20px rgba(15, 23, 42, 0.1);
 }
 
 .appointment-card-info {
@@ -24,19 +24,43 @@
 }
 
 .appointment-card-info p {
-  margin: 8px 0;
+  margin: 6px 0;
   color: #475569;
-  line-height: 1.55;
+  line-height: 1.45;
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
 .appointment-card-title {
-  margin: 0 0 12px;
-  font-size: 1.1rem;
+  margin: 0;
+  font-size: 1.02rem;
   color: #0f172a;
   font-weight: 700;
+}
+
+.consultation-type-row {
+  margin: 8px 0 10px;
+}
+
+.consultation-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.consultation-type-tele {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.consultation-type-physical {
+  background: #ecfeff;
+  color: #0f766e;
 }
 
 .appointment-card-label {
@@ -55,18 +79,52 @@
 
 .appointment-card-actions {
   display: flex;
-  gap: 12px;
-  flex-direction: column;
-  min-width: 220px;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
 }
 
 .appointment-card-actions .button-pay,
 .appointment-card-actions .delete-btn,
 .appointment-card-actions .button-secondary {
-  min-height: 42px;
-  border-radius: 10px;
-  font-weight: 700;
+  min-height: 34px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.84rem;
+  padding: 7px 12px;
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.appointment-card-actions .button-pay,
+.appointment-card-actions .button-secondary {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.appointment-card-actions .button-pay:hover:not(:disabled),
+.appointment-card-actions .button-secondary:hover:not(:disabled) {
+  background: #cbd5e1;
+}
+
+.appointment-card-actions .delete-btn {
+  background: #fee2e2;
+  color: #b42318;
+  box-shadow: none;
+}
+
+.appointment-card-actions .delete-btn:hover:not(:disabled) {
+  background: #fecaca;
+  box-shadow: none;
+}
+
+.join-consultation-btn {
+  background: #0ea5e9 !important;
+  color: #ffffff !important;
+}
+
+.join-consultation-btn:hover:not(:disabled) {
+  background: #0284c7 !important;
 }
 
 .appointment-card-actions .button-pay:hover:not(:disabled),
@@ -76,9 +134,9 @@
 }
 
 .payment-helper-text {
-  margin-top: -4px;
+  margin-top: 0;
   color: #64748b;
-  font-size: 0.82rem;
+  font-size: 0.75rem;
 }
 
 .status-badge {
@@ -105,12 +163,6 @@
   color: #b42318;
 }
 
-@media (min-width: 640px) {
-  .appointment-card-actions {
-    flex-direction: row;
-  }
-}
-
 @media (max-width: 640px) {
   .appointment-card {
     flex-direction: column;
@@ -120,7 +172,8 @@
 
   .appointment-card-actions {
     width: 100%;
-    min-width: 0;
+    justify-content: stretch;
+    align-items: stretch;
   }
 
   .appointment-card-actions .button-pay,

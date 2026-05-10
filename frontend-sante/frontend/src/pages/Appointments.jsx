@@ -315,8 +315,8 @@ const Appointments = () => {
             </div>
             <div>
               <p className="detail-label">Statut</p>
-              <span className={getStatusMeta(displayedLastAppointment.status).className}>
-                {getStatusMeta(displayedLastAppointment.status).label}
+              <span className={getStatusMeta(displayedLastAppointment).className}>
+                {getStatusMeta(displayedLastAppointment).label}
               </span>
             </div>
           </div>

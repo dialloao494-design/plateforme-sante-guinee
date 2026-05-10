@@ -97,7 +97,7 @@ const PatientDetails = () => {
             {appointments.length === 0 && <p>Aucun rendez-vous pour ce patient.</p>}
             <ul className="history-list">
               {appointments.map((appointment) => {
-                const statusMeta = getStatusMeta(appointment.status);
+                const statusMeta = getStatusMeta(appointment);
                 return (
                   <li key={appointment.id}>
                     <p>

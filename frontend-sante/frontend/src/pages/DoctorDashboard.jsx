@@ -139,7 +139,7 @@ const DoctorDashboard = () => {
                 {upcomingAppointments.length === 0 && <p>Aucun rendez-vous à venir.</p>}
                 <ul className="compact-appointments">
                   {upcomingAppointments.map((appointment) => {
-                    const statusMeta = getStatusMeta(appointment.status);
+                    const statusMeta = getStatusMeta(appointment);
                     const isToday = new Date(appointment.date).toDateString() === new Date().toDateString();
                     return (
                       <li key={appointment.id} className={isToday ? 'urgent' : ''}>

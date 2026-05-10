@@ -127,7 +127,7 @@ const DoctorAppointments = () => {
 
       <ul className="doctor-appointments-list">
         {filteredAppointments.map((appointment) => {
-          const statusMeta = getStatusMeta(appointment.status);
+          const statusMeta = getStatusMeta(appointment);
           const isPending = isPendingAppointment(appointment);
           const busy = actionBusyId === appointment.id;
           return (

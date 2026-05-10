@@ -1,6 +1,7 @@
 import {
   canPayAppointment,
   formatGNF,
+  getConsultationTypeLabel,
   getPaymentLabel,
   getStatusMeta,
   isPendingAppointment,
@@ -20,7 +21,7 @@ const AppointmentCard = ({
   isPaying,
   isCancelling,
 }) => {
-  const statusMeta = getStatusMeta(appointment?.status);
+  const statusMeta = getStatusMeta(appointment);
   const isPending = isPendingAppointment(appointment);
   const showPay = isPending && (canPay ?? canPayAppointment(appointment));
   const showCancel = isPending && Boolean(canCancel);
@@ -33,6 +34,17 @@ const AppointmentCard = ({
     <li className="appointment-card">
       <div className="appointment-card-info">
         <p className="appointment-card-title">{title}</p>
+        <div className="consultation-type-row">
+          <span
+            className={`consultation-type-badge ${
+              appointment?.consultation_type === 'teleconsultation'
+                ? 'consultation-type-tele'
+                : 'consultation-type-physical'
+            }`}
+          >
+            {getConsultationTypeLabel(appointment?.consultation_type)}
+          </span>
+        </div>
         <p>
           <span className="appointment-card-label">Date</span>
           <span className="appointment-card-value">{new Date(appointment.date).toLocaleString('fr-FR')}</span>
@@ -76,7 +88,7 @@ const AppointmentCard = ({
             </button>
           )}
           {showJoinConsultation && (
-            <button type="button" onClick={() => onJoinConsultation?.(appointment)} className="button-secondary">
+            <button type="button" onClick={() => onJoinConsultation?.(appointment)} className="button-secondary join-consultation-btn">
               Rejoindre la consultation
             </button>
           )}

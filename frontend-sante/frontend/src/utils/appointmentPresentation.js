@@ -6,17 +6,53 @@ export const STATUS_META = {
   cancelled: { label: 'Annulé', className: 'status-badge status-cancelled' },
 };
 
-export const getStatusMeta = (statusValue) => {
-  const normalized = String(statusValue || '').toLowerCase().replace('é', 'e');
-  return STATUS_META[normalized] || STATUS_META.pending;
+const normalizeStatus = (statusValue) => String(statusValue || '').toLowerCase().replace('é', 'e');
+
+const resolveDisplayStatus = (appointmentOrStatus, paymentStatus) => {
+  if (appointmentOrStatus && typeof appointmentOrStatus === 'object') {
+    const normalizedStatus = normalizeStatus(appointmentOrStatus.status);
+    const normalizedPaymentStatus = String(appointmentOrStatus.payment_status || '').toLowerCase();
+
+    if (normalizedStatus === 'cancelled') {
+      return 'cancelled';
+    }
+
+    if (normalizedPaymentStatus === 'paid') {
+      return 'confirmed';
+    }
+
+    return normalizedStatus;
+  }
+
+  const normalizedStatus = normalizeStatus(appointmentOrStatus);
+  const normalizedPaymentStatus = String(paymentStatus || '').toLowerCase();
+
+  if (normalizedStatus === 'cancelled') {
+    return 'cancelled';
+  }
+
+  if (normalizedPaymentStatus === 'paid') {
+    return 'confirmed';
+  }
+
+  return normalizedStatus;
+};
+
+export const getStatusMeta = (appointmentOrStatus, paymentStatus) => {
+  const displayStatus = resolveDisplayStatus(appointmentOrStatus, paymentStatus);
+  return STATUS_META[displayStatus] || STATUS_META.pending;
 };
 
 export const getPaymentLabel = (paymentStatus) => {
   const normalized = String(paymentStatus || '').toLowerCase();
   if (normalized === 'paid') return 'Payé';
   if (normalized === 'pending') return 'En attente';
-  if (normalized === 'unpaid') return 'Payer';
+  if (normalized === 'unpaid') return 'Non payé';
   return 'En attente';
+};
+
+export const getConsultationTypeLabel = (consultationType) => {
+  return consultationType === 'teleconsultation' ? 'Téléconsultation' : 'Consultation physique';
 };
 
 export const formatGNF = (amount) => {
@@ -31,8 +67,7 @@ export const getBackendAppointmentId = (appointment) => {
 };
 
 export const isPendingAppointment = (appointment) => {
-  const normalizedStatus = String(appointment?.status || '').toLowerCase().replace('é', 'e');
-  return normalizedStatus === 'pending';
+  return resolveDisplayStatus(appointment) === 'pending';
 };
 
 export const canPayAppointment = (appointment) => {
