@@ -14,6 +14,8 @@ class RendezVous(Base):
     payment_status = Column(String, default="unpaid", nullable=False, index=True)  # unpaid, paid
     price = Column(Float, default=0.0, nullable=False)  # Appointment price in GNF or local currency
     payment_intent_id = Column(String, nullable=True, index=True)  # Stripe payment intent ID
+    consultation_type = Column(String, default="physical", nullable=False, index=True)  # physical, teleconsultation
+    meeting_link = Column(String, nullable=True)
     
     # Audit fields
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)

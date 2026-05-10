@@ -1,12 +1,16 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 
 
 class RendezVousBase(BaseModel):
     date: datetime = Field(..., description="Appointment start time (UTC)")
     doctor_id: int = Field(..., description="Doctor ID")
     duration_minutes: int = Field(default=30, ge=15, description="Appointment duration in minutes (minimum 15)")
+    consultation_type: Literal["physical", "teleconsultation"] = Field(
+        default="physical",
+        description="Type of consultation"
+    )
 
 
 class RendezVousCreate(RendezVousBase):
@@ -32,6 +36,8 @@ class RendezVousResponse(BaseModel):
     is_paid: bool = Field(..., description="True when payment is confirmed")
     price: float = Field(..., description="Appointment price")
     payment_intent_id: Optional[str] = Field(None, description="Stripe payment intent ID")
+    consultation_type: str = Field(..., description="Consultation type (physical or teleconsultation)")
+    meeting_link: Optional[str] = Field(None, description="Jitsi meeting link for teleconsultations")
     patient_id: int
     doctor_id: int
     created_at: datetime = Field(..., description="When appointment was created")

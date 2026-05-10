@@ -13,6 +13,7 @@ const AppointmentCard = ({
   onPay,
   onCancel,
   onOpenMessages,
+  onJoinConsultation,
   canPay,
   canCancel,
   canMessage,
@@ -24,7 +25,9 @@ const AppointmentCard = ({
   const showPay = isPending && (canPay ?? canPayAppointment(appointment));
   const showCancel = isPending && Boolean(canCancel);
   const showMessage = isPending && Boolean(canMessage);
-  const hasActions = showPay || showCancel || showMessage;
+  const showJoinConsultation =
+    appointment?.consultation_type === 'teleconsultation' && Boolean(appointment?.meeting_link);
+  const hasActions = showPay || showCancel || showMessage || showJoinConsultation;
 
   return (
     <li className="appointment-card">
@@ -70,6 +73,11 @@ const AppointmentCard = ({
           {showMessage && (
             <button type="button" onClick={() => onOpenMessages(appointment)} className="button-secondary">
               Messages
+            </button>
+          )}
+          {showJoinConsultation && (
+            <button type="button" onClick={() => onJoinConsultation?.(appointment)} className="button-secondary">
+              Rejoindre la consultation
             </button>
           )}
         </div>

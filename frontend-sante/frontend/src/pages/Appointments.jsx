@@ -21,7 +21,7 @@ const Appointments = () => {
   const [doctors, setDoctors] = useState([]);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
   const [doctorsError, setDoctorsError] = useState('');
-  const [formData, setFormData] = useState({ doctorId: '', date: '', duration: 30 });
+  const [formData, setFormData] = useState({ doctorId: '', date: '', duration: 30, consultationType: 'physical' });
   const [selectedDoctorFilter, setSelectedDoctorFilter] = useState('');
   const [success, setSuccess] = useState('');
   const [actionError, setActionError] = useState('');
@@ -117,6 +117,7 @@ const Appointments = () => {
         doctor_id: Number(formData.doctorId),
         date: formData.date,
         duration_minutes: Number(formData.duration),
+        consultation_type: formData.consultationType,
       };
       const appointment = await addAppointment(payload);
       await fetchAppointments();
@@ -124,7 +125,7 @@ const Appointments = () => {
       setShowConfirmation(true);
       setSuccess('Rendez-vous créé avec succès');
       toast.success('Rendez-vous créé avec succès');
-      setFormData({ doctorId: '', date: '', duration: 30 });
+      setFormData({ doctorId: '', date: '', duration: 30, consultationType: 'physical' });
     } catch (err) {
       const message = getApiErrorMessage(err, 'Impossible de créer le rendez-vous.');
       setActionError(message);
@@ -392,6 +393,18 @@ const Appointments = () => {
           </select>
         </div>
 
+        <div className="form-group">
+          <label>Type de consultation</label>
+          <select
+            value={formData.consultationType}
+            onChange={(e) => setFormData((prev) => ({ ...prev, consultationType: e.target.value }))}
+            required
+          >
+            <option value="physical">Consultation physique</option>
+            <option value="teleconsultation">Téléconsultation</option>
+          </select>
+        </div>
+
         <button type="submit" disabled={isCreatingAppointment || loadingDoctors}>
           {isCreatingAppointment ? 'Création en cours...' : 'Valider le rendez-vous'}
         </button>
@@ -432,6 +445,11 @@ const Appointments = () => {
                   onPay={openPaymentModal}
                   onCancel={(item) => handleDelete(item.id)}
                   onOpenMessages={(item) => navigate(`/messages/${item.id}`)}
+                  onJoinConsultation={(item) => {
+                    if (item?.meeting_link) {
+                      window.open(item.meeting_link, '_blank', 'noopener,noreferrer');
+                    }
+                  }}
                   canPay={canPayAppointment(appointment)}
                   canCancel={canCancel(appointment)}
                   canMessage={Boolean(appointment?.id) && (isPatient || isDoctor)}

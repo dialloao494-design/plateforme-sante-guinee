@@ -150,6 +150,14 @@ const DoctorDashboard = () => {
                         <div className="row-actions">
                           <span className={statusMeta.className}>{statusMeta.label}</span>
                           <button className="button-secondary" onClick={() => navigate(`/messages/${appointment.id}`)}>Messages</button>
+                          {appointment?.consultation_type === 'teleconsultation' && appointment?.meeting_link && (
+                            <button
+                              className="button-secondary"
+                              onClick={() => window.open(appointment.meeting_link, '_blank', 'noopener,noreferrer')}
+                            >
+                              Rejoindre la consultation
+                            </button>
+                          )}
                         </div>
                       </li>
                     );

@@ -58,11 +58,11 @@ export const AppointmentProvider = ({ children }) => {
     fetchAppointments();
   }, []);
 
-  const addAppointment = async ({ doctor_id, date, duration_minutes }) => {
+  const addAppointment = async ({ doctor_id, date, duration_minutes, consultation_type }) => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await appointmentsAPI.create({ doctor_id, date, duration_minutes });
+      const { data } = await appointmentsAPI.create({ doctor_id, date, duration_minutes, consultation_type });
       const normalized = normalizeAppointment(data);
       setAppointments((prev) => [normalized, ...prev]);
       return normalized;

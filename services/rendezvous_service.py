@@ -11,6 +11,7 @@ Handles all business logic for appointment management:
 from datetime import datetime, timedelta, time
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
+from sqlalchemy import inspect, text
 from fastapi import HTTPException, status
 import os
 
@@ -30,6 +31,30 @@ class RendezVousService:
 
     # Minimum duration in minutes
     MIN_DURATION_MINUTES = 15
+
+    @staticmethod
+    def ensure_schema(db: Session) -> None:
+        """Best-effort schema patch for existing DBs without migrations."""
+        try:
+            inspector = inspect(db.bind)
+            if "rendezvous" not in inspector.get_table_names():
+                return
+
+            columns = {col["name"] for col in inspector.get_columns("rendezvous")}
+            statements = []
+
+            if "consultation_type" not in columns:
+                statements.append("ALTER TABLE rendezvous ADD COLUMN consultation_type VARCHAR DEFAULT 'physical'")
+            if "meeting_link" not in columns:
+                statements.append("ALTER TABLE rendezvous ADD COLUMN meeting_link VARCHAR")
+
+            for stmt in statements:
+                db.execute(text(stmt))
+
+            if statements:
+                db.commit()
+        except Exception:
+            db.rollback()
     
     # Valid status transitions
     VALID_TRANSITIONS = {
@@ -139,6 +164,8 @@ class RendezVousService:
     @staticmethod
     def list_appointments_for_user(current_user, db: Session):
         """Return appointments scoped according to user role."""
+        RendezVousService.ensure_schema(db)
+
         if current_user.role == "patient":
             patient = db.query(models.Patient).filter(
                 models.Patient.user_id == current_user.id
@@ -314,6 +341,7 @@ class RendezVousService:
         4. Commit to database
         5. Refresh and return
         """
+        RendezVousService.ensure_schema(db)
         validation_result = RendezVousService.validate_appointment(rdv, patient, doctor, db)
 
         # Final guard before insert to reduce edge-case double booking on near-simultaneous requests.
@@ -341,9 +369,15 @@ class RendezVousService:
             status="pending",
             payment_status="unpaid",
             price=doctor.consultation_fee,
+            consultation_type=rdv.consultation_type,
         )
 
         db.add(new_rdv)
+        db.flush()
+
+        if rdv.consultation_type == "teleconsultation":
+            new_rdv.meeting_link = f"https://meet.jit.si/consultation-{new_rdv.id}"
+
         db.commit()
         db.refresh(new_rdv)
 
@@ -388,6 +422,7 @@ class RendezVousService:
         - confirmed -> cancelled
         - cancelled -> (no further transitions)
         """
+        RendezVousService.ensure_schema(db)
         rdv = db.query(models.RendezVous).filter(models.RendezVous.id == rdv_id).first()
         
         if not rdv:
@@ -444,6 +479,7 @@ class RendezVousService:
         
         Returns: Updated appointment
         """
+        RendezVousService.ensure_schema(db)
         rdv = db.query(models.RendezVous).filter(models.RendezVous.id == rdv_id).first()
         
         if not rdv:
@@ -488,6 +524,7 @@ class RendezVousService:
 
         Returns: Updated appointment
         """
+        RendezVousService.ensure_schema(db)
         rdv = db.query(models.RendezVous).filter(models.RendezVous.id == rdv_id).first()
 
         if not rdv:
@@ -539,6 +576,8 @@ class RendezVousService:
             HTTPException if appointment not found or payment creation fails
         """
         from services.stripe_service import StripeService
+
+        RendezVousService.ensure_schema(db)
         
         appointment = db.query(models.RendezVous).filter(
             models.RendezVous.id == appointment_id

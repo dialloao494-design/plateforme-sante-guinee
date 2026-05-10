@@ -52,6 +52,7 @@ def list_appointments(
     - Doctors: only their own appointments
     - Admins: all appointments
     """
+    RendezVousService.ensure_schema(db)
     return RendezVousService.list_appointments_for_user(current_user, db)
 
 
@@ -61,6 +62,7 @@ def list_my_appointments(
     current_user=Depends(get_current_user),
 ):
     """Return appointments for the currently authenticated user."""
+    RendezVousService.ensure_schema(db)
     return RendezVousService.list_appointments_for_user(current_user, db)
 
 
@@ -75,6 +77,8 @@ def create_appointment(
     """
     logger.info("Received POST /appointments/ request")
     logger.debug("Appointment payload: %s", rdv)
+
+    RendezVousService.ensure_schema(db)
 
     patient = db.query(models.Patient).filter(
         models.Patient.user_id == current_user.id
@@ -115,6 +119,7 @@ def get_appointment(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    RendezVousService.ensure_schema(db)
     appointment = db.query(models.RendezVous).filter(models.RendezVous.id == appointment_id).first()
     if not appointment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
@@ -133,6 +138,7 @@ def update_appointment(
     if not update.status:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Status is required")
 
+    RendezVousService.ensure_schema(db)
     appointment = db.query(models.RendezVous).filter(models.RendezVous.id == appointment_id).first()
     if not appointment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
@@ -159,6 +165,7 @@ def delete_appointment(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    RendezVousService.ensure_schema(db)
     appointment = db.query(models.RendezVous).filter(models.RendezVous.id == appointment_id).first()
     if not appointment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
@@ -177,6 +184,7 @@ def cancel_appointment(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    RendezVousService.ensure_schema(db)
     appointment = db.query(models.RendezVous).filter(models.RendezVous.id == appointment_id).first()
     if not appointment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
