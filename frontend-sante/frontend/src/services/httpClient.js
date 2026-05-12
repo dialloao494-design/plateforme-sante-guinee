@@ -102,27 +102,33 @@ httpClient.interceptors.request.use(
 );
 
 httpClient.interceptors.response.use(
-  (response) => {
-    const url = response.config?.url || 'unknown';
-    const status = response.status;
-    if (
-      import.meta.env.DEV &&
-      (url.includes('/auth/') || url.includes('/patients/') || url.includes('/appointments'))
-    ) {
-      console.log(`[HTTP ${status}] ${url}`);
-    }
-    return response;
-  },
-  (error) => {
-    const url = error?.config?.url || 'unknown';
-    const status = error?.response?.status || 'no-response';
+  (response) => response,
+  async (error) => {
+    const config = error?.config;
+    const url = config?.url || 'unknown';
+    const statusCode = error?.response?.status;
     const message = error?.response?.data?.detail || error?.message || 'unknown';
 
-    if (
-      import.meta.env.DEV &&
-      (url.includes('/auth/') || url.includes('/patients/') || url.includes('/appointments'))
-    ) {
-      console.error(`[HTTP ${status}] ${url}:`, message);
+    const method = String(config?.method || 'get').toLowerCase();
+    const retryableGet =
+      Boolean(config) &&
+      method === 'get' &&
+      statusCode !== 401 &&
+      (!error.response || statusCode === 408 || statusCode === 429 || (statusCode >= 500 && statusCode < 600));
+
+    if (retryableGet) {
+      const attempt = Number(config.__retryAttempt || 0);
+      if (attempt < 2) {
+        config.__retryAttempt = attempt + 1;
+        await new Promise((resolve) => {
+          window.setTimeout(resolve, 350 * config.__retryAttempt);
+        });
+        return httpClient(config);
+      }
+    }
+
+    if (import.meta.env.DEV && statusCode >= 400) {
+      console.error(`[HTTP ${statusCode}] ${url}:`, message);
     }
 
     if (error?.response?.status === 401) {

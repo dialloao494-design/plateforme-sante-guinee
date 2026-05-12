@@ -14,6 +14,8 @@ import PaymentCancel from "../pages/PaymentCancel";
 import Messages from "../pages/Messages";
 import Patients from "../pages/Patients";
 import Users from "../pages/Users";
+import TeleconsultationHub from "../pages/TeleconsultationHub.jsx";
+import ConsultationRoom from "../pages/ConsultationRoom.jsx";
 import ProtectedRoute from "./ProtectedRoute";
 
 const AppRoutes = () => {
@@ -115,6 +117,22 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={["doctor", "admin"]}>
             <Patients />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/teleconsultation"
+        element={
+          <ProtectedRoute allowedRoles={["patient", "doctor", "admin"]}>
+            <TeleconsultationHub />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/consultation/:appointmentId"
+        element={
+          <ProtectedRoute allowedRoles={["patient", "doctor", "admin"]}>
+            <ConsultationRoom />
           </ProtectedRoute>
         }
       />

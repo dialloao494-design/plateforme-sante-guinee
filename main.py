@@ -41,6 +41,16 @@ origins = [
     "https://plateforme-sante-guinee-jcny86kfo-dialloa0494-designs-projects.vercel.app",
 ]
 
+for part in (os.getenv("CORS_ORIGINS", "") or "").split(","):
+    part = part.strip()
+    if part and part not in origins:
+        origins.append(part)
+
+for env_key in ("FRONTEND_URL", "FRONTEND_PRODUCTION_URL"):
+    fe = (os.getenv(env_key) or "").strip()
+    if fe and fe not in origins:
+        origins.append(fe)
+
 # Matches any Vercel preview/production deployment over HTTPS only.
 vercel_origin_regex = r"^https://.*\.vercel\.app$"
 

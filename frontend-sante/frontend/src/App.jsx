@@ -45,7 +45,7 @@ function App() {
         <header className="app-header">
           <div className="app-title">Espace connecté</div>
           <p className="app-subtitle">
-            Rendez-vous, messagerie sécurisée et suivi des consultations.
+            Agenda, téléconsultation, messagerie sécurisée et dossiers patients — expérience clinique unifiée.
           </p>
         </header>
         <section className="app-view">

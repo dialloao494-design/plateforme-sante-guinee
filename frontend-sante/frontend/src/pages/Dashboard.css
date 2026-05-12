@@ -42,9 +42,15 @@
   transition: background 0.2s ease, transform 0.2s ease;
 }
 
-.action-button:hover {
-  background-color: #1d4ed8;
-  transform: translateY(-1px);
+.action-button--ghost {
+  background: transparent;
+  color: var(--color-primary, #0d9488);
+  border: 2px solid rgba(13, 148, 136, 0.35);
+}
+
+.action-button--ghost:hover {
+  background: var(--color-primary-soft, rgba(13, 148, 136, 0.12));
+  color: var(--color-primary-hover, #0f766e);
 }
 
 .dashboard-preview {

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppointmentContext } from '../contexts/AppointmentContext.jsx';
@@ -8,9 +9,21 @@ import './Dashboard.css';
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { appointments } = useAppointmentContext();
+  const { appointments, updateAppointment } = useAppointmentContext();
+  const [confirmingId, setConfirmingId] = useState(null);
   const role = user?.role;
   const previewAppointments = appointments.slice(0, 2);
+  const viewerRole = role === 'doctor' || role === 'admin' ? role : 'patient';
+
+  const handleConfirmAppointment = async (item) => {
+    if (!item?.id) return;
+    setConfirmingId(item.id);
+    try {
+      await updateAppointment(item.id, 'confirmed');
+    } finally {
+      setConfirmingId(null);
+    }
+  };
 
   const getPreviewTitle = (appointment) => {
     if (role === 'doctor' || role === 'admin') {
@@ -33,6 +46,9 @@ const Dashboard = () => {
         {role === 'patient' && (
           <>
             <Link to="/appointments" className="action-button">Mes rendez-vous</Link>
+            <Link to="/teleconsultation" className="action-button action-button--ghost">
+              Téléconsultation
+            </Link>
             <button type="button" className="action-button" onClick={() => navigate('/doctors')}>
               Trouver un médecin
             </button>
@@ -42,6 +58,9 @@ const Dashboard = () => {
           <>
             <Link to="/doctors" className="action-button">Mon profil</Link>
             <Link to="/doctor/dashboard" className="action-button">Mon agenda</Link>
+            <Link to="/teleconsultation" className="action-button action-button--ghost">
+              Téléconsultation
+            </Link>
           </>
         )}
         {role === 'admin' && (
@@ -66,18 +85,20 @@ const Dashboard = () => {
           <ul className="dashboard-preview-list">
             {previewAppointments.map((appointment) => {
               const presentation = getAppointmentState(appointment);
-              const actions = getAppointmentActions(appointment);
+              const actions = getAppointmentActions(appointment, { viewerRole });
               return (
                 <AppointmentCard
                   key={appointment.id}
                   appointment={appointment}
                   title={getPreviewTitle(appointment)}
                   onPay={() => {}}
+                  onConfirm={handleConfirmAppointment}
                   onCancel={() => {}}
-                  onOpenMessages={() => {}}
+                  onOpenMessages={(item) => navigate(`/messages/${item.id}`)}
+                  onJoinConsultation={(item) => navigate(`/consultation/${item.id}`)}
                   presentation={presentation}
                   actions={actions}
-                  isPaying={false}
+                  isPaying={confirmingId === appointment.id}
                   isCancelling={false}
                 />
               );

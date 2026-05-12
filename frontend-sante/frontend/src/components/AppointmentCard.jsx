@@ -11,6 +11,7 @@ const AppointmentCard = ({
   appointment,
   title,
   onPay,
+  onConfirm,
   onCancel,
   onOpenMessages,
   onJoinConsultation,
@@ -61,6 +62,7 @@ const AppointmentCard = ({
         actions={resolvedActions}
         appointment={appointment}
         onPay={onPay}
+        onConfirm={onConfirm}
         onCancel={onCancel}
         onOpenMessages={onOpenMessages}
         onJoinConsultation={onJoinConsultation}

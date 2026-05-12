@@ -8,6 +8,7 @@ import {
   getAppointmentActions,
 } from '../utils/appointmentPresentation.js';
 import './DoctorAppointments.css';
+import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 
 const DoctorAppointments = () => {
   const navigate = useNavigate();
@@ -132,7 +133,7 @@ const DoctorAppointments = () => {
         </label>
       </div>
 
-      {loading && <p>Chargement...</p>}
+      {loading && <PageSkeleton lines={5} />}
       {error && <p className="error">{error}</p>}
 
       {!loading && filteredAppointments.length === 0 && (
@@ -142,7 +143,7 @@ const DoctorAppointments = () => {
       <ul className="doctor-appointments-list">
         {filteredAppointments.map((appointment) => {
           const presentation = getAppointmentState(appointment);
-          const actions = getAppointmentActions(appointment);
+          const actions = getAppointmentActions(appointment, { viewerRole: 'doctor' });
           const busy = actionBusyId === appointment.id;
           return (
             <li key={appointment.id} className={`doctor-appointment-card ${isToday(appointment.date) ? 'urgent' : ''}`}>
@@ -162,10 +163,11 @@ const DoctorAppointments = () => {
               <AppointmentActions
                 actions={actions}
                 appointment={appointment}
-                onPay={() => handleConfirm(appointment.id)}
+                onConfirm={(item) => handleConfirm(item.id)}
+                onPay={() => {}}
                 onCancel={() => handleCancel(appointment.id)}
                 onOpenMessages={() => navigate(`/messages/${appointment.id}`)}
-                onJoinConsultation={() => window.open(appointment.meeting_link, '_blank', 'noopener,noreferrer')}
+                onJoinConsultation={(item) => navigate(`/consultation/${item.id}`)}
                 isPaying={busy}
                 isCancelling={busy}
               />

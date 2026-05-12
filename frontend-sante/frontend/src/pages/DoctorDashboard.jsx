@@ -9,6 +9,7 @@ import {
   isPendingAppointment,
 } from '../utils/appointmentPresentation.js';
 import './DoctorDashboard.css';
+import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 
 const DoctorDashboard = () => {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ const DoctorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [recentMessages, setRecentMessages] = useState([]);
+  const [confirmingId, setConfirmingId] = useState(null);
 
   const getApiErrorMessage = (err, fallback) => {
     if (!err?.response && /network|failed to fetch/i.test(String(err?.message || ''))) {
@@ -71,6 +73,19 @@ const DoctorDashboard = () => {
     }
   };
 
+  const handleConfirmAppointment = async (item) => {
+    if (!item?.id) return;
+    setConfirmingId(item.id);
+    try {
+      await appointmentsAPI.updateStatus(item.id, 'confirmed');
+      await loadAppointments();
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Impossible de confirmer le rendez-vous.'));
+    } finally {
+      setConfirmingId(null);
+    }
+  };
+
   useEffect(() => {
     loadAppointments();
   }, []);
@@ -115,7 +130,7 @@ const DoctorDashboard = () => {
         <h1>Tableau de bord médecin</h1>
         <p>Bienvenue Dr {user?.email || ''}. Suivez vos consultations et vos échanges patients.</p>
 
-        {loading && <p>Chargement...</p>}
+        {loading && <PageSkeleton lines={4} />}
         {error && <p className="error">{error}</p>}
 
         {!loading && !error && (
@@ -139,13 +154,16 @@ const DoctorDashboard = () => {
               <section className="doctor-section-card">
                 <div className="section-head">
                   <h2>Prochains rendez-vous</h2>
-                  <Link to="/doctor/appointments" className="button-secondary">Voir tout</Link>
+                  <div className="section-head-links">
+                    <Link to="/teleconsultation" className="button-secondary">Téléconsultation</Link>
+                    <Link to="/doctor/appointments" className="button-secondary">Voir tout</Link>
+                  </div>
                 </div>
                 {upcomingAppointments.length === 0 && <p>Aucun rendez-vous à venir.</p>}
                 <ul className="compact-appointments">
                   {upcomingAppointments.map((appointment) => {
                     const presentation = getAppointmentState(appointment);
-                    const actions = getAppointmentActions(appointment);
+                    const actions = getAppointmentActions(appointment, { viewerRole: 'doctor' });
                     const isToday = new Date(appointment.date).toDateString() === new Date().toDateString();
                     return (
                       <li key={appointment.id} className={isToday ? 'urgent' : ''}>
@@ -159,9 +177,12 @@ const DoctorDashboard = () => {
                             actions={actions}
                             appointment={appointment}
                             onPay={() => {}}
+                            onConfirm={handleConfirmAppointment}
                             onCancel={() => {}}
                             onOpenMessages={() => navigate(`/messages/${appointment.id}`)}
-                            onJoinConsultation={() => window.open(appointment.meeting_link, '_blank', 'noopener,noreferrer')}
+                            onJoinConsultation={(item) => navigate(`/consultation/${item.id}`)}
+                            isPaying={confirmingId === appointment.id}
+                            isCancelling={false}
                           />
                         </div>
                       </li>

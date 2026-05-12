@@ -3,19 +3,109 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import './Sidebar.css';
 
 const navItems = [
-  { path: '/dashboard', label: 'Tableau de bord', icon: '📊', roles: ['patient', 'doctor', 'admin'] },
-  { path: '/appointments', label: 'Mes rendez-vous', icon: '📅', roles: ['patient', 'admin'] },
-  { path: '/doctors', label: 'Médecins', icon: '🩺', roles: ['patient', 'doctor', 'admin'] },
-  { path: '/doctor/dashboard', label: 'Agenda clinique', icon: '🗂️', roles: ['doctor', 'admin'] },
-  { path: '/doctor/appointments', label: 'File d’attente', icon: '📋', roles: ['doctor', 'admin'] },
-  { path: '/doctor/messages', label: 'Messagerie', icon: '💬', roles: ['doctor', 'admin'] },
-  { path: '/patients', label: 'Patients', icon: '👥', roles: ['doctor', 'admin'] },
-  { path: '/users', label: 'Utilisateurs', icon: '🛡️', roles: ['admin'] },
+  { path: '/dashboard', label: 'Tableau de bord', icon: 'dash', roles: ['patient', 'doctor', 'admin'] },
+  { path: '/teleconsultation', label: 'Téléconsultation', icon: 'video', roles: ['patient', 'doctor', 'admin'] },
+  { path: '/appointments', label: 'Mes rendez-vous', icon: 'calendar', roles: ['patient', 'admin'] },
+  { path: '/doctors', label: 'Médecins', labelDoctor: 'Annuaire', icon: 'steth', roles: ['patient', 'doctor', 'admin'] },
+  { path: '/doctor/dashboard', label: 'Agenda clinique', icon: 'board', roles: ['doctor', 'admin'] },
+  { path: '/doctor/appointments', label: 'File d’attente', icon: 'queue', roles: ['doctor', 'admin'] },
+  { path: '/doctor/messages', label: 'Messagerie', icon: 'chat', roles: ['doctor', 'admin'] },
+  { path: '/patients', label: 'Patients', icon: 'people', roles: ['doctor', 'admin'] },
+  { path: '/users', label: 'Utilisateurs', icon: 'shield', roles: ['admin'] },
 ];
+
+function NavIcon({ name }) {
+  const common = { className: 'sidebar-svg', viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': true };
+  switch (name) {
+    case 'video':
+      return (
+        <svg {...common}>
+          <path
+            d="M15 10l5-3v10l-5-3v-4zM4 8h9a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4a2 2 0 012-2z"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    case 'calendar':
+      return (
+        <svg {...common}>
+          <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.75" />
+          <path d="M8 3v4M16 3v4M3 11h18" stroke="currentColor" strokeWidth="1.75" />
+        </svg>
+      );
+    case 'steth':
+      return (
+        <svg {...common}>
+          <path
+            d="M8 4v5a4 4 0 008 0V4M12 9v11M9 20h6"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
+    case 'board':
+      return (
+        <svg {...common}>
+          <rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" strokeWidth="1.75" />
+          <path d="M8 9h8M8 13h5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+        </svg>
+      );
+    case 'queue':
+      return (
+        <svg {...common}>
+          <path d="M8 6h12M8 12h12M8 18h8" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+          <circle cx="5" cy="6" r="1.5" fill="currentColor" />
+          <circle cx="5" cy="12" r="1.5" fill="currentColor" />
+          <circle cx="5" cy="18" r="1.5" fill="currentColor" />
+        </svg>
+      );
+    case 'chat':
+      return (
+        <svg {...common}>
+          <path
+            d="M4 6a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H9l-4 3v-3H6a2 2 0 01-2-2V6z"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    case 'people':
+      return (
+        <svg {...common}>
+          <circle cx="9" cy="8" r="3" stroke="currentColor" strokeWidth="1.75" />
+          <path d="M4 20v-1a4 4 0 014-4h2a4 4 0 014 4v1" stroke="currentColor" strokeWidth="1.75" />
+          <circle cx="17" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.75" />
+          <path d="M14 20v-1a3 3 0 013-3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+        </svg>
+      );
+    case 'shield':
+      return (
+        <svg {...common}>
+          <path d="M12 3l8 4v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V7l8-4z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...common}>
+          <rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.75" />
+          <rect x="13" y="4" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.75" />
+          <rect x="4" y="13" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.75" />
+          <rect x="13" y="13" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.75" />
+        </svg>
+      );
+  }
+}
 
 function pathIsActive(pathname, itemPath) {
   if (itemPath === '/dashboard') {
     return pathname === '/dashboard';
+  }
+  if (itemPath === '/teleconsultation') {
+    return pathname === '/teleconsultation' || pathname.startsWith('/consultation/');
   }
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
 }
@@ -44,6 +134,13 @@ const Sidebar = ({ isOpen, onClose }) => {
     }
   };
 
+  const linkLabel = (item) => {
+    if (item.path === '/doctors' && (role === 'doctor' || role === 'admin')) {
+      return item.labelDoctor || item.label;
+    }
+    return item.label;
+  };
+
   return (
     <>
       <button
@@ -58,7 +155,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           <span className="sidebar-brand-mark" aria-hidden />
           <div>
             <div className="sidebar-brand-title">Plateforme Santé</div>
-            <div className="sidebar-brand-sub">Guinée · Prototype clinique</div>
+            <div className="sidebar-brand-sub">Guinée · Clinique numérique</div>
           </div>
         </div>
 
@@ -79,10 +176,10 @@ const Sidebar = ({ isOpen, onClose }) => {
                   className={`sidebar-link ${pathIsActive(location.pathname, item.path) ? 'active' : ''}`}
                   onClick={closeIfMobile}
                 >
-                  <span className="icon" aria-hidden>
-                    {item.icon}
+                  <span className="sidebar-icon-wrap" aria-hidden>
+                    <NavIcon name={item.icon} />
                   </span>
-                  <span className="label">{item.label}</span>
+                  <span className="label">{linkLabel(item)}</span>
                 </Link>
               </li>
             ))}

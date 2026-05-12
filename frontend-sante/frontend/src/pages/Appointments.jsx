@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -14,6 +14,7 @@ import {
   getAppointmentActions,
 } from '../utils/appointmentPresentation.js';
 import { loadSimulatedPayments } from '../utils/simulatedPaymentsStorage.js';
+import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import './Appointments.css';
 
 const Appointments = () => {
@@ -26,6 +27,7 @@ const Appointments = () => {
   const [doctorsError, setDoctorsError] = useState('');
   const [formData, setFormData] = useState({ doctorId: '', date: '', duration: 30, consultationType: 'physical' });
   const [selectedDoctorFilter, setSelectedDoctorFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [success, setSuccess] = useState('');
   const [actionError, setActionError] = useState('');
   const [lastAppointment, setLastAppointment] = useState(null);
@@ -168,27 +170,64 @@ const Appointments = () => {
     name: doctor.name,
   }));
 
+  const getDoctorName = useCallback(
+    (appointmentOrId) => {
+      if (typeof appointmentOrId === 'object' && appointmentOrId !== null) {
+        const appointmentDoctor = appointmentOrId.doctor;
+        if (appointmentDoctor?.name) {
+          return appointmentDoctor.name;
+        }
+        const composed = `${appointmentDoctor?.first_name || ''} ${appointmentDoctor?.last_name || ''}`.trim();
+        if (composed) {
+          return `Dr ${composed}`;
+        }
+      }
+
+      const id =
+        typeof appointmentOrId === 'object' && appointmentOrId !== null
+          ? appointmentOrId.doctor_id
+          : appointmentOrId;
+
+      const doctor = doctors.find((doc) => doc.id === Number(id));
+      if (!doctor) {
+        return `Dr #${id}`;
+      }
+      return doctor.name;
+    },
+    [doctors]
+  );
+
   const filteredAppointments = useMemo(() => {
-    return selectedDoctorFilter
-      ? appointments.filter((appointment) => String(appointment.doctor_id) === selectedDoctorFilter)
-      : appointments;
-  }, [appointments, selectedDoctorFilter]);
+    const q = searchQuery.trim().toLowerCase();
+    return appointments.filter((appointment) => {
+      if (selectedDoctorFilter && String(appointment.doctor_id) !== selectedDoctorFilter) {
+        return false;
+      }
+      if (!q) return true;
+      const doctorLabel = getDoctorName(appointment).toLowerCase();
+      const dateStr = new Date(appointment.date).toLocaleString('fr-FR').toLowerCase();
+      return doctorLabel.includes(q) || dateStr.includes(q) || String(appointment.id).includes(q);
+    });
+  }, [appointments, selectedDoctorFilter, searchQuery, getDoctorName]);
 
-  const withSimulatedPayment = (appointment) => {
-    if (!appointment || !simulatedPayments[appointment.id]) {
-      return appointment;
-    }
+  const withSimulatedPayment = useCallback(
+    (appointment) => {
+      if (!appointment || !simulatedPayments[appointment.id]) {
+        return appointment;
+      }
 
-    return {
-      ...appointment,
-      payment_status: 'paid',
-      status: 'confirmed',
-    };
-  };
+      return {
+        ...appointment,
+        payment_status: 'paid',
+        status: 'confirmed',
+      };
+    },
+    [simulatedPayments]
+  );
 
   const displayedAppointments = useMemo(
     () => filteredAppointments.map(withSimulatedPayment),
-    [filteredAppointments, simulatedPayments]
+    [filteredAppointments, withSimulatedPayment]
   );
 
   const resolveForUser = (appointment) => getAppointmentState(appointment);
@@ -196,29 +235,6 @@ const Appointments = () => {
   const displayedLastAppointment = lastAppointment ? withSimulatedPayment(lastAppointment) : null;
   const displayedLastPresentation = displayedLastAppointment ? resolveForUser(displayedLastAppointment) : null;
   const displayedLastActions = displayedLastAppointment ? getAppointmentActions(displayedLastAppointment) : [];
-
-  const getDoctorName = (appointmentOrId) => {
-    if (typeof appointmentOrId === 'object' && appointmentOrId !== null) {
-      const appointmentDoctor = appointmentOrId.doctor;
-      if (appointmentDoctor?.name) {
-        return appointmentDoctor.name;
-      }
-      const composed = `${appointmentDoctor?.first_name || ''} ${appointmentDoctor?.last_name || ''}`.trim();
-      if (composed) {
-        return `Dr ${composed}`;
-      }
-    }
-
-    const id = typeof appointmentOrId === 'object' && appointmentOrId !== null
-      ? appointmentOrId.doctor_id
-      : appointmentOrId;
-
-    const doctor = doctors.find((doc) => doc.id === Number(id));
-    if (!doctor) {
-      return `Dr #${id}`;
-    }
-    return doctor.name;
-  };
 
   const openPaymentModal = (appointment = lastAppointment) => {
     setPaymentError('');
@@ -322,7 +338,7 @@ const Appointments = () => {
             onPay={openPaymentModal}
             onCancel={handleDelete}
             onOpenMessages={(item) => navigate(`/messages/${item.id}`)}
-            onJoinConsultation={(item) => window.open(item.meeting_link, '_blank', 'noopener,noreferrer')}
+            onJoinConsultation={(item) => navigate(`/consultation/${item.id}`)}
             isPaying={isPaying || paymentAttemptStarted || payingAppointmentId === displayedLastAppointment.id}
             isCancelling={false}
           />
@@ -404,20 +420,39 @@ const Appointments = () => {
         <div className="appointments-panel">
           <div className="appointments-panel-header">
             <h2>Liste des rendez-vous</h2>
-            <div className="appointments-filter">
-              <label>Filtrer par médecin :</label>
-              <select value={selectedDoctorFilter} onChange={(e) => setSelectedDoctorFilter(e.target.value)}>
-                <option value="">Tous les médecins</option>
-                {doctorOptions.map((doctor) => (
-                  <option key={doctor.id} value={doctor.id}>
-                    {doctor.name}
-                  </option>
-                ))}
-              </select>
+            <div className="appointments-filters-row">
+              <div className="appointments-search">
+                <label htmlFor="appt-search" className="visually-hidden">
+                  Rechercher
+                </label>
+                <input
+                  id="appt-search"
+                  type="search"
+                  placeholder="Rechercher (médecin, date, n°)…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="appointments-filter">
+                <label htmlFor="appt-doctor-filter">Médecin</label>
+                <select
+                  id="appt-doctor-filter"
+                  value={selectedDoctorFilter}
+                  onChange={(e) => setSelectedDoctorFilter(e.target.value)}
+                >
+                  <option value="">Tous</option>
+                  {doctorOptions.map((doctor) => (
+                    <option key={doctor.id} value={doctor.id}>
+                      {doctor.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
-          {loading && <p>Chargement...</p>}
+          {loading && <PageSkeleton lines={6} />}
 
           {!loading && appointments.length === 0 && <p>Aucun rendez-vous trouvé.</p>}
 
@@ -434,7 +469,7 @@ const Appointments = () => {
                     onPay={openPaymentModal}
                     onCancel={(item) => handleDelete(item.id)}
                     onOpenMessages={(item) => navigate(`/messages/${item.id}`)}
-                    onJoinConsultation={(item) => window.open(item.meeting_link, '_blank', 'noopener,noreferrer')}
+                    onJoinConsultation={(item) => navigate(`/consultation/${item.id}`)}
                     presentation={presentation}
                     actions={actions}
                     isPaying={isPaying && payingAppointmentId === appointment.id}

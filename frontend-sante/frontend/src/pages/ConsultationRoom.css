@@ -1,0 +1,276 @@
+.consult-room {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.consult-room-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.consult-room-eyebrow {
+  margin: 0 0 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-primary, #0d9488);
+}
+
+.consult-room-title {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text, #0f172a);
+}
+
+.consult-room-meta {
+  margin: 0.35rem 0 0;
+  color: var(--color-text-muted, #64748b);
+  font-size: 0.92rem;
+}
+
+.consult-room-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.consult-room-link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.consult-room-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md, 10px);
+  margin-bottom: 1rem;
+  font-size: 0.92rem;
+}
+
+.consult-room-banner--error {
+  background: var(--color-danger-soft, #fef2f2);
+  color: #991b1b;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+.consult-room-retry {
+  margin-left: auto;
+}
+
+.consult-room-loading {
+  min-height: 200px;
+}
+
+.consult-prejoin-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 1.25rem;
+}
+
+@media (max-width: 768px) {
+  .consult-prejoin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.consult-device-card {
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-lg, 14px);
+  padding: 1rem;
+  box-shadow: var(--shadow-md, 0 4px 14px rgba(15, 23, 42, 0.08));
+}
+
+.consult-device-preview {
+  aspect-ratio: 16 / 10;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #0f172a, #1e293b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.consult-device-preview.off {
+  background: #334155;
+  color: #cbd5e1;
+}
+
+.consult-device-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.consult-toggle {
+  flex: 1;
+  min-width: 120px;
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: #f8fafc;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.consult-toggle.is-on {
+  border-color: rgba(13, 148, 136, 0.45);
+  background: var(--color-primary-soft, rgba(13, 148, 136, 0.12));
+  color: var(--color-primary-hover, #0f766e);
+}
+
+.consult-prejoin-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.consult-provider-pill {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--color-text-muted, #64748b);
+}
+
+.consult-prejoin-copy {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--color-text-muted, #64748b);
+}
+
+.consult-external,
+.consult-join-main {
+  width: 100%;
+  max-width: 320px;
+}
+
+.consult-join-main {
+  margin-top: 0.25rem;
+}
+
+.consult-live {
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-lg, 14px);
+  overflow: hidden;
+  box-shadow: var(--shadow-md, 0 4px 14px rgba(15, 23, 42, 0.08));
+}
+
+.consult-live-grid {
+  display: grid;
+  grid-template-columns: 1fr minmax(120px, 200px);
+  gap: 0;
+  min-height: 280px;
+}
+
+@media (max-width: 640px) {
+  .consult-live-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.consult-video-main {
+  background: #0b1220;
+  color: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.consult-video-main small {
+  opacity: 0.75;
+  font-size: 0.8rem;
+}
+
+.consult-video-pip {
+  background: #1e293b;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-left: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+@media (max-width: 640px) {
+  .consult-video-pip {
+    border-left: none;
+    border-top: 1px solid rgba(148, 163, 184, 0.25);
+    min-height: 120px;
+  }
+}
+
+.consult-live-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+  border-top: 1px solid var(--color-border, #e2e8f0);
+}
+
+.consult-toolbar-btn {
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: #fff;
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.consult-toolbar-btn--danger {
+  border-color: rgba(220, 38, 38, 0.35);
+  color: #b91c1c;
+  margin-left: auto;
+}
+
+.consult-ended {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  background: var(--color-surface, #fff);
+  border-radius: var(--radius-lg, 14px);
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.consult-ended h2 {
+  margin: 0 0 0.5rem;
+}
+
+.consult-ended p {
+  color: var(--color-text-muted, #64748b);
+  margin: 0 0 1.25rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

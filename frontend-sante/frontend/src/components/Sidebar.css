@@ -164,9 +164,32 @@
 
 .icon {
   margin-right: 0.65rem;
-  font-size: 1.1rem;
+  flex-shrink: 0;
   width: 1.5rem;
-  text-align: center;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-icon-wrap {
+  margin-right: 0.65rem;
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted, #64748b);
+}
+
+.sidebar-link.active .sidebar-icon-wrap {
+  color: var(--color-primary-hover, #0f766e);
+}
+
+.sidebar-svg {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .label {

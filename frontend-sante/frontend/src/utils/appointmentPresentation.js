@@ -92,16 +92,16 @@ const resolveAppointmentState = (appointment = {}) => {
   const paymentStatus = normalizePaymentStatus(rawPaymentStatus);
   const displayStatusKey = resolveDisplayStatus(status, paymentStatus);
   const isJoinEligibleStatus = status === 'confirmed' || status === 'completed';
+  const isTeleconsultation = appointment?.consultation_type === 'teleconsultation';
 
   const finalState = status === 'cancelled' ? 'cancelled' : isJoinEligibleStatus ? 'confirmed' : 'pending';
 
   const resolved = {
     canPay: status === 'pending' && paymentStatus !== 'paid',
     canCancel: status === 'pending' && paymentStatus !== 'paid',
-    canJoin:
-      isJoinEligibleStatus &&
-      appointment?.consultation_type === 'teleconsultation' &&
-      Boolean(appointment?.meeting_link),
+    /* In-app room is available for confirmed teleconsultations; external link is optional */
+    canJoin: isJoinEligibleStatus && isTeleconsultation,
+    hasExternalMeetingLink: Boolean(appointment?.meeting_link),
     canMessage: finalState !== 'cancelled',
     displayStatus: STATUS_LABELS[displayStatusKey],
     paymentLabel:
@@ -159,15 +159,37 @@ export const getStatusMeta = (appointment) => {
   return { label: resolved.displayStatus, className: resolved.statusColor };
 };
 
-export const getAppointmentActions = (appointment) => {
+export const getAppointmentActions = (appointment, options = {}) => {
   const resolved = resolveAppointmentState(appointment);
+  const viewerRole = String(options.viewerRole || 'patient').toLowerCase();
+  const isDoctorLike = viewerRole === 'doctor' || viewerRole === 'admin';
+  const paymentStatus = normalizePaymentStatus(appointment?.payment_status);
 
   if (normalizeStatus(appointment?.status) === 'cancelled') {
     return [];
   }
 
   if (resolved.canJoin) {
-    return [{ key: 'join', kind: 'join', label: 'Rejoindre la consultation' }];
+    const actions = [
+      {
+        key: 'join',
+        kind: 'join',
+        label: resolved.hasExternalMeetingLink ? 'Rejoindre la consultation' : 'Ouvrir la salle de téléconsultation',
+      },
+    ];
+    if (isDoctorLike) {
+      actions.push({ key: 'message', kind: 'message', label: 'Messages' });
+    }
+    return actions;
+  }
+
+  if (isDoctorLike && resolved.state === 'pending') {
+    const actions = [];
+    if (paymentStatus === 'paid') {
+      actions.push({ key: 'confirm', kind: 'confirm', label: 'Confirmer le rendez-vous' });
+    }
+    actions.push({ key: 'message', kind: 'message', label: 'Messages' });
+    return actions;
   }
 
   if (!resolved.canPay && resolved.state === 'pending') {
