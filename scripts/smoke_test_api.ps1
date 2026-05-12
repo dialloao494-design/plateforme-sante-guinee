@@ -1,6 +1,11 @@
-# Smoke-test critical API routes against http://127.0.0.1:8000 (requires backend running).
+# Smoke-test critical API routes (requires backend running).
+# Usage: .\scripts\smoke_test_api.ps1
+#        .\scripts\smoke_test_api.ps1 -BaseUrl "http://127.0.0.1:8080"
+param(
+  [string]$BaseUrl = "http://127.0.0.1:8000"
+)
 $ErrorActionPreference = "Stop"
-$Base = "http://127.0.0.1:8000"
+$Base = $BaseUrl.TrimEnd('/')
 
 function Invoke-Json {
   param([string]$Method, [string]$Path, $Body = $null, [hashtable]$Headers = @{})

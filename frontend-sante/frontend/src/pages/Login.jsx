@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import './Login.css';
 
@@ -35,10 +35,14 @@ const Login = () => {
 
   if (authLoading) {
     return (
-      <div className="login-page">
-        <div className="login-card">
-          <h1>Connexion</h1>
-          <p>Connexion en cours...</p>
+      <div className="login-page" role="status" aria-live="polite">
+        <div className="login-card login-card--narrow">
+          <p className="login-eyebrow">Plateforme Santé · Guinée</p>
+          <h1 className="login-title">Connexion</h1>
+          <div className="login-loading">
+            <span className="app-spinner" aria-hidden />
+            <span>Vérification de la session…</span>
+          </div>
         </div>
       </div>
     );
@@ -46,37 +50,52 @@ const Login = () => {
 
   return (
     <div className="login-page">
-      <div className="login-card">
-        <h1>Connexion</h1>
+      <div className="login-card login-card--narrow">
+        <p className="login-eyebrow">Plateforme Santé · Guinée</p>
+        <h1 className="login-title">Connexion</h1>
+        <p className="login-lead">Accédez à votre espace patient ou professionnel de santé.</p>
         <form onSubmit={handleSubmit} className="login-form">
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={loading}
-            required
-          />
+          <div className="login-field">
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              placeholder="vous@exemple.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+              required
+              autoComplete="email"
+            />
+          </div>
 
-          <label htmlFor="password">Mot de passe</label>
-          <input
-            id="password"
-            type="password"
-            placeholder="Mot de passe"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={loading}
-            required
-          />
+          <div className="login-field">
+            <label htmlFor="password">Mot de passe</label>
+            <input
+              id="password"
+              type="password"
+              placeholder="Mot de passe"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+              required
+              autoComplete="current-password"
+            />
+          </div>
 
-          {submitError && <p className="login-error">{submitError}</p>}
+          {submitError && (
+            <p className="login-error" role="alert">
+              {submitError}
+            </p>
+          )}
 
-          <button type="submit" disabled={loading}>
-            {loading ? 'Connexion en cours...' : 'Se connecter'}
+          <button type="submit" className="btn btn-primary login-submit" disabled={loading}>
+            {loading ? 'Connexion en cours…' : 'Se connecter'}
           </button>
         </form>
+        <p className="login-footer-text">
+          Pas encore de compte ? <Link to="/signup">Créer un compte</Link>
+        </p>
       </div>
     </div>
   );

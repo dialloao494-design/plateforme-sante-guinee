@@ -1,4 +1,8 @@
 # Start FastAPI locally (Windows). Uses Python 3.12 if found in default install location.
+# If port 8000 fails (WinError 10013 / permission), try: .\scripts\run_local_backend.ps1 -Port 8080
+param(
+  [int]$Port = 8000
+)
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
@@ -15,5 +19,6 @@ if (-not $Py) {
 }
 
 Write-Host "Using: $Py"
+Write-Host "API: http://127.0.0.1:$Port"
 & $Py -m pip install -q -r requirements.txt
-& $Py -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+& $Py -m uvicorn main:app --reload --host 127.0.0.1 --port $Port
