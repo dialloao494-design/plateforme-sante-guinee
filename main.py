@@ -3,13 +3,13 @@ load_dotenv()
 
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from database import SessionLocal
 import models
 from routers import patient, rendezvous, doctor, auth, payments, teleconsultation, notifications, messages
-from routers import users, appointments
+from routers import users, appointments, doctor_dashboard
 from security import hash_password, verify_password
 import os
 import logging
@@ -30,15 +30,6 @@ docs_url="/docs",
 redoc_url="/redoc",
 openapi_url="/openapi.json",
 )
-
-@app.get("/")
-def root():
-    return {"message": "API is running"}
-
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
 
 # CORS — applied before routers are included.
 # Development origins use http:// (local only), production must be HTTPS.
@@ -82,12 +73,11 @@ def _env_flag(name: str, default: bool = False) -> bool:
 
 
 def seed_demo_doctors():
+    """Idempotently ensure demo doctor users + profiles exist (SQLite email compare is case-sensitive)."""
+    from sqlalchemy import func
+
     db = SessionLocal()
     try:
-        doctor_count = db.query(models.Doctor).count()
-        if doctor_count > 0:
-            return
-
         demo_doctors = [
             {
                 "email": "dr.amu@example.com",
@@ -125,35 +115,57 @@ def seed_demo_doctors():
         ]
 
         for doc_data in demo_doctors:
-            user = db.query(models.User).filter(models.User.email == doc_data["email"]).first()
+            email = doc_data["email"].lower().strip()
+            plain = doc_data["password"]
+
+            user = db.query(models.User).filter(func.lower(models.User.email) == email).first()
             if not user:
                 user = models.User(
-                    email=doc_data["email"],
-                    hashed_password=hash_password(doc_data["password"]),
+                    email=email,
+                    hashed_password=hash_password(plain),
                     role="doctor",
                 )
                 db.add(user)
                 db.commit()
                 db.refresh(user)
+                logger.info("Created demo doctor user: %s", email)
+            else:
+                changed = False
+                if (user.email or "").lower() != email:
+                    user.email = email
+                    changed = True
+                try:
+                    password_ok = verify_password(plain, user.hashed_password)
+                except Exception:
+                    password_ok = False
+                if not password_ok:
+                    user.hashed_password = hash_password(plain)
+                    changed = True
+                    logger.info("Reset demo doctor password for: %s", email)
+                if user.role != "doctor":
+                    user.role = "doctor"
+                    changed = True
+                if changed:
+                    db.commit()
+                    db.refresh(user)
 
             existing_doctor = db.query(models.Doctor).filter(models.Doctor.user_id == user.id).first()
-            if existing_doctor:
-                continue
+            if not existing_doctor:
+                doctor = models.Doctor(
+                    user_id=user.id,
+                    first_name=doc_data["first_name"],
+                    last_name=doc_data["last_name"],
+                    specialty=doc_data["specialty"],
+                    city=doc_data["location"],
+                    phone=doc_data["phone"],
+                    photo_url=doc_data["photo_url"],
+                    consultation_fee=doc_data["consultation_fee"],
+                )
+                db.add(doctor)
+                db.commit()
+                logger.info("Created demo doctor profile for: %s", email)
 
-            doctor = models.Doctor(
-                user_id=user.id,
-                first_name=doc_data["first_name"],
-                last_name=doc_data["last_name"],
-                specialty=doc_data["specialty"],
-                city=doc_data["location"],
-                phone=doc_data["phone"],
-                photo_url=doc_data["photo_url"],
-                consultation_fee=doc_data["consultation_fee"],
-            )
-            db.add(doctor)
-
-        db.commit()
-        logger.info("Demo doctors seeded successfully.")
+        logger.info("Demo doctors verified successfully.")
     except Exception as exc:
         db.rollback()
         logger.error(f"Failed to seed demo doctors: {exc}")
@@ -316,6 +328,7 @@ app.include_router(payments.router)
 app.include_router(teleconsultation.router)
 app.include_router(notifications.router)
 app.include_router(messages.router)
+app.include_router(doctor_dashboard.router)
 
 
 # ==========================================
@@ -386,17 +399,28 @@ async def startup_event():
     except Exception as exc:
         logger.error("Failed to create tables: %s", exc)
 
-    # Always ensure the production test user exists
-    try:
-        _ensure_production_test_user()
-    except Exception as exc:
-        logger.error("Failed to ensure production test user: %s", exc)
+    # Optional weak test user — disabled by default (set ENABLE_STARTUP_TEST_USER=true to enable)
+    if _env_flag("ENABLE_STARTUP_TEST_USER", default=False):
+        try:
+            _ensure_production_test_user()
+        except Exception as exc:
+            logger.error("Failed to ensure production test user: %s", exc)
+    else:
+        logger.info("Startup test user seed skipped (ENABLE_STARTUP_TEST_USER not set).")
 
     # Always seed demo doctors so the list is never empty
     try:
         seed_demo_doctors()
     except Exception as exc:
         logger.error("Failed to seed demo doctors: %s", exc)
+
+    if _env_flag("ENABLE_DEMO_CLINIC_SEED", default=False):
+        try:
+            from services.demo_clinic_seed import seed_demo_clinic_data
+
+            seed_demo_clinic_data()
+        except Exception as exc:
+            logger.error("Failed to seed demo clinic dataset: %s", exc)
 
     if _env_flag("ENABLE_STARTUP_SEED", default=False):
         seed_test_patient()
@@ -427,13 +451,19 @@ async def shutdown_event():
 # ==========================================
 
 from fastapi import Request
+from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    """Handle unexpected errors"""
-    logger.error(f"Unhandled error: {str(exc)}", exc_info=True)
+    """Handle unexpected errors without swallowing HTTP or validation errors."""
+    if isinstance(exc, HTTPException):
+        return await http_exception_handler(request, exc)
+    if isinstance(exc, RequestValidationError):
+        return await request_validation_exception_handler(request, exc)
+    logger.error("Unhandled error: %s", str(exc), exc_info=True)
     return JSONResponse(
         status_code=500,
         content={

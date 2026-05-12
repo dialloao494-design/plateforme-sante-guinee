@@ -32,6 +32,9 @@ def _get_doctor_for_user(db: Session, user_id: int):
 
 
 def _assert_can_access_appointment(db: Session, appointment: models.RendezVous, current_user) -> None:
+    if current_user.role == "admin":
+        return
+
     if current_user.role == "patient":
         patient = _get_patient_for_user(db, current_user.id)
         if not patient or appointment.patient_id != patient.id:
