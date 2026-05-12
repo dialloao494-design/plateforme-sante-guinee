@@ -118,14 +118,21 @@ def confirm_payment_simple(
     current_user=Depends(get_current_patient),
 ):
     """
-    Mark appointment as paid (simple payment confirmation endpoint).
+    Mark appointment as paid AND CONFIRMED (simple payment confirmation endpoint).
     
     Security:
     - Patient can only mark their own appointment as paid
+    - Cannot confirm payment for cancelled appointments
+    - Cannot confirm payment for already confirmed appointments
     - Sets payment_status to 'paid'
-    - Optional: status unaffected (doctor confirms separately)
+    - Sets status to 'confirmed' (CRITICAL: Must update both fields)
     
     This is used by frontend to finalize payment after backend validates it.
+    
+    Backend Truth Rules:
+    - After successful payment, appointment MUST be confirmed
+    - Status transitions: pending -> paid -> confirmed
+    - Both fields must be updated atomically
     """
     patient = _get_or_create_patient_profile(db, current_user.id)
     
@@ -145,8 +152,24 @@ def confirm_payment_simple(
             detail="Access denied: This is not your appointment"
         )
     
-    # Mark as paid
+    # Business rule: Cannot pay for cancelled appointments
+    if appointment.status == "cancelled":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot confirm payment for cancelled appointment"
+        )
+    
+    # Business rule: Cannot pay for already confirmed appointments
+    if appointment.status == "confirmed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Appointment already confirmed"
+        )
+    
+    # CRITICAL FIX: Update BOTH payment_status AND status
+    # This ensures backend truth: confirmed appointment = paid + confirmed status
     appointment.payment_status = "paid"
+    appointment.status = "confirmed"
     appointment.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(appointment)

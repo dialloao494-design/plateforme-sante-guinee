@@ -97,7 +97,8 @@ class RendezVousService:
             )
 
         # 2. Prevent booking in the past
-        if rdv.date < datetime.utcnow():
+        # Note: Using datetime.now() because frontend sends local datetime-local input, not UTC
+        if rdv.date < datetime.now():
             validation_errors.append("Cannot book appointments in the past")
 
         # 3. Verify doctor exists (should already be done but double-check)

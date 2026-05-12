@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
 from database import get_db
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from models.user import User
 import models
 from fastapi.security import OAuth2PasswordBearer
@@ -13,8 +14,8 @@ import re
 
 load_dotenv()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 # ==============================
 # PASSWORD CONFIG
@@ -97,7 +98,8 @@ def get_current_user(
         user = db.query(User).filter(User.id == user_id).first()
 
     if user is None and email is not None:
-        user = db.query(User).filter(User.email == email).first()
+        en = email.lower().strip()
+        user = db.query(User).filter(func.lower(User.email) == en).first()
 
     if user is None:
         raise credentials_exception
@@ -216,5 +218,6 @@ def get_current_user_or_none(
     if user_id is not None:
         user = db.query(User).filter(User.id == user_id).first()
     if user is None and email is not None:
-        user = db.query(User).filter(User.email == email).first()
+        en = email.lower().strip()
+        user = db.query(User).filter(func.lower(User.email) == en).first()
     return user

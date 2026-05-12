@@ -45,7 +45,6 @@ def create_doctor(
 @router.get("/", response_model=list[DoctorResponse])
 def get_doctors(db: Session = Depends(get_db)):
     doctors = db.query(Doctor).all()
-    print("DOCTORS:", doctors)
     return doctors
 
 

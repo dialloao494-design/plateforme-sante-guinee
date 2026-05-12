@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from database import get_db
@@ -32,8 +33,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     - 409: Email already registered
     - 422: Validation error (invalid email, password, or role format)
     """
-    # Check if email already exists
-    existing_user = db.query(User).filter(User.email == user.email).first()
+    # Check if email already exists (case-insensitive; SQLite compares emails case-sensitively)
+    existing_user = db.query(User).filter(func.lower(User.email) == user.email.lower().strip()).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -114,10 +115,10 @@ def authenticate_user(email: str, password: str, db: Session, attempt_limit: int
     Returns User object if credentials are valid, None otherwise.
     Uses constant-time password comparison to prevent timing attacks.
     """
-    # Normalize email input
+    # Normalize email input; match case-insensitively for SQLite and legacy rows
     email = email.lower().strip()
-    
-    db_user = db.query(User).filter(User.email == email).first()
+
+    db_user = db.query(User).filter(func.lower(User.email) == email).first()
     if not db_user:
         logger.warning("Login failed for %s: user not found", email)
         # Use constant-time comparison with dummy hash to prevent timing attacks
