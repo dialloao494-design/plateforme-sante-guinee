@@ -1,6 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../services/api.js';
 
+const devLog = (...args) => {
+  if (import.meta.env.DEV) {
+    console.log(...args);
+  }
+};
+
+const devWarn = (...args) => {
+  if (import.meta.env.DEV) {
+    console.warn(...args);
+  }
+};
+
 /* eslint-disable react-refresh/only-export-components */
 const AuthContext = createContext();
 
@@ -61,9 +73,12 @@ export const AuthProvider = ({ children }) => {
 
     const storedToken = localStorage.getItem('token') || localStorage.getItem('access_token');
     if (!storedToken) {
+      devLog('[AUTH] No token in localStorage on app load');
       setAuthLoading(false);
       return;
     }
+
+    devLog('[AUTH] Found token in localStorage, verifying with backend');
 
     if (!localStorage.getItem('token')) {
       localStorage.setItem('token', storedToken);
@@ -72,10 +87,12 @@ export const AuthProvider = ({ children }) => {
     authAPI
       .me()
       .then((data) => {
+        devLog('[AUTH] Successfully verified user:', data?.email, data?.role);
         const normalizedUser = normalizeAndStoreUser(data);
         setUser(normalizedUser);
       })
-      .catch(() => {
+      .catch((err) => {
+        devWarn('[AUTH] Failed to verify token:', err?.response?.status, err?.message);
         localStorage.removeItem('token');
         localStorage.removeItem('access_token');
         localStorage.removeItem('user_role');
@@ -90,14 +107,17 @@ export const AuthProvider = ({ children }) => {
     setError(null);
 
     try {
-      const response = await authAPI.login(email, password);
+      const trimmedEmail = String(email || '').trim();
+      devLog('[AUTH] Logging in:', trimmedEmail);
+      const response = await authAPI.login(trimmedEmail, password);
 
       // Ignore any legacy password-reset markers to avoid blocking access after login.
       clearPasswordResetFlags();
       const { access_token, user_id, user_role, role, email: userEmail } = response;
       const resolvedRole = user_role || role;
+      devLog('[AUTH] Login successful, storing token');
       localStorage.setItem('token', access_token);
-      localStorage.removeItem('access_token');
+      localStorage.setItem('access_token', access_token);
       if (user_id) {
         localStorage.setItem('user_id', String(user_id));
       }
@@ -105,15 +125,20 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user_role', resolvedRole);
         const normalizedUser = normalizeAndStoreUser({ id: user_id, user_role: resolvedRole, email: userEmail });
         setUser(normalizedUser);
+        devLog('[AUTH] Login completed with role:', resolvedRole);
         return { success: true, role: normalizedUser?.role };
       } else {
+        devLog('[AUTH] Fetching user via /auth/me');
         const meResponse = await authAPI.me();
         const normalizedUser = normalizeAndStoreUser(meResponse);
         setUser(normalizedUser);
+        devLog('[AUTH] User verified, role:', meResponse?.role);
         return { success: true, role: normalizedUser?.role };
       }
     } catch (err) {
-      console.error('Login failed:', err);
+      if (import.meta.env.DEV) {
+        console.error('[AUTH] Login failed:', err?.response?.status, err?.message);
+      }
       const message = toUserFriendlyLoginMessage(err);
       setError(message);
       return { success: false, error: message };

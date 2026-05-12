@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { appointmentsAPI, patientsAPI } from '../services/api.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import { formatGNF, getStatusMeta } from '../utils/appointmentPresentation.js';
 import './PatientDetails.css';
 
 const PatientDetails = () => {
+  const { user } = useAuth();
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -63,6 +65,8 @@ const PatientDetails = () => {
     return `${patient.first_name || ''} ${patient.last_name || ''}`.trim() || `Patient #${id}`;
   }, [patient, id]);
 
+  const backHref = user?.role === 'admin' ? '/patients' : '/doctor/appointments';
+
   const handleSaveNotes = () => {
     localStorage.setItem(notesKey, notes);
     setSavedMessage('Notes enregistrées.');
@@ -76,10 +80,17 @@ const PatientDetails = () => {
           <h1>Dossier patient</h1>
           <p>{patientName}</p>
         </div>
-        <Link to="/doctor/appointments" className="button-secondary">Retour aux rendez-vous</Link>
+        <Link to={backHref} className="button-secondary">
+          {user?.role === 'admin' ? 'Retour à la liste' : 'Retour aux rendez-vous'}
+        </Link>
       </header>
 
-      {loading && <p>Chargement...</p>}
+      {loading && (
+        <div className="page-loading" role="status">
+          <span className="app-spinner" aria-hidden />
+          <span>Chargement du dossier…</span>
+        </div>
+      )}
       {error && <p className="error">{error}</p>}
 
       {!loading && (

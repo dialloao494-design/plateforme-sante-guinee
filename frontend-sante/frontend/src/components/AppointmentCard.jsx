@@ -1,11 +1,10 @@
 import {
-  canPayAppointment,
   formatGNF,
   getConsultationTypeLabel,
-  getPaymentLabel,
-  getStatusMeta,
-  isPendingAppointment,
+  getConsultationTypeBadgeClass,
+  getAppointmentActions,
 } from '../utils/appointmentPresentation.js';
+import AppointmentActions from './AppointmentActions.jsx';
 import './AppointmentCard.css';
 
 const AppointmentCard = ({
@@ -15,20 +14,12 @@ const AppointmentCard = ({
   onCancel,
   onOpenMessages,
   onJoinConsultation,
-  canPay,
-  canCancel,
-  canMessage,
+  presentation,
+  actions,
   isPaying,
   isCancelling,
 }) => {
-  const statusMeta = getStatusMeta(appointment);
-  const isPending = isPendingAppointment(appointment);
-  const showPay = isPending && (canPay ?? canPayAppointment(appointment));
-  const showCancel = isPending && Boolean(canCancel);
-  const showMessage = isPending && Boolean(canMessage);
-  const showJoinConsultation =
-    appointment?.consultation_type === 'teleconsultation' && Boolean(appointment?.meeting_link);
-  const hasActions = showPay || showCancel || showMessage || showJoinConsultation;
+  const resolvedActions = Array.isArray(actions) ? actions : getAppointmentActions(appointment);
 
   return (
     <li className="appointment-card">
@@ -36,11 +27,9 @@ const AppointmentCard = ({
         <p className="appointment-card-title">{title}</p>
         <div className="consultation-type-row">
           <span
-            className={`consultation-type-badge ${
-              appointment?.consultation_type === 'teleconsultation'
-                ? 'consultation-type-tele'
-                : 'consultation-type-physical'
-            }`}
+            className={`consultation-type-badge ${getConsultationTypeBadgeClass(
+              appointment?.consultation_type
+            )}`}
           >
             {getConsultationTypeLabel(appointment?.consultation_type)}
           </span>
@@ -59,41 +48,25 @@ const AppointmentCard = ({
         </p>
         <p>
           <span className="appointment-card-label">Paiement</span>
-          <span className="appointment-card-value">{getPaymentLabel(appointment.payment_status)}</span>
+          <span className="appointment-card-value">{presentation.paymentLabel}</span>
         </p>
         <p>
           <span className="appointment-card-label">Statut</span>
-          <span className={statusMeta.className}>{statusMeta.label}</span>
+          <span className={presentation.statusColor}>{presentation.displayStatus}</span>
         </p>
+
       </div>
 
-      {hasActions && (
-        <div className="appointment-card-actions">
-          {showPay && (
-          <>
-            <button type="button" onClick={() => onPay(appointment)} disabled={isPaying} className="button-pay">
-              {isPaying ? 'Traitement...' : 'Payer via Mobile Money'}
-            </button>
-            <small className="payment-helper-text">Simulation de paiement</small>
-          </>
-          )}
-          {showCancel && (
-            <button type="button" onClick={() => onCancel(appointment)} disabled={isCancelling} className="delete-btn">
-              {isCancelling ? 'Annulation...' : 'Annuler'}
-            </button>
-          )}
-          {showMessage && (
-            <button type="button" onClick={() => onOpenMessages(appointment)} className="button-secondary">
-              Messages
-            </button>
-          )}
-          {showJoinConsultation && (
-            <button type="button" onClick={() => onJoinConsultation?.(appointment)} className="button-secondary join-consultation-btn">
-              Rejoindre la consultation
-            </button>
-          )}
-        </div>
-      )}
+      <AppointmentActions
+        actions={resolvedActions}
+        appointment={appointment}
+        onPay={onPay}
+        onCancel={onCancel}
+        onOpenMessages={onOpenMessages}
+        onJoinConsultation={onJoinConsultation}
+        isPaying={isPaying}
+        isCancelling={isCancelling}
+      />
     </li>
   );
 };

@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { appointmentsAPI, messagesAPI } from '../services/api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
-import { getStatusMeta } from '../utils/appointmentPresentation.js';
+import AppointmentActions from '../components/AppointmentActions.jsx';
+import {
+  getAppointmentState,
+  getAppointmentActions,
+  isPendingAppointment,
+} from '../utils/appointmentPresentation.js';
 import './DoctorDashboard.css';
 
 const DoctorDashboard = () => {
@@ -76,7 +81,7 @@ const DoctorDashboard = () => {
   }, [appointments]);
 
   const pendingCount = useMemo(
-    () => appointments.filter((appointment) => String(appointment.status || '').toLowerCase() === 'pending').length,
+    () => appointments.filter((appointment) => isPendingAppointment(appointment)).length,
     [appointments]
   );
 
@@ -139,7 +144,8 @@ const DoctorDashboard = () => {
                 {upcomingAppointments.length === 0 && <p>Aucun rendez-vous à venir.</p>}
                 <ul className="compact-appointments">
                   {upcomingAppointments.map((appointment) => {
-                    const statusMeta = getStatusMeta(appointment);
+                    const presentation = getAppointmentState(appointment);
+                    const actions = getAppointmentActions(appointment);
                     const isToday = new Date(appointment.date).toDateString() === new Date().toDateString();
                     return (
                       <li key={appointment.id} className={isToday ? 'urgent' : ''}>
@@ -148,16 +154,15 @@ const DoctorDashboard = () => {
                           <p>{new Date(appointment.date).toLocaleString('fr-FR')}</p>
                         </div>
                         <div className="row-actions">
-                          <span className={statusMeta.className}>{statusMeta.label}</span>
-                          <button className="button-secondary" onClick={() => navigate(`/messages/${appointment.id}`)}>Messages</button>
-                          {appointment?.consultation_type === 'teleconsultation' && appointment?.meeting_link && (
-                            <button
-                              className="button-secondary"
-                              onClick={() => window.open(appointment.meeting_link, '_blank', 'noopener,noreferrer')}
-                            >
-                              Rejoindre la consultation
-                            </button>
-                          )}
+                          <span className={presentation.statusColor}>{presentation.displayStatus}</span>
+                          <AppointmentActions
+                            actions={actions}
+                            appointment={appointment}
+                            onPay={() => {}}
+                            onCancel={() => {}}
+                            onOpenMessages={() => navigate(`/messages/${appointment.id}`)}
+                            onJoinConsultation={() => window.open(appointment.meeting_link, '_blank', 'noopener,noreferrer')}
+                          />
                         </div>
                       </li>
                     );

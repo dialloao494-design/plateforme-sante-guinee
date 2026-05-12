@@ -16,8 +16,6 @@ export const createCheckoutForAppointment = async (appointment) => {
     throw new Error('Rendez-vous introuvable pour le paiement.');
   }
 
-  console.log('PAYMENT ID:', backendAppointment.id);
-
   const { data } = await paymentsAPI.createIntent(backendId);
 
   if (!data?.checkout_url) {

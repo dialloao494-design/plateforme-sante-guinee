@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { appointmentsAPI } from '../services/api.js';
-import { formatGNF, getStatusMeta, isPendingAppointment } from '../utils/appointmentPresentation.js';
+import AppointmentActions from '../components/AppointmentActions.jsx';
+import {
+  formatGNF,
+  getAppointmentState,
+  getAppointmentActions,
+} from '../utils/appointmentPresentation.js';
 import './DoctorAppointments.css';
 
 const DoctorAppointments = () => {
@@ -41,8 +46,17 @@ const DoctorAppointments = () => {
   const filteredAppointments = useMemo(() => {
     return appointments
       .filter((appointment) => {
-        if (statusFilter !== 'all' && String(appointment.status || '').toLowerCase() !== statusFilter) {
-          return false;
+        if (statusFilter !== 'all') {
+          const appointmentState = getAppointmentState(appointment).state;
+          if (statusFilter === 'pending' && appointmentState !== 'pending') {
+            return false;
+          }
+          if ((statusFilter === 'confirmed' || statusFilter === 'paid') && appointmentState !== 'confirmed') {
+            return false;
+          }
+          if (statusFilter === 'cancelled' && appointmentState !== 'cancelled') {
+            return false;
+          }
         }
 
         if (dateFilter) {
@@ -127,8 +141,8 @@ const DoctorAppointments = () => {
 
       <ul className="doctor-appointments-list">
         {filteredAppointments.map((appointment) => {
-          const statusMeta = getStatusMeta(appointment);
-          const isPending = isPendingAppointment(appointment);
+          const presentation = getAppointmentState(appointment);
+          const actions = getAppointmentActions(appointment);
           const busy = actionBusyId === appointment.id;
           return (
             <li key={appointment.id} className={`doctor-appointment-card ${isToday(appointment.date) ? 'urgent' : ''}`}>
@@ -139,46 +153,22 @@ const DoctorAppointments = () => {
                 <p><strong>Date:</strong> {new Date(appointment.date).toLocaleString('fr-FR')}</p>
                 <p><strong>Durée:</strong> {appointment.duration_minutes} minutes</p>
                 <p><strong>Prix:</strong> {formatGNF(appointment.price)}</p>
-                <p><strong>Paiement:</strong> {appointment.payment_status === 'paid' ? 'Payé' : 'Non payé'}</p>
+                <p><strong>Paiement:</strong> {presentation.paymentLabel}</p>
                 <p>
-                  <strong>Statut:</strong> <span className={statusMeta.className}>{statusMeta.label}</span>
+                  <strong>Statut:</strong> <span className={presentation.statusColor}>{presentation.displayStatus}</span>
                 </p>
               </div>
 
-              {isPending && (
-                <div className="doctor-appointment-actions">
-                  <button
-                    type="button"
-                    className="button-pay"
-                    disabled={busy}
-                    onClick={() => handleConfirm(appointment.id)}
-                  >
-                    Confirmer
-                  </button>
-                  <button
-                    type="button"
-                    className="delete-btn"
-                    disabled={busy}
-                    onClick={() => handleCancel(appointment.id)}
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="button"
-                    className="button-secondary"
-                    onClick={() => navigate(`/messages/${appointment.id}`)}
-                  >
-                    Messages
-                  </button>
-                  <button
-                    type="button"
-                    className="button-secondary"
-                    onClick={() => navigate(`/doctor/patient/${appointment.patient_id}`)}
-                  >
-                    Voir patient
-                  </button>
-                </div>
-              )}
+              <AppointmentActions
+                actions={actions}
+                appointment={appointment}
+                onPay={() => handleConfirm(appointment.id)}
+                onCancel={() => handleCancel(appointment.id)}
+                onOpenMessages={() => navigate(`/messages/${appointment.id}`)}
+                onJoinConsultation={() => window.open(appointment.meeting_link, '_blank', 'noopener,noreferrer')}
+                isPaying={busy}
+                isCancelling={busy}
+              />
             </li>
           );
         })}

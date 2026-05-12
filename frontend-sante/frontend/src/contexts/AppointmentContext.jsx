@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { appointmentsAPI } from '../services/api.js';
+import { formatApiError } from '../utils/apiError.js';
+import { useAuth } from './AuthContext.jsx';
 
 const AppointmentContext = createContext(null);
 
@@ -8,34 +10,10 @@ const normalizeAppointment = (appointment) => ({
   id: appointment.id,
 });
 
-const extractErrorMessage = (err, fallbackMessage) => {
-  if (!err?.response && /network|failed to fetch/i.test(String(err?.message || ''))) {
-    return 'Erreur de connexion. Veuillez réessayer.';
-  }
-
-  const detail = err?.response?.data?.detail;
-  if (typeof detail === 'string' && detail.trim()) {
-    return detail;
-  }
-  if (Array.isArray(detail) && detail.length > 0) {
-    return detail
-      .map((item) => (typeof item === 'string' ? item : item?.msg || JSON.stringify(item)))
-      .join(' | ');
-  }
-
-  const message = err?.response?.data?.message;
-  if (typeof message === 'string' && message.trim()) {
-    return message;
-  }
-
-  if (typeof err?.message === 'string' && err.message.trim()) {
-    return err.message;
-  }
-
-  return fallbackMessage;
-};
+const extractErrorMessage = (err, fallbackMessage) => formatApiError(err, fallbackMessage);
 
 export const AppointmentProvider = ({ children }) => {
+  const { authLoading } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -55,8 +33,11 @@ export const AppointmentProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
     fetchAppointments();
-  }, []);
+  }, [authLoading]);
 
   const addAppointment = async ({ doctor_id, date, duration_minutes, consultation_type }) => {
     setLoading(true);
@@ -121,6 +102,7 @@ export const AppointmentProvider = ({ children }) => {
   );
 };
 
+/* eslint-disable react-refresh/only-export-components */
 export const useAppointmentContext = () => {
   const context = useContext(AppointmentContext);
   if (!context) {
@@ -128,3 +110,4 @@ export const useAppointmentContext = () => {
   }
   return context;
 };
+/* eslint-enable react-refresh/only-export-components */

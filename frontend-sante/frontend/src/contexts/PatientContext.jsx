@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { patientsAPI } from '../services/api.js';
+import { formatApiError } from '../utils/apiError.js';
 import { useAuth } from './AuthContext.jsx';
 
 const PatientContext = createContext(null);
@@ -7,12 +8,13 @@ const PatientContext = createContext(null);
 const normalizePatient = (patient) => ({
   ...patient,
   id: patient.id,
-  name: `${patient.first_name} ${patient.last_name}`,
+  user_id: patient.user_id,
+  name: `${patient.first_name ?? ''} ${patient.last_name ?? ''}`.trim() || `Patient #${patient.id}`,
   condition: patient.gender,
 });
 
 export const PatientProvider = ({ children }) => {
-  const { user } = useAuth();
+  const { user, authLoading } = useAuth();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -25,22 +27,39 @@ export const PatientProvider = ({ children }) => {
       const normalized = data.map(normalizePatient);
       setPatients(normalized);
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.response?.data?.message || err.message || 'Erreur de connexion. Veuillez réessayer.');
+      setError(formatApiError(err, 'Erreur de connexion. Veuillez réessayer.'));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPatients();
-  }, []);
+    if (authLoading) {
+      return;
+    }
+    if (user && ['doctor', 'admin'].includes(user.role)) {
+      fetchPatients();
+    }
+  }, [user, authLoading]);
 
-  const addPatient = async ({ firstName, lastName, age, gender }) => {
+  const addPatient = async ({ firstName, lastName, age, gender, userId }) => {
+    if (user?.role !== 'admin') {
+      const errMsg = 'Seuls les administrateurs peuvent créer un dossier patient.';
+      setError(errMsg);
+      throw new Error(errMsg);
+    }
+    const uid = Number(userId);
+    if (!Number.isInteger(uid) || uid < 1) {
+      const errMsg = "L'identifiant utilisateur du compte (user ID) est requis pour créer un patient.";
+      setError(errMsg);
+      throw new Error(errMsg);
+    }
+
     setLoading(true);
     setError(null);
     try {
       const payload = {
-        user_id: user?.id || 1,
+        user_id: uid,
         first_name: firstName,
         last_name: lastName,
         age,
@@ -51,7 +70,7 @@ export const PatientProvider = ({ children }) => {
       setPatients((prev) => [normalized, ...prev]);
       return normalized;
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.response?.data?.message || err.message || 'Erreur création');
+      setError(formatApiError(err, 'Erreur création'));
       throw err;
     } finally {
       setLoading(false);
@@ -59,11 +78,19 @@ export const PatientProvider = ({ children }) => {
   };
 
   const updatePatient = async (id, { firstName, lastName, age, gender }) => {
+    const existing = patients.find((p) => p.id === id);
+    const resolvedUserId = existing?.user_id;
+    if (resolvedUserId == null) {
+      const errMsg = 'Impossible de mettre à jour : identifiant utilisateur lié manquant.';
+      setError(errMsg);
+      throw new Error(errMsg);
+    }
+
     setLoading(true);
     setError(null);
     try {
       const payload = {
-        user_id: user?.id || 1,
+        user_id: resolvedUserId,
         first_name: firstName,
         last_name: lastName,
         age,
@@ -74,7 +101,7 @@ export const PatientProvider = ({ children }) => {
       setPatients((prev) => prev.map((p) => (p.id === id ? normalized : p)));
       return normalized;
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.response?.data?.message || err.message || 'Erreur mise à jour');
+      setError(formatApiError(err, 'Erreur mise à jour'));
       throw err;
     } finally {
       setLoading(false);
@@ -82,13 +109,18 @@ export const PatientProvider = ({ children }) => {
   };
 
   const deletePatient = async (id) => {
+    if (user?.role !== 'admin') {
+      const errMsg = 'Seuls les administrateurs peuvent supprimer un dossier patient.';
+      setError(errMsg);
+      throw new Error(errMsg);
+    }
     setLoading(true);
     setError(null);
     try {
       await patientsAPI.delete(id);
       setPatients((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.response?.data?.message || err.message || 'Erreur suppression');
+      setError(formatApiError(err, 'Erreur suppression'));
       throw err;
     } finally {
       setLoading(false);
@@ -104,6 +136,7 @@ export const PatientProvider = ({ children }) => {
   );
 };
 
+/* eslint-disable react-refresh/only-export-components */
 export const usePatientContext = () => {
   const context = useContext(PatientContext);
   if (!context) {
@@ -111,3 +144,4 @@ export const usePatientContext = () => {
   }
   return context;
 };
+/* eslint-enable react-refresh/only-export-components */

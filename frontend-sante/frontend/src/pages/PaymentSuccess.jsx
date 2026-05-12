@@ -3,7 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { paymentsAPI } from '../services/api.js';
 import { useAppointmentContext } from '../contexts/AppointmentContext.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
-import { getPaymentLabel } from '../utils/appointmentPresentation.js';
+import { getAppointmentStatusLabel, getPaymentLabel } from '../utils/appointmentPresentation.js';
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
@@ -12,14 +12,6 @@ const PaymentSuccess = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('Validation du paiement en cours...');
-
-  const getStatusLabel = (status) => {
-    const normalized = String(status || '').toLowerCase();
-    if (normalized === 'paid') return 'Payé';
-    if (normalized === 'confirmed') return 'Confirmé';
-    if (normalized === 'cancelled') return 'Annulé';
-    return 'En attente';
-  };
 
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
@@ -35,8 +27,9 @@ const PaymentSuccess = () => {
         const response = await paymentsAPI.confirmCheckout(sessionId);
         const confirmed = response?.data;
         await fetchAppointments();
-        const paidLabel = getPaymentLabel(confirmed?.payment_status || (confirmed?.is_paid ? 'paid' : 'pending'));
-        setMessage(`Paiement confirmé. Statut du rendez-vous: ${getStatusLabel(confirmed?.status)} (${paidLabel}).`);
+        const paidLabel = getPaymentLabel(confirmed);
+        const resolvedStatusLabel = getAppointmentStatusLabel(confirmed);
+        setMessage(`Paiement confirmé. Statut du rendez-vous: ${resolvedStatusLabel} (${paidLabel}).`);
       } catch (err) {
         setError(err?.response?.data?.detail || err?.message || 'Paiement échoué.');
       } finally {

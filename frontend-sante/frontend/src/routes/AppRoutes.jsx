@@ -48,12 +48,16 @@ const AppRoutes = () => {
       />
       <Route
         path="/doctor/dashboard"
-        element={<DoctorDashboard />}
+        element={
+          <ProtectedRoute allowedRoles={["doctor", "admin"]}>
+            <DoctorDashboard />
+          </ProtectedRoute>
+        }
       />
       <Route
         path="/doctor/appointments"
         element={
-          <ProtectedRoute allowedRoles={["doctor"]}>
+          <ProtectedRoute allowedRoles={["doctor", "admin"]}>
             <DoctorAppointments />
           </ProtectedRoute>
         }
@@ -61,7 +65,7 @@ const AppRoutes = () => {
       <Route
         path="/doctor/messages"
         element={
-          <ProtectedRoute allowedRoles={["doctor"]}>
+          <ProtectedRoute allowedRoles={["doctor", "admin"]}>
             <DoctorMessages />
           </ProtectedRoute>
         }
@@ -69,7 +73,7 @@ const AppRoutes = () => {
       <Route
         path="/doctor/patient/:id"
         element={
-          <ProtectedRoute allowedRoles={["doctor"]}>
+          <ProtectedRoute allowedRoles={["doctor", "admin"]}>
             <PatientDetails />
           </ProtectedRoute>
         }
@@ -109,7 +113,7 @@ const AppRoutes = () => {
       <Route
         path="/patients"
         element={
-          <ProtectedRoute allowedRoles={["doctor"]}>
+          <ProtectedRoute allowedRoles={["doctor", "admin"]}>
             <Patients />
           </ProtectedRoute>
         }

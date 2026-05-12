@@ -8,15 +8,12 @@ const api = {
   delete: (path) => httpClient.delete(path),
 };
 
-// Login uses form-encoded POST (OAuth2PasswordRequestForm).
+// Login via JSON (same credential validation as form login; avoids URL-encoding edge cases).
 export const login = async (email, password) => {
-  const body = new URLSearchParams();
-  body.append('username', email);
-  body.append('password', password);
-
   try {
-    const response = await httpClient.post('/auth/login', body, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    const response = await httpClient.post('/auth/login-json', {
+      email: String(email || '').trim().toLowerCase(),
+      password,
     });
     return response?.data;
   } catch (err) {
@@ -52,7 +49,7 @@ export const doctorsAPI = {
     if (location) params.append('location', location);
     if (specialty) params.append('specialty', specialty);
     const qs = params.toString();
-    return httpClient.get(`/doctors/${qs ? `?${qs}` : ''}`);
+    return httpClient.get(qs ? `/doctors/?${qs}` : '/doctors/');
   },
   getById: (id) => httpClient.get(`/doctors/${id}/`),
   create: (data) => httpClient.post('/doctors/', data),

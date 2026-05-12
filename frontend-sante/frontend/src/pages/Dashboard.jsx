@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppointmentContext } from '../contexts/AppointmentContext.jsx';
 import AppointmentCard from '../components/AppointmentCard.jsx';
+import { getAppointmentActions, getAppointmentState } from '../utils/appointmentPresentation.js';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -29,9 +30,6 @@ const Dashboard = () => {
         {role && <p className="user-role">Rôle: {role.charAt(0).toUpperCase() + role.slice(1)}</p>}
       </div>
       <div className="dashboard-actions">
-        <button type="button" className="action-button" onClick={() => navigate('/doctor/dashboard')}>
-          Switch to Doctor Mode
-        </button>
         {role === 'patient' && (
           <>
             <Link to="/appointments" className="action-button">Mes rendez-vous</Link>
@@ -48,6 +46,7 @@ const Dashboard = () => {
         )}
         {role === 'admin' && (
           <>
+            <Link to="/doctor/dashboard" className="action-button">Vue médecin</Link>
             <Link to="/users" className="action-button">Gérer les utilisateurs</Link>
             <Link to="/appointments" className="action-button">Tous les rendez-vous</Link>
             <Link to="/doctors" className="action-button">Gérer les médecins</Link>
@@ -65,21 +64,24 @@ const Dashboard = () => {
         <section className="dashboard-preview">
           <h3>Prochains rendez-vous</h3>
           <ul className="dashboard-preview-list">
-            {previewAppointments.map((appointment) => (
-              <AppointmentCard
-                key={appointment.id}
-                appointment={appointment}
-                title={getPreviewTitle(appointment)}
-                onPay={() => {}}
-                onCancel={() => {}}
-                onOpenMessages={() => {}}
-                canPay={false}
-                canCancel={false}
-                canMessage={false}
-                isPaying={false}
-                isCancelling={false}
-              />
-            ))}
+            {previewAppointments.map((appointment) => {
+              const presentation = getAppointmentState(appointment);
+              const actions = getAppointmentActions(appointment);
+              return (
+                <AppointmentCard
+                  key={appointment.id}
+                  appointment={appointment}
+                  title={getPreviewTitle(appointment)}
+                  onPay={() => {}}
+                  onCancel={() => {}}
+                  onOpenMessages={() => {}}
+                  presentation={presentation}
+                  actions={actions}
+                  isPaying={false}
+                  isCancelling={false}
+                />
+              );
+            })}
           </ul>
         </section>
       )}
