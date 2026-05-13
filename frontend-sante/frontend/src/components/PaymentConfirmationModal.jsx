@@ -1,4 +1,5 @@
 import { formatGNF } from '../utils/appointmentPresentation.js';
+import { PAYMENT_CHANNELS, getPaymentReadinessSummary } from '../config/paymentChannels.js';
 import './PaymentConfirmationModal.css';
 
 const PaymentConfirmationModal = ({ isOpen, appointment, onConfirm, onClose, isProcessing }) => {
@@ -6,11 +7,24 @@ const PaymentConfirmationModal = ({ isOpen, appointment, onConfirm, onClose, isP
     return null;
   }
 
+  const paySummary = getPaymentReadinessSummary();
+
   return (
     <div className="payment-modal-overlay" role="presentation" onClick={onClose}>
       <div className="payment-modal" role="dialog" aria-modal="true" aria-labelledby="payment-modal-title" onClick={(e) => e.stopPropagation()}>
         <h2 id="payment-modal-title">Confirmer le paiement</h2>
-        <p className="payment-modal-helper">Simulation de paiement Mobile Money</p>
+        <p className="payment-modal-helper">
+          Simulation Mobile Money — {paySummary.headline}. {paySummary.sub}
+        </p>
+
+        <ul className="payment-modal-channels" aria-label="Canaux prévus">
+          {PAYMENT_CHANNELS.map((ch) => (
+            <li key={ch.id}>
+              <strong>{ch.label}</strong> <span className={`payment-modal-status payment-modal-status--${ch.status}`}>{ch.status}</span>
+              <span className="payment-modal-channel-desc">{ch.description}</span>
+            </li>
+          ))}
+        </ul>
 
         <div className="payment-modal-details">
           <p><span>Montant</span> {formatGNF(appointment.price)}</p>

@@ -4,6 +4,7 @@ import Login from "../pages/Login";
 import Signup from "../pages/Signup";
 import Dashboard from "../pages/Dashboard";
 import Doctors from "../pages/Doctors";
+import DoctorProfile from "../pages/DoctorProfile.jsx";
 import Appointments from "../pages/Appointments";
 import DoctorDashboard from "../pages/DoctorDashboard";
 import DoctorAppointments from "../pages/DoctorAppointments";
@@ -29,6 +30,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={["patient", "doctor", "admin"]}>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/doctors/:doctorId"
+        element={
+          <ProtectedRoute allowedRoles={["patient", "doctor", "admin"]}>
+            <DoctorProfile />
           </ProtectedRoute>
         }
       />

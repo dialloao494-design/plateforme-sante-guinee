@@ -1,0 +1,193 @@
+.doctor-profile-page {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-10);
+}
+
+.doctor-profile-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-4);
+  align-items: flex-start;
+  margin-bottom: var(--space-6);
+}
+
+.doctor-profile-eyebrow {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.doctor-profile-header h1 {
+  margin: 0 0 var(--space-1);
+  font-size: clamp(1.45rem, 3vw, 1.85rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.doctor-profile-meta {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.doctor-profile-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.doctor-profile-loading {
+  margin-top: var(--space-4);
+}
+
+.doctor-profile-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-danger-soft);
+  color: #991b1b;
+  font-weight: 600;
+}
+
+.doctor-profile-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 900px) {
+  .doctor-profile-grid {
+    grid-template-columns: 1.2fr 0.9fr;
+  }
+
+  .doctor-profile-card--cta {
+    grid-column: 1 / -1;
+  }
+}
+
+.doctor-profile-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+
+.doctor-profile-card h2 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-lg);
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.doctor-profile-card--hero {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (max-width: 640px) {
+  .doctor-profile-card--hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+.doctor-profile-avatar-wrap {
+  flex-shrink: 0;
+}
+
+.doctor-profile-photo {
+  width: 120px;
+  height: 120px;
+  border-radius: var(--radius-xl);
+  object-fit: cover;
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+
+.doctor-profile-photo-fallback {
+  width: 120px;
+  height: 120px;
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-deep));
+}
+
+.doctor-profile-lead {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-muted);
+  line-height: var(--leading-snug);
+  font-size: var(--text-sm);
+}
+
+.doctor-profile-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.doctor-profile-facts dt {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.doctor-profile-facts dd {
+  margin: 0.2rem 0 0;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.doctor-profile-muted {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: var(--leading-snug);
+}
+
+.doctor-profile-map-placeholder {
+  min-height: 160px;
+  border-radius: var(--radius-lg);
+  border: 1px dashed rgba(13, 148, 136, 0.35);
+  background: linear-gradient(145deg, rgba(13, 148, 136, 0.06), var(--color-surface-muted));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.doctor-profile-map-placeholder small {
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.doctor-profile-card--cta p {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.doctor-profile-cta {
+  min-height: 48px;
+}

@@ -16,7 +16,7 @@ const SPECIALTY_MAP = new Map(
     dermatology: 'Dermatologie',
     Dermatologie: 'Dermatologie',
     Cardiology: 'Cardiologie',
-    Cardiologie: 'Cardiologie',
+    cardiologie: 'Cardiologie',
     Gynecology: 'Gynécologie',
     Gynécologie: 'Gynécologie',
     Ophtalmologie: 'Ophtalmologie',

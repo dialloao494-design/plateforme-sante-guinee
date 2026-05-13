@@ -44,12 +44,13 @@ export const patientsAPI = {
 };
 
 export const doctorsAPI = {
-  getAll: (location, specialty) => {
-    const params = new URLSearchParams();
-    if (location) params.append('location', location);
-    if (specialty) params.append('specialty', specialty);
-    const qs = params.toString();
-    return httpClient.get(qs ? `/doctors/?${qs}` : '/doctors/');
+  getAll: (params = {}) => {
+    const qs = new URLSearchParams();
+    if (params.location) qs.append('location', params.location);
+    if (params.specialty) qs.append('specialty', params.specialty);
+    if (params.search) qs.append('search', params.search);
+    const s = qs.toString();
+    return httpClient.get(s ? `/doctors/?${s}` : '/doctors/');
   },
   getById: (id) => httpClient.get(`/doctors/${id}/`),
   create: (data) => httpClient.post('/doctors/', data),
@@ -77,6 +78,10 @@ export const paymentsAPI = {
   confirmCheckout: (sessionId) => httpClient.post('/payments/confirm-checkout', { session_id: sessionId }),
   confirmPayment: (appointmentId) => httpClient.post(`/payments/${appointmentId}/confirm-payment`),
   getStatus: (appointmentId) => httpClient.get(`/payments/${appointmentId}/status`),
+};
+
+export const notificationsAPI = {
+  channels: () => httpClient.get('/notifications/channels'),
 };
 
 export const messagesAPI = {

@@ -122,6 +122,17 @@ def seed_demo_doctors():
                 "photo_url": "https://api.dicebear.com/7.x/female/svg?seed=FatoumataKaba",
                 "consultation_fee": 42000,
             },
+            {
+                "email": "dr.mamady@example.com",
+                "password": "Doctor123!",
+                "first_name": "Mamady",
+                "last_name": "Keïta",
+                "specialty": "Cardiologie",
+                "location": "Conakry · Matam — Consultations HTA & suivi cardiaque",
+                "phone": "+224 620 00 00 04",
+                "photo_url": "https://api.dicebear.com/7.x/male/svg?seed=MamadyKeita",
+                "consultation_fee": 55000,
+            },
         ]
 
         for doc_data in demo_doctors:

@@ -26,9 +26,56 @@
 }
 
 .payment-modal-helper {
-  margin: 8px 0 14px;
+  margin: 8px 0 10px;
   color: #475569;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.payment-modal-channels {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #334155;
+}
+
+.payment-modal-channels li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fafafa;
+}
+
+.payment-modal-channel-desc {
+  grid-column: 1 / -1;
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.payment-modal-status {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+}
+
+.payment-modal-status--planned {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.payment-modal-status--beta {
+  background: #dbeafe;
+  color: #1e40af;
 }
 
 .payment-modal-details {

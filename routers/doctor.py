@@ -1,5 +1,6 @@
 # FastAPI router for Doctor CRUD with SQLAlchemy
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from database import get_db
 from models.doctor import Doctor
@@ -43,8 +44,28 @@ def create_doctor(
 
 
 @router.get("/", response_model=list[DoctorResponse])
-def get_doctors(db: Session = Depends(get_db)):
-    doctors = db.query(Doctor).all()
+def get_doctors(
+    db: Session = Depends(get_db),
+    specialty: str | None = Query(None, description="Filter by specialty (substring, case-insensitive)"),
+    location: str | None = Query(None, description="Filter by city / zone (substring, case-insensitive)"),
+    search: str | None = Query(None, description="Search name, specialty, or location"),
+):
+    q = db.query(Doctor)
+    if specialty and specialty.strip().lower() not in {"", "all"}:
+        q = q.filter(Doctor.specialty.ilike(f"%{specialty.strip()}%"))
+    if location and location.strip().lower() not in {"", "all"}:
+        q = q.filter(Doctor.city.ilike(f"%{location.strip()}%"))
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        q = q.filter(
+            or_(
+                Doctor.first_name.ilike(term),
+                Doctor.last_name.ilike(term),
+                Doctor.specialty.ilike(term),
+                Doctor.city.ilike(term),
+            )
+        )
+    doctors = q.order_by(Doctor.last_name.asc(), Doctor.first_name.asc()).all()
     return doctors
 
 

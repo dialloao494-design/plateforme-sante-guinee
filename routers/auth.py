@@ -80,8 +80,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
                     user_id=new_user.id,
                     first_name="Doctor",
                     last_name=f"User{new_user.id}",
-                    specialty="General Medicine",
-                    city="Conakry",
+                    specialty="Médecine générale",
+                    city="Conakry · Kaloum",
                     phone="000000000",
                     photo_url=None,
                     consultation_fee=0.0,
@@ -94,7 +94,12 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="User creation failed unexpectedly.",
             )
-        return UserResponse(id=new_user.id, email=new_user.email, role=new_user.role)
+        doctor_id = None
+        if new_user.role == "doctor":
+            doc = db.query(models.Doctor).filter(models.Doctor.user_id == new_user.id).first()
+            if doc:
+                doctor_id = doc.id
+        return UserResponse(id=new_user.id, email=new_user.email, role=new_user.role, doctor_id=doctor_id)
     except IntegrityError as e:
         db.rollback()
         if "email" in str(e).lower():
@@ -234,17 +239,28 @@ def login_json(credentials: UserLogin, db: Session = Depends(get_db)):
 
 
 @router.get("/me", response_model=UserResponse)
-def read_current_user(current_user: User = Depends(get_current_user)):
+def read_current_user(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Get current authenticated user's profile.
-    
+
     **Authentication:** Requires valid Bearer token
-    
+
     **Returns:** Authenticated user profile
     - id: User's unique identifier
     - email: User's email address
     - role: User's role (patient, doctor, admin)
-    
+    - doctor_id: When role is doctor, the linked `doctors.id` for public profile URLs (null otherwise)
+
     **Errors:** 401 when token is invalid or missing
     """
-    return current_user
+    doctor_id = None
+    if current_user.role == "doctor":
+        doc = db.query(models.Doctor).filter(models.Doctor.user_id == current_user.id).first()
+        if doc:
+            doctor_id = doc.id
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "role": current_user.role,
+        "doctor_id": doctor_id,
+    }

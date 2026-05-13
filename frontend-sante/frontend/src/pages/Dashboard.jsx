@@ -129,8 +129,11 @@ const Dashboard = () => {
         )}
         {role === 'doctor' && (
           <>
-            <Link to="/doctors" className="action-button">
-              Mon profil public
+            <Link
+              to={user?.doctor_id ? `/doctors/${user.doctor_id}` : '/doctors'}
+              className="action-button"
+            >
+              Ma fiche publique
             </Link>
             <Link to="/doctor/dashboard" className="action-button">
               Agenda clinique

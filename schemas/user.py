@@ -1,4 +1,5 @@
 from pydantic import BaseModel, validator
+from typing import Optional
 import re
 
 
@@ -46,6 +47,7 @@ class UserResponse(BaseModel):
     id: int
     email: str
     role: str
+    doctor_id: Optional[int] = None
 
     class Config:
         orm_mode = True

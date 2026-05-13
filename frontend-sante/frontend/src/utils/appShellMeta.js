@@ -42,6 +42,9 @@ export function getShellContext(pathname, role) {
   if (pathname === '/appointments') {
     return { crumbs: withHome([{ label: 'Rendez-vous', to: null }]) };
   }
+  if (pathname.startsWith('/doctors/') && pathname !== '/doctors') {
+    return { crumbs: withHome([c('/doctors', isDoctorLike ? 'Annuaire' : 'Médecins'), { label: 'Fiche praticien', to: null }]) };
+  }
   if (pathname === '/doctors') {
     return {
       crumbs: withHome([{ label: isDoctorLike ? 'Annuaire' : 'Médecins', to: null }]),

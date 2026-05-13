@@ -289,3 +289,121 @@
   color: var(--color-text, #0f172a);
   font-weight: 700;
 }
+
+.doctors-discovery {
+  max-width: 1120px;
+  margin: 0 auto var(--space-5);
+  padding: 0 10px;
+}
+
+.doctors-discovery-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+@media (max-width: 900px) {
+  .doctors-discovery-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.doctors-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.doctors-field span {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
+}
+
+.doctors-field input,
+.doctors-field select {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  background: var(--color-surface);
+}
+
+.doctors-discovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.doctors-filter-summary {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .doctors-filter-summary {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+.doctors-geo-hint {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.doctors-count-line {
+  max-width: 1120px;
+  margin: 0 auto var(--space-3);
+  padding: 0 10px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.doctor-list-fee {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0 0 var(--space-3);
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
+.doctor-list-fee span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.doctor-list-fee strong {
+  color: var(--color-text);
+}
+
+.doctor-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.doctor-list-actions .btn {
+  flex: 1;
+  min-width: 120px;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.doctors-inline-loading {
+  max-width: 1120px;
+  margin: 0 auto var(--space-3);
+  padding: 0 10px;
+}
