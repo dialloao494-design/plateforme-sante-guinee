@@ -107,7 +107,7 @@ const DoctorAppointments = () => {
   };
 
   return (
-    <div className="doctor-appointments-page">
+    <div className="doctor-appointments-page ds-page">
       <header className="doctor-appointments-header">
         <div>
           <h1>Rendez-vous médecin</h1>

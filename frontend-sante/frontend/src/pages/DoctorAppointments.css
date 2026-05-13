@@ -1,6 +1,6 @@
 .doctor-appointments-page {
   min-height: 100vh;
-  background: #eff4fb;
+  background: var(--color-bg);
   padding: 28px 20px 40px;
 }
 
@@ -29,6 +29,12 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  align-items: flex-end;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .doctor-appointments-filters label {

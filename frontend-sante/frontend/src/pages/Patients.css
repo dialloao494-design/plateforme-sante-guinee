@@ -1,8 +1,8 @@
 .patients-page {
   min-height: 100vh;
-  padding: 40px;
-  background: #f5f7fa;
-  font-family: 'Inter', sans-serif;
+  padding: var(--space-6) var(--space-4);
+  background: var(--color-bg);
+  font-family: var(--font-sans);
 }
 
 .patients-header h1 {

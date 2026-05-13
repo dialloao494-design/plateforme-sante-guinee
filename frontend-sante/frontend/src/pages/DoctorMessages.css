@@ -1,6 +1,6 @@
 .doctor-messages-page {
   min-height: 100vh;
-  background: #eff4fb;
+  background: var(--color-bg);
   padding: 24px 20px 36px;
 }
 

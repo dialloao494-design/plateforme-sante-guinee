@@ -36,7 +36,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="dashboard">
+    <div className="dashboard ds-page">
       <h1>Tableau de bord</h1>
       <div className="user-info">
         <h2>Bienvenue, {user?.email || 'Utilisateur'}</h2>

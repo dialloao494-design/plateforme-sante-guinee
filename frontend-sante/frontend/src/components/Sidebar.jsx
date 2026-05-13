@@ -2,6 +2,23 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import './Sidebar.css';
 
+function initialsFromUser(user) {
+  const email = String(user?.email || '').trim();
+  if (!email) return '?';
+  const local = email.split('@')[0] || email;
+  const parts = local.replace(/[^a-zA-Z0-9.]/g, ' ').split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+  return local.slice(0, 2).toUpperCase() || '?';
+}
+
+const ROLE_LABELS = {
+  patient: 'Patient',
+  doctor: 'Médecin',
+  admin: 'Administrateur',
+};
+
 const navItems = [
   { path: '/dashboard', label: 'Tableau de bord', icon: 'dash', roles: ['patient', 'doctor', 'admin'] },
   { path: '/teleconsultation', label: 'Téléconsultation', icon: 'video', roles: ['patient', 'doctor', 'admin'] },
@@ -184,6 +201,20 @@ const Sidebar = ({ isOpen, onClose }) => {
               </li>
             ))}
           </ul>
+          {user && (
+            <div className="sidebar-user" aria-label="Compte connecté">
+              <div className="sidebar-user-avatar" aria-hidden>
+                {initialsFromUser(user)}
+              </div>
+              <div className="sidebar-user-meta">
+                <span className="sidebar-user-email">{user.email}</span>
+                <span className="sidebar-user-role">
+                  {ROLE_LABELS[String(user.role || user.user_role || '').toLowerCase()] ||
+                    String(user.role || user.user_role || '')}
+                </span>
+              </div>
+            </div>
+          )}
           <button type="button" className="logout-btn" onClick={handleLogout}>
             Déconnexion
           </button>

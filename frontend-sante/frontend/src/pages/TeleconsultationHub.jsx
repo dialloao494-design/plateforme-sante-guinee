@@ -56,7 +56,7 @@ export default function TeleconsultationHub() {
     user?.role === 'doctor' || user?.role === 'admin' ? 'Téléconsultations à venir' : 'Vos téléconsultations';
 
   return (
-    <div className="tele-hub">
+    <div className="tele-hub ds-page">
       <header className="tele-hub-header">
         <div>
           <h1>{title}</h1>

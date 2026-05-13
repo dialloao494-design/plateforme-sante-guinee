@@ -125,7 +125,7 @@ const DoctorDashboard = () => {
   }, [appointments]);
 
   return (
-    <div className="doctor-dashboard-page">
+    <div className="doctor-dashboard-page ds-page">
       <div className="doctor-dashboard-card">
         <h1>Tableau de bord médecin</h1>
         <p>Bienvenue Dr {user?.email || ''}. Suivez vos consultations et vos échanges patients.</p>

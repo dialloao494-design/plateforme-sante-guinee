@@ -96,7 +96,7 @@ const Messages = () => {
   };
 
   return (
-    <div className="messages-page">
+    <div className="messages-page ds-page">
       <header className="messages-header">
         <div>
           <h1>Messagerie</h1>

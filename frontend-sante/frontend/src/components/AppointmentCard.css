@@ -119,12 +119,14 @@
 }
 
 .join-consultation-btn {
-  background: #0ea5e9 !important;
+  background: linear-gradient(135deg, var(--color-primary, #0d9488), var(--color-primary-deep, #0a6b63)) !important;
   color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 14px var(--color-primary-glow, rgba(13, 148, 136, 0.25));
 }
 
 .join-consultation-btn:hover:not(:disabled) {
-  background: #0284c7 !important;
+  background: linear-gradient(135deg, var(--color-primary-hover, #0f766e), var(--color-primary-deep, #0a6b63)) !important;
 }
 
 .appointment-card-actions .button-pay:hover:not(:disabled),

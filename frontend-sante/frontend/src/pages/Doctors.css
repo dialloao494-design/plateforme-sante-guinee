@@ -1,7 +1,7 @@
 .doctors-page {
   width: 100%;
   min-height: 100vh;
-  background: #eff4fb;
+  background: var(--color-bg);
 }
 
 .doctors-header {

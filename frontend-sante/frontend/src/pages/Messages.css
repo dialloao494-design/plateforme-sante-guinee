@@ -1,7 +1,7 @@
 .messages-page {
   min-height: 100vh;
   padding: 24px;
-  background: #eff4fb;
+  background: var(--color-bg);
 }
 
 .messages-header {
@@ -26,13 +26,15 @@
 .messages-thread {
   max-width: 980px;
   margin: 0 auto;
-  background: #ffffff;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 16px;
-  padding: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
   min-height: 400px;
-  max-height: 60vh;
+  max-height: min(60vh, 520px);
   overflow-y: auto;
+  box-shadow: var(--shadow-sm);
+  scroll-behavior: smooth;
 }
 
 .messages-empty {
@@ -61,8 +63,8 @@
 }
 
 .message-row.mine .message-bubble {
-  background: #dbeafe;
-  border-color: #bfdbfe;
+  background: var(--color-primary-soft);
+  border-color: rgba(13, 148, 136, 0.35);
 }
 
 .message-meta {
@@ -88,10 +90,11 @@
 .message-composer {
   max-width: 980px;
   margin: 14px auto 0;
-  background: #ffffff;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 16px;
-  padding: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
 }
 
 .message-composer textarea {

@@ -1,7 +1,7 @@
 .appointments-page {
   min-height: 100vh;
   padding: 40px 24px 60px;
-  background: #eff4fb;
+  background: var(--color-bg);
   font-family: 'Segoe UI', 'Roboto', sans-serif;
 }
 

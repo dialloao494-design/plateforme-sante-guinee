@@ -92,6 +92,21 @@ export default function ConsultationRoom() {
     return appointment?.doctor?.name || `Médecin #${appointment?.doctor_id ?? ''}`;
   }, [appointment, user]);
 
+  const flowStep =
+    roomStatus === STATUS.error
+      ? 1
+      : roomStatus === STATUS.loading
+        ? 0
+        : roomStatus === STATUS.prejoin || roomStatus === STATUS.connecting
+          ? 1
+          : roomStatus === STATUS.live
+            ? 2
+            : roomStatus === STATUS.ended
+              ? 3
+              : 0;
+
+  const flowLabels = ['Salle d’attente', 'Préparation', 'Consultation', 'Clôture'];
+
   return (
     <div className="consult-room">
       <header className="consult-room-header">
@@ -115,6 +130,18 @@ export default function ConsultationRoom() {
           </Link>
         </div>
       </header>
+
+      <ol className="consult-flow" aria-label="Étapes de la téléconsultation">
+        {flowLabels.map((label, i) => (
+          <li
+            key={label}
+            className={`consult-flow-step ${i < flowStep ? 'is-past' : ''} ${i === flowStep ? 'is-current' : ''}`}
+          >
+            <span className="consult-flow-dot" aria-hidden />
+            <span className="consult-flow-label">{label}</span>
+          </li>
+        ))}
+      </ol>
 
       {error && (
         <div className="consult-room-banner consult-room-banner--error" role="alert">
