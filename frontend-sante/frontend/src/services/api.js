@@ -78,10 +78,12 @@ export const paymentsAPI = {
   confirmCheckout: (sessionId) => httpClient.post('/payments/confirm-checkout', { session_id: sessionId }),
   confirmPayment: (appointmentId) => httpClient.post(`/payments/${appointmentId}/confirm-payment`),
   getStatus: (appointmentId) => httpClient.get(`/payments/${appointmentId}/status`),
+  list: () => httpClient.get('/payments/'),
 };
 
 export const notificationsAPI = {
   channels: () => httpClient.get('/notifications/channels'),
+  list: () => httpClient.get('/notifications/'),
 };
 
 export const messagesAPI = {

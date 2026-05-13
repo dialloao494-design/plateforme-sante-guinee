@@ -5,6 +5,7 @@ import { appointmentsAPI, patientsAPI } from '../services/api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { formatGNF, getConsultationTypeLabel, getStatusMeta } from '../utils/appointmentPresentation.js';
 import { formatDateTimeShort } from '../utils/formatDateTime.js';
+import { getConsultationSummary } from '../utils/clinicalStorage.js';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import './PatientDetails.css';
 
@@ -92,6 +93,19 @@ const PatientDetails = () => {
     return future[0] || null;
   }, [appointments]);
 
+  const { primaryAppointments, cancelledAppointments } = useMemo(() => {
+    const primary = [];
+    const cancelled = [];
+    for (const a of appointments) {
+      if (String(a.status || '').toLowerCase() === 'cancelled') {
+        cancelled.push(a);
+      } else {
+        primary.push(a);
+      }
+    }
+    return { primaryAppointments: primary, cancelledAppointments: cancelled };
+  }, [appointments]);
+
   return (
     <div className="patient-details-page ds-page">
       <header className="patient-details-header">
@@ -159,15 +173,19 @@ const PatientDetails = () => {
           <section className="patient-card patient-card--timeline">
             <div className="patient-section-head">
               <h2>Parcours de soins</h2>
-              <p className="patient-section-lead">Vue chronologique des rendez-vous et statuts de paiement.</p>
+              <p className="patient-section-lead">
+                Vue chronologique des rendez-vous, statuts de paiement et synthèses de téléconsultation enregistrées sur
+                cet appareil.
+              </p>
             </div>
             {appointments.length === 0 && (
               <p className="patient-empty-inline">Aucun rendez-vous enregistré pour ce patient.</p>
             )}
             <ol className="patient-timeline">
-              {appointments.map((appointment, index) => {
+              {primaryAppointments.map((appointment, index) => {
                 const statusMeta = getStatusMeta(appointment);
                 const isPast = new Date(appointment.date) < new Date();
+                const summary = getConsultationSummary(appointment.id);
                 return (
                   <li key={appointment.id} className={`patient-timeline-item ${isPast ? 'is-past' : 'is-future'}`}>
                     <div className="patient-timeline-marker" aria-hidden />
@@ -180,6 +198,12 @@ const PatientDetails = () => {
                         {appointment.duration_minutes} min · {formatGNF(appointment.price)} ·{' '}
                         {getConsultationTypeLabel(appointment)}
                       </p>
+                      {summary?.text && (
+                        <div className="patient-timeline-summary">
+                          <strong>Synthèse (téléconsultation)</strong>
+                          <p>{summary.text}</p>
+                        </div>
+                      )}
                       {index === 0 && (
                         <p className="patient-timeline-hint">Consultation la plus récente enregistrée dans le système.</p>
                       )}
@@ -188,6 +212,33 @@ const PatientDetails = () => {
                 );
               })}
             </ol>
+            {cancelledAppointments.length > 0 && (
+              <details className="patient-cancelled-block">
+                <summary>
+                  Rendez-vous annulés ({cancelledAppointments.length}) — archivés, hors parcours actif
+                </summary>
+                <ol className="patient-timeline patient-timeline--muted">
+                  {cancelledAppointments.map((appointment) => {
+                    const statusMeta = getStatusMeta(appointment);
+                    return (
+                      <li key={appointment.id} className="patient-timeline-item is-past is-cancelled">
+                        <div className="patient-timeline-marker" aria-hidden />
+                        <div className="patient-timeline-body">
+                          <div className="patient-timeline-top">
+                            <time dateTime={appointment.date}>{formatDateTimeShort(appointment.date)}</time>
+                            <span className={statusMeta.className}>{statusMeta.label}</span>
+                          </div>
+                          <p className="patient-timeline-detail">
+                            {appointment.duration_minutes} min · {formatGNF(appointment.price)} ·{' '}
+                            {getConsultationTypeLabel(appointment)}
+                          </p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </details>
+            )}
           </section>
 
           <section className="patient-card patient-card--notes">

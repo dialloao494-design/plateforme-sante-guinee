@@ -22,6 +22,7 @@ const ROLE_LABELS = {
 const navItems = [
   { path: '/dashboard', label: 'Tableau de bord', icon: 'dash', roles: ['patient', 'doctor', 'admin'] },
   { path: '/teleconsultation', label: 'Téléconsultation', icon: 'video', roles: ['patient', 'doctor', 'admin'] },
+  { path: '/notifications', label: 'Notifications', icon: 'bell', roles: ['patient', 'doctor', 'admin'] },
   { path: '/appointments', label: 'Mes rendez-vous', icon: 'calendar', roles: ['patient', 'admin'] },
   { path: '/doctors', label: 'Médecins', labelDoctor: 'Annuaire', icon: 'steth', roles: ['patient', 'doctor', 'admin'] },
   { path: '/doctor/dashboard', label: 'Agenda clinique', icon: 'board', roles: ['doctor', 'admin'] },
@@ -41,6 +42,18 @@ function NavIcon({ name }) {
             d="M15 10l5-3v10l-5-3v-4zM4 8h9a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4a2 2 0 012-2z"
             stroke="currentColor"
             strokeWidth="1.75"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    case 'bell':
+      return (
+        <svg {...common}>
+          <path
+            d="M6 16h12l-1.1-1.32V11a5 5 0 10-10 0v3.68L6 16zM10 16a2 2 0 004 0"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
             strokeLinejoin="round"
           />
         </svg>

@@ -21,8 +21,16 @@ export function getShellContext(pathname, role) {
   if (pathname === '/teleconsultation') {
     return { crumbs: withHome([{ label: 'Téléconsultation', to: null }]) };
   }
+  if (pathname === '/notifications') {
+    return { crumbs: withHome([{ label: 'Notifications', to: null }]) };
+  }
   if (pathname.startsWith('/doctor/patient/')) {
-    return { crumbs: withHome([c('/patients', 'Patients'), { label: 'Dossier patient', to: null }]) };
+    return {
+      crumbs: withHome([
+        c(isDoctorLike ? '/doctor/appointments' : '/patients', isDoctorLike ? 'File d’attente' : 'Patients'),
+        { label: 'Dossier patient', to: null },
+      ]),
+    };
   }
   if (pathname === '/doctor/dashboard') {
     return { crumbs: withHome([{ label: 'Agenda clinique', to: null }]) };

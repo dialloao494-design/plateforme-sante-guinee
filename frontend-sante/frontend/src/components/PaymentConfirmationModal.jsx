@@ -8,13 +8,24 @@ const PaymentConfirmationModal = ({ isOpen, appointment, onConfirm, onClose, isP
   }
 
   const paySummary = getPaymentReadinessSummary();
+  const demoSim = import.meta.env.VITE_ENABLE_PAYMENT_SIMULATION === 'true';
 
   return (
     <div className="payment-modal-overlay" role="presentation" onClick={onClose}>
       <div className="payment-modal" role="dialog" aria-modal="true" aria-labelledby="payment-modal-title" onClick={(e) => e.stopPropagation()}>
         <h2 id="payment-modal-title">Confirmer le paiement</h2>
         <p className="payment-modal-helper">
-          Simulation Mobile Money — {paySummary.headline}. {paySummary.sub}
+          {demoSim ? (
+            <>
+              <strong>Mode démonstration</strong> — simulation Mobile Money via le navigateur. {paySummary.headline}.{' '}
+              {paySummary.sub}
+            </>
+          ) : (
+            <>
+              Validation du paiement côté plateforme (Orange Money / MTN / Stripe selon configuration cabinet).{' '}
+              {paySummary.sub}
+            </>
+          )}
         </p>
 
         <ul className="payment-modal-channels" aria-label="Canaux prévus">

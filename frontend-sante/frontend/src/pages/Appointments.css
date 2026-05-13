@@ -539,3 +539,60 @@
   background: #cbd5e1;
   cursor: not-allowed;
 }
+
+.appointments-payment-history {
+  margin-top: 2.5rem;
+  padding: 1.5rem 1.25rem;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #fafafa;
+}
+
+.appointments-payment-history h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.15rem;
+}
+
+.appointments-payment-history-lead {
+  margin: 0 0 1rem;
+  font-size: 0.88rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.appointments-muted {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.appointments-payment-table-wrap {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.appointments-payment-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.appointments-payment-table th,
+.appointments-payment-table td {
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.appointments-payment-table th {
+  font-weight: 700;
+  background: #f8fafc;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.appointments-payment-table tbody tr:last-child td {
+  border-bottom: none;
+}

@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { formatApiError } from '../utils/apiError.js';
 import { getAppointmentState } from '../utils/appointmentPresentation.js';
 import { formatDateTimeShort, formatRelativeDay } from '../utils/formatDateTime.js';
+import { getConsultationSummary, setConsultationSummary } from '../utils/clinicalStorage.js';
 import {
   getProviderDisplayLabel,
   resolveRoomProvider,
@@ -52,6 +53,7 @@ export default function ConsultationRoom() {
   const [connectionHint, setConnectionHint] = useState('');
   const [elapsedSec, setElapsedSec] = useState(0);
   const [peerPresent, setPeerPresent] = useState(false);
+  const [summaryDraft, setSummaryDraft] = useState('');
 
   const load = useCallback(async () => {
     setRoomStatus(STATUS.loading);
@@ -148,6 +150,12 @@ export default function ConsultationRoom() {
   };
 
   const endSession = () => {
+    if (appointment?.id) {
+      const existing = getConsultationSummary(appointment.id);
+      setSummaryDraft(existing?.text || '');
+    } else {
+      setSummaryDraft('');
+    }
     setRoomStatus(STATUS.ended);
   };
 
@@ -189,6 +197,17 @@ export default function ConsultationRoom() {
   const flowLabels = ['Salle d’attente', 'Préparation', 'Consultation en direct', 'Clôture'];
 
   const postConsultHref = isDoctorLike ? '/doctor/dashboard' : '/dashboard';
+
+  const saveSummaryAndLeave = () => {
+    if (appointment?.id && appointment?.patient_id && summaryDraft.trim()) {
+      setConsultationSummary(appointment.id, appointment.patient_id, summaryDraft.trim());
+    }
+    navigate(postConsultHref);
+  };
+
+  const leaveConsultation = () => {
+    navigate(postConsultHref);
+  };
 
   return (
     <div className="consult-room ds-page">
@@ -377,12 +396,42 @@ export default function ConsultationRoom() {
       )}
 
       {roomStatus === STATUS.ended && (
-        <div className="consult-ended">
+        <div className={`consult-ended ${isDoctorLike ? 'consult-ended--doctor' : ''}`}>
           <h2>Consultation terminée</h2>
-          <p>Les notes peuvent être complétées depuis le dossier patient. Pensez à archiver les éléments cliniques.</p>
-          <button type="button" className="btn btn-primary" onClick={() => navigate(postConsultHref)}>
-            Retour au tableau de bord
-          </button>
+          {isDoctorLike ? (
+            <>
+              <p className="consult-ended-intro">
+                Rédigez une synthèse clinique courte (motif, examen, suite). Elle est enregistrée sur cet appareil et
+                rattachée au dossier patient dans l’historique des rendez-vous.
+              </p>
+              <label htmlFor="consult-summary" className="visually-hidden">
+                Synthèse de consultation
+              </label>
+              <textarea
+                id="consult-summary"
+                className="consult-summary-textarea"
+                rows={5}
+                value={summaryDraft}
+                onChange={(e) => setSummaryDraft(e.target.value)}
+                placeholder="Ex. Douleurs thoraciques atypiques — ECG normal — ordonnance envoyée par messagerie — revoir si persistance…"
+              />
+              <div className="consult-ended-actions">
+                <button type="button" className="btn btn-primary" onClick={saveSummaryAndLeave}>
+                  Enregistrer la synthèse et quitter
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={leaveConsultation}>
+                  Quitter sans enregistrer
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p>Merci d’avoir utilisé la téléconsultation sécurisée. Vous pouvez retrouver les messages liés à ce rendez-vous dans votre messagerie.</p>
+              <button type="button" className="btn btn-primary" onClick={leaveConsultation}>
+                Retour au tableau de bord
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

@@ -2,11 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { appointmentsAPI, messagesAPI } from '../services/api.js';
 import { API_BASE_URL } from '../services/httpClient.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import { printPrescriptionHtml } from '../utils/printPrescription.js';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import './DoctorMessages.css';
 
 const DoctorMessages = () => {
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [appointments, setAppointments] = useState([]);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
@@ -85,6 +88,36 @@ const DoctorMessages = () => {
     () => appointments.find((appointment) => appointment.id === selectedAppointmentId) || null,
     [appointments, selectedAppointmentId]
   );
+
+  const doctorPrintName = useMemo(() => {
+    const fn = `${user?.first_name || ''} ${user?.last_name || ''}`.trim();
+    if (fn) return `Dr ${fn}`;
+    if (user?.email) return user.email;
+    return 'Médecin';
+  }, [user]);
+
+  const patientPrintName = useMemo(() => {
+    if (!selectedAppointment) return '';
+    const n = `${selectedAppointment?.patient?.first_name || ''} ${selectedAppointment?.patient?.last_name || ''}`.trim();
+    return n || 'Patient';
+  }, [selectedAppointment]);
+
+  const handlePrintPrescriptionDraft = () => {
+    if (!prescriptionText.trim()) {
+      setError('Saisissez le contenu de l’ordonnance avant l’aperçu d’impression.');
+      return;
+    }
+    const ok = printPrescriptionHtml({
+      doctorName: doctorPrintName,
+      patientName: patientPrintName,
+      bodyText: prescriptionText.trim(),
+    });
+    if (!ok) {
+      setError('Impossible d’ouvrir la fenêtre d’impression (popup bloquée). Autorisez les popups pour ce site.');
+    } else {
+      setError('');
+    }
+  };
 
   const sendMessage = async ({ content, attachment }) => {
     if (!selectedAppointmentId) {
@@ -260,7 +293,7 @@ const DoctorMessages = () => {
             <h3>Envoyer une ordonnance</h3>
             <textarea
               rows={4}
-              placeholder="Détails de l'ordonnance"
+              placeholder="Médicaments, posologie, durée du traitement, recommandations…"
               value={prescriptionText}
               onChange={(e) => setPrescriptionText(e.target.value)}
             />
@@ -269,8 +302,11 @@ const DoctorMessages = () => {
               <button type="button" className="button-secondary" onClick={() => setShowPrescriptionModal(false)}>
                 Fermer
               </button>
+              <button type="button" className="button-secondary" onClick={handlePrintPrescriptionDraft}>
+                Aperçu / imprimer (PDF navigateur)
+              </button>
               <button type="submit" className="button-pay" disabled={sending}>
-                {sending ? 'Envoi...' : 'Envoyer'}
+                {sending ? 'Envoi...' : 'Envoyer au patient'}
               </button>
             </div>
           </form>

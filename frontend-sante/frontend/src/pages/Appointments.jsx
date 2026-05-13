@@ -18,6 +18,22 @@ import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import './Appointments.css';
 
+function normalizeDoctor(item) {
+  const id = Number(item?.id);
+  if (!id) return null;
+
+  const role = String(item?.role || item?.user_role || '').toLowerCase();
+  if (role && role !== 'doctor') return null;
+
+  const fullName =
+    item?.name || `${item?.first_name || ''} ${item?.last_name || ''}`.trim() || item?.email || `Docteur #${id}`;
+
+  return {
+    id,
+    name: fullName,
+  };
+}
+
 const Appointments = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -41,7 +57,10 @@ const Appointments = () => {
   const [cancellingAppointmentId, setCancellingAppointmentId] = useState(null);
   const [paymentModalAppointment, setPaymentModalAppointment] = useState(null);
   const [searchParams] = useSearchParams();
-  const [simulatedPayments] = useState(() => loadSimulatedPayments());
+  const SIM_ENABLED = import.meta.env.VITE_ENABLE_PAYMENT_SIMULATION === 'true';
+  const [simulatedPayments] = useState(() => (SIM_ENABLED ? loadSimulatedPayments() : {}));
+  const [paymentRows, setPaymentRows] = useState([]);
+  const [loadingPaymentHistory, setLoadingPaymentHistory] = useState(false);
 
   const getApiErrorMessage = (err, fallback) => {
     if (!err?.response && /network|failed to fetch/i.test(String(err?.message || ''))) {
@@ -64,23 +83,7 @@ const Appointments = () => {
     return err?.message || fallback;
   };
 
-  const normalizeDoctor = (item) => {
-    const id = Number(item?.id);
-    if (!id) return null;
-
-    const role = String(item?.role || item?.user_role || '').toLowerCase();
-    if (role && role !== 'doctor') return null;
-
-    const fullName =
-      item?.name || `${item?.first_name || ''} ${item?.last_name || ''}`.trim() || item?.email || `Docteur #${id}`;
-
-    return {
-      id,
-      name: fullName,
-    };
-  };
-
-  const fetchDoctors = async () => {
+  const fetchDoctors = useCallback(async () => {
     setLoadingDoctors(true);
     setDoctorsError('');
     try {
@@ -95,13 +98,33 @@ const Appointments = () => {
     } finally {
       setLoadingDoctors(false);
     }
-  };
+  }, []);
+
+  const fetchPaymentHistory = useCallback(async () => {
+    if (!isPatient) return;
+    setLoadingPaymentHistory(true);
+    try {
+      const { data } = await paymentsAPI.list();
+      setPaymentRows(Array.isArray(data) ? data : []);
+    } catch {
+      setPaymentRows([]);
+    } finally {
+      setLoadingPaymentHistory(false);
+    }
+  }, [isPatient]);
 
   useEffect(() => {
-    fetchDoctors();
+    void fetchDoctors();
+  }, [fetchDoctors]);
+
+  useEffect(() => {
+    void fetchPaymentHistory();
+  }, [fetchPaymentHistory]);
+
+  useEffect(() => {
     const doctorId = searchParams.get('doctor_id');
     if (doctorId) {
-      setFormData(prev => ({ ...prev, doctorId }));
+      setFormData((prev) => ({ ...prev, doctorId }));
     }
   }, [searchParams]);
 
@@ -153,6 +176,7 @@ const Appointments = () => {
       await deleteAppointment(id);
       setSuccess('Rendez-vous annulé');
       toast.success('Rendez-vous annulé');
+      await fetchPaymentHistory();
       if (lastAppointment?.id === id) {
         setLastAppointment(null);
         setShowConfirmation(false);
@@ -258,6 +282,7 @@ const Appointments = () => {
       
       // Refresh appointments to get updated status from server
       await fetchAppointments();
+      await fetchPaymentHistory();
       
       setSuccess('Paiement effectué avec succès. Le médecin confirmera le rendez-vous.');
       toast.success('Paiement validé');
@@ -498,6 +523,46 @@ const Appointments = () => {
           )}
         </div>
       </div>
+
+      {isPatient && (
+        <section className="appointments-payment-history" aria-labelledby="payment-history-title">
+          <h2 id="payment-history-title">Historique paiements &amp; rendez-vous</h2>
+          <p className="appointments-payment-history-lead">
+            Liste renvoyée par l’API (même périmètre que vos rendez-vous) — utile pour contrôler statut de paiement et
+            suivi cabinet.
+          </p>
+          {loadingPaymentHistory && <PageSkeleton lines={4} />}
+          {!loadingPaymentHistory && paymentRows.length === 0 && (
+            <p className="appointments-muted">Aucun enregistrement pour le moment.</p>
+          )}
+          {!loadingPaymentHistory && paymentRows.length > 0 && (
+            <div className="appointments-payment-table-wrap">
+              <table className="appointments-payment-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Médecin</th>
+                    <th scope="col">Montant</th>
+                    <th scope="col">Paiement</th>
+                    <th scope="col">Statut RDV</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paymentRows.map((row) => (
+                    <tr key={row.id}>
+                      <td>{new Date(row.date).toLocaleString('fr-FR')}</td>
+                      <td>{getDoctorName(row)}</td>
+                      <td>{formatGNF(row.price)}</td>
+                      <td>{String(row.payment_status || '—')}</td>
+                      <td>{String(row.status || '—')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       <PaymentConfirmationModal
         isOpen={Boolean(paymentModalAppointment)}

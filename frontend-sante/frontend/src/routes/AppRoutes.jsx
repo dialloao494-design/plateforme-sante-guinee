@@ -17,6 +17,7 @@ import Patients from "../pages/Patients";
 import Users from "../pages/Users";
 import TeleconsultationHub from "../pages/TeleconsultationHub.jsx";
 import ConsultationRoom from "../pages/ConsultationRoom.jsx";
+import NotificationsPage from "../pages/NotificationsPage.jsx";
 import ProtectedRoute from "./ProtectedRoute";
 
 const AppRoutes = () => {
@@ -134,6 +135,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={["patient", "doctor", "admin"]}>
             <TeleconsultationHub />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/notifications"
+        element={
+          <ProtectedRoute allowedRoles={["patient", "doctor", "admin"]}>
+            <NotificationsPage />
           </ProtectedRoute>
         }
       />
