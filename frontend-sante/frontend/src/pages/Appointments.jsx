@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAppointmentContext } from '../contexts/AppointmentContext.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
@@ -36,6 +35,7 @@ function normalizeDoctor(item) {
 
 const Appointments = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const isPatient = user?.role === 'patient';
   const { appointments, loading, error, addAppointment, deleteAppointment, fetchAppointments } = useAppointmentContext();
@@ -122,11 +122,13 @@ const Appointments = () => {
   }, [fetchPaymentHistory]);
 
   useEffect(() => {
-    const doctorId = searchParams.get('doctor_id');
-    if (doctorId) {
-      setFormData((prev) => ({ ...prev, doctorId }));
+    const fromQuery = searchParams.get('doctor_id');
+    const fromState = location.state?.doctorId;
+    const raw = fromQuery || (fromState != null ? String(fromState) : '');
+    if (raw) {
+      setFormData((prev) => ({ ...prev, doctorId: String(raw) }));
     }
-  }, [searchParams]);
+  }, [searchParams, location.state]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

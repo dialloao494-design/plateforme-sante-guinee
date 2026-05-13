@@ -191,3 +191,20 @@
 .doctor-profile-cta {
   min-height: 48px;
 }
+
+.doctor-profile-coords {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.doctor-profile-geo-btn {
+  margin-top: var(--space-2);
+}
+
+.doctor-profile-geo-msg {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}

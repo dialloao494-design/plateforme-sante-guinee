@@ -99,6 +99,8 @@ def seed_demo_doctors():
                 "phone": "+224 620 00 00 01",
                 "photo_url": "https://api.dicebear.com/7.x/female/svg?seed=AminaBarry",
                 "consultation_fee": 45000,
+                "latitude": 9.5092,
+                "longitude": -13.7122,
             },
             {
                 "email": "dr.soulaiman@example.com",
@@ -110,6 +112,8 @@ def seed_demo_doctors():
                 "phone": "+224 620 00 00 02",
                 "photo_url": "https://api.dicebear.com/7.x/male/svg?seed=SouleymaneDiallo",
                 "consultation_fee": 40000,
+                "latitude": 9.5766,
+                "longitude": -13.6478,
             },
             {
                 "email": "dr.fatou@example.com",
@@ -121,6 +125,8 @@ def seed_demo_doctors():
                 "phone": "+224 620 00 00 03",
                 "photo_url": "https://api.dicebear.com/7.x/female/svg?seed=FatoumataKaba",
                 "consultation_fee": 42000,
+                "latitude": 10.0569,
+                "longitude": -12.8658,
             },
             {
                 "email": "dr.mamady@example.com",
@@ -132,6 +138,8 @@ def seed_demo_doctors():
                 "phone": "+224 620 00 00 04",
                 "photo_url": "https://api.dicebear.com/7.x/male/svg?seed=MamadyKeita",
                 "consultation_fee": 55000,
+                "latitude": 9.5629,
+                "longitude": -13.6014,
             },
         ]
 
@@ -181,6 +189,8 @@ def seed_demo_doctors():
                     phone=doc_data["phone"],
                     photo_url=doc_data["photo_url"],
                     consultation_fee=doc_data["consultation_fee"],
+                    latitude=doc_data.get("latitude"),
+                    longitude=doc_data.get("longitude"),
                 )
                 db.add(doctor)
                 db.commit()
@@ -196,10 +206,14 @@ def seed_demo_doctors():
                         ("phone", doc_data["phone"]),
                         ("photo_url", doc_data["photo_url"]),
                         ("consultation_fee", doc_data["consultation_fee"]),
+                        ("latitude", doc_data.get("latitude")),
+                        ("longitude", doc_data.get("longitude")),
                     )
                     changed = False
                     for attr, value in sync_fields:
-                        if getattr(existing_doctor, attr) != value:
+                        if value is None and attr in ("latitude", "longitude"):
+                            continue
+                        if getattr(existing_doctor, attr, None) != value:
                             setattr(existing_doctor, attr, value)
                             changed = True
                     if changed:
@@ -411,6 +425,23 @@ def health_check():
     }
 
 
+@app.get("/health/ready", tags=["Monitoring"])
+def health_ready():
+    """Readiness: verifies database connectivity (for orchestrators / load balancers)."""
+    from sqlalchemy import text
+
+    try:
+        db = SessionLocal()
+        try:
+            db.execute(text("SELECT 1"))
+            return {"status": "ready", "database": "ok"}
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.error("Readiness check failed: %s", exc)
+        raise HTTPException(status_code=503, detail="Database not ready")
+
+
 @app.get("/", tags=["Root"])
 def root():
     """API Root - Redirect to docs"""
@@ -432,11 +463,15 @@ async def startup_event():
     try:
         from database import engine, Base
         # Import all model modules so their tables are registered on Base
-        import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message
+        import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message, models.notification_event
 
         # Always create tables if they don't exist (safe / idempotent)
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables verified / created.")
+
+        from database_migrations import ensure_doctor_geolocation_columns
+
+        ensure_doctor_geolocation_columns(engine)
     except Exception as exc:
         logger.error("Failed to create tables: %s", exc)
 

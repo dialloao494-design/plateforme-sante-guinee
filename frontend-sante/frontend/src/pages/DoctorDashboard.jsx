@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { appointmentsAPI, messagesAPI } from '../services/api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
@@ -34,7 +34,7 @@ const DoctorDashboard = () => {
     return err?.message || fallback;
   };
 
-  const loadAppointments = async () => {
+  const loadAppointments = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -72,7 +72,7 @@ const DoctorDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const handleConfirmAppointment = async (item) => {
     if (!item?.id) return;
@@ -88,8 +88,8 @@ const DoctorDashboard = () => {
   };
 
   useEffect(() => {
-    loadAppointments();
-  }, []);
+    void loadAppointments();
+  }, [loadAppointments]);
 
   const todayCount = useMemo(() => {
     const now = new Date();

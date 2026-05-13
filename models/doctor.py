@@ -15,6 +15,8 @@ class Doctor(Base):
     phone = Column(String, nullable=False)
     photo_url = Column(String, nullable=True)
     consultation_fee = Column(Float, default=0.0, nullable=False)  # Price per consultation in GNF or local currency
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
 
     user = relationship("User", back_populates="doctor_profile")
 

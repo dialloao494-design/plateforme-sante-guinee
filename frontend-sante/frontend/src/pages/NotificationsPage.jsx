@@ -82,7 +82,7 @@ export default function NotificationsPage() {
                   <div className="notifications-channel-top">
                     <strong>{ch.label}</strong>
                     <span className={`notifications-status notifications-status--${ch.status || 'planned'}`}>
-                      {ch.status === 'planned' ? 'Prévu' : ch.status}
+                      {ch.status === 'planned' ? 'Prévu' : ch.status === 'live' ? 'Actif' : ch.status}
                     </span>
                   </div>
                   {Array.isArray(ch.use_cases) && ch.use_cases.length > 0 && (
@@ -95,15 +95,36 @@ export default function NotificationsPage() {
 
           <section className="notifications-card">
             <h2>Boîte de réception</h2>
-            <p className="notifications-muted">{inbox?.message || 'Aucun message pour le moment.'}</p>
+            {inbox?.message && (!Array.isArray(inbox?.items) || inbox.items.length === 0) && (
+              <p className="notifications-muted">{inbox.message}</p>
+            )}
             {Array.isArray(inbox?.items) && inbox.items.length > 0 ? (
-              <ul className="notifications-inbox">
-                {inbox.items.map((item, i) => (
-                  <li key={item.id || i}>{typeof item === 'string' ? item : JSON.stringify(item)}</li>
+              <ul className="notifications-inbox-list">
+                {inbox.items.map((item) => (
+                  <li key={item.id} className="notifications-inbox-item">
+                    <div className="notifications-inbox-item-top">
+                      <span className="notifications-inbox-subject">{item.subject}</span>
+                      <time dateTime={item.created_at}>
+                        {item.created_at
+                          ? new Date(item.created_at).toLocaleString('fr-FR', {
+                              dateStyle: 'short',
+                              timeStyle: 'short',
+                            })
+                          : ''}
+                      </time>
+                    </div>
+                    <p className="notifications-inbox-body">{item.body}</p>
+                    <span className="notifications-inbox-channel">{item.channel}</span>
+                  </li>
                 ))}
               </ul>
             ) : (
-              <p className="notifications-empty">Les rappels de rendez-vous et accusés de lecture apparaîtront ici.</p>
+              !inbox?.message && (
+                <p className="notifications-empty">
+                  Les rappels de rendez-vous et accusés de lecture apparaîtront ici après des événements (ex. paiement
+                  confirmé).
+                </p>
+              )
             )}
           </section>
         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { appointmentsAPI } from '../services/api.js';
 import AppointmentActions from '../components/AppointmentActions.jsx';
@@ -28,7 +28,7 @@ const DoctorAppointments = () => {
     return err?.message || fallback;
   };
 
-  const loadAppointments = async () => {
+  const loadAppointments = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -39,11 +39,11 @@ const DoctorAppointments = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadAppointments();
-  }, []);
+    void loadAppointments();
+  }, [loadAppointments]);
 
   const filteredAppointments = useMemo(() => {
     return appointments

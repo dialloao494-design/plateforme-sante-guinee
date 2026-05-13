@@ -5,7 +5,12 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.doctor import Doctor
 from models.availability import DoctorAvailability
-from schemas.doctor import DoctorCreate, DoctorResponse, DoctorUpdate
+from schemas.doctor import (
+    DoctorCreate,
+    DoctorGeoUpdate,
+    DoctorResponse,
+    DoctorUpdate,
+)
 from schemas.availability import DoctorAvailabilityCreate, DoctorAvailabilityResponse, DoctorAvailabilityUpdate
 from security import get_current_doctor, get_current_admin, require_roles, get_current_user_or_none
 from services.availability_service import AvailabilityService
@@ -36,6 +41,8 @@ def create_doctor(
         phone=doctor.phone,
         photo_url=doctor.photo_url,
         consultation_fee=doctor.consultation_fee,
+        latitude=doctor.latitude,
+        longitude=doctor.longitude,
     )
     db.add(new_doctor)
     db.commit()
@@ -67,6 +74,55 @@ def get_doctors(
         )
     doctors = q.order_by(Doctor.last_name.asc(), Doctor.first_name.asc()).all()
     return doctors
+
+
+@router.get("/nearby", response_model=list[DoctorResponse])
+def get_doctors_nearby(
+    lat: float = Query(..., ge=-90, le=90, description="Patient latitude (WGS84)"),
+    lon: float = Query(..., ge=-180, le=180, description="Patient longitude (WGS84)"),
+    radius_km: float = Query(80.0, gt=0, le=500),
+    specialty: str | None = Query(None, description="Filter by specialty (substring)"),
+    db: Session = Depends(get_db),
+):
+    """List doctors with saved practice coordinates within radius, sorted by distance."""
+    from services.geo import haversine_km
+
+    q = db.query(Doctor).filter(Doctor.latitude.isnot(None), Doctor.longitude.isnot(None))
+    if specialty and specialty.strip().lower() not in {"", "all"}:
+        q = q.filter(Doctor.specialty.ilike(f"%{specialty.strip()}%"))
+    rows = q.all()
+    ranked: list[tuple[float, Doctor]] = []
+    for d in rows:
+        dist = haversine_km(lat, lon, float(d.latitude), float(d.longitude))
+        if dist <= radius_km:
+            ranked.append((dist, d))
+    ranked.sort(key=lambda t: t[0])
+    out: list[DoctorResponse] = []
+    for dist, d in ranked:
+        base = DoctorResponse.model_validate(d)
+        out.append(base.model_copy(update={"distance_km": round(dist, 2)}))
+    return out
+
+
+@router.patch("/me/geo", response_model=DoctorResponse)
+def patch_my_practice_geo(
+    body: DoctorGeoUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_doctor),
+):
+    """Doctor updates cabinet coordinates (for nearby discovery)."""
+    doctor = db.query(Doctor).filter(Doctor.user_id == current_user.id).first()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor profile not found")
+    if body.latitude is not None:
+        doctor.latitude = body.latitude
+    if body.longitude is not None:
+        doctor.longitude = body.longitude
+    if body.location is not None:
+        doctor.city = body.location.strip()
+    db.commit()
+    db.refresh(doctor)
+    return doctor
 
 
 @router.get("/{doctor_id}", response_model=DoctorResponse)
@@ -113,7 +169,11 @@ def update_doctor(
         doctor.photo_url = doctor_update.photo_url
     if doctor_update.consultation_fee is not None:
         doctor.consultation_fee = doctor_update.consultation_fee
-    
+    if doctor_update.latitude is not None:
+        doctor.latitude = doctor_update.latitude
+    if doctor_update.longitude is not None:
+        doctor.longitude = doctor_update.longitude
+
     db.commit()
     db.refresh(doctor)
     return doctor

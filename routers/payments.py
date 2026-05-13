@@ -20,7 +20,9 @@ import models
 from security import get_current_admin, get_current_doctor, get_current_patient, require_roles
 from services.rendezvous_service import RendezVousService
 from services.stripe_service import StripeService
+from services.notification_delivery import record_in_app_notification
 from schemas import rendezvous as rendezvous_schemas
+from schemas import payment_mobile as mobile_schemas
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
@@ -43,6 +45,41 @@ def _get_or_create_patient_profile(db: Session, user_id: int) -> models.Patient:
     db.commit()
     db.refresh(patient)
     return patient
+
+
+@router.get("/rail-config")
+def get_payment_rail_config():
+    """Expose which payment rails are configured (Stripe, Orange Money, MTN)."""
+    from services.mobile_money_service import describe_rails
+
+    return describe_rails()
+
+
+@router.post("/mobile-money/initiate", response_model=mobile_schemas.MobileMoneyInitResponse)
+def mobile_money_initiate(
+    payload: mobile_schemas.MobileMoneyInitRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_patient),
+):
+    """Start a Mobile Money collection (stub unless ORANGE_MONEY_LIVE / MTN_MOMO_LIVE)."""
+    from services.mobile_money_service import initiate_collection_stub
+
+    patient = _get_or_create_patient_profile(db, current_user.id)
+    appointment = db.query(models.RendezVous).filter(models.RendezVous.id == payload.appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
+    if appointment.patient_id != patient.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: This is not your appointment")
+    if appointment.status == "cancelled":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot pay for cancelled appointment")
+    amount = float(appointment.price or 0)
+    data = initiate_collection_stub(
+        appointment_id=payload.appointment_id,
+        provider=payload.provider,
+        amount_gnf=amount,
+        msisdn=payload.msisdn,
+    )
+    return mobile_schemas.MobileMoneyInitResponse(**data)
 
 
 # ===============================
@@ -173,7 +210,16 @@ def confirm_payment_simple(
     appointment.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(appointment)
-    
+
+    record_in_app_notification(
+        db,
+        user_id=current_user.id,
+        subject="Paiement confirmé",
+        body=f"Votre rendez-vous #{rdv_id} est payé et confirmé.",
+        channel="in_app",
+        meta={"appointment_id": rdv_id},
+    )
+
     return appointment
 
 
@@ -349,6 +395,20 @@ def list_payments(
     """
     appointments = RendezVousService.list_payments_for_user(current_user, db)
     return appointments
+
+
+@router.post("/webhooks/orange-money")
+async def orange_money_webhook_stub(request: Request):
+    """Orange Money GN — verify HMAC / payload then mark appointment paid (implement when live)."""
+    await request.body()
+    return {"status": "received", "detail": "Stub — branch settlement logic when ORANGE_MONEY_LIVE=true."}
+
+
+@router.post("/webhooks/mtn-momo")
+async def mtn_momo_webhook_stub(request: Request):
+    """MTN MoMo GN — verify callback then settle appointment (implement when live)."""
+    await request.body()
+    return {"status": "received", "detail": "Stub — branch settlement logic when MTN_MOMO_LIVE=true."}
 
 
 @router.post("/charge")

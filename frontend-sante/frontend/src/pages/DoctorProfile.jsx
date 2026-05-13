@@ -3,15 +3,19 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { doctorsAPI } from '../services/api.js';
 import { formatSpecialtyLabel } from '../utils/specialtyLabels.js';
 import { formatGNF } from '../utils/appointmentPresentation.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import './DoctorProfile.css';
 
 export default function DoctorProfile() {
   const { doctorId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [doctor, setDoctor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [geoMessage, setGeoMessage] = useState('');
+  const [geoSaving, setGeoSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -32,7 +36,43 @@ export default function DoctorProfile() {
   }, [load]);
 
   const book = () => {
-    navigate('/appointments', { state: { doctorId: Number(doctorId) } });
+    navigate(`/appointments?doctor_id=${encodeURIComponent(doctorId)}`);
+  };
+
+  const isOwnProfile = useMemo(() => {
+    const did = Number(doctorId);
+    if (user?.role !== 'doctor') return false;
+    return Number(user?.doctor_id) === did;
+  }, [user?.role, user?.doctor_id, doctorId]);
+
+  const saveCabinetGps = () => {
+    if (!navigator.geolocation) {
+      setGeoMessage('Géolocalisation non disponible sur ce navigateur.');
+      return;
+    }
+    setGeoSaving(true);
+    setGeoMessage('');
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          await doctorsAPI.patchMyGeo({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          });
+          setGeoMessage('Position enregistrée. Vous apparaîtrez dans « à proximité » pour les patients.');
+          await load();
+        } catch (err) {
+          setGeoMessage(err?.response?.data?.detail || err?.message || 'Enregistrement impossible.');
+        } finally {
+          setGeoSaving(false);
+        }
+      },
+      () => {
+        setGeoSaving(false);
+        setGeoMessage('Autorisez la localisation pour enregistrer le cabinet.');
+      },
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 }
+    );
   };
 
   const displayName = useMemo(() => {
@@ -112,16 +152,40 @@ export default function DoctorProfile() {
           </section>
 
           <section className="doctor-profile-card">
-            <h2>Carte & proximité</h2>
-            <p className="doctor-profile-muted">
-              La géolocalisation patient → cabinet sera affichée ici (carte interactive) une fois le fournisseur cartes
-              choisi (MapLibre / Google). Les coordonnées régionales sont déjà utilisées côté annuaire pour le tri
-              « à proximité ».
-            </p>
-            <div className="doctor-profile-map-placeholder" role="img" aria-label="Emplacement approximatif">
-              <span>Carte — intégration à venir</span>
-              <small>Conakry &amp; régions · Guinée</small>
-            </div>
+            <h2>Carte &amp; proximité</h2>
+            {isOwnProfile ? (
+              <>
+                <p className="doctor-profile-muted">
+                  Enregistrez les coordonnées GPS de votre cabinet pour apparaître dans la recherche « à proximité »
+                  côté patients (rayon paramétré sur l’API).
+                </p>
+                {doctor?.latitude != null && doctor?.longitude != null && (
+                  <p className="doctor-profile-coords">
+                    GPS actuel : {Number(doctor.latitude).toFixed(5)}, {Number(doctor.longitude).toFixed(5)}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-secondary doctor-profile-geo-btn"
+                  disabled={geoSaving}
+                  onClick={saveCabinetGps}
+                >
+                  {geoSaving ? 'Enregistrement…' : 'Enregistrer la position du cabinet (GPS)'}
+                </button>
+                {geoMessage && <p className="doctor-profile-geo-msg">{geoMessage}</p>}
+              </>
+            ) : (
+              <>
+                <p className="doctor-profile-muted">
+                  Les patients peuvent trier l’annuaire par proximité lorsque le médecin a enregistré la position du
+                  cabinet.
+                </p>
+                <div className="doctor-profile-map-placeholder" role="img" aria-label="Emplacement approximatif">
+                  <span>Carte — intégration fournisseur à brancher</span>
+                  <small>Conakry &amp; régions · Guinée</small>
+                </div>
+              </>
+            )}
           </section>
 
           <section className="doctor-profile-card doctor-profile-card--cta">

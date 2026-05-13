@@ -52,6 +52,15 @@ export const doctorsAPI = {
     const s = qs.toString();
     return httpClient.get(s ? `/doctors/?${s}` : '/doctors/');
   },
+  getNearby: (params) => {
+    const qs = new URLSearchParams();
+    qs.append('lat', String(params.lat));
+    qs.append('lon', String(params.lon));
+    if (params.radius_km != null) qs.append('radius_km', String(params.radius_km));
+    if (params.specialty) qs.append('specialty', params.specialty);
+    return httpClient.get(`/doctors/nearby?${qs.toString()}`);
+  },
+  patchMyGeo: (body) => httpClient.patch('/doctors/me/geo', body),
   getById: (id) => httpClient.get(`/doctors/${id}/`),
   create: (data) => httpClient.post('/doctors/', data),
   update: (id, data) => httpClient.put(`/doctors/${id}/`, data),
@@ -79,6 +88,8 @@ export const paymentsAPI = {
   confirmPayment: (appointmentId) => httpClient.post(`/payments/${appointmentId}/confirm-payment`),
   getStatus: (appointmentId) => httpClient.get(`/payments/${appointmentId}/status`),
   list: () => httpClient.get('/payments/'),
+  railConfig: () => httpClient.get('/payments/rail-config'),
+  mobileMoneyInitiate: (body) => httpClient.post('/payments/mobile-money/initiate', body),
 };
 
 export const notificationsAPI = {

@@ -31,15 +31,36 @@ const Doctors = () => {
   const fetchList = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await doctorsAPI.getAll({
-        specialty: specialty || undefined,
-        location: region || undefined,
-        search: search || undefined,
-      });
-      let list = Array.isArray(response.data) ? response.data : [];
+      let list = [];
+
       if (userPos) {
-        list = sortDoctorsByProximity(list, userPos.lat, userPos.lon);
+        try {
+          const { data } = await doctorsAPI.getNearby({
+            lat: userPos.lat,
+            lon: userPos.lon,
+            radius_km: 150,
+            specialty: specialty || undefined,
+          });
+          if (Array.isArray(data) && data.length > 0) {
+            list = data;
+          }
+        } catch {
+          list = [];
+        }
       }
+
+      if (list.length === 0) {
+        const response = await doctorsAPI.getAll({
+          specialty: specialty || undefined,
+          location: region || undefined,
+          search: search || undefined,
+        });
+        list = Array.isArray(response.data) ? response.data : [];
+        if (userPos) {
+          list = sortDoctorsByProximity(list, userPos.lat, userPos.lon);
+        }
+      }
+
       setDoctors(list);
       setError(null);
     } catch (err) {
@@ -206,6 +227,12 @@ const Doctors = () => {
                     <strong>{doctor.location}</strong>
                   </p>
                 )}
+                {doctor.distance_km != null && (
+                  <p className="doctor-list-distance">
+                    <span>Distance estimée</span>
+                    <strong>{Number(doctor.distance_km).toFixed(1)} km</strong>
+                  </p>
+                )}
                 <p className="doctor-list-fee">
                   <span>À partir de</span>
                   <strong>
@@ -219,7 +246,7 @@ const Doctors = () => {
                   <button
                     type="button"
                     className="btn btn-primary doctor-list-book"
-                    onClick={() => navigate('/appointments', { state: { doctorId: doctor.id } })}
+                    onClick={() => navigate(`/appointments?doctor_id=${doctor.id}`)}
                   >
                     Prendre rendez-vous
                   </button>

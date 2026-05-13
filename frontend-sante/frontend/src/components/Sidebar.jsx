@@ -134,6 +134,9 @@ function pathIsActive(pathname, itemPath) {
   if (itemPath === '/dashboard') {
     return pathname === '/dashboard';
   }
+  if (itemPath === '/notifications') {
+    return pathname === '/notifications';
+  }
   if (itemPath === '/teleconsultation') {
     return pathname === '/teleconsultation' || pathname.startsWith('/consultation/');
   }

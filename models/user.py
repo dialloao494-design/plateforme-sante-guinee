@@ -12,6 +12,7 @@ class User(Base):
 
     patient_profile = relationship("Patient", back_populates="user", uselist=False)
     doctor_profile = relationship("Doctor", back_populates="user", uselist=False)
+    notification_events = relationship("NotificationEvent", back_populates="user")
 
     @property
     def password_hash(self) -> str:

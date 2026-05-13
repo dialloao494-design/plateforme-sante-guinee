@@ -5,3 +5,4 @@ from .user import User
 from .doctor import Doctor
 from .availability import DoctorAvailability
 from .message import Message
+from .notification_event import NotificationEvent

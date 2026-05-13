@@ -114,6 +114,9 @@ const Dashboard = () => {
       )}
 
       <div className="dashboard-actions">
+        <Link to="/notifications" className="action-button action-button--ghost">
+          Notifications
+        </Link>
         {role === 'patient' && (
           <>
             <Link to="/appointments" className="action-button">
