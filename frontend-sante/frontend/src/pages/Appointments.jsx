@@ -15,6 +15,7 @@ import {
 } from '../utils/appointmentPresentation.js';
 import { loadSimulatedPayments } from '../utils/simulatedPaymentsStorage.js';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
+import EmptyState from '../components/ui/EmptyState.jsx';
 import './Appointments.css';
 
 const Appointments = () => {
@@ -454,7 +455,23 @@ const Appointments = () => {
 
           {loading && <PageSkeleton lines={6} />}
 
-          {!loading && appointments.length === 0 && <p>Aucun rendez-vous trouvé.</p>}
+          {!loading && appointments.length === 0 && (
+            <EmptyState
+              preset="calendar"
+              title="Aucun rendez-vous"
+              description="Vos consultations passées et à venir s’affichent ici. Prenez rendez-vous avec un médecin partenaire en quelques clics."
+              actionLabel="Réserver une consultation"
+              onAction={() => navigate('/doctors')}
+            />
+          )}
+
+          {!loading && appointments.length > 0 && displayedAppointments.length === 0 && (
+            <EmptyState
+              preset="clipboard"
+              title="Aucun résultat"
+              description="Ajustez la recherche ou le filtre médecin pour afficher d’autres rendez-vous."
+            />
+          )}
 
           {displayedAppointments.length > 0 && (
             <ul className="appointments-cards">

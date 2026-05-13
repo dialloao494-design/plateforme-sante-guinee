@@ -5,6 +5,7 @@ import { appointmentsAPI, patientsAPI } from '../services/api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { formatGNF, getConsultationTypeLabel, getStatusMeta } from '../utils/appointmentPresentation.js';
 import { formatDateTimeShort } from '../utils/formatDateTime.js';
+import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import './PatientDetails.css';
 
 const PatientDetails = () => {
@@ -83,78 +84,127 @@ const PatientDetails = () => {
     return `${a}${b}`.toUpperCase() || '?';
   }, [patient]);
 
+  const nextAppointment = useMemo(() => {
+    const now = new Date();
+    const future = appointments
+      .filter((a) => new Date(a.date) >= now && String(a.status || '').toLowerCase() !== 'cancelled')
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    return future[0] || null;
+  }, [appointments]);
+
   return (
-    <div className="patient-details-page">
+    <div className="patient-details-page ds-page">
       <header className="patient-details-header">
         <div>
-          <h1>Dossier patient</h1>
-          <p>{patientName}</p>
+          <p className="patient-details-eyebrow">Dossier clinique</p>
+          <h1>{patientName}</h1>
+          <p className="patient-details-sub">Historique des consultations et notes de suivi</p>
         </div>
-        <Link to={backHref} className="button-secondary">
-          {user?.role === 'admin' ? 'Retour à la liste' : 'Retour aux rendez-vous'}
+        <Link to={backHref} className="btn btn-secondary patient-details-back">
+          {user?.role === 'admin' ? 'Liste patients' : 'Agenda'}
         </Link>
       </header>
 
       {loading && (
-        <div className="page-loading" role="status">
-          <span className="app-spinner" aria-hidden />
-          <span>Chargement du dossier…</span>
+        <div className="patient-details-loading">
+          <PageSkeleton lines={5} />
         </div>
       )}
-      {error && <p className="error">{error}</p>}
+      {error && <p className="patient-details-error">{error}</p>}
 
       {!loading && (
         <>
-          <section className="patient-card patient-card--identity">
-            <div className="patient-identity">
-              <div className="patient-avatar" aria-hidden>
-                {initials}
+          <section className="patient-hero-grid">
+            <div className="patient-card patient-card--identity">
+              <div className="patient-identity">
+                <div className="patient-avatar" aria-hidden>
+                  {initials}
+                </div>
+                <div>
+                  <h2>Identité</h2>
+                  <p className="patient-email-line">
+                    <span className="patient-label">Email</span> {patient?.email?.trim() || 'Non renseigné'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2>Informations patient</h2>
-                <p className="patient-email-line">
-                  <strong>Email:</strong> {patient?.email?.trim() || 'Non renseigné'}
-                </p>
-              </div>
+              <dl className="patient-dl">
+                <div>
+                  <dt>Âge</dt>
+                  <dd>{patient?.age ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>Genre</dt>
+                  <dd>{patient?.gender || '—'}</dd>
+                </div>
+                <div>
+                  <dt>Identifiant dossier</dt>
+                  <dd>#{id}</dd>
+                </div>
+              </dl>
             </div>
-            <p><strong>Nom:</strong> {patientName}</p>
-            <p><strong>Âge:</strong> {patient?.age ?? 'Non renseigné'}</p>
-            <p><strong>Genre:</strong> {patient?.gender || 'Non renseigné'}</p>
+
+            {nextAppointment && (
+              <div className="patient-card patient-card--next">
+                <h2>Prochain rendez-vous</h2>
+                <p className="patient-next-when">{formatDateTimeShort(nextAppointment.date)}</p>
+                <p className="patient-next-meta">
+                  {getConsultationTypeLabel(nextAppointment)} · {nextAppointment.duration_minutes} min ·{' '}
+                  {formatGNF(nextAppointment.price)}
+                </p>
+                <span className={getStatusMeta(nextAppointment).className}>{getStatusMeta(nextAppointment).label}</span>
+              </div>
+            )}
           </section>
 
-          <section className="patient-card">
-            <h2>Historique des rendez-vous</h2>
-            {appointments.length === 0 && <p>Aucun rendez-vous pour ce patient.</p>}
-            <ul className="history-list">
-              {appointments.map((appointment) => {
+          <section className="patient-card patient-card--timeline">
+            <div className="patient-section-head">
+              <h2>Parcours de soins</h2>
+              <p className="patient-section-lead">Vue chronologique des rendez-vous et statuts de paiement.</p>
+            </div>
+            {appointments.length === 0 && (
+              <p className="patient-empty-inline">Aucun rendez-vous enregistré pour ce patient.</p>
+            )}
+            <ol className="patient-timeline">
+              {appointments.map((appointment, index) => {
                 const statusMeta = getStatusMeta(appointment);
+                const isPast = new Date(appointment.date) < new Date();
                 return (
-                  <li key={appointment.id} className="history-item">
-                    <div className="history-item-main">
-                      <p className="history-item-date">{formatDateTimeShort(appointment.date)}</p>
-                      <p className="history-item-meta">
+                  <li key={appointment.id} className={`patient-timeline-item ${isPast ? 'is-past' : 'is-future'}`}>
+                    <div className="patient-timeline-marker" aria-hidden />
+                    <div className="patient-timeline-body">
+                      <div className="patient-timeline-top">
+                        <time dateTime={appointment.date}>{formatDateTimeShort(appointment.date)}</time>
+                        <span className={statusMeta.className}>{statusMeta.label}</span>
+                      </div>
+                      <p className="patient-timeline-detail">
                         {appointment.duration_minutes} min · {formatGNF(appointment.price)} ·{' '}
                         {getConsultationTypeLabel(appointment)}
                       </p>
+                      {index === 0 && (
+                        <p className="patient-timeline-hint">Consultation la plus récente enregistrée dans le système.</p>
+                      )}
                     </div>
-                    <span className={statusMeta.className}>{statusMeta.label}</span>
                   </li>
                 );
               })}
-            </ul>
+            </ol>
           </section>
 
           <section className="patient-card patient-card--notes">
             <h2>Notes médecin</h2>
-            <p className="notes-hint">Stockage local sur cet appareil — à migrer vers le dossier serveur en production.</p>
+            <p className="notes-hint">
+              Stockage local sur cet appareil — en production, reliez ce bloc au dossier médical serveur (DMNU).
+            </p>
             <textarea
               rows={6}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Ajoutez des notes de suivi..."
+              placeholder="Synthèse clinique, consignes, suivi à distance…"
             />
             <div className="notes-actions">
-              <button type="button" className="button-pay" onClick={handleSaveNotes}>Enregistrer</button>
+              <button type="button" className="btn btn-primary" onClick={handleSaveNotes}>
+                Enregistrer
+              </button>
               {savedMessage && <span className="saved-note">{savedMessage}</span>}
             </div>
           </section>

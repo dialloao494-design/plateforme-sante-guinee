@@ -9,6 +9,7 @@ import {
 } from '../utils/appointmentPresentation.js';
 import './DoctorAppointments.css';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
+import EmptyState from '../components/ui/EmptyState.jsx';
 
 const DoctorAppointments = () => {
   const navigate = useNavigate();
@@ -136,10 +137,28 @@ const DoctorAppointments = () => {
       {loading && <PageSkeleton lines={5} />}
       {error && <p className="error">{error}</p>}
 
-      {!loading && filteredAppointments.length === 0 && (
-        <p className="doctor-appointments-empty">Aucun rendez-vous trouvé.</p>
+      {!loading && filteredAppointments.length === 0 && appointments.length === 0 && (
+        <EmptyState
+          preset="calendar"
+          title="Aucun rendez-vous enregistré"
+          description="Vos demandes patients apparaîtront ici dès qu’une réservation sera créée."
+        />
       )}
 
+      {!loading && filteredAppointments.length === 0 && appointments.length > 0 && (
+        <EmptyState
+          preset="calendar"
+          title="Aucun rendez-vous ne correspond à ces filtres"
+          description="Modifiez la date ou le statut, ou consultez l’historique complet depuis votre agenda."
+          actionLabel="Réinitialiser les filtres"
+          onAction={() => {
+            setDateFilter('');
+            setStatusFilter('all');
+          }}
+        />
+      )}
+
+      {!loading && filteredAppointments.length > 0 && (
       <ul className="doctor-appointments-list">
         {filteredAppointments.map((appointment) => {
           const presentation = getAppointmentState(appointment);
@@ -175,6 +194,7 @@ const DoctorAppointments = () => {
           );
         })}
       </ul>
+      )}
     </div>
   );
 };

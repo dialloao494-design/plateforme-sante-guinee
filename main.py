@@ -93,34 +93,34 @@ def seed_demo_doctors():
                 "email": "dr.amu@example.com",
                 "password": "Doctor123!",
                 "first_name": "Amina",
-                "last_name": "Mamadou",
-                "specialty": "Pediatrics",
-                "location": "Conakry",
-                "phone": "+224620000001",
-                "photo_url": "https://api.dicebear.com/7.x/female/svg?seed=Amina",
-                "consultation_fee": 40000,
+                "last_name": "Barry",
+                "specialty": "Pédiatrie",
+                "location": "Conakry · Kaloum — Clinique médico-chirurgicale (CMS) Dixinn",
+                "phone": "+224 620 00 00 01",
+                "photo_url": "https://api.dicebear.com/7.x/female/svg?seed=AminaBarry",
+                "consultation_fee": 45000,
             },
             {
                 "email": "dr.soulaiman@example.com",
                 "password": "Doctor123!",
                 "first_name": "Souleymane",
                 "last_name": "Diallo",
-                "specialty": "General Medicine",
-                "location": "Conakry",
-                "phone": "+224620000002",
-                "photo_url": "https://api.dicebear.com/7.x/male/svg?seed=Souleymane",
-                "consultation_fee": 35000,
+                "specialty": "Médecine générale",
+                "location": "Conakry · Ratoma — Cabinet télésanté & suivi chronique",
+                "phone": "+224 620 00 00 02",
+                "photo_url": "https://api.dicebear.com/7.x/male/svg?seed=SouleymaneDiallo",
+                "consultation_fee": 40000,
             },
             {
                 "email": "dr.fatou@example.com",
                 "password": "Doctor123!",
-                "first_name": "Fatou",
+                "first_name": "Fatoumata",
                 "last_name": "Kaba",
-                "specialty": "Dermatology",
-                "location": "Kindia",
-                "phone": "+224620000003",
-                "photo_url": "https://api.dicebear.com/7.x/female/svg?seed=Fatou",
-                "consultation_fee": 38000,
+                "specialty": "Dermatologie",
+                "location": "Kindia — Centre de santé urbain, consultations hybrides",
+                "phone": "+224 620 00 00 03",
+                "photo_url": "https://api.dicebear.com/7.x/female/svg?seed=FatoumataKaba",
+                "consultation_fee": 42000,
             },
         ]
 
@@ -174,6 +174,26 @@ def seed_demo_doctors():
                 db.add(doctor)
                 db.commit()
                 logger.info("Created demo doctor profile for: %s", email)
+            else:
+                demo_emails = {d["email"].lower().strip() for d in demo_doctors}
+                if email in demo_emails:
+                    sync_fields = (
+                        ("first_name", doc_data["first_name"]),
+                        ("last_name", doc_data["last_name"]),
+                        ("specialty", doc_data["specialty"]),
+                        ("city", doc_data["location"]),
+                        ("phone", doc_data["phone"]),
+                        ("photo_url", doc_data["photo_url"]),
+                        ("consultation_fee", doc_data["consultation_fee"]),
+                    )
+                    changed = False
+                    for attr, value in sync_fields:
+                        if getattr(existing_doctor, attr) != value:
+                            setattr(existing_doctor, attr, value)
+                            changed = True
+                    if changed:
+                        db.commit()
+                        logger.info("Updated demo doctor profile copy for: %s", email)
 
         logger.info("Demo doctors verified successfully.")
     except Exception as exc:

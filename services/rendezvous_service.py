@@ -618,7 +618,7 @@ class RendezVousService:
         payment_intent = StripeService.create_checkout_session(
             appointment_id=appointment_id,
             appointment_price=appointment.price,
-            patient_email=patient.user.email if patient.user else "patient@example.com",
+            patient_email=patient.user.email if patient.user else "patient@sante.gn",
             db=db
         )
         

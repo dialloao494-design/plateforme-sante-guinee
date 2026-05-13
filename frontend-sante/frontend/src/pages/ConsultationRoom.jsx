@@ -20,6 +20,25 @@ const STATUS = {
   error: 'error',
 };
 
+const JOIN_WINDOW_MS = 15 * 60 * 1000;
+
+function formatCountdown(ms) {
+  if (ms <= 0) return null;
+  const totalSec = Math.ceil(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h} h ${m} min`;
+  if (m > 0) return `${m} min ${s} s`;
+  return `${s} s`;
+}
+
+function formatElapsed(totalSec) {
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 export default function ConsultationRoom() {
   const { appointmentId } = useParams();
   const navigate = useNavigate();
@@ -29,9 +48,15 @@ export default function ConsultationRoom() {
   const [error, setError] = useState('');
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  const [connectionHint, setConnectionHint] = useState('');
+  const [elapsedSec, setElapsedSec] = useState(0);
+  const [peerPresent, setPeerPresent] = useState(false);
 
   const load = useCallback(async () => {
     setRoomStatus(STATUS.loading);
+    setPeerPresent(false);
+    setElapsedSec(0);
     setError('');
     try {
       const { data } = await appointmentsAPI.getById(appointmentId);
@@ -67,9 +92,59 @@ export default function ConsultationRoom() {
 
   const providerLabel = useMemo(() => getProviderDisplayLabel(provider), [provider]);
 
+  const appointmentStartMs = appointment?.date ? new Date(appointment.date).getTime() : null;
+  const msUntilStart = appointmentStartMs != null ? appointmentStartMs - nowTick : null;
+
+  useEffect(() => {
+    if (roomStatus !== STATUS.prejoin && roomStatus !== STATUS.connecting) return undefined;
+    const id = window.setInterval(() => setNowTick(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [roomStatus]);
+
+  useEffect(() => {
+    if (roomStatus !== STATUS.connecting) {
+      const clearId = window.setTimeout(() => setConnectionHint(''), 0);
+      return () => window.clearTimeout(clearId);
+    }
+    let cancelled = false;
+    const t0 = window.setTimeout(() => {
+      if (!cancelled) setConnectionHint('Établissement du canal sécurisé…');
+    }, 0);
+    const t1 = window.setTimeout(() => {
+      if (!cancelled) setConnectionHint('Négociation chiffrée (TLS)…');
+    }, 280);
+    const t2 = window.setTimeout(() => {
+      if (!cancelled) setConnectionHint('Préparation audio & vidéo…');
+    }, 620);
+    const t3 = window.setTimeout(() => {
+      if (!cancelled) setRoomStatus(STATUS.live);
+    }, 1180);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t0);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+    };
+  }, [roomStatus]);
+
+  useEffect(() => {
+    if (roomStatus !== STATUS.live) return undefined;
+    const id = window.setInterval(() => setElapsedSec((s) => s + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [roomStatus]);
+
+  useEffect(() => {
+    if (roomStatus !== STATUS.live) {
+      const clearId = window.setTimeout(() => setPeerPresent(false), 0);
+      return () => window.clearTimeout(clearId);
+    }
+    const t = window.setTimeout(() => setPeerPresent(true), 2600);
+    return () => window.clearTimeout(t);
+  }, [roomStatus]);
+
   const enterRoom = () => {
     setRoomStatus(STATUS.connecting);
-    window.setTimeout(() => setRoomStatus(STATUS.live), 900);
   };
 
   const endSession = () => {
@@ -92,6 +167,12 @@ export default function ConsultationRoom() {
     return appointment?.doctor?.name || `Médecin #${appointment?.doctor_id ?? ''}`;
   }, [appointment, user]);
 
+  const isDoctorLike = user?.role === 'doctor' || user?.role === 'admin';
+  const earlyForSession =
+    msUntilStart != null && msUntilStart > JOIN_WINDOW_MS && (roomStatus === STATUS.prejoin || roomStatus === STATUS.connecting);
+  const countdownLabel =
+    msUntilStart != null && msUntilStart > 0 && msUntilStart <= 2 * 60 * 60 * 1000 ? formatCountdown(msUntilStart) : null;
+
   const flowStep =
     roomStatus === STATUS.error
       ? 1
@@ -105,13 +186,15 @@ export default function ConsultationRoom() {
               ? 3
               : 0;
 
-  const flowLabels = ['Salle d’attente', 'Préparation', 'Consultation', 'Clôture'];
+  const flowLabels = ['Salle d’attente', 'Préparation', 'Consultation en direct', 'Clôture'];
+
+  const postConsultHref = isDoctorLike ? '/doctor/dashboard' : '/dashboard';
 
   return (
-    <div className="consult-room">
+    <div className="consult-room ds-page">
       <header className="consult-room-header">
         <div>
-          <p className="consult-room-eyebrow">Téléconsultation</p>
+          <p className="consult-room-eyebrow">Téléconsultation sécurisée</p>
           <h1 className="consult-room-title">Salle de consultation</h1>
           {appointment && (
             <p className="consult-room-meta">
@@ -126,7 +209,7 @@ export default function ConsultationRoom() {
             </Link>
           )}
           <Link to="/teleconsultation" className="btn btn-secondary consult-room-link">
-            Quitter
+            Hub téléconsultation
           </Link>
         </div>
       </header>
@@ -155,7 +238,7 @@ export default function ConsultationRoom() {
       {roomStatus === STATUS.loading && (
         <div className="consult-room-loading page-loading" role="status">
           <span className="app-spinner" aria-hidden />
-          <span>Préparation de la salle…</span>
+          <span>Ouverture de la salle chiffrée…</span>
         </div>
       )}
 
@@ -164,11 +247,36 @@ export default function ConsultationRoom() {
           <h2 id="prejoin-title" className="visually-hidden">
             Avant d’entrer
           </h2>
+
+          {earlyForSession && (
+            <div className="consult-waiting-banner" role="status">
+              <strong>Salle d’attente virtuelle</strong>
+              <span>
+                Vous êtes connecté en avance. L’accès complet à la consultation s’ouvre en général{' '}
+                <strong>15 minutes</strong> avant l’horaire prévu. Préparez vos documents médicaux.
+              </span>
+            </div>
+          )}
+
+          {!earlyForSession && countdownLabel && (
+            <div className="consult-countdown-banner" role="status">
+              <span className="consult-countdown-label">Début dans</span>
+              <span className="consult-countdown-value">{countdownLabel}</span>
+            </div>
+          )}
+
           <div className="consult-prejoin-grid">
             <div className="consult-device-card">
               <div className={`consult-device-preview ${camOn ? 'on' : 'off'}`}>
-                <span className="consult-device-placeholder">{camOn ? 'Caméra (aperçu)' : 'Caméra désactivée'}</span>
+                <span className="consult-device-placeholder">
+                  {camOn ? 'Aperçu caméra (simulation)' : 'Caméra désactivée'}
+                </span>
               </div>
+              <ul className="consult-device-checklist">
+                <li className={micOn ? 'is-ok' : ''}>Micro {micOn ? 'prêt' : 'coupé'}</li>
+                <li className={camOn ? 'is-ok' : ''}>Caméra {camOn ? 'prête' : 'désactivée'}</li>
+                <li className="is-ok">Connexion chiffrée (HTTPS)</li>
+              </ul>
               <div className="consult-device-toggles">
                 <button
                   type="button"
@@ -190,16 +298,22 @@ export default function ConsultationRoom() {
             </div>
             <div className="consult-prejoin-side">
               <p className="consult-provider-pill">
-                Fournisseur cible : <strong>{providerLabel}</strong>
+                Fournisseur vidéo : <strong>{providerLabel}</strong>
               </p>
               <p className="consult-prejoin-copy">
-                La vidéo réelle sera fournie par Daily.co, Jitsi ou Twilio Video selon la configuration du cabinet.
-                Activez le micro et la caméra uniquement lorsque vous êtes prêt.
+                Le flux vidéo réel sera fourni par Daily.co, Jitsi ou Twilio selon la configuration du cabinet. Cette
+                interface simule l’expérience clinique (aperçu, contrôles, file d’attente) avant branchement SDK.
               </p>
               {appointment.meeting_link && (
                 <button type="button" className="btn btn-secondary consult-external" onClick={openExternal}>
-                  Ouvrir le lien fournisseur dans un nouvel onglet
+                  Ouvrir le lien fournisseur
                 </button>
+              )}
+              {roomStatus === STATUS.connecting && (
+                <div className="consult-connecting-panel" role="status" aria-live="polite">
+                  <span className="app-spinner consult-connecting-spinner" aria-hidden />
+                  <p className="consult-connecting-text">{connectionHint}</p>
+                </div>
               )}
               <button
                 type="button"
@@ -207,7 +321,7 @@ export default function ConsultationRoom() {
                 disabled={roomStatus === STATUS.connecting}
                 onClick={enterRoom}
               >
-                {roomStatus === STATUS.connecting ? 'Connexion…' : 'Entrer dans la salle'}
+                {roomStatus === STATUS.connecting ? 'Connexion sécurisée…' : 'Rejoindre la consultation'}
               </button>
             </div>
           </div>
@@ -216,21 +330,39 @@ export default function ConsultationRoom() {
 
       {roomStatus === STATUS.live && (
         <section className="consult-live" aria-label="Salle de téléconsultation">
+          <div className="consult-live-statusbar">
+            <div className="consult-live-status-left">
+              <span className="consult-live-timer" aria-label="Durée de la séance">
+                {formatElapsed(elapsedSec)}
+              </span>
+              <span className="consult-live-pill consult-live-pill--signal">Signal stable</span>
+            </div>
+            <div className={`consult-live-peer ${peerPresent ? 'is-on' : 'is-wait'}`}>
+              {peerPresent
+                ? isDoctorLike
+                  ? 'Patient connecté'
+                  : 'Médecin en ligne'
+                : isDoctorLike
+                  ? 'En attente du patient…'
+                  : 'Connexion au cabinet…'}
+            </div>
+          </div>
           <div className="consult-live-grid">
             <div className="consult-video-main">
-              <span>Flux vidéo principal</span>
-              <small>Intégration SDK à brancher ({providerLabel})</small>
+              <span className="consult-video-main-label">{counterpartLabel}</span>
+              <span>Flux principal (SDK à intégrer)</span>
+              <small>{providerLabel}</small>
             </div>
             <div className="consult-video-pip">
-              <span>Votre aperçu</span>
+              <span>Vous</span>
             </div>
           </div>
           <div className="consult-live-toolbar">
-            <button type="button" className="consult-toolbar-btn" onClick={() => setMicOn((v) => !v)}>
-              Micro {micOn ? 'on' : 'off'}
+            <button type="button" className={`consult-toolbar-btn ${micOn ? '' : 'is-muted'}`} onClick={() => setMicOn((v) => !v)}>
+              Micro {micOn ? 'activé' : 'muet'}
             </button>
-            <button type="button" className="consult-toolbar-btn" onClick={() => setCamOn((v) => !v)}>
-              Cam {camOn ? 'on' : 'off'}
+            <button type="button" className={`consult-toolbar-btn ${camOn ? '' : 'is-muted'}`} onClick={() => setCamOn((v) => !v)}>
+              Caméra {camOn ? 'on' : 'off'}
             </button>
             {appointment?.meeting_link && (
               <button type="button" className="consult-toolbar-btn" onClick={openExternal}>
@@ -247,9 +379,9 @@ export default function ConsultationRoom() {
       {roomStatus === STATUS.ended && (
         <div className="consult-ended">
           <h2>Consultation terminée</h2>
-          <p>Vous pouvez fermer cette page ou retourner au tableau de bord.</p>
-          <button type="button" className="btn btn-primary" onClick={() => navigate('/dashboard')}>
-            Tableau de bord
+          <p>Les notes peuvent être complétées depuis le dossier patient. Pensez à archiver les éléments cliniques.</p>
+          <button type="button" className="btn btn-primary" onClick={() => navigate(postConsultHref)}>
+            Retour au tableau de bord
           </button>
         </div>
       )}

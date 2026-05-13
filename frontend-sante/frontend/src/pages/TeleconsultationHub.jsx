@@ -77,11 +77,11 @@ export default function TeleconsultationHub() {
 
       {!loading && !error && teleRows.length === 0 && (
         <EmptyState
+          preset="video"
           title="Aucune téléconsultation à venir"
-          description="Réservez un rendez-vous en choisissant « Téléconsultation » pour le voir apparaître ici."
+          description="Réservez un rendez-vous en choisissant « Téléconsultation » pour le voir apparaître ici, avec le lien sécurisé le jour J."
           actionLabel={user?.role === 'patient' ? 'Prendre rendez-vous' : undefined}
           onAction={user?.role === 'patient' ? () => navigate('/appointments') : undefined}
-          icon="📹"
         />
       )}
 

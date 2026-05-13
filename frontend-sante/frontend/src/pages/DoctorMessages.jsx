@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { appointmentsAPI, messagesAPI } from '../services/api.js';
 import { API_BASE_URL } from '../services/httpClient.js';
+import PageSkeleton from '../components/ui/PageSkeleton.jsx';
+import EmptyState from '../components/ui/EmptyState.jsx';
 import './DoctorMessages.css';
 
 const DoctorMessages = () => {
@@ -137,21 +139,32 @@ const DoctorMessages = () => {
   };
 
   return (
-    <div className="doctor-messages-page">
+    <div className="doctor-messages-page ds-page">
       <header className="doctor-messages-header">
         <div>
-          <h1>Messagerie médecin</h1>
-          <p>Communiquez avec vos patients depuis vos rendez-vous.</p>
+          <p className="doctor-messages-eyebrow">Messagerie sécurisée</p>
+          <h1>Échanges patients</h1>
+          <p className="doctor-messages-lead">Liés à vos rendez-vous — pièces jointes et ordonnances.</p>
         </div>
-        <Link className="button-secondary" to="/doctor/dashboard">Retour au tableau de bord</Link>
+        <Link className="btn btn-secondary" to="/doctor/dashboard">
+          Tableau de bord
+        </Link>
       </header>
 
-      {error && <p className="error">{error}</p>}
+      {error && <p className="doctor-messages-error">{error}</p>}
 
       <div className="doctor-messages-layout">
         <aside className="conversation-panel">
           <h2>Conversations</h2>
-          {loadingConversations && <p>Chargement...</p>}
+          {loadingConversations && <PageSkeleton lines={4} />}
+          {!loadingConversations && appointments.length === 0 && (
+            <EmptyState
+              preset="messages"
+              title="Aucune conversation"
+              description="Les messages liés à vos rendez-vous s’affichent ici."
+            />
+          )}
+          {appointments.length > 0 && (
           <ul>
             {appointments.map((appointment) => (
               <li key={appointment.id}>
@@ -166,6 +179,7 @@ const DoctorMessages = () => {
               </li>
             ))}
           </ul>
+          )}
         </aside>
 
         <section className="chat-panel">
@@ -188,8 +202,14 @@ const DoctorMessages = () => {
           </div>
 
           <div className="chat-thread">
-            {loadingMessages && <p>Chargement des messages...</p>}
-            {!loadingMessages && messages.length === 0 && <p>Aucun message.</p>}
+            {loadingMessages && <PageSkeleton lines={3} />}
+            {!loadingMessages && selectedAppointmentId && messages.length === 0 && (
+              <EmptyState
+                preset="messages"
+                title="Démarrez la conversation"
+                description="Envoyez un message ou une ordonnance pour informer le patient avant ou après la consultation."
+              />
+            )}
 
             {!loadingMessages && messages.map((message) => (
               <div

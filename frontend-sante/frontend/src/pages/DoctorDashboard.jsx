@@ -10,6 +10,7 @@ import {
 } from '../utils/appointmentPresentation.js';
 import './DoctorDashboard.css';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
+import EmptyState from '../components/ui/EmptyState.jsx';
 
 const DoctorDashboard = () => {
   const navigate = useNavigate();
@@ -100,6 +101,28 @@ const DoctorDashboard = () => {
     [appointments]
   );
 
+  const paidAwaitingConfirm = useMemo(
+    () =>
+      appointments.filter((appointment) => {
+        const st = String(appointment.status || '').toLowerCase();
+        const py = String(appointment.payment_status || '').toLowerCase();
+        return py === 'paid' && (st === 'pending' || st === 'paid');
+      }).length,
+    [appointments]
+  );
+
+  const teleconsultSoon = useMemo(() => {
+    const now = new Date();
+    const horizon = new Date(now);
+    horizon.setDate(horizon.getDate() + 14);
+    return appointments.filter((appointment) => {
+      if (appointment.consultation_type !== 'teleconsultation') return false;
+      if (String(appointment.status || '').toLowerCase() === 'cancelled') return false;
+      const d = new Date(appointment.date);
+      return d >= now && d <= horizon;
+    }).length;
+  }, [appointments]);
+
   const upcomingAppointments = useMemo(() => {
     const now = new Date();
     return appointments
@@ -127,8 +150,12 @@ const DoctorDashboard = () => {
   return (
     <div className="doctor-dashboard-page ds-page">
       <div className="doctor-dashboard-card">
+        <p className="doctor-dashboard-eyebrow">Vue clinique</p>
         <h1>Tableau de bord médecin</h1>
-        <p>Bienvenue Dr {user?.email || ''}. Suivez vos consultations et vos échanges patients.</p>
+        <p className="doctor-dashboard-lead">
+          Bonjour{user?.email ? ` — ${user.email}` : ''}. Anticipez les confirmations, la téléconsultation et la
+          messagerie sécurisée depuis un seul écran.
+        </p>
 
         {loading && <PageSkeleton lines={4} />}
         {error && <p className="error">{error}</p>}
@@ -137,16 +164,26 @@ const DoctorDashboard = () => {
           <>
             <div className="doctor-summary-grid">
               <article className="summary-card">
-                <h3>Total rendez-vous</h3>
+                <h3>Agenda total</h3>
                 <p>{appointments.length}</p>
+                <span className="summary-card-hint">Tous statuts</span>
               </article>
-              <article className="summary-card">
-                <h3>Aujourd'hui</h3>
+              <article className="summary-card summary-card--accent">
+                <h3>Aujourd’hui</h3>
                 <p>{todayCount}</p>
+                <span className="summary-card-hint">Créneaux du jour</span>
+              </article>
+              <article className="summary-card summary-card--warn">
+                <h3>Payés à confirmer</h3>
+                <p>{paidAwaitingConfirm}</p>
+                <span className="summary-card-hint">Action cabinet</span>
               </article>
               <article className="summary-card">
-                <h3>En attente</h3>
-                <p>{pendingCount}</p>
+                <h3>File &amp; téléconsult.</h3>
+                <p>
+                  {pendingCount} / {teleconsultSoon}
+                </p>
+                <span className="summary-card-hint">En attente · téléconsult. 14 j.</span>
               </article>
             </div>
 
@@ -159,7 +196,15 @@ const DoctorDashboard = () => {
                     <Link to="/doctor/appointments" className="button-secondary">Voir tout</Link>
                   </div>
                 </div>
-                {upcomingAppointments.length === 0 && <p>Aucun rendez-vous à venir.</p>}
+                {upcomingAppointments.length === 0 && (
+                  <EmptyState
+                    preset="calendar"
+                    title="Aucun rendez-vous à venir"
+                    description="Lorsque des patients réservent, ils apparaissent ici avec le statut de paiement et les actions possibles."
+                    actionLabel="Ouvrir l’agenda détaillé"
+                    onAction={() => navigate('/doctor/appointments')}
+                  />
+                )}
                 <ul className="compact-appointments">
                   {upcomingAppointments.map((appointment) => {
                     const presentation = getAppointmentState(appointment);
@@ -196,7 +241,15 @@ const DoctorDashboard = () => {
                   <h2>Patients</h2>
                   <Link to="/patients" className="button-secondary">Voir les patients</Link>
                 </div>
-                {patientsPreview.length === 0 && <p>Aucun patient.</p>}
+                {patientsPreview.length === 0 && (
+                  <EmptyState
+                    preset="people"
+                    title="Aucun dossier patient récent"
+                    description="Les patients liés à vos rendez-vous apparaîtront ici pour un accès rapide au dossier."
+                    actionLabel="Voir tous les patients"
+                    onAction={() => navigate('/patients')}
+                  />
+                )}
                 <ul className="patients-preview-list">
                   {patientsPreview.map((patient) => (
                     <li key={patient.id}>
@@ -221,7 +274,15 @@ const DoctorDashboard = () => {
                   <h2>Messages récents</h2>
                   <Link to="/doctor/messages" className="button-secondary">Ouvrir la messagerie</Link>
                 </div>
-                {recentMessages.length === 0 && <p>Aucun message récent.</p>}
+                {recentMessages.length === 0 && (
+                  <EmptyState
+                    preset="messages"
+                    title="Pas encore d’échanges récents"
+                    description="Les dernières réponses patients sur vos rendez-vous s’affichent ici pour prioriser les urgences."
+                    actionLabel="Ouvrir la messagerie"
+                    onAction={() => navigate('/doctor/messages')}
+                  />
+                )}
                 <ul className="recent-messages-list">
                   {recentMessages.map((message) => (
                     <li key={`${message.appointmentId}-${message.createdAt}`}>

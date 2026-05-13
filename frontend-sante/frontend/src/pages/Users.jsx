@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import axiosInstance from '../api/axiosInstance.js';
+import PageSkeleton from '../components/ui/PageSkeleton.jsx';
+import './Users.css';
 
 const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
-  const [success, setSuccess] = useState('');
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -14,9 +15,8 @@ const Users = () => {
     try {
       const response = await axiosInstance.get('/users');
       setUsers(response.data);
-      setSuccess('Users loaded successfully');
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || 'Failed to load users');
+      setError(err?.response?.data?.detail || err?.message || 'Impossible de charger les utilisateurs.');
     } finally {
       setLoading(false);
     }
@@ -27,128 +27,74 @@ const Users = () => {
   }, []);
 
   const filteredUsers = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return users;
     return users.filter(
       (user) =>
-        user.email.toLowerCase().includes(search.toLowerCase()) ||
-        user.role.toLowerCase().includes(search.toLowerCase())
+        String(user.email || '')
+          .toLowerCase()
+          .includes(q) || String(user.role || '')
+          .toLowerCase()
+          .includes(q)
     );
   }, [users, search]);
 
   return (
     <div className="users-page">
-      <h1>User Management (Admin)</h1>
+      <div className="users-page-inner">
+        <h1>Utilisateurs</h1>
+        <p className="users-lead">
+          Vue d’ensemble des comptes enregistrés sur la plateforme. Recherche par e-mail ou par rôle.
+        </p>
 
-      {loading && <p>Loading users...</p>}
-      {error && <p className="error">Error: {error}</p>}
-      {success && <p className="success">{success}</p>}
+        {error && (
+          <div className="users-feedback users-feedback--error" role="alert">
+            {error}
+          </div>
+        )}
 
-      <div className="users-controls">
-        <input
-          type="text"
-          placeholder="Search by email or role..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <span className="users-count">Total users: {users.length}</span>
+        <div className="users-toolbar">
+          <input
+            type="search"
+            placeholder="Rechercher par e-mail ou rôle…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Filtrer les utilisateurs"
+          />
+          <span className="users-count-pill">{filteredUsers.length} affiché(s) · {users.length} au total</span>
+        </div>
+
+        {loading && <PageSkeleton lines={6} />}
+
+        {!loading && !error && filteredUsers.length === 0 && (
+          <div className="users-feedback users-feedback--success">Aucun utilisateur ne correspond à ce filtre.</div>
+        )}
+
+        {!loading && filteredUsers.length > 0 && (
+          <div className="users-table-wrap">
+            <table className="users-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Email</th>
+                  <th>Rôle</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((user) => (
+                  <tr key={user.id}>
+                    <td>{user.id}</td>
+                    <td>{user.email}</td>
+                    <td>
+                      <span className={`role-badge role-${user.role}`}>{user.role}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-
-      {filteredUsers.length === 0 ? (
-        <p>No users found.</p>
-      ) : (
-        <table className="users-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Email</th>
-              <th>Role</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map((user) => (
-              <tr key={user.id}>
-                <td>{user.id}</td>
-                <td>{user.email}</td>
-                <td>
-                  <span className={`role-badge role-${user.role}`}>
-                    {user.role}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      <style>{`
-        .users-page {
-          padding: 20px;
-          max-width: 1000px;
-          margin: 0 auto;
-        }
-        .users-controls {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 20px;
-          gap: 20px;
-        }
-        .users-controls input {
-          flex: 1;
-          padding: 10px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-        }
-        .users-count {
-          font-weight: bold;
-          color: #666;
-        }
-        .users-table {
-          width: 100%;
-          border-collapse: collapse;
-          border: 1px solid #ddd;
-        }
-        .users-table thead {
-          background-color: #f5f5f5;
-        }
-        .users-table th {
-          padding: 12px;
-          text-align: left;
-          border-bottom: 2px solid #ddd;
-          font-weight: bold;
-        }
-        .users-table td {
-          padding: 12px;
-          border-bottom: 1px solid #ddd;
-        }
-        .role-badge {
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-size: 12px;
-          font-weight: bold;
-        }
-        .role-patient {
-          background-color: #e3f2fd;
-          color: #1976d2;
-        }
-        .role-doctor {
-          background-color: #f3e5f5;
-          color: #7b1fa2;
-        }
-        .role-admin {
-          background-color: #ffe0b2;
-          color: #e65100;
-        }
-        .error {
-          color: #d32f2f;
-          font-weight: bold;
-          margin-bottom: 20px;
-        }
-        .success {
-          color: #388e3c;
-          font-weight: bold;
-          margin-bottom: 20px;
-        }
-      `}</style>
     </div>
   );
 };

@@ -112,11 +112,11 @@ def seed_demo_clinic_data() -> None:
             u1 = patient_users[1][0]
 
             msgs = [
-                (ap1, doc_user_amina.id, "Bonjour, merci de vous être connecté pour la téléconsultation."),
-                (ap1, u0.id, "Bonjour docteur, j'ai encore des douleurs depuis hier."),
-                (ap1, doc_user_amina.id, "Très bien, nous ferons le point sur vos symptômes dans un instant."),
-                (ap2, u1.id, "Bonjour, je souhaite confirmer ma présence au cabinet jeudi."),
-                (ap2, doc_user_amina.id, "Merci pour votre message, votre créneau est bien enregistré."),
+                (ap1, doc_user_amina.id, "Bonjour, nous sommes dans la salle de téléconsultation sécurisée. Merci de confirmer que vous m’entendez bien."),
+                (ap1, u0.id, "Bonjour docteur, oui je vous entends. J’ai toujours des douleurs abdominales depuis hier soir."),
+                (ap1, doc_user_amina.id, "Très bien. Nous allons structurer l’interrogatoire puis décider si une orientation au CMS est nécessaire."),
+                (ap2, u1.id, "Bonjour, je confirme ma venue au cabinet jeudi à 10 h 30 pour le suivi tension."),
+                (ap2, doc_user_amina.id, "Merci Fatoumata, votre créneau est bien enregistré. Pensez à apporter votre carnet de traitement."),
             ]
             for appt_id, sender_id, text in msgs:
                 db.add(

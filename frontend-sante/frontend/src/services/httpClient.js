@@ -7,12 +7,21 @@ const isLocalDevApi = (u) =>
 // Local dev: keep http:// for localhost / 127.0.0.1 so a local FastAPI instance works.
 // Production: upgrade http -> https for non-local hosts only.
 export const API_BASE_URL = (() => {
-  let url = (import.meta.env.VITE_API_URL || '').trim();
+  const explicitUrl = (import.meta.env.VITE_API_URL || '').trim();
+  let url = explicitUrl;
 
   if (!url) {
-    url = import.meta.env.PROD
-      ? 'https://web-production-ad6a36.up.railway.app'
-      : 'http://127.0.0.1:8000';
+    if (import.meta.env.PROD) {
+      const fallback = (import.meta.env.VITE_PUBLIC_API_FALLBACK || '').trim();
+      url = fallback || 'https://web-production-ad6a36.up.railway.app';
+      if (!explicitUrl) {
+        console.warn(
+          '[API] VITE_API_URL non défini : utilisation de l’API publique par défaut. Définissez VITE_API_URL (et optionnellement VITE_PUBLIC_API_FALLBACK) sur Vercel / votre hébergeur.'
+        );
+      }
+    } else {
+      url = 'http://127.0.0.1:8000';
+    }
   }
 
   if (import.meta.env.PROD && /localhost|127\.0\.0\.1/i.test(url)) {

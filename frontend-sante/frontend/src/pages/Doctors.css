@@ -257,3 +257,35 @@
     font-size: 1.5rem;
   }
 }
+
+.doctors-page-error {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-danger-soft);
+  color: #991b1b;
+  font-weight: 600;
+}
+
+.doctor-list-city {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+  color: var(--color-text-muted, #64748b);
+}
+
+.doctor-list-city span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.doctor-list-city strong {
+  color: var(--color-text, #0f172a);
+  font-weight: 700;
+}
