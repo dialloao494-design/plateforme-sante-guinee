@@ -82,194 +82,6 @@ def _env_flag(name: str, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def seed_demo_doctors():
-    """Idempotently ensure demo doctor users + profiles exist (SQLite email compare is case-sensitive)."""
-    from sqlalchemy import func
-
-    db = SessionLocal()
-    try:
-        demo_doctors = [
-            {
-                "email": "dr.amu@example.com",
-                "password": "Doctor123!",
-                "first_name": "Amina",
-                "last_name": "Barry",
-                "specialty": "Pédiatrie",
-                "location": "Conakry · Kaloum — Clinique médico-chirurgicale (CMS) Dixinn",
-                "phone": "+224 620 00 00 01",
-                "photo_url": "https://api.dicebear.com/7.x/female/svg?seed=AminaBarry",
-                "consultation_fee": 45000,
-                "latitude": 9.5092,
-                "longitude": -13.7122,
-            },
-            {
-                "email": "dr.soulaiman@example.com",
-                "password": "Doctor123!",
-                "first_name": "Souleymane",
-                "last_name": "Diallo",
-                "specialty": "Médecine générale",
-                "location": "Conakry · Ratoma — Cabinet télésanté & suivi chronique",
-                "phone": "+224 620 00 00 02",
-                "photo_url": "https://api.dicebear.com/7.x/male/svg?seed=SouleymaneDiallo",
-                "consultation_fee": 40000,
-                "latitude": 9.5766,
-                "longitude": -13.6478,
-            },
-            {
-                "email": "dr.fatou@example.com",
-                "password": "Doctor123!",
-                "first_name": "Fatoumata",
-                "last_name": "Kaba",
-                "specialty": "Dermatologie",
-                "location": "Kindia — Centre de santé urbain, consultations hybrides",
-                "phone": "+224 620 00 00 03",
-                "photo_url": "https://api.dicebear.com/7.x/female/svg?seed=FatoumataKaba",
-                "consultation_fee": 42000,
-                "latitude": 10.0569,
-                "longitude": -12.8658,
-            },
-            {
-                "email": "dr.mamady@example.com",
-                "password": "Doctor123!",
-                "first_name": "Mamady",
-                "last_name": "Keïta",
-                "specialty": "Cardiologie",
-                "location": "Conakry · Matam — Consultations HTA & suivi cardiaque",
-                "phone": "+224 620 00 00 04",
-                "photo_url": "https://api.dicebear.com/7.x/male/svg?seed=MamadyKeita",
-                "consultation_fee": 55000,
-                "latitude": 9.5629,
-                "longitude": -13.6014,
-            },
-        ]
-
-        for doc_data in demo_doctors:
-            email = doc_data["email"].lower().strip()
-            plain = doc_data["password"]
-
-            user = db.query(models.User).filter(func.lower(models.User.email) == email).first()
-            if not user:
-                user = models.User(
-                    email=email,
-                    hashed_password=hash_password(plain),
-                    role="doctor",
-                )
-                db.add(user)
-                db.commit()
-                db.refresh(user)
-                logger.info("Created demo doctor user: %s", email)
-            else:
-                changed = False
-                if (user.email or "").lower() != email:
-                    user.email = email
-                    changed = True
-                try:
-                    password_ok = verify_password(plain, user.hashed_password)
-                except Exception:
-                    password_ok = False
-                if not password_ok:
-                    user.hashed_password = hash_password(plain)
-                    changed = True
-                    logger.info("Reset demo doctor password for: %s", email)
-                if user.role != "doctor":
-                    user.role = "doctor"
-                    changed = True
-                if changed:
-                    db.commit()
-                    db.refresh(user)
-
-            existing_doctor = db.query(models.Doctor).filter(models.Doctor.user_id == user.id).first()
-            if not existing_doctor:
-                doctor = models.Doctor(
-                    user_id=user.id,
-                    first_name=doc_data["first_name"],
-                    last_name=doc_data["last_name"],
-                    specialty=doc_data["specialty"],
-                    city=doc_data["location"],
-                    phone=doc_data["phone"],
-                    photo_url=doc_data["photo_url"],
-                    consultation_fee=doc_data["consultation_fee"],
-                    latitude=doc_data.get("latitude"),
-                    longitude=doc_data.get("longitude"),
-                )
-                db.add(doctor)
-                db.commit()
-                logger.info("Created demo doctor profile for: %s", email)
-            else:
-                demo_emails = {d["email"].lower().strip() for d in demo_doctors}
-                if email in demo_emails:
-                    sync_fields = (
-                        ("first_name", doc_data["first_name"]),
-                        ("last_name", doc_data["last_name"]),
-                        ("specialty", doc_data["specialty"]),
-                        ("city", doc_data["location"]),
-                        ("phone", doc_data["phone"]),
-                        ("photo_url", doc_data["photo_url"]),
-                        ("consultation_fee", doc_data["consultation_fee"]),
-                        ("latitude", doc_data.get("latitude")),
-                        ("longitude", doc_data.get("longitude")),
-                    )
-                    changed = False
-                    for attr, value in sync_fields:
-                        if value is None and attr in ("latitude", "longitude"):
-                            continue
-                        if getattr(existing_doctor, attr, None) != value:
-                            setattr(existing_doctor, attr, value)
-                            changed = True
-                    if changed:
-                        db.commit()
-                        logger.info("Updated demo doctor profile copy for: %s", email)
-
-        logger.info("Demo doctors verified successfully.")
-    except Exception as exc:
-        db.rollback()
-        logger.error(f"Failed to seed demo doctors: {exc}")
-    finally:
-        db.close()
-
-
-def seed_test_patient():
-    db = SessionLocal()
-    try:
-        patient = db.query(models.Patient).filter(models.Patient.id == 1).first()
-        if patient:
-            logger.info("Test patient already exists with id=1")
-            return
-
-        user = db.query(models.User).filter(models.User.email == "test.patient@example.com").first()
-        if not user:
-            user = models.User(
-                email="test.patient@example.com",
-                hashed_password=hash_password("Patient123!"),
-                role="patient",
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-
-        test_patient = db.query(models.Patient).filter(models.Patient.user_id == user.id).first()
-        if not test_patient:
-            test_patient = models.Patient(
-                id=1,
-                user_id=user.id,
-                first_name="Test",
-                last_name="Patient",
-                age=30,
-                gender="other",
-            )
-            db.add(test_patient)
-            db.commit()
-            db.refresh(test_patient)
-            logger.info("Seeded test patient with id=1")
-        else:
-            logger.info("Test patient profile exists for user %s", user.email)
-    except Exception as exc:
-        db.rollback()
-        logger.error(f"Failed to seed test patient: {exc}")
-    finally:
-        db.close()
-
-
 def ensure_dev_test_user():
     """Create or repair a default development login user and its patient profile."""
     db = SessionLocal()
@@ -484,11 +296,13 @@ async def startup_event():
     else:
         logger.info("Startup test user seed skipped (ENABLE_STARTUP_TEST_USER not set).")
 
-    # Always seed demo doctors so the list is never empty
+    # Pilot demo accounts (doctors + test.patient) — always idempotent; see services/pilot_seed.py
     try:
-        seed_demo_doctors()
+        from services.pilot_seed import seed_pilot_accounts
+
+        seed_pilot_accounts()
     except Exception as exc:
-        logger.error("Failed to seed demo doctors: %s", exc)
+        logger.error("Failed to seed pilot accounts: %s", exc)
 
     if _env_flag("ENABLE_DEMO_CLINIC_SEED", default=False):
         try:
@@ -499,9 +313,8 @@ async def startup_event():
             logger.error("Failed to seed demo clinic dataset: %s", exc)
 
     if _env_flag("ENABLE_STARTUP_SEED", default=False):
-        seed_test_patient()
         ensure_dev_test_user()
-        logger.info("Optional startup seed routines completed.")
+        logger.info("Optional startup seed (dev test user only) completed.")
     else:
         logger.info("Optional startup seed routines skipped (ENABLE_STARTUP_SEED not set).")
 

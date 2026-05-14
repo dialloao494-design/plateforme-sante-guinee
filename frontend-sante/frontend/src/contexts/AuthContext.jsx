@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../services/api.js';
+import { clearClientAuth } from '../services/httpClient.js';
 
 const devLog = (...args) => {
   if (import.meta.env.DEV) {
@@ -93,10 +94,7 @@ export const AuthProvider = ({ children }) => {
       })
       .catch((err) => {
         devWarn('[AUTH] Failed to verify token:', err?.response?.status, err?.message);
-        localStorage.removeItem('token');
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user_role');
-        localStorage.removeItem('user_id');
+        clearClientAuth();
         setUser(null);
       })
       .finally(() => setAuthLoading(false));
@@ -113,32 +111,22 @@ export const AuthProvider = ({ children }) => {
 
       // Ignore any legacy password-reset markers to avoid blocking access after login.
       clearPasswordResetFlags();
-      const { access_token, user_id, user_role, role, email: userEmail } = response;
-      const resolvedRole = user_role || role;
+      const { access_token } = response;
       devLog('[AUTH] Login successful, storing token');
       localStorage.setItem('token', access_token);
       localStorage.setItem('access_token', access_token);
-      if (user_id) {
-        localStorage.setItem('user_id', String(user_id));
-      }
-      if (resolvedRole && userEmail) {
-        localStorage.setItem('user_role', resolvedRole);
-        const normalizedUser = normalizeAndStoreUser({ id: user_id, user_role: resolvedRole, email: userEmail });
-        setUser(normalizedUser);
-        devLog('[AUTH] Login completed with role:', resolvedRole);
-        return { success: true, role: normalizedUser?.role };
-      } else {
-        devLog('[AUTH] Fetching user via /auth/me');
-        const meResponse = await authAPI.me();
-        const normalizedUser = normalizeAndStoreUser(meResponse);
-        setUser(normalizedUser);
-        devLog('[AUTH] User verified, role:', meResponse?.role);
-        return { success: true, role: normalizedUser?.role };
-      }
+
+      const meResponse = await authAPI.me();
+      const normalizedUser = normalizeAndStoreUser(meResponse);
+      setUser(normalizedUser);
+      devLog('[AUTH] Login completed with role:', normalizedUser?.role, 'doctor_id:', normalizedUser?.doctor_id);
+      return { success: true, role: normalizedUser?.role };
     } catch (err) {
       if (import.meta.env.DEV) {
         console.error('[AUTH] Login failed:', err?.response?.status, err?.message);
       }
+      clearClientAuth();
+      setUser(null);
       const message = toUserFriendlyLoginMessage(err);
       setError(message);
       return { success: false, error: message };
@@ -149,10 +137,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     clearPasswordResetFlags();
-    localStorage.removeItem('token');
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user_role');
-    localStorage.removeItem('user_id');
+    clearClientAuth();
     setUser(null);
     setError(null);
   };

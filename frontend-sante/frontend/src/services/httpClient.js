@@ -41,14 +41,26 @@ if (import.meta.env.DEV) {
 
 const PUBLIC_PATHS = ['/auth/login', '/auth/login-json', '/auth/register'];
 
+export function clearClientAuth() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  localStorage.removeItem('token');
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('user_role');
+  localStorage.removeItem('user_id');
+  syncAuthHeader();
+}
+
 const isPublicRequest = (url = '') => {
   return PUBLIC_PATHS.some((path) => String(url).includes(path));
 };
 
 const redirectToLogin = () => {
-  if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-    window.location.assign('/login');
+  if (typeof window === 'undefined' || window.location.pathname === '/login') {
+    return;
   }
+  window.location.replace('/login');
 };
 
 const httpClient = axios.create({
@@ -144,10 +156,7 @@ httpClient.interceptors.response.use(
       if (import.meta.env.DEV) {
         console.warn('[HTTP 401] Clearing token and redirecting to login');
       }
-      localStorage.removeItem('token');
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user_role');
-      localStorage.removeItem('user_id');
+      clearClientAuth();
       redirectToLogin();
     }
 

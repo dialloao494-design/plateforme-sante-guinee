@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { appointmentsAPI } from '../services/api.js';
 import { formatApiError } from '../utils/apiError.js';
 import { useAuth } from './AuthContext.jsx';
@@ -13,12 +13,12 @@ const normalizeAppointment = (appointment) => ({
 const extractErrorMessage = (err, fallbackMessage) => formatApiError(err, fallbackMessage);
 
 export const AppointmentProvider = ({ children }) => {
-  const { authLoading } = useAuth();
+  const { authLoading, user } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -30,14 +30,20 @@ export const AppointmentProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (authLoading) {
       return;
     }
-    fetchAppointments();
-  }, [authLoading]);
+    if (!user) {
+      setAppointments([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    void fetchAppointments();
+  }, [authLoading, user, fetchAppointments]);
 
   const addAppointment = async ({ doctor_id, date, duration_minutes, consultation_type }) => {
     setLoading(true);

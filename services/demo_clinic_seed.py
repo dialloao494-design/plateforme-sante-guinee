@@ -44,7 +44,7 @@ def seed_demo_clinic_data() -> None:
             return db.query(models.Doctor).filter(models.Doctor.user_id == u.id).first()
 
         doctor_amina = _doctor_by_email("dr.amu@example.com")
-        doctor_soul = _doctor_by_email("dr.soulaiman@example.com")
+        doctor_soul = _doctor_by_email("dr.souleimane@example.com") or _doctor_by_email("dr.soulaiman@example.com")
 
         if not doctor_amina or not doctor_soul:
             logger.warning("Demo clinic seed skipped: demo doctors not found.")
