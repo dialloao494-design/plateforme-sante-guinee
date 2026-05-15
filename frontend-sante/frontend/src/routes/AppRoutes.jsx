@@ -18,6 +18,7 @@ import Users from "../pages/Users";
 import TeleconsultationHub from "../pages/TeleconsultationHub.jsx";
 import ConsultationRoom from "../pages/ConsultationRoom.jsx";
 import NotificationsPage from "../pages/NotificationsPage.jsx";
+import NotFound from "../pages/NotFound.jsx";
 import ProtectedRoute from "./ProtectedRoute";
 
 const AppRoutes = () => {
@@ -154,6 +155,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };

@@ -1,11 +1,46 @@
 import axios from 'axios';
 
-const isLocalDevApi = (u) =>
-  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\b/i.test(String(u || ''));
+/** Localhost or private LAN (RFC1918) — never force HTTPS upgrade in dev. */
+const isPrivateDevHost = (hostname) =>
+  /^(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})$/i.test(
+    String(hostname || '')
+  );
+
+const isLocalDevApi = (u) => {
+  try {
+    const host = new URL(u, 'http://dummy').hostname;
+    return isPrivateDevHost(host);
+  } catch {
+    return /^https?:\/\/(localhost|127\.0\.0\.1)/i.test(String(u || ''));
+  }
+};
+
+const defaultApiPort = () => String(import.meta.env.VITE_API_PORT || '8000').trim();
+
+/** When opened as http://192.168.x.x:5173, API must be http://192.168.x.x:8000 (not localhost). */
+const resolveDevApiFromBrowser = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  const { hostname, protocol } = window.location;
+  if (!isPrivateDevHost(hostname)) {
+    return null;
+  }
+  return `${protocol}//${hostname}:${defaultApiPort()}`;
+};
+
+const rewriteLocalhostToCurrentHost = (url) => {
+  if (typeof window === 'undefined' || !url) {
+    return url;
+  }
+  const host = window.location.hostname;
+  if (!isPrivateDevHost(host) || /^localhost|127\.0\.0\.1$/i.test(host)) {
+    return url;
+  }
+  return url.replace(/\/\/(localhost|127\.0\.0\.1)(?=:\d+|\/|$)/gi, `//${host}`);
+};
 
 // Resolve API base URL from environment variable
-// Local dev: keep http:// for localhost / 127.0.0.1 so a local FastAPI instance works.
-// Production: upgrade http -> https for non-local hosts only.
 export const API_BASE_URL = (() => {
   const explicitUrl = (import.meta.env.VITE_API_URL || '').trim();
   let url = explicitUrl;
@@ -20,7 +55,16 @@ export const API_BASE_URL = (() => {
         );
       }
     } else {
-      url = 'http://127.0.0.1:8000';
+      url = resolveDevApiFromBrowser() || 'http://localhost:8000';
+    }
+  } else if (import.meta.env.DEV) {
+    url = rewriteLocalhostToCurrentHost(url);
+  }
+
+  if (import.meta.env.DEV && !explicitUrl) {
+    const fromBrowser = resolveDevApiFromBrowser();
+    if (fromBrowser) {
+      url = fromBrowser;
     }
   }
 

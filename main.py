@@ -1,4 +1,5 @@
-from dotenv import load_dotenv 
+from dotenv import load_dotenv
+
 load_dotenv()
 
 from pathlib import Path
@@ -9,26 +10,27 @@ from fastapi.staticfiles import StaticFiles
 from database import SessionLocal
 import models
 from routers import patient, rendezvous, doctor, auth, payments, teleconsultation, notifications, messages
-from routers import users, appointments, doctor_dashboard
+from routers import users, appointments, doctor_dashboard, ws
 from security import hash_password, verify_password
 import os
 import logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+from core.settings import get_settings
+from core.logging_config import configure_logging
+from core.monitoring import init_sentry
+
+_settings = get_settings()
+configure_logging(level=_settings.log_level, log_format=_settings.log_format)
+init_sentry()
 logger = logging.getLogger(__name__)
 
-# Create FastAPI app
 app = FastAPI(
-title="Healthcare Platform API",
-description="Comprehensive healthcare appointment and payment API",
-version="1.0.0",
-docs_url="/docs",
-redoc_url="/redoc",
-openapi_url="/openapi.json",
+    title="Healthcare Platform API",
+    description="Comprehensive healthcare appointment and payment API",
+    version="1.0.0",
+    docs_url="/docs" if _settings.docs_enabled else None,
+    redoc_url="/redoc" if _settings.docs_enabled else None,
+    openapi_url="/openapi.json" if _settings.docs_enabled else None,
 )
 
 # CORS — applied before routers are included.
@@ -51,23 +53,50 @@ for env_key in ("FRONTEND_URL", "FRONTEND_PRODUCTION_URL"):
     if fe and fe not in origins:
         origins.append(fe)
 
-# Matches any Vercel preview/production deployment over HTTPS only.
-vercel_origin_regex = r"^https://.*\.vercel\.app$"
+# CORS: strict in production; LAN/Vercel regex only in dev/staging.
+from services.network_dev import COMBINED_DEV_CORS_REGEX, format_lan_urls
 
-app.add_middleware(
-    CORSMiddleware,
+_environment = _settings.environment
+_lan_dev = os.getenv("ENABLE_LAN_DEV", "").lower() in ("1", "true", "yes")
+_debug = _settings.debug
+_is_production = _settings.is_production
+_is_deployed = _settings.is_deployed
+
+if _is_deployed:
+    cors_origin_regex = None
+    cors_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    cors_headers = ["Authorization", "Content-Type", "Accept"]
+else:
+    cors_origin_regex = COMBINED_DEV_CORS_REGEX if (_lan_dev or _debug) else r"^https://.*\.vercel\.app$"
+    cors_methods = ["*"]
+    cors_headers = ["*"]
+
+_cors_kwargs = dict(
     allow_origins=origins,
-    allow_origin_regex=vercel_origin_regex,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=cors_methods,
+    allow_headers=cors_headers,
 )
+if cors_origin_regex:
+    _cors_kwargs["allow_origin_regex"] = cors_origin_regex
+app.add_middleware(CORSMiddleware, **_cors_kwargs)
+
+# Rate limiting
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from core.limiter import limiter
+
+limiter.init_app(app)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Trust Railway's HTTPS proxy so that request.url.scheme is 'https'
 # when Railway terminates TLS and forwards requests to the app over HTTP internally.
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
+
+_allowed_hosts = _settings.resolve_allowed_hosts()
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts)
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 uploads_dir = Path("uploads")
@@ -196,6 +225,7 @@ app.include_router(teleconsultation.router)
 app.include_router(notifications.router)
 app.include_router(messages.router)
 app.include_router(doctor_dashboard.router)
+app.include_router(ws.router)
 
 
 # ==========================================
@@ -229,12 +259,15 @@ def health_check():
     # Mask sensitive info
     db_url_masked = "***" if "://" in db_url else db_url
     
-    return {
+    payload = {
         "status": "ok",
         "version": "1.0.0",
-        "debug": os.getenv("DEBUG", "False").lower() == "true",
-        "database": db_url_masked
+        "environment": _settings.environment,
+        "database": db_url_masked,
     }
+    if not _settings.is_deployed:
+        payload["debug"] = _settings.debug
+    return payload
 
 
 @app.get("/health/ready", tags=["Monitoring"])
@@ -256,13 +289,16 @@ def health_ready():
 
 @app.get("/", tags=["Root"])
 def root():
-    """API Root - Redirect to docs"""
-    return {
+    """API root — docs link only when OpenAPI is enabled."""
+    payload = {
         "message": "Healthcare Platform API",
         "version": "1.0.0",
-        "docs": "/docs",
-        "health": "/health"
+        "health": "/health",
+        "ready": "/health/ready",
     }
+    if _settings.docs_enabled:
+        payload["docs"] = "/docs"
+    return payload
 
 
 # ==========================================
@@ -296,13 +332,17 @@ async def startup_event():
     else:
         logger.info("Startup test user seed skipped (ENABLE_STARTUP_TEST_USER not set).")
 
-    # Pilot demo accounts (doctors + test.patient) — always idempotent; see services/pilot_seed.py
-    try:
-        from services.pilot_seed import seed_pilot_accounts
+    # Pilot accounts — off by default in production (use ENABLE_PILOT_SEED or Docker entrypoint)
+    _default_pilot = not _is_production
+    if _env_flag("ENABLE_PILOT_SEED", default=_default_pilot):
+        try:
+            from services.pilot_seed import seed_pilot_accounts
 
-        seed_pilot_accounts()
-    except Exception as exc:
-        logger.error("Failed to seed pilot accounts: %s", exc)
+            seed_pilot_accounts()
+        except Exception as exc:
+            logger.error("Failed to seed pilot accounts: %s", exc)
+    else:
+        logger.info("Pilot seed skipped (ENABLE_PILOT_SEED not set).")
 
     if _env_flag("ENABLE_DEMO_CLINIC_SEED", default=False):
         try:
@@ -318,15 +358,25 @@ async def startup_event():
     else:
         logger.info("Optional startup seed routines skipped (ENABLE_STARTUP_SEED not set).")
 
-    debug_mode = os.getenv("DEBUG", "False").lower() == "true"
+    debug_mode = _settings.debug
     port = os.environ.get("PORT")
     logger.info("Healthcare Platform API startup complete")
+    logger.info("OpenAPI docs: %s", "enabled" if _settings.docs_enabled else "disabled")
     logger.info("Debug Mode: %s", debug_mode)
+    logger.info("Allowed Hosts: %s", ", ".join(_allowed_hosts))
     logger.info("Bind Port (PORT): %s", port)
-    logger.info("Docs Path: /docs")
+    logger.info("Docs Path: %s", "/docs" if _settings.docs_enabled else "(disabled)")
     logger.info("Health Path: /health")
     logger.info("CORS Origins: %s", ", ".join(origins))
-    logger.info("CORS Regex: %s", vercel_origin_regex)
+    logger.info("CORS Regex: %s", cors_origin_regex or "(disabled — explicit origins only)")
+    logger.info("Environment: %s", _environment)
+    if _lan_dev or _debug:
+        urls = format_lan_urls(
+            frontend_port=int(os.getenv("VITE_DEV_PORT", "5173")),
+            backend_port=int(os.getenv("PORT", "8000")),
+        )
+        logger.info("LAN QA — phone frontend: %s", urls["frontend"])
+        logger.info("LAN QA — API: %s", urls["backend"])
 
 
 @app.on_event("shutdown")

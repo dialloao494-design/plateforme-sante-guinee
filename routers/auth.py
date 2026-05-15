@@ -1,6 +1,9 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import os
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from core.limiter import limiter
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -21,7 +24,8 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/register", response_model=UserResponse, status_code=201)
-def register(user: UserCreate, db: Session = Depends(get_db)):
+@limiter.limit(os.getenv("RATE_LIMIT_REGISTER", "5/minute"))
+def register(request: Request, user: UserCreate, db: Session = Depends(get_db)):
     """
     Register a new user with email, password, and role.
     
@@ -167,7 +171,12 @@ def create_token_response(user: User):
 
 
 @router.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@limiter.limit(os.getenv("RATE_LIMIT_LOGIN", "10/minute"))
+def login(
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
     """
     Login endpoint using OAuth2 form (application/x-www-form-urlencoded).
 
@@ -203,7 +212,12 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
 
 @router.post("/login-json", response_model=Token)
-def login_json(credentials: UserLogin, db: Session = Depends(get_db)):
+@limiter.limit(os.getenv("RATE_LIMIT_LOGIN", "10/minute"))
+def login_json(
+    request: Request,
+    credentials: UserLogin,
+    db: Session = Depends(get_db),
+):
     """
     Login endpoint accepting JSON body.
 

@@ -40,6 +40,19 @@ export function resolveRoomProvider(params) {
   return inferProviderFromMeetingUrl(params.meetingUrl);
 }
 
+/**
+ * Build a Jitsi meeting URL (optionally with JWT query param from access API).
+ */
+export function buildJitsiMeetingUrl(domain, roomName, jwtToken) {
+  if (!domain || !roomName) return null;
+  const host = String(domain).replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const base = `https://${host}/${roomName}`;
+  if (jwtToken) {
+    return `${base}?jwt=${encodeURIComponent(jwtToken)}`;
+  }
+  return base;
+}
+
 export function getProviderDisplayLabel(provider) {
   switch (provider) {
     case TELECONSULT_PROVIDERS.daily:

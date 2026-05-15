@@ -37,13 +37,22 @@ export const AuthProvider = ({ children }) => {
   const toUserFriendlyLoginMessage = (err) => {
     const status = err?.response?.status;
     const detail = String(err?.response?.data?.detail || err?.response?.data?.message || err?.message || '').toLowerCase();
+    const code = String(err?.code || '').toLowerCase();
 
     if (status === 401 || status === 400) {
       return 'Email ou mot de passe incorrect';
     }
 
-    if (/failed to fetch|network|timeout|token|missing authentication/.test(detail)) {
-      return 'Une erreur est survenue, veuillez réessayer';
+    if (
+      code === 'err_network' ||
+      code === 'econnrefused' ||
+      /failed to fetch|network error|network|econnrefused|connection refused|timeout/.test(detail)
+    ) {
+      return 'Impossible de joindre l’API. Vérifiez que le backend tourne (port 8000) et VITE_API_URL dans .env.development.local.';
+    }
+
+    if (/missing authentication token/.test(detail)) {
+      return 'Session non établie après connexion. Réessayez ou videz le cache du navigateur.';
     }
 
     return 'Une erreur est survenue, veuillez réessayer';
@@ -107,11 +116,18 @@ export const AuthProvider = ({ children }) => {
     try {
       const trimmedEmail = String(email || '').trim();
       devLog('[AUTH] Logging in:', trimmedEmail);
-      const response = await authAPI.login(trimmedEmail, password);
+      const loginPayload = await authAPI.login(trimmedEmail, password);
+      const access_token =
+        loginPayload?.access_token ||
+        loginPayload?.accessToken ||
+        loginPayload?.token;
+
+      if (!access_token) {
+        throw new Error('Login response missing access_token');
+      }
 
       // Ignore any legacy password-reset markers to avoid blocking access after login.
       clearPasswordResetFlags();
-      const { access_token } = response;
       devLog('[AUTH] Login successful, storing token');
       localStorage.setItem('token', access_token);
       localStorage.setItem('access_token', access_token);

@@ -1,6 +1,5 @@
 # FastAPI router for Doctor CRUD with SQLAlchemy
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from database import get_db
 from models.doctor import Doctor
@@ -14,6 +13,7 @@ from schemas.doctor import (
 from schemas.availability import DoctorAvailabilityCreate, DoctorAvailabilityResponse, DoctorAvailabilityUpdate
 from security import get_current_doctor, get_current_admin, require_roles, get_current_user_or_none
 from services.availability_service import AvailabilityService
+from services.doctor_search import apply_doctor_search_filter
 
 router = APIRouter(
     prefix="/doctors",
@@ -63,15 +63,7 @@ def get_doctors(
     if location and location.strip().lower() not in {"", "all"}:
         q = q.filter(Doctor.city.ilike(f"%{location.strip()}%"))
     if search and search.strip():
-        term = f"%{search.strip()}%"
-        q = q.filter(
-            or_(
-                Doctor.first_name.ilike(term),
-                Doctor.last_name.ilike(term),
-                Doctor.specialty.ilike(term),
-                Doctor.city.ilike(term),
-            )
-        )
+        q = apply_doctor_search_filter(q, search)
     doctors = q.order_by(Doctor.last_name.asc(), Doctor.first_name.asc()).all()
     return doctors
 

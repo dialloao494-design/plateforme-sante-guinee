@@ -1,0 +1,83 @@
+# Local / staging full stack — Plateforme Santé Guinée
+# Usage:
+#   cp deploy/env/.env.backend.example deploy/env/.env.backend
+#   cp deploy/env/.env.frontend.example deploy/env/.env.frontend
+#   cp .env.production.example .env.production
+#   docker compose --env-file .env.production up -d --build
+
+name: plateforme-sante
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sante}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sante_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-sante}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sante} -d ${POSTGRES_DB:-sante}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - deploy/env/.env.backend
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sante}:${POSTGRES_PASSWORD:-sante_dev_password}@db:5432/${POSTGRES_DB:-sante}
+      ENVIRONMENT: ${ENVIRONMENT:-staging}
+    volumes:
+      - uploads:/app/uploads
+      - ./logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8000"
+    networks:
+      - internal
+
+  frontend:
+    build:
+      context: ./frontend-sante/frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost/api}
+        VITE_TELECONSULT_PROVIDER: ${VITE_TELECONSULT_PROVIDER:-stub}
+        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
+    restart: unless-stopped
+    expose:
+      - "80"
+    networks:
+      - internal
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/conf.d/app.http-only.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - internal
+
+volumes:
+  pgdata:
+  uploads:
+
+networks:
+  internal:
+    driver: bridge

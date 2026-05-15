@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { formatApiError } from '../utils/apiError.js';
 import { getAppointmentState, getConsultationTypeLabel } from '../utils/appointmentPresentation.js';
 import { formatDateTimeShort, formatRelativeDay } from '../utils/formatDateTime.js';
+import { getRoleHomePath } from '../utils/rolePaths.js';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import './TeleconsultationHub.css';
@@ -52,6 +53,8 @@ export default function TeleconsultationHub() {
       .sort((a, b) => a.date - b.date);
   }, [appointments]);
 
+  const homeHref = useMemo(() => getRoleHomePath(user?.role), [user?.role]);
+
   const title =
     user?.role === 'doctor' || user?.role === 'admin' ? 'Téléconsultations à venir' : 'Vos téléconsultations';
 
@@ -62,7 +65,7 @@ export default function TeleconsultationHub() {
           <h1>{title}</h1>
           <p>Rejoignez la salle sécurisée au moment prévu. Le flux vidéo réel sera activé par votre cabinet.</p>
         </div>
-        <Link to="/dashboard" className="btn btn-secondary tele-hub-back">
+        <Link to={homeHref} className="btn btn-secondary tele-hub-back">
           Tableau de bord
         </Link>
       </header>
@@ -80,8 +83,20 @@ export default function TeleconsultationHub() {
           preset="video"
           title="Aucune téléconsultation à venir"
           description="Réservez un rendez-vous en choisissant « Téléconsultation » pour le voir apparaître ici, avec le lien sécurisé le jour J."
-          actionLabel={user?.role === 'patient' ? 'Prendre rendez-vous' : undefined}
-          onAction={user?.role === 'patient' ? () => navigate('/appointments') : undefined}
+          actionLabel={
+            user?.role === 'patient'
+              ? 'Prendre rendez-vous'
+              : user?.role === 'doctor' || user?.role === 'admin'
+                ? 'Agenda clinique'
+                : undefined
+          }
+          onAction={
+            user?.role === 'patient'
+              ? () => navigate('/appointments')
+              : user?.role === 'doctor' || user?.role === 'admin'
+                ? () => navigate(homeHref)
+                : undefined
+          }
         />
       )}
 

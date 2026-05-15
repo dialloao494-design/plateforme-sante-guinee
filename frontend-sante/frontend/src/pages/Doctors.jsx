@@ -7,12 +7,15 @@ import {
   SPECIALTY_FILTER_OPTIONS,
   sortDoctorsByProximity,
 } from '../utils/guineaLocations.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import { getBookAppointmentPath, getRoleHomePath } from '../utils/rolePaths.js';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import './Doctors.css';
 
 const Doctors = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -246,7 +249,14 @@ const Doctors = () => {
                   <button
                     type="button"
                     className="btn btn-primary doctor-list-book"
-                    onClick={() => navigate(`/appointments?doctor_id=${doctor.id}`)}
+                    onClick={() => {
+                      const r = String(user?.role || '').toLowerCase();
+                      if (r === 'patient') {
+                        navigate(getBookAppointmentPath(doctor.id));
+                      } else {
+                        navigate(getRoleHomePath(user?.role));
+                      }
+                    }}
                   >
                     Prendre rendez-vous
                   </button>

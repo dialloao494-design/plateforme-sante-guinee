@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends
+import logging
 from sqlalchemy.orm import Session
 
 from database import get_db
 import models
-from schemas.notification import NotificationItem
 from security import get_current_admin, require_roles
 from services.notification_delivery import describe_notification_channels
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
@@ -16,15 +18,33 @@ def list_notifications(
     current_user=Depends(require_roles(["admin", "doctor", "patient"])),
 ):
     """In-app notification history for the authenticated user."""
-    rows = (
-        db.query(models.NotificationEvent)
-        .filter(models.NotificationEvent.user_id == current_user.id)
-        .order_by(models.NotificationEvent.created_at.desc())
-        .limit(100)
-        .all()
-    )
-    items = [NotificationItem.model_validate(r).model_dump() for r in rows]
-    return {"items": items, "message": None if items else "Aucune notification pour le moment."}
+    try:
+        rows = (
+            db.query(models.NotificationEvent)
+            .filter(models.NotificationEvent.user_id == current_user.id)
+            .order_by(models.NotificationEvent.created_at.desc())
+            .limit(100)
+            .all()
+        )
+        # Serialize manually so a missing/legacy row never 500s the whole endpoint.
+        items = [
+            {
+                "id": r.id,
+                "channel": r.channel,
+                "subject": r.subject,
+                "body": r.body,
+                "meta": r.meta,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in rows
+        ]
+        return {"items": items, "message": None if items else "Aucune notification pour le moment."}
+    except Exception:
+        logger.exception("list_notifications failed for user_id=%s", getattr(current_user, "id", None))
+        return {
+            "items": [],
+            "message": "Centre de notifications indisponible (base ou table). Relancez l’API après migration.",
+        }
 
 
 @router.get("/channels")

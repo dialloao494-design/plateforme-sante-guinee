@@ -1,0 +1,97 @@
+# Render with envsubst: DOMAIN, SSL_CERT paths
+# upstream names match docker-compose service names
+
+upstream api_backend {
+    server backend:8000;
+    keepalive 32;
+}
+
+upstream web_frontend {
+    server frontend:80;
+    keepalive 16;
+}
+
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    # Let's Encrypt HTTP-01 challenge
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    server_name ${DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:50m;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(self), microphone=(self), geolocation=(self)" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    client_max_body_size 25m;
+
+    # API (FastAPI)
+    location /api/ {
+        proxy_pass http://api_backend/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+    }
+
+    # Uploaded files served by API
+    location /uploads/ {
+        proxy_pass http://api_backend/uploads/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # WebSocket — /ws/health (public ping), /ws/live?token=JWT (authenticated)
+    location /api/ws/ {
+        proxy_pass http://api_backend/ws/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 86400;
+    }
+
+    # React SPA
+    location / {
+        proxy_pass http://web_frontend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
+        proxy_pass http://web_frontend;
+        proxy_set_header Host $host;
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }
+}

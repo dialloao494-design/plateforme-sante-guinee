@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, startTransition } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { appointmentsAPI } from '../services/api.js';
+import { appointmentsAPI, teleconsultationAPI } from '../services/api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { formatApiError } from '../utils/apiError.js';
 import { getAppointmentState } from '../utils/appointmentPresentation.js';
 import { formatDateTimeShort, formatRelativeDay } from '../utils/formatDateTime.js';
 import { getConsultationSummary, setConsultationSummary } from '../utils/clinicalStorage.js';
 import {
+  buildJitsiMeetingUrl,
   getProviderDisplayLabel,
   resolveRoomProvider,
 } from '../services/teleconsultationProvider.js';
@@ -54,6 +55,7 @@ export default function ConsultationRoom() {
   const [elapsedSec, setElapsedSec] = useState(0);
   const [peerPresent, setPeerPresent] = useState(false);
   const [summaryDraft, setSummaryDraft] = useState('');
+  const [mediaStatus, setMediaStatus] = useState({ checked: false, ok: false, reason: '' });
 
   const load = useCallback(async () => {
     setRoomStatus(STATUS.loading);
@@ -104,6 +106,40 @@ export default function ConsultationRoom() {
   }, [roomStatus]);
 
   useEffect(() => {
+    if (roomStatus !== STATUS.prejoin) return undefined;
+    let cancelled = false;
+    const probe = async () => {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        if (!cancelled) {
+          setMediaStatus({
+            checked: true,
+            ok: false,
+            reason: 'Navigateur sans accès caméra/micro (HTTPS requis).',
+          });
+        }
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        stream.getTracks().forEach((t) => t.stop());
+        if (!cancelled) setMediaStatus({ checked: true, ok: true, reason: '' });
+      } catch (err) {
+        if (!cancelled) {
+          setMediaStatus({
+            checked: true,
+            ok: false,
+            reason: err?.name === 'NotAllowedError' ? 'Autorisez caméra et micro.' : 'Périphériques indisponibles.',
+          });
+        }
+      }
+    };
+    void probe();
+    return () => {
+      cancelled = true;
+    };
+  }, [roomStatus]);
+
+  useEffect(() => {
     if (roomStatus !== STATUS.connecting) {
       const clearId = window.setTimeout(() => setConnectionHint(''), 0);
       return () => window.clearTimeout(clearId);
@@ -145,11 +181,30 @@ export default function ConsultationRoom() {
     return () => window.clearTimeout(t);
   }, [roomStatus]);
 
-  const enterRoom = () => {
+  const enterRoom = async () => {
     setRoomStatus(STATUS.connecting);
+    setError('');
+    try {
+      const { data } = await teleconsultationAPI.getAccess(appointmentId);
+      let link = data?.meeting_url;
+      if (data?.provider === 'jitsi' && data?.room_name && data?.jitsi_domain) {
+        link = buildJitsiMeetingUrl(data.jitsi_domain, data.room_name, data.jitsi_jwt) || link;
+      }
+      if (link) {
+        setAppointment((prev) => (prev ? { ...prev, meeting_link: link } : prev));
+      }
+    } catch (err) {
+      setError(formatApiError(err, 'Accès à la téléconsultation refusé.'));
+      setRoomStatus(STATUS.error);
+    }
   };
 
-  const endSession = () => {
+  const endSession = async () => {
+    try {
+      await teleconsultationAPI.endSession(appointmentId);
+    } catch {
+      /* best-effort */
+    }
     if (appointment?.id) {
       const existing = getConsultationSummary(appointment.id);
       setSummaryDraft(existing?.text || '');
@@ -294,6 +349,13 @@ export default function ConsultationRoom() {
               <ul className="consult-device-checklist">
                 <li className={micOn ? 'is-ok' : ''}>Micro {micOn ? 'prêt' : 'coupé'}</li>
                 <li className={camOn ? 'is-ok' : ''}>Caméra {camOn ? 'prête' : 'désactivée'}</li>
+                <li className={mediaStatus.ok ? 'is-ok' : mediaStatus.checked ? '' : 'is-ok'}>
+                  {mediaStatus.checked
+                    ? mediaStatus.ok
+                      ? 'Caméra / micro autorisés'
+                      : mediaStatus.reason
+                    : 'Vérification des périphériques…'}
+                </li>
                 <li className="is-ok">Connexion chiffrée (HTTPS)</li>
               </ul>
               <div className="consult-device-toggles">
@@ -320,8 +382,9 @@ export default function ConsultationRoom() {
                 Fournisseur vidéo : <strong>{providerLabel}</strong>
               </p>
               <p className="consult-prejoin-copy">
-                Le flux vidéo réel sera fourni par Daily.co, Jitsi ou Twilio selon la configuration du cabinet. Cette
-                interface simule l’expérience clinique (aperçu, contrôles, file d’attente) avant branchement SDK.
+                {provider === 'jitsi'
+                  ? 'Une fois connecté, vous pouvez ouvrir la salle Jitsi sécurisée (JWT si configuré sur le serveur).'
+                  : 'Le flux vidéo est fourni par Daily.co, Jitsi ou Twilio selon la configuration du cabinet.'}
               </p>
               {appointment.meeting_link && (
                 <button type="button" className="btn btn-secondary consult-external" onClick={openExternal}>

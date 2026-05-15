@@ -140,6 +140,15 @@ function pathIsActive(pathname, itemPath) {
   if (itemPath === '/teleconsultation') {
     return pathname === '/teleconsultation' || pathname.startsWith('/consultation/');
   }
+  if (itemPath === '/doctor/dashboard') {
+    return pathname === '/doctor/dashboard';
+  }
+  if (itemPath === '/doctor/appointments') {
+    return pathname === '/doctor/appointments';
+  }
+  if (itemPath === '/doctor/messages') {
+    return pathname === '/doctor/messages';
+  }
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
 }
 

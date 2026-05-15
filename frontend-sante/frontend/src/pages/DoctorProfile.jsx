@@ -4,6 +4,7 @@ import { doctorsAPI } from '../services/api.js';
 import { formatSpecialtyLabel } from '../utils/specialtyLabels.js';
 import { formatGNF } from '../utils/appointmentPresentation.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import { getBookAppointmentPath, getRoleHomePath } from '../utils/rolePaths.js';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import './DoctorProfile.css';
 
@@ -35,15 +36,31 @@ export default function DoctorProfile() {
     void load();
   }, [load]);
 
-  const book = () => {
-    navigate(`/appointments?doctor_id=${encodeURIComponent(doctorId)}`);
-  };
-
   const isOwnProfile = useMemo(() => {
     const did = Number(doctorId);
     if (user?.role !== 'doctor') return false;
     return Number(user?.doctor_id) === did;
   }, [user?.role, user?.doctor_id, doctorId]);
+
+  const book = () => {
+    const r = String(user?.role || '').toLowerCase();
+    if (r === 'patient') {
+      navigate(getBookAppointmentPath(doctorId));
+      return;
+    }
+    if (r === 'doctor' && isOwnProfile) {
+      navigate('/doctor/dashboard');
+      return;
+    }
+    navigate(getRoleHomePath(user?.role));
+  };
+
+  const primaryCtaLabel = useMemo(() => {
+    const r = String(user?.role || '').toLowerCase();
+    if (r === 'patient') return 'Prendre rendez-vous';
+    if (r === 'doctor' && isOwnProfile) return 'Mon agenda';
+    return 'Tableau de bord';
+  }, [user?.role, isOwnProfile]);
 
   const saveCabinetGps = () => {
     if (!navigator.geolocation) {
@@ -97,7 +114,7 @@ export default function DoctorProfile() {
             Annuaire
           </Link>
           <button type="button" className="btn btn-primary" disabled={!doctor} onClick={book}>
-            Prendre rendez-vous
+            {primaryCtaLabel}
           </button>
         </div>
       </header>
@@ -195,7 +212,7 @@ export default function DoctorProfile() {
               consultation via la messagerie sécurisée.
             </p>
             <button type="button" className="btn btn-primary doctor-profile-cta" onClick={book}>
-              Choisir un créneau
+              {String(user?.role || '').toLowerCase() === 'patient' ? 'Choisir un créneau' : primaryCtaLabel}
             </button>
           </section>
         </div>

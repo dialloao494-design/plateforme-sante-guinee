@@ -6,6 +6,8 @@ import {
   formatGNF,
   getAppointmentState,
   getAppointmentActions,
+  isDoctorQueueAppointment,
+  normalizeAppointmentStatus,
 } from '../utils/appointmentPresentation.js';
 import './DoctorAppointments.css';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
@@ -16,7 +18,7 @@ const DoctorAppointments = () => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('queue');
   const [dateFilter, setDateFilter] = useState('');
   const [actionBusyId, setActionBusyId] = useState(null);
 
@@ -48,18 +50,23 @@ const DoctorAppointments = () => {
   const filteredAppointments = useMemo(() => {
     return appointments
       .filter((appointment) => {
-        if (statusFilter !== 'all') {
-          const appointmentState = getAppointmentState(appointment).state;
-          if (statusFilter === 'pending' && appointmentState !== 'pending') {
-            return false;
-          }
-          if ((statusFilter === 'confirmed' || statusFilter === 'paid') && appointmentState !== 'confirmed') {
-            return false;
-          }
-          if (statusFilter === 'cancelled' && appointmentState !== 'cancelled') {
-            return false;
-          }
+        const raw = normalizeAppointmentStatus(appointment);
+        const presentation = getAppointmentState(appointment);
+
+        if (statusFilter === 'queue') {
+          if (!isDoctorQueueAppointment(appointment)) return false;
+        } else if (statusFilter === 'pending') {
+          if (!isDoctorQueueAppointment(appointment)) return false;
+          if (presentation.state !== 'pending') return false;
+        } else if (statusFilter === 'confirmed') {
+          if (!isDoctorQueueAppointment(appointment)) return false;
+          if (presentation.state !== 'confirmed') return false;
+        } else if (statusFilter === 'completed') {
+          if (raw !== 'completed') return false;
+        } else if (statusFilter === 'cancelled') {
+          if (raw !== 'cancelled' && raw !== 'expired') return false;
         }
+        // statusFilter === 'all' → no status-based exclusion
 
         if (dateFilter) {
           const appointmentDay = new Date(appointment.date).toISOString().slice(0, 10);
@@ -125,11 +132,12 @@ const DoctorAppointments = () => {
         <label>
           Statut
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="all">Tous</option>
+            <option value="queue">File active (sans annulés / expirés / terminés)</option>
             <option value="pending">En attente</option>
-            <option value="paid">Payé</option>
-            <option value="confirmed">Confirmé</option>
-            <option value="cancelled">Annulé</option>
+            <option value="confirmed">Confirmés</option>
+            <option value="completed">Terminés</option>
+            <option value="cancelled">Annulés &amp; expirés</option>
+            <option value="all">Tous les statuts</option>
           </select>
         </label>
       </div>
@@ -153,7 +161,7 @@ const DoctorAppointments = () => {
           actionLabel="Réinitialiser les filtres"
           onAction={() => {
             setDateFilter('');
-            setStatusFilter('all');
+            setStatusFilter('queue');
           }}
         />
       )}

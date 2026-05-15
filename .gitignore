@@ -1,11 +1,17 @@
 # ==========================================
-# ENVIRONMENT & SECRETS
+# ENVIRONMENT & SECRETS (never commit real values)
 # ==========================================
 .env
 .env.local
 .env.*.local
 .env.production
+.env.staging
 .env.development
+.env.development.local
+
+# Server-side secrets (use *.example templates in repo)
+deploy/env/.env.backend
+deploy/env/.env.frontend
 
 # ==========================================
 # PYTHON
@@ -30,8 +36,6 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-
-# Virtual Environments
 venv/
 env/
 ENV/
@@ -47,17 +51,15 @@ sante.db
 *.dbm
 
 # ==========================================
-# LOGS & MONITORING
+# LOGS & BACKUPS
 # ==========================================
 logs/
 *.log
-.log
-error.log
-access.log
-debug.log
+backups/
+certbot/
 
 # ==========================================
-# IDE & EDITORS
+# IDE
 # ==========================================
 .vscode/
 .idea/
@@ -65,36 +67,15 @@ debug.log
 *.swo
 *~
 .DS_Store
-.sublime-*
-*.iml
-*.sublime-project
-*.sublime-workspace
 
 # ==========================================
-# NODE & FRONTEND
+# NODE & FRONTEND BUILD
 # ==========================================
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.npm
-.yarn
-dist/
-build/
-.next/
-.nuxt/
-.cache/
-
-# ==========================================
-# BACKUP & TEMPORARY FILES
-# ==========================================
-*.bak
-*.backup
-*.tmp
-*.temp
-*~
-.DS_Store
-Thumbs.db
+frontend-sante/frontend/dist/
 
 # ==========================================
 # SECURITY & CREDENTIALS
@@ -111,17 +92,7 @@ stripe_*.env
 .stripe_keys
 
 # ==========================================
-# OS SPECIFIC
-# ==========================================
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-
-# ==========================================
-# TESTING & COVERAGE
+# TESTING
 # ==========================================
 .pytest_cache/
 .coverage
@@ -130,12 +101,13 @@ htmlcov/
 .tox/
 
 # ==========================================
-# DEPLOYMENT
+# DEPLOYMENT GENERATED
 # ==========================================
 .terraform/
 terraform.tfstate*
-.docker/
 docker-compose.override.yml
+deploy/nginx/conf.d/app.conf
 
-# NOTE: .env.example IS committed (it's safe - no real secrets)
-# Never commit actual .env file with real credentials!
+# Safe templates ARE committed:
+# .env.example, .env.production.example, .env.staging.example
+# deploy/env/.env.backend.example, deploy/env/.env.frontend.example

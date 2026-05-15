@@ -1,47 +1,53 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { notificationsAPI } from '../services/api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { formatApiError } from '../utils/apiError.js';
+import { getRoleHomePath } from '../utils/rolePaths.js';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import './NotificationsPage.css';
 
 export default function NotificationsPage() {
   const { user } = useAuth();
-  const dashboardHref = useMemo(() => {
-    const r = String(user?.role || '').toLowerCase();
-    if (r === 'doctor' || r === 'admin') return '/doctor/dashboard';
-    return '/dashboard';
-  }, [user?.role]);
+  const dashboardHref = useMemo(() => getRoleHomePath(user?.role), [user?.role]);
 
   const [channelsPayload, setChannelsPayload] = useState(null);
   const [inbox, setInbox] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [channelsError, setChannelsError] = useState('');
+  const [inboxError, setInboxError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const [chRes, listRes] = await Promise.all([notificationsAPI.channels(), notificationsAPI.list()]);
-        if (!cancelled) {
-          setChannelsPayload(chRes.data);
-          setInbox(listRes.data);
-        }
-      } catch (err) {
-        if (!cancelled) setError(formatApiError(err, 'Impossible de charger les notifications.'));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+  const load = useCallback(async () => {
+    setLoading(true);
+    setChannelsError('');
+    setInboxError('');
+    try {
+      const chRes = await notificationsAPI.channels();
+      setChannelsPayload(chRes.data);
+    } catch (err) {
+      setChannelsPayload(null);
+      setChannelsError(formatApiError(err, 'Impossible de charger les canaux.'));
+    }
+    try {
+      const listRes = await notificationsAPI.list();
+      setInbox(listRes.data);
+    } catch (err) {
+      setInbox({ items: [], message: null });
+      setInboxError(formatApiError(err, 'Impossible de charger la boîte de réception.'));
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    void load();
+  }, [load, reloadKey]);
+
   const channels = Array.isArray(channelsPayload?.channels) ? channelsPayload.channels : [];
+
+  const inboxItems = Array.isArray(inbox?.items) ? inbox.items : [];
+  const inboxEmpty = !loading && !inboxError && inboxItems.length === 0;
 
   return (
     <div className="notifications-page ds-page">
@@ -59,8 +65,6 @@ export default function NotificationsPage() {
         </Link>
       </header>
 
-      {error && <div className="notifications-banner notifications-banner--error" role="alert">{error}</div>}
-
       {loading && (
         <div className="notifications-loading">
           <PageSkeleton lines={5} />
@@ -71,36 +75,52 @@ export default function NotificationsPage() {
         <div className="notifications-grid">
           <section className="notifications-card">
             <h2>Canaux prévus</h2>
-            <p className="notifications-muted">
-              {channelsPayload?.enabled
-                ? 'Au moins un canal transactionnel est activé côté serveur.'
-                : 'Aucun canal transactionnel n’est encore activé — configuration serveur requise.'}
-            </p>
-            <ul className="notifications-channel-list">
-              {channels.map((ch) => (
-                <li key={ch.id} className="notifications-channel-item">
-                  <div className="notifications-channel-top">
-                    <strong>{ch.label}</strong>
-                    <span className={`notifications-status notifications-status--${ch.status || 'planned'}`}>
-                      {ch.status === 'planned' ? 'Prévu' : ch.status === 'live' ? 'Actif' : ch.status}
-                    </span>
-                  </div>
-                  {Array.isArray(ch.use_cases) && ch.use_cases.length > 0 && (
-                    <p className="notifications-usecases">{ch.use_cases.join(' · ')}</p>
-                  )}
-                </li>
-              ))}
-            </ul>
+            {channelsError ? (
+              <div className="notifications-banner notifications-banner--error" role="alert">
+                {channelsError}
+              </div>
+            ) : (
+              <>
+                <p className="notifications-muted">
+                  {channelsPayload?.enabled
+                    ? 'Au moins un canal transactionnel est activé côté serveur.'
+                    : 'Aucun canal transactionnel n’est encore activé — configuration serveur requise.'}
+                </p>
+                <ul className="notifications-channel-list">
+                  {channels.map((ch) => (
+                    <li key={ch.id} className="notifications-channel-item">
+                      <div className="notifications-channel-top">
+                        <strong>{ch.label}</strong>
+                        <span className={`notifications-status notifications-status--${ch.status || 'planned'}`}>
+                          {ch.status === 'planned' ? 'Prévu' : ch.status === 'live' ? 'Actif' : ch.status}
+                        </span>
+                      </div>
+                      {Array.isArray(ch.use_cases) && ch.use_cases.length > 0 && (
+                        <p className="notifications-usecases">{ch.use_cases.join(' · ')}</p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </section>
 
           <section className="notifications-card">
             <h2>Boîte de réception</h2>
-            {inbox?.message && (!Array.isArray(inbox?.items) || inbox.items.length === 0) && (
+            {inboxError && (
+              <div className="notifications-banner notifications-banner--error" role="alert">
+                <span>{inboxError}</span>
+                <button type="button" className="btn btn-secondary notifications-retry" onClick={() => setReloadKey((k) => k + 1)}>
+                  Réessayer
+                </button>
+              </div>
+            )}
+            {!inboxError && inbox?.message && inboxItems.length === 0 && (
               <p className="notifications-muted">{inbox.message}</p>
             )}
-            {Array.isArray(inbox?.items) && inbox.items.length > 0 ? (
+            {!inboxError && inboxItems.length > 0 ? (
               <ul className="notifications-inbox-list">
-                {inbox.items.map((item) => (
+                {inboxItems.map((item) => (
                   <li key={item.id} className="notifications-inbox-item">
                     <div className="notifications-inbox-item-top">
                       <span className="notifications-inbox-subject">{item.subject}</span>
@@ -118,13 +138,12 @@ export default function NotificationsPage() {
                   </li>
                 ))}
               </ul>
-            ) : (
-              !inbox?.message && (
-                <p className="notifications-empty">
-                  Les rappels de rendez-vous et accusés de lecture apparaîtront ici après des événements (ex. paiement
-                  confirmé).
-                </p>
-              )
+            ) : null}
+            {inboxEmpty && !inbox?.message && (
+              <p className="notifications-empty">
+                Les rappels de rendez-vous et accusés de lecture apparaîtront ici après des événements (ex. paiement
+                confirmé).
+              </p>
             )}
           </section>
         </div>

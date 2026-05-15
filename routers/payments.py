@@ -48,8 +48,10 @@ def _get_or_create_patient_profile(db: Session, user_id: int) -> models.Patient:
 
 
 @router.get("/rail-config")
-def get_payment_rail_config():
-    """Expose which payment rails are configured (Stripe, Orange Money, MTN)."""
+def get_payment_rail_config(
+    current_user=Depends(require_roles(["patient", "doctor", "admin"])),
+):
+    """Expose which payment rails are configured (authenticated; no secrets)."""
     from services.mobile_money_service import describe_rails
 
     return describe_rails()

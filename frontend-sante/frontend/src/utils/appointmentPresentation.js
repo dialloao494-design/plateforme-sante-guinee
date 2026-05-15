@@ -6,6 +6,10 @@ const normalizeStatus = (statusValue) => {
 
   if (normalized === 'annule' || normalized === 'annulee' || normalized === 'canceled' || normalized === 'cancelled')
     return 'cancelled';
+  if (normalized === 'expire' || normalized === 'expired') return 'expired';
+  if (normalized === 'checked_in' || normalized === 'checked in' || normalized === 'present') return 'checked_in';
+  if (normalized === 'active' || normalized === 'in_progress' || normalized === 'en cours') return 'active';
+  if (normalized === 'termine' || normalized === 'completed' || normalized === 'done') return 'completed';
   if (normalized === 'confirme' || normalized === 'confirmee' || normalized === 'confirmed') return 'confirmed';
   if (normalized === 'paid' || normalized === 'paye' || normalized === 'payee') return 'paid';
   if (normalized === 'pending' || normalized === 'en attente') return 'pending';
@@ -29,6 +33,9 @@ const STATUS_LABELS = {
   confirmed: 'Confirmé',
   completed: 'Terminé',
   cancelled: 'Annulé',
+  expired: 'Expiré',
+  checked_in: 'Présent',
+  active: 'En consultation',
   paid: 'Payé',
 };
 
@@ -43,6 +50,9 @@ const STATUS_COLORS = {
   confirmed: 'status-badge status-confirmed',
   completed: 'status-badge status-confirmed',
   cancelled: 'status-badge status-cancelled',
+  expired: 'status-badge status-cancelled',
+  checked_in: 'status-badge status-confirmed',
+  active: 'status-badge status-confirmed',
   paid: 'status-badge status-paid',
 };
 
@@ -54,6 +64,9 @@ const CONSULTATION_LABELS = {
 const resolveDisplayStatus = (status, paymentStatus) => {
   if (status === 'cancelled') {
     return 'cancelled';
+  }
+  if (status === 'expired') {
+    return 'expired';
   }
 
   if (paymentStatus === 'paid' && status === 'pending') {
@@ -91,10 +104,16 @@ const resolveAppointmentState = (appointment = {}) => {
   const status = normalizeStatus(rawStatus);
   const paymentStatus = normalizePaymentStatus(rawPaymentStatus);
   const displayStatusKey = resolveDisplayStatus(status, paymentStatus);
-  const isJoinEligibleStatus = status === 'confirmed' || status === 'completed';
+  const isJoinEligibleStatus =
+    status === 'confirmed' || status === 'completed' || status === 'checked_in' || status === 'active';
   const isTeleconsultation = appointment?.consultation_type === 'teleconsultation';
 
-  const finalState = status === 'cancelled' ? 'cancelled' : isJoinEligibleStatus ? 'confirmed' : 'pending';
+  const finalState =
+    status === 'cancelled' || status === 'expired'
+      ? 'cancelled'
+      : isJoinEligibleStatus
+        ? 'confirmed'
+        : 'pending';
 
   const resolved = {
     canPay: status === 'pending' && paymentStatus !== 'paid',
@@ -123,6 +142,16 @@ const resolveAppointmentState = (appointment = {}) => {
 };
 
 export const getAppointmentState = (appointment) => resolveAppointmentState(appointment);
+
+/** Raw workflow status from API (lowercased canonical token). */
+export const normalizeAppointmentStatus = (appointment) => normalizeStatus(appointment?.status);
+
+/** Appointments visible on the doctor queue (excludes cancelled, expired, completed). */
+export const isDoctorQueueAppointment = (appointment) => {
+  const raw = normalizeAppointmentStatus(appointment);
+  if (raw === 'cancelled' || raw === 'expired' || raw === 'completed') return false;
+  return true;
+};
 export const getAppointmentStatusLabel = (appointment) => resolveAppointmentState(appointment).displayStatus;
 export const getAppointmentStatusColor = (appointment) => resolveAppointmentState(appointment).statusColor;
 export const getPaymentLabel = (appointmentOrPaymentStatus) => {
@@ -165,7 +194,7 @@ export const getAppointmentActions = (appointment, options = {}) => {
   const isDoctorLike = viewerRole === 'doctor' || viewerRole === 'admin';
   const paymentStatus = normalizePaymentStatus(appointment?.payment_status);
 
-  if (normalizeStatus(appointment?.status) === 'cancelled') {
+  if (['cancelled', 'expired'].includes(normalizeStatus(appointment?.status))) {
     return [];
   }
 

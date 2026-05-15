@@ -5,7 +5,13 @@ import { useAppointmentContext } from '../contexts/AppointmentContext.jsx';
 import AppointmentCard from '../components/AppointmentCard.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
-import { getAppointmentActions, getAppointmentState, isPendingAppointment } from '../utils/appointmentPresentation.js';
+import {
+  getAppointmentActions,
+  getAppointmentState,
+  isPendingAppointment,
+  isDoctorQueueAppointment,
+  normalizeAppointmentStatus,
+} from '../utils/appointmentPresentation.js';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -14,16 +20,27 @@ const Dashboard = () => {
   const { appointments, loading, error, updateAppointment, fetchAppointments } = useAppointmentContext();
   const [confirmingId, setConfirmingId] = useState(null);
   const role = user?.role;
-  const previewAppointments = appointments.slice(0, 3);
+  const previewAppointments = useMemo(() => {
+    const now = new Date();
+    return [...appointments]
+      .filter((a) => isDoctorQueueAppointment(a) && new Date(a.date) >= now)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .slice(0, 3);
+  }, [appointments]);
   const viewerRole = role === 'doctor' || role === 'admin' ? role : 'patient';
 
   const stats = useMemo(() => {
     const now = new Date();
     const upcoming = appointments.filter((a) => {
-      if (String(a.status || '').toLowerCase() === 'cancelled') return false;
+      if (!isDoctorQueueAppointment(a)) return false;
       return new Date(a.date) >= now;
     }).length;
-    const past = appointments.filter((a) => new Date(a.date) < now).length;
+    const past = appointments.filter((a) => {
+      if (normalizeAppointmentStatus(a) === 'cancelled' || normalizeAppointmentStatus(a) === 'expired') {
+        return false;
+      }
+      return new Date(a.date) < now || normalizeAppointmentStatus(a) === 'completed';
+    }).length;
     const tele = appointments.filter((a) => a.consultation_type === 'teleconsultation').length;
     const actionNeeded = appointments.filter(
       (a) => isPendingAppointment(a) && String(a.payment_status || '').toLowerCase() === 'paid'
@@ -180,7 +197,7 @@ const Dashboard = () => {
           title="Aucun rendez-vous pour le moment"
           description="Prenez rendez-vous avec un praticien à Conakry, Kindia ou en téléconsultation. Vos prochains soins apparaîtront ici."
           actionLabel="Prendre rendez-vous"
-          onAction={() => navigate('/appointments')}
+          onAction={() => navigate('/doctors')}
         />
       )}
 

@@ -97,6 +97,12 @@ export const notificationsAPI = {
   list: () => httpClient.get('/notifications/'),
 };
 
+export const teleconsultationAPI = {
+  getAccess: (appointmentId) => httpClient.get(`/teleconsultation/appointments/${appointmentId}/access`),
+  endSession: (appointmentId) => httpClient.post(`/teleconsultation/appointments/${appointmentId}/end`),
+  config: () => httpClient.get('/teleconsultation/config'),
+};
+
 export const messagesAPI = {
   getByAppointment: (appointmentId) => httpClient.get(`/messages/${appointmentId}`),
   sendToAppointment: (appointmentId, formData) => httpClient.post(`/messages/${appointmentId}`, formData, {

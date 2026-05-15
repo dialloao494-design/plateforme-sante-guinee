@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import { getRoleHomePath } from '../utils/rolePaths.js';
 import './Login.css';
 
 const Login = () => {
@@ -12,7 +13,7 @@ const Login = () => {
 
   useEffect(() => {
     if (!authLoading && user) {
-      navigate('/dashboard', { replace: true });
+      navigate(getRoleHomePath(user.role), { replace: true });
     }
   }, [authLoading, user, navigate]);
 
@@ -24,7 +25,7 @@ const Login = () => {
     try {
       const result = await login(email, password);
       if (result.success) {
-        navigate('/dashboard', { replace: true });
+        navigate(getRoleHomePath(result.role), { replace: true });
       } else {
         setSubmitError(result.error || 'Une erreur est survenue, veuillez réessayer');
       }

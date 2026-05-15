@@ -10,7 +10,6 @@ from schemas import rendezvous as rendezvous_schemas
 from services.rendezvous_service import RendezVousService
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
 
