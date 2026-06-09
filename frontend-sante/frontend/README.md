@@ -80,10 +80,12 @@ src/
    ```
 4. Ouvrir http://localhost:5174 dans votre navigateur
 
-## Connexion de test
+## Connexion de test (comptes pilote)
 
-- **Email** : doctor@example.com
-- **Mot de passe** : password
+- **Médecin** : `dr.mamady@example.com` / `Doctor123!` (D majuscule, point d’exclamation)
+- **Patient** : `test.patient@example.com` / `Patient123!`
+
+En mode dev, la page `/login` propose des boutons pour remplir automatiquement ces identifiants.
 
 ## API Integration
 

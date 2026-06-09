@@ -12,8 +12,12 @@ class Payment(Base):
     payment_id = Column(String, nullable=True, unique=True, index=True)  # Stripe PaymentIntent ID
     stripe_session_id = Column(String, nullable=True, index=True)  # Stripe Checkout session ID
     amount = Column(Integer, nullable=False, default=0)  # Smallest currency unit (Stripe amount)
+    amount_refunded = Column(Integer, nullable=False, default=0)
     currency = Column(String, nullable=True, default="eur")
-    status = Column(String, nullable=False, default="pending", index=True)  # pending, paid, failed, cancelled
+    status = Column(String, nullable=False, default="pending", index=True)
+    refund_status = Column(String, nullable=False, default="none", index=True)  # none, partial, full
+    settlement_channel = Column(String, nullable=True, index=True)
+    last_stripe_event_id = Column(String, nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

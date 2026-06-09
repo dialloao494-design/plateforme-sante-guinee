@@ -1,38 +1,39 @@
-# Staging overlay — HTTPS subdomain before public production
-# docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file .env.staging up -d --build
-
-services:
-  backend:
-    environment:
-      ENVIRONMENT: staging
-      DEBUG: "false"
-      ENABLE_LAN_DEV: "false"
-      ENABLE_DEMO_CLINIC_SEED: "false"
-      ENABLE_STARTUP_TEST_USER: "false"
-      ENABLE_STARTUP_SEED: "false"
-      ENABLE_PILOT_SEED: ${ENABLE_PILOT_SEED:-true}
-      LOG_FORMAT: json
-      DOMAIN: ${DOMAIN}
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-
-  nginx:
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./deploy/nginx/conf.d/app.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./certbot/www:/var/www/certbot:ro
-      - ./certbot/conf:/etc/letsencrypt:ro
-
-  certbot:
-    image: certbot/certbot:latest
-    restart: unless-stopped
-    volumes:
-      - ./certbot/www:/var/www/certbot
-      - ./certbot/conf:/etc/letsencrypt
-    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew; sleep 12h; done"
+# Staging overlay — HTTPS subdomain before public production
+# docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file .env.staging up -d --build
+
+services:
+  backend:
+    environment:
+      ENVIRONMENT: staging
+      DEBUG: "false"
+      ENABLE_LAN_DEV: "false"
+      ENABLE_DEMO_CLINIC_SEED: "false"
+      ENABLE_STARTUP_TEST_USER: "false"
+      ENABLE_STARTUP_SEED: "false"
+      ENABLE_PILOT_SEED: ${ENABLE_PILOT_SEED:-true}
+      LOG_FORMAT: json
+      DOMAIN: ${DOMAIN}
+      ALLOWED_HOSTS: ${DOMAIN},backend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  nginx:
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/conf.d/app.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+
+  certbot:
+    image: certbot/certbot:latest
+    restart: unless-stopped
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew; sleep 12h; done"
 

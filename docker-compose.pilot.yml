@@ -1,0 +1,36 @@
+# Pilote GO overlay — PostgreSQL + flags sécurisés + HTTPS self-signed
+# docker compose -f docker-compose.yml -f docker-compose.pilot.yml --env-file .env.pilot up -d --build
+
+services:
+  db:
+    ports:
+      - "5433:5432"
+
+  backend:
+    environment:
+      ENVIRONMENT: staging
+      DEBUG: "false"
+      ENABLE_LAN_DEV: "false"
+      ENABLE_DEMO_CLINIC_SEED: "false"
+      ENABLE_STARTUP_TEST_USER: "false"
+      ENABLE_STARTUP_SEED: "false"
+      ENABLE_PILOT_SEED: "false"
+      ENABLE_STAGING_API_DOCS: "true"
+      BYPASS_AVAILABILITY_VALIDATION: "false"
+      ALLOWED_HOSTS: localhost,127.0.0.1,backend,*.trycloudflare.com,${DOMAIN:-localhost}
+      ENABLE_TUNNEL_TEST: "true"
+      DOMAIN: ${DOMAIN:-localhost}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sante}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-sante}
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  nginx:
+    ports:
+      - "${HTTP_PORT:-8088}:80"
+      - "${HTTPS_PORT:-9443}:443"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/conf.d/app.pilot-https.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/certs:/etc/nginx/certs:ro

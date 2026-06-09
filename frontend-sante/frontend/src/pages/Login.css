@@ -158,6 +158,68 @@
   text-decoration: underline;
 }
 
+.login-demo-hint {
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--radius-md, 10px);
+  background: var(--color-primary-soft, rgba(13, 148, 136, 0.08));
+  border: 1px dashed rgba(13, 148, 136, 0.35);
+}
+
+.login-demo-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-primary-hover, #0f766e);
+}
+
+.login-demo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.login-demo-btn {
+  flex: 1 1 auto;
+  min-width: 7rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid rgba(13, 148, 136, 0.35);
+  border-radius: var(--radius-md, 10px);
+  background: #fff;
+  color: var(--color-primary-hover, #0f766e);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.login-demo-btn:hover:not(:disabled) {
+  background: rgba(13, 148, 136, 0.1);
+  border-color: rgba(13, 148, 136, 0.55);
+}
+
+.login-demo-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-demo-note {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--color-text-muted, #64748b);
+}
+
+.login-demo-note code {
+  font-size: 0.76rem;
+  padding: 0.05rem 0.25rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--color-text, #334155);
+}
+
 /* Legacy class names kept for any older markup */
 .login {
   min-height: 100vh;

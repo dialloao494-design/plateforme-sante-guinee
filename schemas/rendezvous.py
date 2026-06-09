@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from datetime import datetime
 from typing import Optional, Literal
 
@@ -42,6 +42,12 @@ class RendezVousResponse(BaseModel):
     doctor_id: int
     created_at: datetime = Field(..., description="When appointment was created")
     updated_at: datetime = Field(..., description="Last update time")
+
+    @model_validator(mode="after")
+    def strip_public_meeting_link(self):
+        """Join URLs are never exposed on appointment APIs (R1 — use /teleconsultation/access)."""
+        self.meeting_link = None
+        return self
 
     class Config:
         orm_mode = True

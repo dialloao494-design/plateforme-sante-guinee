@@ -4,6 +4,8 @@ Plateforme de santé numérique (MVP) : rendez-vous, paiements, messagerie, tél
 
 **Dépôt distant :** [github.com/dialloao494-design/plateforme-sante-guinee](https://github.com/dialloao494-design/plateforme-sante-guinee)
 
+> **Passation projet :** si vous reprenez le projet, commencez par le dossier [`HANDOVER/README_START_HERE.md`](HANDOVER/README_START_HERE.md).
+
 ---
 
 ## Sommaire

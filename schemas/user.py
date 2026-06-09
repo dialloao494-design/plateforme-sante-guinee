@@ -2,8 +2,18 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional
 import re
 
+from core.roles import assert_public_registration_role
+from security import validate_password
 
-class UserCreate(BaseModel):
+
+class PublicRegistration(BaseModel):
+    """
+    Public self-service registration payload.
+    Privileged roles (admin) are rejected at validation — not only at handler level.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
     email: str
     password: str
     role: str = "patient"
@@ -18,18 +28,42 @@ class UserCreate(BaseModel):
 
     @field_validator("password")
     @classmethod
-    def validate_password(cls, v: str) -> str:
+    def validate_password_field(cls, v: str) -> str:
         if len(v) < 6:
             raise ValueError("Password must be at least 6 characters long")
         return v
 
     @field_validator("role")
     @classmethod
-    def validate_role(cls, v: str) -> str:
-        role = v.strip().lower()
-        if role not in {"patient", "doctor", "admin"}:
-            raise ValueError("Role must be one of: patient, doctor, admin")
-        return role
+    def validate_public_role(cls, v: str) -> str:
+        return assert_public_registration_role(v)
+
+
+class AdminUserCreate(BaseModel):
+    """Administrator provisioning (authenticated admin only)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: str
+    password: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        email = v.strip().lower()
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            raise ValueError("Invalid email address")
+        return email
+
+    @field_validator("password")
+    @classmethod
+    def validate_strong_password(cls, v: str) -> str:
+        validate_password(v)
+        return v
+
+
+# Backward-compatible alias for imports; same constraints as PublicRegistration.
+UserCreate = PublicRegistration
 
 
 class UserLogin(BaseModel):

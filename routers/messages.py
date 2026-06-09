@@ -1,53 +1,64 @@
-import os
-import re
-from datetime import datetime
 from pathlib import Path
 from typing import List
+import os
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 import models
+from core.limiter import limiter
 from database import get_db
 from schemas import message as message_schemas
 from security import get_current_user
+from services.message_attachment_service import MessageAttachmentService, assert_appointment_access
+from services.secure_attachment_storage import SecureAttachmentStorage
 
 router = APIRouter(prefix="/messages", tags=["Messages"])
 
-UPLOAD_ROOT = Path("uploads/messages")
-ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp"}
+
+def _serialize_message(message: models.Message) -> message_schemas.MessageResponse:
+    has_attachment = MessageAttachmentService.has_attachment(message)
+    return message_schemas.MessageResponse(
+        id=message.id,
+        appointment_id=message.appointment_id,
+        sender_user_id=message.sender_user_id,
+        sender_role=message.sender_role,
+        content=message.content,
+        attachment_name=message.attachment_name if has_attachment else None,
+        has_attachment=has_attachment,
+        attachment_download_url=(
+            MessageAttachmentService.download_path(message.id) if has_attachment else None
+        ),
+        attachment_mime_type=message.attachment_mime_type if has_attachment else None,
+        attachment_size_bytes=message.attachment_size_bytes if has_attachment else None,
+        created_at=message.created_at,
+    )
 
 
-def _sanitize_filename(filename: str) -> str:
-    cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", filename)
-    return cleaned[:120] or "attachment"
-
-
-def _get_patient_for_user(db: Session, user_id: int):
-    return db.query(models.Patient).filter(models.Patient.user_id == user_id).first()
-
-
-def _get_doctor_for_user(db: Session, user_id: int):
-    return db.query(models.Doctor).filter(models.Doctor.user_id == user_id).first()
-
-
-def _assert_can_access_appointment(db: Session, appointment: models.RendezVous, current_user) -> None:
-    if current_user.role == "admin":
-        return
-
-    if current_user.role == "patient":
-        patient = _get_patient_for_user(db, current_user.id)
-        if not patient or appointment.patient_id != patient.id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-        return
-
-    if current_user.role == "doctor":
-        doctor = _get_doctor_for_user(db, current_user.id)
-        if not doctor or appointment.doctor_id != doctor.id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-        return
-
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+@router.get("/attachments/{message_id}/download")
+@limiter.limit(os.getenv("RATE_LIMIT_ATTACHMENT_DOWNLOAD", "30/minute"))
+def download_message_attachment(
+    request: Request,
+    message_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    client_ip = request.client.host if request.client else None
+    message, content, mime = MessageAttachmentService.get_message_for_download(
+        db, message_id, current_user, client_ip=client_ip
+    )
+    filename = SecureAttachmentStorage.sanitize_filename(message.attachment_name or "attachment")
+    return Response(
+        content=content,
+        media_type=mime,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store, no-cache, must-revalidate, private",
+            "Pragma": "no-cache",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.get("/{appointment_id}", response_model=List[message_schemas.MessageResponse])
@@ -60,7 +71,7 @@ def list_messages(
     if not appointment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
 
-    _assert_can_access_appointment(db, appointment, current_user)
+    assert_appointment_access(db, appointment, current_user)
 
     messages = (
         db.query(models.Message)
@@ -69,7 +80,7 @@ def list_messages(
         .all()
     )
 
-    return messages
+    return [_serialize_message(message) for message in messages]
 
 
 @router.post("/{appointment_id}", response_model=message_schemas.MessageResponse)
@@ -84,44 +95,42 @@ async def send_message(
     if not appointment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
 
-    _assert_can_access_appointment(db, appointment, current_user)
+    assert_appointment_access(db, appointment, current_user)
 
     clean_content = (content or "").strip()
     if not clean_content and attachment is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message content or attachment is required")
 
     attachment_name = None
-    attachment_url = None
+    attachment_storage_key = None
+    attachment_mime_type = None
+    attachment_size_bytes = None
 
     if attachment is not None:
         extension = Path(attachment.filename or "").suffix.lower()
-        if extension not in ALLOWED_EXTENSIONS:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported attachment format")
-
-        appointment_folder = UPLOAD_ROOT / f"appointment_{appointment_id}"
-        appointment_folder.mkdir(parents=True, exist_ok=True)
-
-        safe_name = _sanitize_filename(attachment.filename or f"file{extension}")
-        unique_name = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}_{safe_name}"
-        absolute_path = appointment_folder / unique_name
-
-        with absolute_path.open("wb") as out_file:
-            file_bytes = await attachment.read()
-            out_file.write(file_bytes)
-
-        attachment_name = safe_name
-        attachment_url = f"/uploads/messages/appointment_{appointment_id}/{unique_name}"
+        file_bytes = await attachment.read()
+        stored = SecureAttachmentStorage.store(
+            file_bytes,
+            original_filename=attachment.filename or f"file{extension}",
+            extension=extension,
+        )
+        attachment_name = stored.original_filename
+        attachment_storage_key = stored.storage_key
+        attachment_mime_type = stored.mime_type
+        attachment_size_bytes = stored.size_bytes
 
     message = models.Message(
         appointment_id=appointment_id,
         sender_user_id=current_user.id,
         content=clean_content or None,
         attachment_name=attachment_name,
-        attachment_url=attachment_url,
+        attachment_storage_key=attachment_storage_key,
+        attachment_mime_type=attachment_mime_type,
+        attachment_size_bytes=attachment_size_bytes,
     )
 
     db.add(message)
     db.commit()
     db.refresh(message)
 
-    return message
+    return _serialize_message(message)

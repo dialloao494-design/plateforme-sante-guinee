@@ -15,7 +15,10 @@ class MessageResponse(BaseModel):
     sender_role: str
     content: Optional[str] = None
     attachment_name: Optional[str] = None
-    attachment_url: Optional[str] = None
+    has_attachment: bool = False
+    attachment_download_url: Optional[str] = None
+    attachment_mime_type: Optional[str] = None
+    attachment_size_bytes: Optional[int] = None
     created_at: datetime
 
     class Config:

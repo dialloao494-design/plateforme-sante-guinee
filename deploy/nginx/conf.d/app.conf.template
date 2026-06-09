@@ -58,11 +58,9 @@ server {
         proxy_send_timeout 120s;
     }
 
-    # Uploaded files served by API
+    # Legacy public uploads — blocked at API; deny at edge (defense in depth)
     location /uploads/ {
-        proxy_pass http://api_backend/uploads/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        return 403;
     }
 
     # WebSocket — /ws/health (public ping), /ws/live?token=JWT (authenticated)

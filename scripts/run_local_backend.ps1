@@ -22,6 +22,7 @@ if (-not $Py) {
 
 $HostBind = if ($Lan) { "0.0.0.0" } else { "127.0.0.1" }
 $env:ENABLE_LAN_DEV = if ($Lan) { "true" } else { "false" }
+$env:ENABLE_PILOT_SEED = "true"
 
 Write-Host "Using: $Py"
 Write-Host "API bind: $HostBind`:$Port"

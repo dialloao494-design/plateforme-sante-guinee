@@ -10,7 +10,8 @@ services:
       ENABLE_DEMO_CLINIC_SEED: "false"
       ENABLE_STARTUP_TEST_USER: "false"
       ENABLE_STARTUP_SEED: "false"
-      ENABLE_PILOT_SEED: ${ENABLE_PILOT_SEED:-true}
+      ENABLE_PILOT_SEED: ${ENABLE_PILOT_SEED:-false}
+      BYPASS_AVAILABILITY_VALIDATION: "false"
     deploy:
       resources:
         limits:

@@ -43,12 +43,11 @@ def validate_password(password: str):
     return True
 
 
-def validate_role(role: str):
-    """Validate user role"""
-    valid_roles = ["patient", "doctor", "admin"]
-    if role not in valid_roles:
-        raise ValueError(f"Invalid role. Must be one of: {valid_roles}")
-    return True
+def validate_role(role: str) -> str:
+    """Validate that role is a known platform role (including admin for internal use)."""
+    from core.roles import assert_known_role
+
+    return assert_known_role(role)
 
 
 # ==============================

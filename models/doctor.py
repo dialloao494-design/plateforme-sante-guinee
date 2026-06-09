@@ -38,3 +38,5 @@ class Doctor(Base):
 
     rendezvous = relationship("RendezVous", back_populates="doctor")
     availabilities = relationship("DoctorAvailability", back_populates="doctor", cascade="all, delete-orphan")
+    clinical_notes = relationship("ClinicalNote", back_populates="doctor")
+    consultation_summaries = relationship("ConsultationSummary", back_populates="doctor")

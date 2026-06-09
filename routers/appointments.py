@@ -151,6 +151,10 @@ def update_appointment(
             detail="Not authorized"
         )
 
+    from core.payment_access_policy import PaymentAccessPolicy
+
+    PaymentAccessPolicy.assert_status_transition_allowed(appointment, update.status)
+
     return RendezVousService.update_appointment_status(
         rdv_id=appointment_id,
         new_status=update.status,

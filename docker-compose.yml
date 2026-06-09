@@ -51,7 +51,8 @@ services:
       context: ./frontend-sante/frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost/api}
+        VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_SAME_ORIGIN_API: ${VITE_SAME_ORIGIN_API:-true}
         VITE_TELECONSULT_PROVIDER: ${VITE_TELECONSULT_PROVIDER:-stub}
         VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
     restart: unless-stopped

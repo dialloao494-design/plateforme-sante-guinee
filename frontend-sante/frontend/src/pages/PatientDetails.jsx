@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { appointmentsAPI, patientsAPI } from '../services/api.js';
+import { appointmentsAPI, patientRecordAPI } from '../services/api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { formatGNF, getConsultationTypeLabel, getStatusMeta } from '../utils/appointmentPresentation.js';
 import { formatDateTimeShort } from '../utils/formatDateTime.js';
-import { getConsultationSummary } from '../utils/clinicalStorage.js';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import './PatientDetails.css';
 
@@ -16,10 +15,11 @@ const PatientDetails = () => {
   const [error, setError] = useState('');
   const [patient, setPatient] = useState(null);
   const [appointments, setAppointments] = useState([]);
-  const [notes, setNotes] = useState('');
-  const [savedMessage, setSavedMessage] = useState('');
-
-  const notesKey = `doctor_notes_${id}`;
+  const [clinicalNotes, setClinicalNotes] = useState([]);
+  const [timeline, setTimeline] = useState([]);
+  const [notesDraft, setNotesDraft] = useState('');
+  const [noteType, setNoteType] = useState('suivi');
+  const [savingNote, setSavingNote] = useState(false);
 
   const getErrorMessage = (err, fallback) => {
     const detail = err?.response?.data?.detail;
@@ -28,6 +28,8 @@ const PatientDetails = () => {
     }
     return err?.message || fallback;
   };
+
+  const canWriteClinical = user?.role === 'doctor' || user?.role === 'admin';
 
   const loadData = async () => {
     setLoading(true);
@@ -40,15 +42,29 @@ const PatientDetails = () => {
 
       setAppointments(patientAppointments);
 
-      if (patientAppointments.length > 0) {
-        setPatient(patientAppointments[0].patient || null);
-      } else {
-        try {
-          const patientResponse = await patientsAPI.getById(id);
-          setPatient(patientResponse.data || null);
-        } catch {
+      try {
+        const patientResponse = await patientRecordAPI.getPatient(id);
+        setPatient(patientResponse.data || null);
+      } catch {
+        if (patientAppointments.length > 0) {
+          setPatient(patientAppointments[0].patient || null);
+        } else {
           setPatient(null);
         }
+      }
+
+      try {
+        const notesResponse = await patientRecordAPI.listNotes(id);
+        setClinicalNotes(Array.isArray(notesResponse.data) ? notesResponse.data : []);
+      } catch {
+        setClinicalNotes([]);
+      }
+
+      try {
+        const timelineResponse = await patientRecordAPI.getTimeline(id);
+        setTimeline(Array.isArray(timelineResponse.data) ? timelineResponse.data : []);
+      } catch {
+        setTimeline([]);
       }
 
       setError('');
@@ -60,7 +76,6 @@ const PatientDetails = () => {
   };
 
   useEffect(() => {
-    setNotes(localStorage.getItem(notesKey) || '');
     loadData();
   }, [id]);
 
@@ -71,11 +86,25 @@ const PatientDetails = () => {
 
   const backHref = user?.role === 'admin' ? '/patients' : '/doctor/appointments';
 
-  const handleSaveNotes = () => {
-    localStorage.setItem(notesKey, notes);
-    setSavedMessage('Notes enregistrées.');
-    toast.success('Notes enregistrées localement');
-    setTimeout(() => setSavedMessage(''), 1800);
+  const handleSaveNote = async () => {
+    if (!notesDraft.trim()) return;
+    setSavingNote(true);
+    try {
+      await patientRecordAPI.createNote(id, {
+        note_type: noteType,
+        contenu: notesDraft.trim(),
+      });
+      toast.success('Note enregistrée dans le dossier serveur');
+      setNotesDraft('');
+      const notesResponse = await patientRecordAPI.listNotes(id);
+      setClinicalNotes(Array.isArray(notesResponse.data) ? notesResponse.data : []);
+      const timelineResponse = await patientRecordAPI.getTimeline(id);
+      setTimeline(Array.isArray(timelineResponse.data) ? timelineResponse.data : []);
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Enregistrement impossible'));
+    } finally {
+      setSavingNote(false);
+    }
   };
 
   const initials = useMemo(() => {
@@ -106,13 +135,29 @@ const PatientDetails = () => {
     return { primaryAppointments: primary, cancelledAppointments: cancelled };
   }, [appointments]);
 
+  const summaryByAppointment = useMemo(() => {
+    const map = new Map();
+    for (const event of timeline) {
+      if (event.event_type !== 'consultation_summary') continue;
+      const apptId = event.payload?.appointment_id;
+      if (!apptId) continue;
+      const parts = [
+        event.payload?.diagnostic,
+        event.payload?.traitement,
+        event.payload?.recommandations,
+      ].filter(Boolean);
+      map.set(apptId, parts.join(' — '));
+    }
+    return map;
+  }, [timeline]);
+
   return (
     <div className="patient-details-page ds-page">
       <header className="patient-details-header">
         <div>
           <p className="patient-details-eyebrow">Dossier clinique</p>
           <h1>{patientName}</h1>
-          <p className="patient-details-sub">Historique des consultations et notes de suivi</p>
+          <p className="patient-details-sub">Dossier patient serveur — historisé et auditable</p>
         </div>
         <Link to={backHref} className="btn btn-secondary patient-details-back">
           {user?.role === 'admin' ? 'Liste patients' : 'Agenda'}
@@ -151,6 +196,10 @@ const PatientDetails = () => {
                   <dd>{patient?.gender || '—'}</dd>
                 </div>
                 <div>
+                  <dt>Téléphone</dt>
+                  <dd>{patient?.phone || '—'}</dd>
+                </div>
+                <div>
                   <dt>Identifiant dossier</dt>
                   <dd>#{id}</dd>
                 </div>
@@ -174,8 +223,7 @@ const PatientDetails = () => {
             <div className="patient-section-head">
               <h2>Parcours de soins</h2>
               <p className="patient-section-lead">
-                Vue chronologique des rendez-vous, statuts de paiement et synthèses de téléconsultation enregistrées sur
-                cet appareil.
+                Vue chronologique des rendez-vous et synthèses de téléconsultation enregistrées sur le serveur.
               </p>
             </div>
             {appointments.length === 0 && (
@@ -185,7 +233,7 @@ const PatientDetails = () => {
               {primaryAppointments.map((appointment, index) => {
                 const statusMeta = getStatusMeta(appointment);
                 const isPast = new Date(appointment.date) < new Date();
-                const summary = getConsultationSummary(appointment.id);
+                const summaryText = summaryByAppointment.get(appointment.id);
                 return (
                   <li key={appointment.id} className={`patient-timeline-item ${isPast ? 'is-past' : 'is-future'}`}>
                     <div className="patient-timeline-marker" aria-hidden />
@@ -198,10 +246,10 @@ const PatientDetails = () => {
                         {appointment.duration_minutes} min · {formatGNF(appointment.price)} ·{' '}
                         {getConsultationTypeLabel(appointment)}
                       </p>
-                      {summary?.text && (
+                      {summaryText && (
                         <div className="patient-timeline-summary">
                           <strong>Synthèse (téléconsultation)</strong>
-                          <p>{summary.text}</p>
+                          <p>{summaryText}</p>
                         </div>
                       )}
                       {index === 0 && (
@@ -242,22 +290,53 @@ const PatientDetails = () => {
           </section>
 
           <section className="patient-card patient-card--notes">
-            <h2>Notes médecin</h2>
+            <h2>Notes cliniques</h2>
             <p className="notes-hint">
-              Stockage local sur cet appareil — en production, reliez ce bloc au dossier médical serveur (DMNU).
+              Stockage serveur sécurisé — chaque lecture et écriture est tracée dans le journal d&apos;audit.
             </p>
-            <textarea
-              rows={6}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Synthèse clinique, consignes, suivi à distance…"
-            />
-            <div className="notes-actions">
-              <button type="button" className="btn btn-primary" onClick={handleSaveNotes}>
-                Enregistrer
-              </button>
-              {savedMessage && <span className="saved-note">{savedMessage}</span>}
-            </div>
+
+            {clinicalNotes.length > 0 && (
+              <ul className="patient-notes-list">
+                {clinicalNotes.map((note) => (
+                  <li key={note.id}>
+                    <strong>{note.note_type}</strong>
+                    <span className="patient-note-date">
+                      {note.created_at ? new Date(note.created_at).toLocaleString('fr-FR') : ''}
+                    </span>
+                    <p>{note.contenu}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {canWriteClinical ? (
+              <>
+                <label htmlFor="note-type">Type de note</label>
+                <select id="note-type" value={noteType} onChange={(e) => setNoteType(e.target.value)}>
+                  <option value="consultation">Consultation</option>
+                  <option value="suivi">Suivi</option>
+                  <option value="urgence">Urgence</option>
+                </select>
+                <textarea
+                  rows={6}
+                  value={notesDraft}
+                  onChange={(e) => setNotesDraft(e.target.value)}
+                  placeholder="Synthèse clinique, consignes, suivi à distance…"
+                />
+                <div className="notes-actions">
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleSaveNote}
+                    disabled={savingNote || !notesDraft.trim()}
+                  >
+                    {savingNote ? 'Enregistrement…' : 'Enregistrer sur le serveur'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="patient-empty-inline">Seuls les médecins autorisés peuvent ajouter des notes cliniques.</p>
+            )}
           </section>
         </>
       )}

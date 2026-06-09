@@ -73,6 +73,6 @@ def initiate_collection_stub(
         "next_step": (
             "POST confirmation to /payments/mobile-money/confirm when operator callback validates payment."
             if live
-            else "Stub mode: use POST /payments/{id}/confirm-payment after manual treasury validation."
+            else "Stub mode: treasury callback webhook required (live) or dev stub with X-Payment-Stub-Token when ALLOW_STUB_PAYMENT is enabled."
         ),
     }

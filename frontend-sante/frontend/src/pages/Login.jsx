@@ -4,6 +4,13 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { getRoleHomePath } from '../utils/rolePaths.js';
 import './Login.css';
 
+const PILOT_DEMO_ACCOUNTS = import.meta.env.DEV
+  ? {
+      doctor: { email: 'dr.mamady@example.com', password: 'Doctor123!', label: 'Médecin démo' },
+      patient: { email: 'test.patient@example.com', password: 'Patient123!', label: 'Patient démo' },
+    }
+  : null;
+
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,6 +23,12 @@ const Login = () => {
       navigate(getRoleHomePath(user.role), { replace: true });
     }
   }, [authLoading, user, navigate]);
+
+  const fillDemoAccount = (account) => {
+    setEmail(account.email);
+    setPassword(account.password);
+    setSubmitError('');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -88,6 +101,34 @@ const Login = () => {
             <p className="login-error" role="alert">
               {submitError}
             </p>
+          )}
+
+          {PILOT_DEMO_ACCOUNTS && (
+            <div className="login-demo-hint" aria-label="Comptes de démonstration">
+              <p className="login-demo-title">Comptes de test (développement)</p>
+              <div className="login-demo-actions">
+                <button
+                  type="button"
+                  className="login-demo-btn"
+                  disabled={loading}
+                  onClick={() => fillDemoAccount(PILOT_DEMO_ACCOUNTS.doctor)}
+                >
+                  {PILOT_DEMO_ACCOUNTS.doctor.label}
+                </button>
+                <button
+                  type="button"
+                  className="login-demo-btn"
+                  disabled={loading}
+                  onClick={() => fillDemoAccount(PILOT_DEMO_ACCOUNTS.patient)}
+                >
+                  {PILOT_DEMO_ACCOUNTS.patient.label}
+                </button>
+              </div>
+              <p className="login-demo-note">
+                Médecin : <code>dr.mamady@example.com</code> · Mot de passe : <code>Doctor123!</code>{' '}
+                (D majuscule, point d’exclamation)
+              </p>
+            </div>
           )}
 
           <button type="submit" className="btn btn-primary login-submit" disabled={loading}>

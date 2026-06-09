@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 import models
 from security import hash_password, verify_password
+from services.user_provisioning import EmailAlreadyRegisteredError, register_public_user
 
 logger = logging.getLogger(__name__)
 
@@ -104,14 +105,16 @@ def _ensure_user_doctor(db: Session, email: str, plain_password: str, profile: d
     email = email.lower().strip()
     user = db.query(models.User).filter(func.lower(models.User.email) == email).first()
     if not user:
-        user = models.User(
-            email=email,
-            hashed_password=hash_password(plain_password),
-            role="doctor",
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        try:
+            provisioned = register_public_user(
+                db,
+                email=email,
+                password=plain_password,
+                role="doctor",
+            )
+            user = provisioned.user
+        except EmailAlreadyRegisteredError:
+            user = db.query(models.User).filter(func.lower(models.User.email) == email).first()
         logger.info("Pilot seed: created doctor user %s", email)
     else:
         changed = False
@@ -179,14 +182,16 @@ def _ensure_pilot_patient(db: Session) -> None:
     email = PILOT_PATIENT_EMAIL.lower().strip()
     user = db.query(models.User).filter(func.lower(models.User.email) == email).first()
     if not user:
-        user = models.User(
-            email=email,
-            hashed_password=hash_password(PILOT_PATIENT_PASSWORD),
-            role="patient",
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        try:
+            provisioned = register_public_user(
+                db,
+                email=email,
+                password=PILOT_PATIENT_PASSWORD,
+                role="patient",
+            )
+            user = provisioned.user
+        except EmailAlreadyRegisteredError:
+            user = db.query(models.User).filter(func.lower(models.User.email) == email).first()
         logger.info("Pilot seed: created patient user %s", email)
     else:
         changed = False

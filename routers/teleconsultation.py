@@ -6,10 +6,24 @@ from models.user import User
 from security import require_roles
 from services.teleconsultation_access import (
     end_teleconsult_session,
+    evaluate_teleconsult_room,
     validate_teleconsult_access,
 )
 
 router = APIRouter(prefix="/teleconsultation", tags=["Teleconsultation"])
+
+
+@router.get("/appointments/{appointment_id}/room-status")
+def get_consultation_room_status(
+    appointment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin", "doctor", "patient"])),
+):
+    """
+    Eligibility probe for the consultation UI (does not expose JWT / meeting secrets).
+    Always returns 200 with can_join + French message for patient/doctor dashboards.
+    """
+    return evaluate_teleconsult_room(appointment_id, current_user, db)
 
 
 @router.get("/appointments/{appointment_id}/access")
@@ -42,10 +56,17 @@ def teleconsult_config(current_user=Depends(require_roles(["admin", "doctor", "p
 
     from services.jitsi_jwt import jitsi_jwt_configured
 
-    provider = (os.getenv("TELECONSULT_PROVIDER") or "stub").lower()
+    from services.teleconsult_room import effective_jitsi_embed_domain, embed_block_reason, jitsi_embed_mode
+
+    provider = (os.getenv("TELECONSULT_PROVIDER") or "jitsi").lower()
+    if provider == "stub":
+        provider = "jitsi"
     return {
         "provider": provider,
-        "jitsi_domain": os.getenv("JITSI_DOMAIN", "meet.jit.si"),
+        "jitsi_domain": effective_jitsi_embed_domain(),
+        "jitsi_embed_mode": jitsi_embed_mode(),
+        "embed_ready": embed_block_reason() is None,
+        "embed_block_reason": embed_block_reason(),
         "jitsi_jwt_enabled": jitsi_jwt_configured(),
         "features": {
             "access_validation": True,

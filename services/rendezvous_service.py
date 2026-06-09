@@ -19,12 +19,17 @@ import models
 from schemas import rendezvous as rendezvous_schemas
 
 
+def _cmp_dt(dt: datetime) -> datetime:
+    """Normalize for comparisons between naive (browser) and aware (ISO API) datetimes."""
+    return dt.replace(tzinfo=None) if dt.tzinfo else dt
+
+
 class RendezVousService:
     """Service for managing appointment lifecycle and business logic"""
 
-    # Temporary MVP switch: bypass doctor availability table checks.
-    # Set to false later when availability schedules are populated.
-    BYPASS_AVAILABILITY_VALIDATION = os.getenv("BYPASS_AVAILABILITY_VALIDATION", "true").lower() == "true"
+    # Temporary MVP switch: bypass doctor availability table checks (dev/staging only).
+    # Blocked in production by core.settings.validate_production_boot().
+    BYPASS_AVAILABILITY_VALIDATION = os.getenv("BYPASS_AVAILABILITY_VALIDATION", "false").lower() == "true"
 
     # Production mode: availability and conflict checks are enabled.
     DEV_MODE = False
@@ -56,14 +61,13 @@ class RendezVousService:
         except Exception:
             db.rollback()
     
-    # Valid status transitions
+    # Valid status transitions — ``paid`` appointment status is legacy; treasury via settlement only.
     VALID_TRANSITIONS = {
-        "pending": ["paid", "confirmed", "cancelled"],
+        "pending": ["confirmed", "cancelled"],
         "paid": ["confirmed", "cancelled"],
         "confirmed": ["completed", "cancelled"],
         "completed": [],
         "cancelled": [],
-        # Legacy compatibility for old records.
         "confirmé": ["completed", "cancelled"],
     }
 
@@ -97,8 +101,9 @@ class RendezVousService:
             )
 
         # 2. Prevent booking in the past
-        # Note: Using datetime.now() because frontend sends local datetime-local input, not UTC
-        if rdv.date < datetime.now():
+        # Note: naive datetimes from datetime-local; aware datetimes from ISO clients
+        now = datetime.now(rdv.date.tzinfo) if rdv.date.tzinfo else datetime.now()
+        if _cmp_dt(rdv.date) < _cmp_dt(now):
             validation_errors.append("Cannot book appointments in the past")
 
         # 3. Verify doctor exists (should already be done but double-check)
@@ -243,7 +248,7 @@ class RendezVousService:
             existing_end = appt.date + timedelta(minutes=appt.duration_minutes)
 
             # Check for overlap: new_start < existing_end AND existing_start < new_end
-            if start_time < existing_end and appt.date < appointment_end:
+            if _cmp_dt(start_time) < _cmp_dt(existing_end) and _cmp_dt(appt.date) < _cmp_dt(appointment_end):
                 return {
                     "id": appt.id,
                     "date": appt.date,
@@ -376,8 +381,8 @@ class RendezVousService:
         db.add(new_rdv)
         db.flush()
 
-        if rdv.consultation_type == "teleconsultation":
-            new_rdv.meeting_link = f"https://meet.jit.si/consultation-{new_rdv.id}"
+        # Teleconsult join URLs are never pre-generated before payment (R1).
+        new_rdv.meeting_link = None
 
         db.commit()
         db.refresh(new_rdv)
@@ -448,6 +453,10 @@ class RendezVousService:
                        f"Allowed transitions: {allowed_next_states}"
             )
 
+        from core.payment_access_policy import PaymentAccessPolicy
+
+        PaymentAccessPolicy.assert_status_transition_allowed(rdv, new_status)
+
         rdv.status = new_status
         rdv.updated_at = datetime.utcnow()
         db.commit()
@@ -463,55 +472,37 @@ class RendezVousService:
     @staticmethod
     def confirm_appointment_after_payment(
         rdv_id: int,
-        db: Session
+        db: Session,
+        *,
+        channel: str,
+        actor_user_id: int | None = None,
+        stub_token: str | None = None,
+        stripe_payment_intent_id: str | None = None,
+        stripe_session_id: str | None = None,
+        amount_cents: int | None = None,
+        currency: str = "eur",
+        admin_reference: str | None = None,
     ) -> models.RendezVous:
         """
-        Confirm an appointment after successful payment.
-        
-        Updates:
-        - Sets appointment status to 'confirmed' (only from 'pending')
-        - Sets payment_status to 'paid'
-        - Updates timestamp
-        
-        Raises HTTPException if:
-        - Appointment not found
-        - Appointment is not in 'pending' status
-        - Price is 0 (free appointments should be auto-confirmed)
-        
-        Returns: Updated appointment
+        Confirm an appointment after verified payment settlement.
+
+        All callers must specify an authorized settlement ``channel``; see
+        ``services.payment_settlement.PaymentSettlementService``.
         """
-        RendezVousService.ensure_schema(db)
-        rdv = db.query(models.RendezVous).filter(models.RendezVous.id == rdv_id).first()
-        
-        if not rdv:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Appointment not found"
-            )
-        
-        # Check if appointment can still be confirmed through payment flow.
-        if rdv.status not in {"pending", "paid"}:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot confirm payment for appointment with status '{rdv.status}'."
-            )
+        from services.payment_settlement import PaymentSettlementService
 
-        # Persist paid then confirmed, as required by payment lifecycle.
-        rdv.status = "paid"
-        rdv.payment_status = "paid"
-        rdv.updated_at = datetime.utcnow()
-
-        db.commit()
-        db.refresh(rdv)
-
-        rdv.status = "confirmed"
-        rdv.payment_status = "paid"
-        rdv.updated_at = datetime.utcnow()
-        
-        db.commit()
-        db.refresh(rdv)
-        
-        return rdv
+        return PaymentSettlementService.settle_appointment(
+            db,
+            rdv_id,
+            channel=channel,
+            actor_user_id=actor_user_id,
+            stub_token=stub_token,
+            stripe_payment_intent_id=stripe_payment_intent_id,
+            stripe_session_id=stripe_session_id,
+            amount_cents=amount_cents,
+            currency=currency,
+            admin_reference=admin_reference,
+        )
 
     @staticmethod
     def mark_appointment_payment_failed(

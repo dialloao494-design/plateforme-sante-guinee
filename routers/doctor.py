@@ -13,6 +13,7 @@ from schemas.doctor import (
 from schemas.availability import DoctorAvailabilityCreate, DoctorAvailabilityResponse, DoctorAvailabilityUpdate
 from security import get_current_doctor, get_current_admin, require_roles, get_current_user_or_none
 from services.availability_service import AvailabilityService
+from services.doctor_availability_access import DoctorAvailabilityAccessService
 from services.doctor_search import apply_doctor_search_filter
 
 router = APIRouter(
@@ -192,46 +193,10 @@ def create_doctor_availability(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles(["admin", "doctor"])),
 ):
-    """Create a working hours availability slot for a doctor.
-    
-    Args:
-        day_of_week: 0=Monday, 1=Tuesday, ..., 6=Sunday
-        start_time: Working hours start time (e.g., 09:00)
-        end_time: Working hours end time (e.g., 17:00)
-    """
-    if doctor_id != availability.doctor_id:
-        raise HTTPException(status_code=400, detail="Doctor ID mismatch")
-
-    doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
-    if not doctor:
-        raise HTTPException(status_code=404, detail="Doctor not found")
-
-    # Check if slot already exists for this day
-    existing = (
-        db.query(DoctorAvailability)
-        .filter(
-            DoctorAvailability.doctor_id == doctor_id,
-            DoctorAvailability.day_of_week == availability.day_of_week,
-            DoctorAvailability.is_active == True,
-        )
-        .first()
+    """Create a working hours availability slot (doctor owns schedule; admin may assist)."""
+    return DoctorAvailabilityAccessService.create_slot(
+        db, doctor_id=doctor_id, payload=availability, current_user=current_user
     )
-    if existing:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Doctor already has an availability slot for day {availability.day_of_week}"
-        )
-
-    new_slot = DoctorAvailability(
-        doctor_id=doctor_id,
-        day_of_week=availability.day_of_week,
-        start_time=availability.start_time,
-        end_time=availability.end_time,
-    )
-    db.add(new_slot)
-    db.commit()
-    db.refresh(new_slot)
-    return new_slot
 
 
 @router.get("/{doctor_id}/availability", response_model=list[DoctorAvailabilityResponse])
@@ -257,52 +222,14 @@ def update_doctor_availability(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles(["admin", "doctor"])),
 ):
-    """Update a doctor's availability slot."""
-    slot = (
-        db.query(DoctorAvailability)
-        .filter(
-            DoctorAvailability.doctor_id == doctor_id,
-            DoctorAvailability.id == availability_id,
-        )
-        .first()
+    """Update a doctor's availability slot (ownership enforced)."""
+    return DoctorAvailabilityAccessService.update_slot(
+        db,
+        doctor_id=doctor_id,
+        availability_id=availability_id,
+        payload=availability_update,
+        current_user=current_user,
     )
-
-    if not slot:
-        raise HTTPException(status_code=404, detail="Availability slot not found")
-
-    # Update only provided fields
-    if availability_update.day_of_week is not None:
-        # Check if another slot exists for this day
-        existing = (
-            db.query(DoctorAvailability)
-            .filter(
-                DoctorAvailability.doctor_id == doctor_id,
-                DoctorAvailability.day_of_week == availability_update.day_of_week,
-                DoctorAvailability.id != availability_id,
-                DoctorAvailability.is_active == True,
-            )
-            .first()
-        )
-        if existing:
-            raise HTTPException(status_code=400, detail="Slot already exists for this day")
-        slot.day_of_week = availability_update.day_of_week
-
-    if availability_update.start_time is not None:
-        slot.start_time = availability_update.start_time
-
-    if availability_update.end_time is not None:
-        slot.end_time = availability_update.end_time
-
-    if availability_update.is_active is not None:
-        slot.is_active = availability_update.is_active
-
-    # Validate times
-    if slot.end_time <= slot.start_time:
-        raise HTTPException(status_code=400, detail="end_time must be after start_time")
-
-    db.commit()
-    db.refresh(slot)
-    return slot
 
 
 @router.delete("/{doctor_id}/availability/{availability_id}")
@@ -312,22 +239,13 @@ def delete_doctor_availability(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles(["admin", "doctor"])),
 ):
-    """Delete (deactivate) a doctor's availability slot."""
-    slot = (
-        db.query(DoctorAvailability)
-        .filter(
-            DoctorAvailability.doctor_id == doctor_id,
-            DoctorAvailability.id == availability_id,
-        )
-        .first()
+    """Delete (deactivate) a doctor's availability slot (ownership enforced)."""
+    return DoctorAvailabilityAccessService.deactivate_slot(
+        db,
+        doctor_id=doctor_id,
+        availability_id=availability_id,
+        current_user=current_user,
     )
-
-    if not slot:
-        raise HTTPException(status_code=404, detail="Availability slot not found")
-
-    slot.is_active = False
-    db.commit()
-    return {"detail": "Availability slot disabled"}
 
 
 @router.get("/{doctor_id}/schedule")

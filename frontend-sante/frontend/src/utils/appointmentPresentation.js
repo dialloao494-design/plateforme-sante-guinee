@@ -23,6 +23,8 @@ const normalizePaymentStatus = (paymentStatus) => {
     .replace(/[\u0300-\u036f]/g, '');
 
   if (normalized === 'paid' || normalized === 'paye' || normalized === 'payee') return 'paid';
+  if (normalized === 'refunded' || normalized === 'rembourse') return 'refunded';
+  if (normalized === 'partially_refunded' || normalized === 'partial') return 'partially_refunded';
   if (normalized === 'unpaid' || normalized === 'non paye') return 'unpaid';
   if (normalized === 'pending' || normalized === 'en attente') return 'pending';
   return normalized;
@@ -43,6 +45,8 @@ const PAYMENT_LABELS = {
   paid: 'Payé',
   unpaid: 'Non payé',
   pending: 'En attente',
+  refunded: 'Remboursé',
+  partially_refunded: 'Remboursé partiellement',
 };
 
 const STATUS_COLORS = {
@@ -105,8 +109,14 @@ const resolveAppointmentState = (appointment = {}) => {
   const paymentStatus = normalizePaymentStatus(rawPaymentStatus);
   const displayStatusKey = resolveDisplayStatus(status, paymentStatus);
   const isJoinEligibleStatus =
-    status === 'confirmed' || status === 'completed' || status === 'checked_in' || status === 'active';
+    paymentStatus === 'paid' &&
+    (status === 'confirmed' ||
+      status === 'completed' ||
+      status === 'checked_in' ||
+      status === 'active');
   const isTeleconsultation = appointment?.consultation_type === 'teleconsultation';
+  const paymentRevoked =
+    paymentStatus === 'refunded' || paymentStatus === 'partially_refunded';
 
   const finalState =
     status === 'cancelled' || status === 'expired'
@@ -116,19 +126,28 @@ const resolveAppointmentState = (appointment = {}) => {
         : 'pending';
 
   const resolved = {
-    canPay: status === 'pending' && paymentStatus !== 'paid',
-    canCancel: status === 'pending' && paymentStatus !== 'paid',
-    /* In-app room is available for confirmed teleconsultations; external link is optional */
-    canJoin: isJoinEligibleStatus && isTeleconsultation,
-    hasExternalMeetingLink: Boolean(appointment?.meeting_link),
+    canPay:
+      !paymentRevoked &&
+      status === 'pending' &&
+      paymentStatus !== 'paid',
+    canCancel:
+      !paymentRevoked &&
+      status === 'pending' &&
+      paymentStatus !== 'paid',
+    canJoin: isJoinEligibleStatus && isTeleconsultation && !paymentRevoked,
+    hasExternalMeetingLink: isJoinEligibleStatus && isTeleconsultation && !paymentRevoked,
     canMessage: finalState !== 'cancelled',
     displayStatus: STATUS_LABELS[displayStatusKey],
     paymentLabel:
       paymentStatus === 'paid'
         ? PAYMENT_LABELS.paid
-        : paymentStatus === 'pending'
-          ? PAYMENT_LABELS.pending
-          : PAYMENT_LABELS.unpaid,
+        : paymentStatus === 'refunded'
+          ? PAYMENT_LABELS.refunded
+          : paymentStatus === 'partially_refunded'
+            ? PAYMENT_LABELS.partially_refunded
+            : paymentStatus === 'pending'
+              ? PAYMENT_LABELS.pending
+              : PAYMENT_LABELS.unpaid,
     statusColor: STATUS_COLORS[displayStatusKey] || STATUS_COLORS.pending,
 
     state: finalState,

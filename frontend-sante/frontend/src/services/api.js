@@ -43,6 +43,24 @@ export const patientsAPI = {
   delete: (id) => httpClient.delete(`/patients/${id}/`),
 };
 
+export const patientRecordAPI = {
+  getPatient: (id) => httpClient.get(`/patients/${id}/`),
+  listNotes: (patientId) => httpClient.get(`/patients/${patientId}/notes`),
+  createNote: (patientId, data) => httpClient.post(`/patients/${patientId}/notes`, data),
+  listSummaries: (patientId) => httpClient.get(`/patients/${patientId}/summaries`),
+  createSummary: (patientId, data) => httpClient.post(`/patients/${patientId}/summaries`, data),
+  listDocuments: (patientId) => httpClient.get(`/patients/${patientId}/documents`),
+  uploadDocument: (patientId, formData) =>
+    httpClient.post(`/patients/${patientId}/documents`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  downloadDocument: (patientId, documentId) =>
+    httpClient.get(`/patients/${patientId}/documents/${documentId}/download`, {
+      responseType: 'blob',
+    }),
+  getTimeline: (patientId) => httpClient.get(`/patients/${patientId}/timeline`),
+};
+
 export const doctorsAPI = {
   getAll: (params = {}) => {
     const qs = new URLSearchParams();
@@ -85,7 +103,10 @@ export const doctorDashboardAPI = {
 export const paymentsAPI = {
   createIntent: (appointmentId) => httpClient.post('/payments/create-intent', { appointment_id: appointmentId }),
   confirmCheckout: (sessionId) => httpClient.post('/payments/confirm-checkout', { session_id: sessionId }),
-  confirmPayment: (appointmentId) => httpClient.post(`/payments/${appointmentId}/confirm-payment`),
+  confirmPayment: (appointmentId, stubToken) =>
+    httpClient.post(`/payments/${appointmentId}/confirm-payment`, null, {
+      headers: stubToken ? { 'X-Payment-Stub-Token': stubToken } : {},
+    }),
   getStatus: (appointmentId) => httpClient.get(`/payments/${appointmentId}/status`),
   list: () => httpClient.get('/payments/'),
   railConfig: () => httpClient.get('/payments/rail-config'),
@@ -98,6 +119,8 @@ export const notificationsAPI = {
 };
 
 export const teleconsultationAPI = {
+  getRoomStatus: (appointmentId) =>
+    httpClient.get(`/teleconsultation/appointments/${appointmentId}/room-status`),
   getAccess: (appointmentId) => httpClient.get(`/teleconsultation/appointments/${appointmentId}/access`),
   endSession: (appointmentId) => httpClient.post(`/teleconsultation/appointments/${appointmentId}/end`),
   config: () => httpClient.get('/teleconsultation/config'),

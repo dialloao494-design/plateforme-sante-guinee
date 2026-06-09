@@ -8,10 +8,23 @@
 .env.staging
 .env.development
 .env.development.local
+.env.pilot
 
 # Server-side secrets (use *.example templates in repo)
 deploy/env/.env.backend
 deploy/env/.env.frontend
+
+# Clinical uploads & generated reports (never commit patient data)
+uploads/
+deploy/reports/
+deploy/certs/
+
+# Local tunnel / binaries
+frontend-sante/frontend/.env.tunnel
+scripts/tunnel/cloudflared.exe
+
+# Jitsi full stack clone (use scripts/start_jitsi_dev.ps1 to fetch locally)
+deploy/jitsi/docker-jitsi-meet/
 
 # ==========================================
 # PYTHON

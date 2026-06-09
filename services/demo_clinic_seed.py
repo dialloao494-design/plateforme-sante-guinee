@@ -14,7 +14,7 @@ from sqlalchemy import func
 
 import models
 from database import SessionLocal
-from security import hash_password
+from services.user_provisioning import EmailAlreadyRegisteredError, register_public_user
 
 logger = logging.getLogger(__name__)
 
@@ -53,23 +53,36 @@ def seed_demo_clinic_data() -> None:
         patient_users: list[tuple[models.User, models.Patient]] = []
         for row in DEMO_PEOPLE:
             email = row["email"].lower().strip()
-            user = models.User(
-                email=email,
-                hashed_password=hash_password(DEMO_PATIENT_PASSWORD),
-                role="patient",
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
+            try:
+                provisioned = register_public_user(
+                    db,
+                    email=email,
+                    password=DEMO_PATIENT_PASSWORD,
+                    role="patient",
+                )
+                user = provisioned.user
+            except EmailAlreadyRegisteredError:
+                user = db.query(models.User).filter(func.lower(models.User.email) == email).first()
+                if not user:
+                    raise
 
-            patient = models.Patient(
-                user_id=user.id,
-                first_name=row["first_name"],
-                last_name=row["last_name"],
-                age=row["age"],
-                gender=row["gender"],
+            patient = (
+                db.query(models.Patient).filter(models.Patient.user_id == user.id).first()
             )
-            db.add(patient)
+            if not patient:
+                patient = models.Patient(
+                    user_id=user.id,
+                    first_name=row["first_name"],
+                    last_name=row["last_name"],
+                    age=row["age"],
+                    gender=row["gender"],
+                )
+                db.add(patient)
+            else:
+                patient.first_name = row["first_name"]
+                patient.last_name = row["last_name"]
+                patient.age = row["age"]
+                patient.gender = row["gender"]
             db.commit()
             db.refresh(patient)
             patient_users.append((user, patient))

@@ -18,7 +18,12 @@ const Signup = () => {
     setLoading(true);
     setError(null);
     try {
-      await authAPI.signup(formData);
+      // Server assigns role from an allowlist; never send privileged fields from the client.
+      await authAPI.signup({
+        email: formData.email,
+        password: formData.password,
+        role: formData.role === 'doctor' ? 'doctor' : 'patient',
+      });
       navigate('/login');
     } catch (err) {
       setError(err?.response?.data?.detail || err.message || 'Inscription impossible pour le moment.');

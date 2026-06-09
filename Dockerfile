@@ -17,7 +17,9 @@ RUN pip install --upgrade pip && pip install -r requirements-prod.txt
 
 COPY . .
 
-RUN mkdir -p uploads logs && chmod +x scripts/docker/entrypoint-backend.sh
+RUN sed -i 's/\r$//' scripts/docker/entrypoint-backend.sh \
+    && mkdir -p uploads logs \
+    && chmod +x scripts/docker/entrypoint-backend.sh
 
 EXPOSE 8000
 

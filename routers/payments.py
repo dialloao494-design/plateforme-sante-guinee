@@ -9,17 +9,18 @@ Handles payment endpoints for appointments:
 All business logic is delegated to RendezVousService and StripeService.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Request, status
+from fastapi import APIRouter, HTTPException, Depends, Request, Header, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
-import json
 from datetime import datetime
 
 from database import get_db
 import models
 from security import get_current_admin, get_current_doctor, get_current_patient, require_roles
+from core.payment_policy import SETTLEMENT_CHANNEL_ADMIN_MANUAL, SETTLEMENT_CHANNEL_DEV_STUB
 from services.rendezvous_service import RendezVousService
 from services.stripe_service import StripeService
+from services.payment_settlement import PaymentSettlementService
 from services.notification_delivery import record_in_app_notification
 from schemas import rendezvous as rendezvous_schemas
 from schemas import payment_mobile as mobile_schemas
@@ -153,65 +154,42 @@ def confirm_checkout_payment(
 @router.post("/{rdv_id}/confirm-payment", response_model=rendezvous_schemas.RendezVousResponse)
 def confirm_payment_simple(
     rdv_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_patient),
+    x_payment_stub_token: str | None = Header(default=None, alias="X-Payment-Stub-Token"),
 ):
     """
-    Mark appointment as paid AND CONFIRMED (simple payment confirmation endpoint).
-    
-    Security:
-    - Patient can only mark their own appointment as paid
-    - Cannot confirm payment for cancelled appointments
-    - Cannot confirm payment for already confirmed appointments
-    - Sets payment_status to 'paid'
-    - Sets status to 'confirmed' (CRITICAL: Must update both fields)
-    
-    This is used by frontend to finalize payment after backend validates it.
-    
-    Backend Truth Rules:
-    - After successful payment, appointment MUST be confirmed
-    - Status transitions: pending -> paid -> confirmed
-    - Both fields must be updated atomically
+  Deprecated unauthenticated settlement path — **blocked in production**.
+
+  Production flow:
+  1. ``POST /payments/create-intent`` → Stripe Checkout
+  2. Redirect success → ``POST /payments/confirm-checkout`` with ``session_id``
+
+  Development / UAT only: when ``ALLOW_STUB_PAYMENT=true`` (non-production) and
+  ``X-Payment-Stub-Token`` matches ``PAYMENT_STUB_TOKEN``, simulates treasury validation.
     """
     patient = _get_or_create_patient_profile(db, current_user.id)
-    
-    appointment = db.query(models.RendezVous).filter(
-        models.RendezVous.id == rdv_id
-    ).first()
-    
+
+    appointment = db.query(models.RendezVous).filter(models.RendezVous.id == rdv_id).first()
     if not appointment:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Appointment not found"
-        )
-    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
+
     if appointment.patient_id != patient.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied: This is not your appointment"
+            detail="Access denied: This is not your appointment",
         )
-    
-    # Business rule: Cannot pay for cancelled appointments
-    if appointment.status == "cancelled":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot confirm payment for cancelled appointment"
-        )
-    
-    # Business rule: Cannot pay for already confirmed appointments
-    if appointment.status == "confirmed":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Appointment already confirmed"
-        )
-    
-    # CRITICAL FIX: Update BOTH payment_status AND status
-    # This ensures backend truth: confirmed appointment = paid + confirmed status
-    appointment.payment_status = "paid"
-    appointment.status = "confirmed"
-    appointment.updated_at = datetime.utcnow()
-    db.commit()
-    db.refresh(appointment)
+
+    stub_header = x_payment_stub_token or request.headers.get("x-payment-stub-token")
+
+    settled = PaymentSettlementService.settle_appointment(
+        db,
+        rdv_id,
+        channel=SETTLEMENT_CHANNEL_DEV_STUB,
+        actor_user_id=current_user.id,
+        stub_token=stub_header,
+    )
 
     record_in_app_notification(
         db,
@@ -222,7 +200,7 @@ def confirm_payment_simple(
         meta={"appointment_id": rdv_id},
     )
 
-    return appointment
+    return settled
 
 
 # ===============================
@@ -257,23 +235,10 @@ async def stripe_webhook(
             detail="Missing stripe-signature header"
         )
     
-    # Verify webhook signature
-    if not StripeService.verify_webhook_signature(payload, sig_header):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid webhook signature"
-        )
-    
-    # Parse event
-    try:
-        event = json.loads(payload)
-    except json.JSONDecodeError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid JSON payload"
-        )
-    
-    # Process webhook event
+    # Verify and parse event (signature + payload integrity)
+    event = StripeService.parse_webhook_event(payload, sig_header)
+
+    # Process webhook event idempotently
     result = RendezVousService.handle_stripe_webhook(event, db)
     
     # Return 200 OK to acknowledge receipt
@@ -374,9 +339,14 @@ def manual_confirm_payment(
             detail="Appointment not found"
         )
     
-    # Confirm payment through service
-    confirmed_appointment = RendezVousService.confirm_appointment_after_payment(rdv_id, db)
-    
+    confirmed_appointment = PaymentSettlementService.settle_appointment(
+        db,
+        rdv_id,
+        channel=SETTLEMENT_CHANNEL_ADMIN_MANUAL,
+        actor_user_id=current_user.id,
+        admin_reference=f"manual-confirm-by-admin-{current_user.id}",
+    )
+
     return confirmed_appointment
 
 

@@ -1,17 +1,17 @@
+from pathlib import Path
+
 from dotenv import load_dotenv
 
-load_dotenv()
-
-from pathlib import Path
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from database import SessionLocal
 import models
-from routers import patient, rendezvous, doctor, auth, payments, teleconsultation, notifications, messages
+from routers import patient, patient_record, rendezvous, doctor, auth, payments, teleconsultation, notifications, messages
 from routers import users, appointments, doctor_dashboard, ws
 from security import hash_password, verify_password
+from services.user_provisioning import register_public_user
 import os
 import logging
 
@@ -20,6 +20,12 @@ from core.logging_config import configure_logging
 from core.monitoring import init_sentry
 
 _settings = get_settings()
+try:
+    _settings.enforce_production_boot()
+except RuntimeError as _boot_exc:
+    logging.getLogger(__name__).critical("Production boot guard rejected startup: %s", _boot_exc)
+    raise SystemExit(1) from _boot_exc
+
 configure_logging(level=_settings.log_level, log_format=_settings.log_format)
 init_sentry()
 logger = logging.getLogger(__name__)
@@ -58,6 +64,7 @@ from services.network_dev import COMBINED_DEV_CORS_REGEX, format_lan_urls
 
 _environment = _settings.environment
 _lan_dev = os.getenv("ENABLE_LAN_DEV", "").lower() in ("1", "true", "yes")
+_tunnel_test = os.getenv("ENABLE_TUNNEL_TEST", "").lower() in ("1", "true", "yes")
 _debug = _settings.debug
 _is_production = _settings.is_production
 _is_deployed = _settings.is_deployed
@@ -67,7 +74,14 @@ if _is_deployed:
     cors_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     cors_headers = ["Authorization", "Content-Type", "Accept"]
 else:
-    cors_origin_regex = COMBINED_DEV_CORS_REGEX if (_lan_dev or _debug) else r"^https://.*\.vercel\.app$"
+    from services.network_dev import TUNNEL_ORIGIN_REGEX
+
+    if _tunnel_test:
+        cors_origin_regex = TUNNEL_ORIGIN_REGEX
+    elif _lan_dev or _debug:
+        cors_origin_regex = COMBINED_DEV_CORS_REGEX
+    else:
+        cors_origin_regex = r"^https://.*\.vercel\.app$"
     cors_methods = ["*"]
     cors_headers = ["*"]
 
@@ -86,7 +100,6 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from core.limiter import limiter
 
-limiter.init_app(app)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -99,9 +112,11 @@ _allowed_hosts = _settings.resolve_allowed_hosts()
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts)
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
-uploads_dir = Path("uploads")
-uploads_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+# Clinical attachments are never served from a public static mount.
+# Legacy /uploads/* URLs are explicitly blocked (defense in depth).
+@app.api_route("/uploads/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
+def block_legacy_public_uploads(path: str):
+    raise HTTPException(status_code=404, detail="Not found")
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -121,14 +136,13 @@ def ensure_dev_test_user():
         user = db.query(models.User).filter(models.User.email == email).first()
 
         if not user:
-            user = models.User(
+            provisioned = register_public_user(
+                db,
                 email=email,
-                hashed_password=hash_password(plain_password),
+                password=plain_password,
                 role="patient",
             )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
+            user = provisioned.user
             logger.info("Seeded development test user: %s", email)
         else:
             update_required = False
@@ -184,14 +198,13 @@ def _ensure_production_test_user():
     try:
         user = db.query(models.User).filter(models.User.email == email).first()
         if user is None:
-            user = models.User(
+            provisioned = register_public_user(
+                db,
                 email=email,
-                hashed_password=hash_password(plain_password),
+                password=plain_password,
                 role="patient",
             )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
+            user = provisioned.user
             logger.info("Production test user created: %s (id=%s)", email, user.id)
         else:
             # Repair password if it doesn't match
@@ -215,6 +228,7 @@ def _ensure_production_test_user():
 
 # Include routers
 app.include_router(patient.router)
+app.include_router(patient_record.router)
 app.include_router(rendezvous.router)
 app.include_router(doctor.router)
 app.include_router(auth.router)
@@ -259,15 +273,12 @@ def health_check():
     # Mask sensitive info
     db_url_masked = "***" if "://" in db_url else db_url
     
-    payload = {
+    return {
         "status": "ok",
         "version": "1.0.0",
-        "environment": _settings.environment,
+        "debug": _settings.debug,
         "database": db_url_masked,
     }
-    if not _settings.is_deployed:
-        payload["debug"] = _settings.debug
-    return payload
 
 
 @app.get("/health/ready", tags=["Monitoring"])
@@ -311,15 +322,32 @@ async def startup_event():
     try:
         from database import engine, Base
         # Import all model modules so their tables are registered on Base
-        import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message, models.notification_event
+        import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message, models.notification_event, models.attachment_access_log, models.clinical_note, models.consultation_summary, models.patient_document, models.clinical_audit_log
 
         # Always create tables if they don't exist (safe / idempotent)
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables verified / created.")
 
-        from database_migrations import ensure_doctor_geolocation_columns
+        from database_migrations import (
+            ensure_attachment_access_log_table,
+            ensure_doctor_geolocation_columns,
+            ensure_message_attachment_columns,
+            ensure_patient_dossier_schema,
+        )
 
         ensure_doctor_geolocation_columns(engine)
+        ensure_message_attachment_columns(engine)
+        ensure_attachment_access_log_table(engine)
+        ensure_patient_dossier_schema(engine)
+
+        from database import SessionLocal
+        from services.user_provisioning import bootstrap_initial_admin
+
+        bootstrap_db = SessionLocal()
+        try:
+            bootstrap_initial_admin(bootstrap_db)
+        finally:
+            bootstrap_db.close()
     except Exception as exc:
         logger.error("Failed to create tables: %s", exc)
 

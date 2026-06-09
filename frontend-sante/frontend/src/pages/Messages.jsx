@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { appointmentsAPI, messagesAPI } from '../services/api.js';
-import { API_BASE_URL } from '../services/httpClient.js';
+import { openMessageAttachment } from '../services/attachmentDownload.js';
 import './Messages.css';
 
 const Messages = () => {
@@ -60,12 +60,12 @@ const Messages = () => {
     return user?.role === 'doctor' ? patientName : doctorName;
   }, [appointment, user]);
 
-  const resolveAttachmentHref = (url) => {
-    if (!url) return null;
-    if (/^https?:\/\//i.test(url)) {
-      return url.replace(/^http:\/\//i, 'https://');
+  const handleOpenAttachment = async (message) => {
+    try {
+      await openMessageAttachment(message.id);
+    } catch (err) {
+      setError(getErrorMessage(err, 'Impossible d’ouvrir la pièce jointe.'));
     }
-    return `${API_BASE_URL}${url}`;
   };
 
   const handleSend = async (e) => {
@@ -125,10 +125,14 @@ const Messages = () => {
                   {isCurrentUser ? 'Vous' : message.sender_role === 'doctor' ? 'Médecin' : 'Patient'} · {new Date(message.created_at).toLocaleString('fr-FR')}
                 </p>
                 {message.content && <p className="message-content">{message.content}</p>}
-                {message.attachment_url && (
-                  <a className="message-attachment" href={resolveAttachmentHref(message.attachment_url)} target="_blank" rel="noreferrer">
+                {message.has_attachment && (
+                  <button
+                    type="button"
+                    className="message-attachment"
+                    onClick={() => handleOpenAttachment(message)}
+                  >
                     {message.attachment_name || 'Pièce jointe'}
-                  </a>
+                  </button>
                 )}
               </div>
             </div>

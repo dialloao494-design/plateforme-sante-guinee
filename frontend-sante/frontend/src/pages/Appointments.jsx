@@ -7,6 +7,7 @@ import AppointmentCard from '../components/AppointmentCard.jsx';
 import AppointmentActions from '../components/AppointmentActions.jsx';
 import PaymentConfirmationModal from '../components/PaymentConfirmationModal.jsx';
 import { doctorsAPI, paymentsAPI } from '../services/api.js';
+import { createCheckoutForAppointment } from '../services/paymentFlow.js';
 import {
   formatGNF,
   getAppointmentState,
@@ -58,6 +59,7 @@ const Appointments = () => {
   const [paymentModalAppointment, setPaymentModalAppointment] = useState(null);
   const [searchParams] = useSearchParams();
   const SIM_ENABLED = import.meta.env.VITE_ENABLE_PAYMENT_SIMULATION === 'true';
+  const PAYMENT_STUB_TOKEN = import.meta.env.VITE_PAYMENT_STUB_TOKEN || '';
   const [simulatedPayments] = useState(() => (SIM_ENABLED ? loadSimulatedPayments() : {}));
   const [paymentRows, setPaymentRows] = useState([]);
   const [loadingPaymentHistory, setLoadingPaymentHistory] = useState(false);
@@ -279,21 +281,26 @@ const Appointments = () => {
     setPaymentAttemptStarted(true);
 
     try {
-      // Call backend to mark appointment as paid
-      const response = await paymentsAPI.confirmPayment(appointment.id);
-      
-      // Refresh appointments to get updated status from server
-      await fetchAppointments();
-      await fetchPaymentHistory();
-      
-      setSuccess('Paiement effectué avec succès. Le médecin confirmera le rendez-vous.');
-      toast.success('Paiement validé');
-      setPaymentModalAppointment(null);
-      
-      // Update last appointment display with response from server
-      if (lastAppointment?.id === appointment.id && response?.data) {
-        setLastAppointment(response.data);
+      if (SIM_ENABLED) {
+        if (!PAYMENT_STUB_TOKEN) {
+          throw new Error(
+            'Simulation de paiement : définissez VITE_PAYMENT_STUB_TOKEN (aligné sur PAYMENT_STUB_TOKEN backend).'
+          );
+        }
+        const response = await paymentsAPI.confirmPayment(appointment.id, PAYMENT_STUB_TOKEN);
+        await fetchAppointments();
+        await fetchPaymentHistory();
+        setSuccess('Paiement simulé validé côté serveur.');
+        toast.success('Paiement validé (mode démo)');
+        setPaymentModalAppointment(null);
+        if (lastAppointment?.id === appointment.id && response?.data) {
+          setLastAppointment(response.data);
+        }
+        return;
       }
+
+      const checkoutUrl = await createCheckoutForAppointment(appointment);
+      window.location.assign(checkoutUrl);
     } catch (err) {
       const message = getApiErrorMessage(err, 'Erreur lors de la confirmation du paiement.');
       setPaymentError(message);

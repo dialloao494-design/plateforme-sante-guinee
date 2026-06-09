@@ -64,6 +64,19 @@ class StripeService:
                 statements.append("ALTER TABLE payments ADD COLUMN stripe_session_id VARCHAR")
             if "currency" not in columns:
                 statements.append("ALTER TABLE payments ADD COLUMN currency VARCHAR")
+            if "amount_refunded" not in columns:
+                statements.append("ALTER TABLE payments ADD COLUMN amount_refunded INTEGER DEFAULT 0")
+            if "refund_status" not in columns:
+                statements.append("ALTER TABLE payments ADD COLUMN refund_status VARCHAR DEFAULT 'none'")
+            if "settlement_channel" not in columns:
+                statements.append("ALTER TABLE payments ADD COLUMN settlement_channel VARCHAR")
+            if "last_stripe_event_id" not in columns:
+                statements.append("ALTER TABLE payments ADD COLUMN last_stripe_event_id VARCHAR")
+
+            if "stripe_webhook_events" not in inspector.get_table_names():
+                from models.stripe_webhook_event import StripeWebhookEvent
+
+                StripeWebhookEvent.__table__.create(bind=db.bind, checkfirst=True)
 
             for stmt in statements:
                 db.execute(text(stmt))
@@ -82,6 +95,10 @@ class StripeService:
         amount: int,
         currency: str,
         status_value: str,
+        settlement_channel: Optional[str] = None,
+        stripe_event_id: Optional[str] = None,
+        amount_refunded: int = 0,
+        refund_status: str = "none",
     ) -> models.Payment:
         """Create or update a payment record linked to an appointment."""
         StripeService._ensure_payment_schema(db)
@@ -116,8 +133,12 @@ class StripeService:
                     payment_id=effective_payment_id,
                     stripe_session_id=normalized_session_id,
                     amount=amount,
+                    amount_refunded=amount_refunded,
                     currency=currency,
                     status=status_value,
+                    refund_status=refund_status,
+                    settlement_channel=settlement_channel,
+                    last_stripe_event_id=stripe_event_id,
                 )
                 db.add(payment)
             else:
@@ -127,6 +148,12 @@ class StripeService:
                 payment.amount = amount
                 payment.currency = currency
                 payment.status = status_value
+                payment.amount_refunded = amount_refunded
+                payment.refund_status = refund_status
+                if settlement_channel:
+                    payment.settlement_channel = settlement_channel
+                if stripe_event_id:
+                    payment.last_stripe_event_id = stripe_event_id
                 payment.updated_at = datetime.utcnow()
 
             db.commit()
@@ -251,7 +278,10 @@ class StripeService:
         db: Session,
     ) -> Dict[str, Any]:
         """Create Stripe Checkout session and persist pending payment linkage."""
+        from services.payment_settlement import PaymentSettlementService
+
         StripeService.validate_stripe_config()
+        PaymentSettlementService.assert_checkout_allowed(db, appointment_id)
         frontend_url = StripeService._get_frontend_url()
 
         # Default to 50.00 EUR when appointment has no price configured.
@@ -324,91 +354,55 @@ class StripeService:
         expected_patient_user_id: Optional[int] = None,
     ) -> models.RendezVous:
         """Validate Stripe Checkout session and confirm appointment only on successful payment."""
-        StripeService.validate_stripe_config()
+        from core.payment_policy import SETTLEMENT_CHANNEL_STRIPE_CHECKOUT
+        from services.payment_settlement import PaymentSettlementService
+        from services.stripe_verification import StripePaymentVerifier
 
-        try:
-            session = stripe.checkout.Session.retrieve(session_id, expand=["payment_intent"])
-        except stripe.error.InvalidRequestError:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Checkout session not found"
-            )
-        except stripe.error.StripeError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Failed to verify checkout session: {str(e)}"
-            )
-
-        appointment_id = (session.get("metadata") or {}).get("appointment_id")
-        if not appointment_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Missing appointment_id in checkout session metadata"
-            )
-
-        appointment = db.query(models.RendezVous).filter(
-            models.RendezVous.id == int(appointment_id)
-        ).first()
-        if not appointment:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Appointment not found"
-            )
-
-        if expected_patient_user_id is not None:
-            patient = db.query(models.Patient).filter(
-                models.Patient.id == appointment.patient_id
-            ).first()
-            if not patient or patient.user_id != expected_patient_user_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Access denied"
-                )
-
-        if session.get("payment_status") != "paid":
-            StripeService._upsert_payment_record(
-                db=db,
-                appointment_id=appointment.id,
-                payment_id=None,
-                stripe_session_id=session_id,
-                amount=session.get("amount_total") or 0,
-                currency=(session.get("currency") or "eur").lower(),
-                status_value="failed" if session.get("status") == "expired" else "cancelled",
-            )
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Payment was not successful or was cancelled on Stripe"
-            )
-
-        payment_intent_obj: Optional[Dict[str, Any]] = session.get("payment_intent")
-        payment_intent_id = ""
-        amount_paid = session.get("amount_total") or 0
-
-        if isinstance(payment_intent_obj, dict):
-            payment_intent_id = payment_intent_obj.get("id") or ""
-            amount_paid = payment_intent_obj.get("amount_received") or amount_paid
-        elif isinstance(payment_intent_obj, str):
-            payment_intent_id = payment_intent_obj
-
-        if not payment_intent_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Missing Stripe payment intent ID after checkout"
-            )
-
-        appointment.payment_intent_id = payment_intent_id
-        confirmed = StripeService._handle_payment_succeeded(
-            appointment=appointment,
-            payment_intent={
-                "id": payment_intent_id,
-                "amount_received": amount_paid,
-                "currency": (session.get("currency") or "eur").lower(),
-                "stripe_session_id": session_id,
-            },
+        proof = StripePaymentVerifier.verify_checkout_session(
+            session_id,
+            expected_patient_user_id=expected_patient_user_id,
             db=db,
         )
 
-        return confirmed
+        return PaymentSettlementService.settle_appointment(
+            db,
+            int(proof.appointment_id),
+            channel=SETTLEMENT_CHANNEL_STRIPE_CHECKOUT,
+            stripe_payment_intent_id=proof.payment_intent_id,
+            stripe_session_id=session_id,
+            amount_cents=proof.net_amount_cents,
+            currency=proof.currency,
+        )
+
+    @staticmethod
+    def parse_webhook_event(payload: bytes, signature: str) -> Dict[str, Any]:
+        """Verify signature and return the parsed Stripe event (never trust raw JSON alone)."""
+        webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+        if not webhook_secret:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Stripe webhook secret not configured",
+            )
+
+        try:
+            event = stripe.Webhook.construct_event(
+                payload=payload,
+                sig_header=signature,
+                secret=webhook_secret,
+            )
+            if hasattr(event, "to_dict"):
+                return event.to_dict()
+            return dict(event)
+        except stripe.error.SignatureVerificationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Webhook verification failed: {exc}",
+            ) from exc
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Webhook verification failed: {exc}",
+            ) from exc
 
     @staticmethod
     def verify_webhook_signature(
@@ -418,41 +412,10 @@ class StripeService:
         """
         Verify that a webhook request came from Stripe.
 
-        Args:
-            payload: Raw request body
-            signature: Stripe signature header value
-
-        Returns:
-            True if signature is valid, False otherwise
-
-        Raises:
-            HTTPException if webhook secret not configured
+        Deprecated: prefer ``parse_webhook_event`` which returns the verified event.
         """
-        webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
-        if not webhook_secret:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Stripe webhook secret not configured"
-            )
-
-        try:
-            stripe.Webhook.construct_event(
-                payload=payload,
-                sig_header=signature,
-                secret=webhook_secret,
-            )
-            return True
-
-        except stripe.error.SignatureVerificationError as e:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Webhook verification failed: {str(e)}"
-            )
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Webhook verification failed: {str(e)}"
-            )
+        StripeService.parse_webhook_event(payload, signature)
+        return True
 
     @staticmethod
     def handle_webhook_event(
@@ -460,126 +423,17 @@ class StripeService:
         db: Session
     ) -> Dict[str, str]:
         """
-        Handle Stripe webhook events.
+        Handle Stripe webhook events via idempotent processor.
 
-        Supported events:
-        - payment_intent.succeeded: Payment successful → confirm appointment
-        - payment_intent.payment_failed: Payment failed → mark as failed
-
-        Args:
-            event: Parsed webhook event from Stripe
-            db: Database session
-
-        Returns:
-            Dict with event handling result
-
-        Raises:
-            HTTPException on processing errors
+        Delegates to ``StripeWebhookProcessor`` for deduplication, settlement,
+        refunds, and failure handling.
         """
-        event_type = event.get("type")
-        payment_intent = event.get("data", {}).get("object", {})
-
-        # Stripe Checkout emits checkout.session.completed with metadata.
-        if event_type in {"checkout.session.completed", "checkout.session.expired"}:
-            checkout_session = payment_intent
-            appointment_id = (checkout_session.get("metadata") or {}).get("appointment_id")
-        else:
-            appointment_id = payment_intent.get("metadata", {}).get("appointment_id")
+        from services.stripe_webhook_processor import StripeWebhookProcessor
 
         try:
-            # Validate appointment exists
-            if not appointment_id:
-                return {
-                    "status": "skipped",
-                    "reason": "No appointment_id in metadata"
-                }
-
-            appointment = db.query(models.RendezVous).filter(
-                models.RendezVous.id == int(appointment_id)
-            ).first()
-
-            if not appointment:
-                return {
-                    "status": "skipped",
-                    "reason": f"Appointment {appointment_id} not found"
-                }
-
-            # Handle payment success
-            if event_type == "payment_intent.succeeded":
-                appointment = StripeService._handle_payment_succeeded(
-                    appointment, payment_intent, db
-                )
-                return {
-                    "status": "success",
-                    "event": event_type,
-                    "appointment_id": str(appointment.id),
-                    "message": "Appointment confirmed after payment"
-                }
-
-            elif event_type == "checkout.session.completed":
-                checkout_payment_intent = checkout_session.get("payment_intent")
-                if checkout_session.get("payment_status") != "paid":
-                    return {
-                        "status": "skipped",
-                        "reason": "Checkout session not fully paid"
-                    }
-
-                payment_id = checkout_payment_intent if isinstance(checkout_payment_intent, str) else ""
-                appointment.payment_intent_id = payment_id or appointment.payment_intent_id
-                appointment = StripeService._handle_payment_succeeded(
-                    appointment,
-                    {
-                        "id": payment_id or appointment.payment_intent_id,
-                        "amount_received": checkout_session.get("amount_total") or 0,
-                        "currency": (checkout_session.get("currency") or "eur").lower(),
-                        "stripe_session_id": checkout_session.get("id"),
-                    },
-                    db,
-                )
-                return {
-                    "status": "success",
-                    "event": event_type,
-                    "appointment_id": str(appointment.id),
-                    "message": "Appointment confirmed after checkout completion"
-                }
-
-            elif event_type == "checkout.session.expired":
-                appointment = StripeService._handle_payment_failed(
-                    appointment,
-                    {
-                        "id": appointment.payment_intent_id,
-                        "amount": checkout_session.get("amount_total") or 0,
-                        "currency": (checkout_session.get("currency") or "eur").lower(),
-                        "stripe_session_id": checkout_session.get("id"),
-                        "status": "cancelled",
-                    },
-                    db,
-                )
-                return {
-                    "status": "success",
-                    "event": event_type,
-                    "appointment_id": str(appointment.id),
-                    "message": "Checkout session expired; appointment remains pending"
-                }
-
-            # Handle payment failure
-            elif event_type == "payment_intent.payment_failed":
-                appointment = StripeService._handle_payment_failed(
-                    appointment, payment_intent, db
-                )
-                return {
-                    "status": "success",
-                    "event": event_type,
-                    "appointment_id": str(appointment.id),
-                    "message": "Appointment marked as payment failed"
-                }
-
-            else:
-                return {
-                    "status": "skipped",
-                    "reason": f"Unhandled event type: {event_type}"
-                }
-
+            return StripeWebhookProcessor.process(event, db)
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -590,46 +444,23 @@ class StripeService:
     def _handle_payment_succeeded(
         appointment: models.RendezVous,
         payment_intent: Dict[str, Any],
-        db: Session
+        db: Session,
     ) -> models.RendezVous:
         """
-        Handle successful payment.
-        
-        Confirms appointment and marks as paid.
+        Legacy entry point — delegates to centralized settlement (Stripe webhook channel).
         """
-        # Only process if appointment is still pending/paid-in-progress.
-        if appointment.status not in {"pending", "paid"}:
-            if appointment.status == "confirmed" and appointment.payment_status == "paid":
-                return appointment
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot confirm payment for appointment with status {appointment.status}"
-            )
+        from core.payment_policy import SETTLEMENT_CHANNEL_STRIPE_WEBHOOK
+        from services.payment_settlement import PaymentSettlementService
 
-        appointment.status = "paid"
-        appointment.payment_status = "paid"
-        appointment.updated_at = datetime.utcnow()
-
-        db.commit()
-        db.refresh(appointment)
-
-        appointment.status = "confirmed"
-        appointment.updated_at = datetime.utcnow()
-
-        db.commit()
-        db.refresh(appointment)
-
-        StripeService._upsert_payment_record(
-            db=db,
-            appointment_id=appointment.id,
-            payment_id=payment_intent.get("id", appointment.payment_intent_id or ""),
+        return PaymentSettlementService.settle_appointment(
+            db,
+            appointment.id,
+            channel=SETTLEMENT_CHANNEL_STRIPE_WEBHOOK,
+            stripe_payment_intent_id=payment_intent.get("id", appointment.payment_intent_id or ""),
             stripe_session_id=payment_intent.get("stripe_session_id"),
-            amount=payment_intent.get("amount_received") or payment_intent.get("amount") or 0,
+            amount_cents=int(payment_intent.get("amount_received") or payment_intent.get("amount") or 0),
             currency=(payment_intent.get("currency") or "eur").lower(),
-            status_value="paid",
         )
-
-        return appointment
 
     @staticmethod
     def _handle_payment_failed(

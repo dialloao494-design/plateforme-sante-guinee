@@ -142,12 +142,10 @@ def update_appointment_status(
         if not doctor or appointment.doctor_id != doctor.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    # PAYMENT GATE: Block confirmation of unpaid appointments
-    if update.status == "confirmed" and appointment.payment_status != "paid":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot confirm appointment without payment. Patient must pay first."
-        )
+    # PAYMENT GATE: unified policy (same rules as PUT /appointments)
+    from core.payment_access_policy import PaymentAccessPolicy
+
+    PaymentAccessPolicy.assert_status_transition_allowed(appointment, update.status)
 
     return RendezVousService.update_appointment_status(rdv_id=rdv_id, new_status=update.status, db=db)
 
@@ -183,15 +181,29 @@ def cancel_appointment(
 def confirm_appointment_payment(
     rdv_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "patient"])),
+    current_user=Depends(require_roles(["admin"])),
 ):
-    """Confirm appointment after payment (patient own appointment or admin)."""
+    """
+    Legacy admin settlement path — use ``POST /payments/{id}/manual-confirm`` instead.
+
+    Patients must use Stripe Checkout + ``/payments/confirm-checkout``.
+    """
     rdv = db.query(models.RendezVous).filter(models.RendezVous.id == rdv_id).first()
     if not rdv:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
 
     _assert_can_access_appointment(db, rdv, current_user)
-    return RendezVousService.confirm_appointment_after_payment(rdv_id, db)
+
+    from core.payment_policy import SETTLEMENT_CHANNEL_ADMIN_MANUAL
+    from services.payment_settlement import PaymentSettlementService
+
+    return PaymentSettlementService.settle_appointment(
+        db,
+        rdv_id,
+        channel=SETTLEMENT_CHANNEL_ADMIN_MANUAL,
+        actor_user_id=current_user.id,
+        admin_reference="rendezvous-confirm-payment",
+    )
 
 
 @router.post("/{rdv_id}/mark-payment-failed", response_model=rendezvous_schemas.RendezVousResponse)

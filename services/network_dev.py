@@ -19,7 +19,16 @@ LAN_ORIGIN_REGEX = (
 
 VERCEL_ORIGIN_REGEX = r"^https://.*\.vercel\.app$"
 
-COMBINED_DEV_CORS_REGEX = f"(?:{VERCEL_ORIGIN_REGEX}|{LAN_ORIGIN_REGEX})"
+# Cloudflare quick tunnel / ngrok — patient on mobile data (4G/5G)
+TUNNEL_ORIGIN_REGEX = (
+    r"^https://"
+    r"([a-z0-9-]+\.trycloudflare\.com"
+    r"|[a-z0-9-]+\.ngrok-free\.app"
+    r"|[a-z0-9-]+\.ngrok\.io"
+    r")$"
+)
+
+COMBINED_DEV_CORS_REGEX = f"(?:{VERCEL_ORIGIN_REGEX}|{LAN_ORIGIN_REGEX}|{TUNNEL_ORIGIN_REGEX})"
 
 
 def get_lan_ipv4() -> str | None:

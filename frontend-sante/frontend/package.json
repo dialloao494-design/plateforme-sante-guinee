@@ -7,11 +7,13 @@
     "start": "vite",
     "dev": "vite",
     "dev:lan": "vite --host 0.0.0.0",
+    "dev:tunnel": "vite --mode tunnel --host 0.0.0.0",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@jitsi/react-sdk": "^1.4.4",
     "axios": "^1.13.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { appointmentsAPI, messagesAPI } from '../services/api.js';
-import { API_BASE_URL } from '../services/httpClient.js';
+import { openMessageAttachment } from '../services/attachmentDownload.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { printPrescriptionHtml } from '../utils/printPrescription.js';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
@@ -163,12 +163,12 @@ const DoctorMessages = () => {
     setShowPrescriptionModal(false);
   };
 
-  const resolveAttachmentHref = (url) => {
-    if (!url) return null;
-    if (/^https?:\/\//i.test(url)) {
-      return url.replace(/^http:\/\//i, 'https://');
+  const handleOpenAttachment = async (message) => {
+    try {
+      await openMessageAttachment(message.id);
+    } catch (err) {
+      setError(getErrorMessage(err, 'Impossible d’ouvrir la pièce jointe.'));
     }
-    return `${API_BASE_URL}${url}`;
   };
 
   return (
@@ -254,10 +254,14 @@ const DoctorMessages = () => {
                     {message.sender_role === 'doctor' ? 'Vous' : 'Patient'} · {new Date(message.created_at).toLocaleString('fr-FR')}
                   </p>
                   {message.content && <p className="chat-content">{message.content}</p>}
-                  {message.attachment_url && (
-                    <a href={resolveAttachmentHref(message.attachment_url)} target="_blank" rel="noreferrer" className="chat-attachment">
+                  {message.has_attachment && (
+                    <button
+                      type="button"
+                      className="chat-attachment"
+                      onClick={() => handleOpenAttachment(message)}
+                    >
                       {message.attachment_name || 'Pièce jointe'}
-                    </a>
+                    </button>
                   )}
                 </div>
               </div>

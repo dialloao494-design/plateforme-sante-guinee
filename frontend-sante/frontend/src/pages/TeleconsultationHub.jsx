@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { appointmentsAPI } from '../services/api.js';
+import { appointmentsAPI, teleconsultationAPI } from '../services/api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { formatApiError } from '../utils/apiError.js';
-import { getAppointmentState, getConsultationTypeLabel } from '../utils/appointmentPresentation.js';
+import { getConsultationTypeLabel } from '../utils/appointmentPresentation.js';
 import { formatDateTimeShort, formatRelativeDay } from '../utils/formatDateTime.js';
 import { getRoleHomePath } from '../utils/rolePaths.js';
 import EmptyState from '../components/ui/EmptyState.jsx';
@@ -14,6 +14,7 @@ export default function TeleconsultationHub() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
+  const [roomStatuses, setRoomStatuses] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -24,8 +25,23 @@ export default function TeleconsultationHub() {
       setError('');
       try {
         const { data } = await appointmentsAPI.getAll();
+        if (cancelled) return;
+        const list = Array.isArray(data) ? data : [];
+        setAppointments(list);
+
+        const teleOnly = list.filter((a) => a.consultation_type === 'teleconsultation');
+        const statusEntries = await Promise.all(
+          teleOnly.map(async (a) => {
+            try {
+              const { data: status } = await teleconsultationAPI.getRoomStatus(a.id);
+              return [a.id, status];
+            } catch {
+              return [a.id, null];
+            }
+          })
+        );
         if (!cancelled) {
-          setAppointments(Array.isArray(data) ? data : []);
+          setRoomStatuses(Object.fromEntries(statusEntries));
         }
       } catch (err) {
         if (!cancelled) {
@@ -46,12 +62,12 @@ export default function TeleconsultationHub() {
       .filter((a) => a.consultation_type === 'teleconsultation')
       .map((a) => ({
         appointment: a,
-        state: getAppointmentState(a),
+        roomStatus: roomStatuses[a.id] || null,
         date: new Date(a.date),
       }))
-      .filter((row) => row.date >= now)
+      .filter((row) => row.date >= now || row.roomStatus?.can_join || row.roomStatus?.reason === 'too_early')
       .sort((a, b) => a.date - b.date);
-  }, [appointments]);
+  }, [appointments, roomStatuses]);
 
   const homeHref = useMemo(() => getRoleHomePath(user?.role), [user?.role]);
 
@@ -63,7 +79,7 @@ export default function TeleconsultationHub() {
       <header className="tele-hub-header">
         <div>
           <h1>{title}</h1>
-          <p>Rejoignez la salle sécurisée au moment prévu. Le flux vidéo réel sera activé par votre cabinet.</p>
+          <p>Rejoignez la salle vidéo intégrée au moment prévu — directement dans l’application, sans ouvrir un nouvel onglet.</p>
         </div>
         <Link to={homeHref} className="btn btn-secondary tele-hub-back">
           Tableau de bord
@@ -102,11 +118,19 @@ export default function TeleconsultationHub() {
 
       {!loading && teleRows.length > 0 && (
         <ul className="tele-hub-list">
-          {teleRows.map(({ appointment: a, state }) => {
+          {teleRows.map(({ appointment: a, roomStatus }) => {
             const name =
               user?.role === 'doctor' || user?.role === 'admin'
                 ? `${a.patient?.first_name || ''} ${a.patient?.last_name || ''}`.trim() || 'Patient'
                 : a.doctor?.name || `Médecin #${a.doctor_id}`;
+
+            const canOpenRoom = roomStatus?.can_join || roomStatus?.reason === 'too_early';
+            const waitLabel =
+              roomStatus?.reason === 'too_early'
+                ? roomStatus.message
+                : roomStatus?.can_join === false
+                  ? roomStatus?.message || 'Indisponible'
+                  : 'Disponible après confirmation';
 
             return (
               <li key={a.id} className="tele-hub-card">
@@ -116,15 +140,17 @@ export default function TeleconsultationHub() {
                     {formatRelativeDay(a.date)} · {formatDateTimeShort(a.date)}
                   </p>
                   <p className="tele-hub-type">{getConsultationTypeLabel(a)}</p>
-                  <span className={state.statusColor}>{state.displayStatus}</span>
+                  {roomStatus?.message && !canOpenRoom && (
+                    <span className="tele-hub-wait">{roomStatus.message}</span>
+                  )}
                 </div>
                 <div className="tele-hub-card-actions">
-                  {state.canJoin ? (
+                  {canOpenRoom ? (
                     <button type="button" className="btn btn-primary" onClick={() => navigate(`/consultation/${a.id}`)}>
                       Ouvrir la salle
                     </button>
                   ) : (
-                    <span className="tele-hub-wait">Disponible après confirmation</span>
+                    <span className="tele-hub-wait">{waitLabel}</span>
                   )}
                   <Link to={`/messages/${a.id}`} className="btn btn-secondary tele-hub-msg">
                     Messages

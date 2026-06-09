@@ -6,16 +6,21 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from core.limiter import limiter
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 from database import get_db
 from models.user import User
 import models
-from schemas.user import UserCreate, UserLogin, UserResponse, Token
+from schemas.user import PublicRegistration, UserLogin, UserResponse, Token
 from security import (
     get_current_user,
     hash_password,
     verify_password,
     create_access_token,
+)
+from services.user_provisioning import (
+    EmailAlreadyRegisteredError,
+    PublicRegistrationRoleError,
+    PrivilegedRoleAssignmentError,
+    register_public_user,
 )
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -25,96 +30,43 @@ logger = logging.getLogger(__name__)
 
 @router.post("/register", response_model=UserResponse, status_code=201)
 @limiter.limit(os.getenv("RATE_LIMIT_REGISTER", "5/minute"))
-def register(request: Request, user: UserCreate, db: Session = Depends(get_db)):
+def register(request: Request, user: PublicRegistration, db: Session = Depends(get_db)):
     """
-    Register a new user with email, password, and role.
-    
-    - email: Valid email address (will be stored lowercase)
-    - password: Minimum 6 characters
-    - role: One of 'patient', 'doctor', 'admin' (defaults to 'patient')
-    
+    Public self-service registration (patient or doctor only).
+
+    Administrator accounts cannot be created through this endpoint.
+    Use ``POST /users/admins`` with an authenticated admin session, or ops bootstrap
+    (``ENABLE_ADMIN_BOOTSTRAP``) for the first admin on a new environment.
+
     Raises:
     - 409: Email already registered
-    - 422: Validation error (invalid email, password, or role format)
+    - 422: Validation error (invalid email, password, role, or unknown fields)
     """
-    # Check if email already exists (case-insensitive; SQLite compares emails case-sensitively)
-    existing_user = db.query(User).filter(func.lower(User.email) == user.email.lower().strip()).first()
-    if existing_user:
+    try:
+        provisioned = register_public_user(
+            db,
+            email=user.email,
+            password=user.password,
+            role=user.role,
+        )
+    except EmailAlreadyRegisteredError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Email '{user.email}' is already registered. Try logging in or use another email.",
-        )
-
-    # Hash password with bcrypt
-    hashed_pw = hash_password(user.password)
-    new_user = User(
-        email=user.email.lower().strip(),
-        hashed_password=hashed_pw,
-        role=user.role,
-    )
-
-    try:
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-
-        # Auto-create a Patient profile for every patient-role user so that
-        # appointment booking and payment endpoints can always find a linked profile.
-        if new_user.role == "patient":
-            existing_profile = db.query(models.Patient).filter(
-                models.Patient.user_id == new_user.id
-            ).first()
-            if not existing_profile:
-                patient_profile = models.Patient(
-                    user_id=new_user.id,
-                    first_name=None,
-                    last_name=None,
-                    age=None,
-                    gender=None,
-                )
-                db.add(patient_profile)
-                db.commit()
-
-        if new_user.role == "doctor":
-            existing_doctor_profile = db.query(models.Doctor).filter(
-                models.Doctor.user_id == new_user.id
-            ).first()
-            if not existing_doctor_profile:
-                doctor_profile = models.Doctor(
-                    user_id=new_user.id,
-                    first_name="Doctor",
-                    last_name=f"User{new_user.id}",
-                    specialty="Médecine générale",
-                    city="Conakry · Kaloum",
-                    phone="000000000",
-                    photo_url=None,
-                    consultation_fee=0.0,
-                )
-                db.add(doctor_profile)
-                db.commit()
-
-        if new_user is None or new_user.id is None:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="User creation failed unexpectedly.",
-            )
-        doctor_id = None
-        if new_user.role == "doctor":
-            doc = db.query(models.Doctor).filter(models.Doctor.user_id == new_user.id).first()
-            if doc:
-                doctor_id = doc.id
-        return UserResponse(id=new_user.id, email=new_user.email, role=new_user.role, doctor_id=doctor_id)
-    except IntegrityError as e:
-        db.rollback()
-        if "email" in str(e).lower():
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Email already registered",
-            )
+            detail=str(exc),
+        ) from exc
+    except (PublicRegistrationRoleError, PrivilegedRoleAssignmentError) as exc:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error creating user. Please try again.",
-        )
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    new_user = provisioned.user
+    return UserResponse(
+        id=new_user.id,
+        email=new_user.email,
+        role=new_user.role,
+        doctor_id=provisioned.doctor_id,
+    )
 
 
 def authenticate_user(email: str, password: str, db: Session, attempt_limit: int = 1000):

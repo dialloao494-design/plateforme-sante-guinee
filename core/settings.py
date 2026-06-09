@@ -5,7 +5,9 @@ Centralized environment settings for production, staging, and development.
 from __future__ import annotations
 
 import os
+import re
 from functools import lru_cache
+from urllib.parse import unquote, urlparse
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -13,6 +15,71 @@ def _env_flag(name: str, default: bool = False) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _first_env(*names: str) -> str:
+    for name in names:
+        value = (os.getenv(name) or "").strip()
+        if value:
+            return value
+    return ""
+
+
+def _password_from_database_url() -> str:
+    url = (os.getenv("DATABASE_URL") or "").strip()
+    if not url:
+        return ""
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return ""
+    return unquote(parsed.password or "")
+
+
+def _is_jaas_jitsi_mode() -> bool:
+    app_id = (os.getenv("JITSI_APP_ID") or "").strip()
+    if app_id.startswith("vpaas-magic-cookie-"):
+        return True
+    return (os.getenv("JITSI_JAAS") or "").lower() in {"1", "true", "yes", "on"}
+
+
+def _resolve_jitsi_secret() -> str:
+    if _is_jaas_jitsi_mode():
+        path = (os.getenv("JITSI_PRIVATE_KEY_PATH") or "").strip()
+        if path and os.path.isfile(path):
+            with open(path, encoding="utf-8") as handle:
+                return handle.read().strip()
+        return (os.getenv("JITSI_PRIVATE_KEY") or "").replace("\\n", "\n").strip()
+    return _first_env("JITSI_SECRET", "JITSI_APP_SECRET", "JITSI_APP_KEY")
+
+
+_WEAK_SECRET_PATTERNS = re.compile(
+    r"(changeme|change-me|change_me|default|demo|placeholder|your_|"
+    r"sante_dev|pytest|example\.com|sk_test_|sk_live_YOUR|CHANGE_ME|"
+    r"password123|secret12|test-secret)",
+    re.IGNORECASE,
+)
+
+
+def is_insecure_secret(
+    value: str,
+    *,
+    min_length: int = 16,
+    extra_weak_tokens: tuple[str, ...] = (),
+) -> bool:
+    """Return True when a secret is empty, too short, or matches known-weak patterns."""
+    cleaned = (value or "").strip()
+    if not cleaned or len(cleaned) < min_length:
+        return True
+    if _WEAK_SECRET_PATTERNS.search(cleaned):
+        return True
+    lowered = cleaned.lower()
+    for token in extra_weak_tokens:
+        if token and token.lower() in lowered:
+            return True
+    if lowered in {"test", "demo", "default", "password", "secret"}:
+        return True
+    return False
 
 
 @lru_cache(maxsize=1)
@@ -68,8 +135,56 @@ class AppSettings:
         return hosts
 
     def validate_production_secrets(self) -> None:
+        """Validate required secrets for staging/production deployments."""
         if not self.is_deployed:
             return
-        sk = os.getenv("SECRET_KEY", "")
-        if not sk or sk.startswith("change-me") or len(sk) < 32:
-            raise RuntimeError("SECRET_KEY must be a strong random value (32+ chars) in staging/production")
+
+        jwt_secret = _first_env("JWT_SECRET", "SECRET_KEY")
+        db_password = _first_env("DB_PASSWORD", "POSTGRES_PASSWORD") or _password_from_database_url()
+        stripe_secret = _first_env("STRIPE_SECRET", "STRIPE_SECRET_KEY", "STRIPE_API_KEY")
+        jitsi_secret = _resolve_jitsi_secret()
+
+        failures: list[str] = []
+
+        if is_insecure_secret(jwt_secret, min_length=32):
+            failures.append("JWT_SECRET/SECRET_KEY must be a strong random value (32+ chars)")
+
+        if is_insecure_secret(db_password, min_length=12, extra_weak_tokens=("sante_dev", "postgres")):
+            failures.append("DB_PASSWORD/POSTGRES_PASSWORD must be a strong database password")
+
+        stripe_min = 20
+        stripe_weak = ("YOUR_TEST", "YOUR_LIVE", "sk_test_") if self.is_production else ("YOUR_TEST", "YOUR_LIVE")
+        stripe_insecure = is_insecure_secret(
+            stripe_secret,
+            min_length=stripe_min,
+            extra_weak_tokens=stripe_weak,
+        )
+        # Staging may use sk_test_* keys; global weak-pattern matcher flags sk_test_ — exempt staging.
+        if stripe_insecure and not (self.is_staging and stripe_secret.startswith("sk_test_")):
+            failures.append("STRIPE_SECRET/STRIPE_SECRET_KEY must be a live production Stripe secret")
+
+        jitsi_min = 16 if _is_jaas_jitsi_mode() else 12
+        if is_insecure_secret(jitsi_secret, min_length=jitsi_min):
+            failures.append("JITSI_SECRET/JITSI_APP_SECRET (or JaaS private key) must be configured securely")
+
+        if failures:
+            raise RuntimeError("Insecure deployment secrets: " + "; ".join(failures))
+
+    def enforce_production_boot(self) -> None:
+        """Run all boot guards: production ops flags + deployed secret validation."""
+        if self.is_production:
+            if _env_flag("ENABLE_PILOT_SEED", default=False):
+                raise RuntimeError(
+                    "ENABLE_PILOT_SEED=true is forbidden in production — "
+                    "remove pilot/demo accounts before go-live"
+                )
+
+            bypass_raw = (os.getenv("BYPASS_AVAILABILITY_VALIDATION") or "false").strip().lower()
+            if bypass_raw in {"1", "true", "yes", "on"}:
+                raise RuntimeError(
+                    "BYPASS_AVAILABILITY_VALIDATION=true is forbidden in production — "
+                    "doctor availability checks must remain enforced"
+                )
+
+        if self.is_deployed:
+            self.validate_production_secrets()

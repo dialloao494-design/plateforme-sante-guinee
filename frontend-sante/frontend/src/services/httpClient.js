@@ -17,6 +17,14 @@ const isLocalDevApi = (u) => {
 
 const defaultApiPort = () => String(import.meta.env.VITE_API_PORT || '8000').trim();
 
+/** Map browser hostname to a stable API host (Windows: localhost often hits ::1 / Jitsi on :8000). */
+const resolveDevApiHost = (hostname) => {
+  if (/^localhost$/i.test(hostname)) {
+    return '127.0.0.1';
+  }
+  return hostname;
+};
+
 /** When opened as http://192.168.x.x:5173, API must be http://192.168.x.x:8000 (not localhost). */
 const resolveDevApiFromBrowser = () => {
   if (typeof window === 'undefined') {
@@ -26,7 +34,8 @@ const resolveDevApiFromBrowser = () => {
   if (!isPrivateDevHost(hostname)) {
     return null;
   }
-  return `${protocol}//${hostname}:${defaultApiPort()}`;
+  const apiHost = resolveDevApiHost(hostname);
+  return `${protocol}//${apiHost}:${defaultApiPort()}`;
 };
 
 const rewriteLocalhostToCurrentHost = (url) => {
@@ -40,13 +49,59 @@ const rewriteLocalhostToCurrentHost = (url) => {
   return url.replace(/\/\/(localhost|127\.0\.0\.1)(?=:\d+|\/|$)/gi, `//${host}`);
 };
 
+/** Nginx/docker serves API under /api — prefix paths when base is page origin only. */
+const usesNginxApiPrefix = (baseUrl) => {
+  if (import.meta.env.DEV && import.meta.env.VITE_USE_RELATIVE_API === 'true') {
+    return false;
+  }
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  try {
+    const base = new URL(baseUrl, window.location.origin);
+    return base.origin === window.location.origin && !base.pathname.replace(/\/$/, '').endsWith('/api');
+  } catch {
+    return false;
+  }
+};
+
+const ensureNginxApiPath = (url = '') => {
+  if (!url || /^https?:\/\//i.test(url)) {
+    return url;
+  }
+  const path = url.startsWith('/') ? url : `/${url}`;
+  if (path.startsWith('/api/') || path === '/api') {
+    return path;
+  }
+  return `/api${path}`;
+};
+
 // Resolve API base URL from environment variable
 export const API_BASE_URL = (() => {
   const explicitUrl = (import.meta.env.VITE_API_URL || '').trim();
+  const sameOriginApi =
+    import.meta.env.VITE_SAME_ORIGIN_API === 'true' ||
+    import.meta.env.VITE_USE_RELATIVE_API === 'true' ||
+    explicitUrl === '/api';
+
+  if (sameOriginApi && typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+
+  const useRelativeApi =
+    import.meta.env.VITE_USE_RELATIVE_API === 'true' && typeof window !== 'undefined';
+
+  if (useRelativeApi) {
+    return window.location.origin;
+  }
+
   let url = explicitUrl;
 
   if (!url) {
     if (import.meta.env.PROD) {
+      if (typeof window !== 'undefined') {
+        return window.location.origin;
+      }
       const fallback = (import.meta.env.VITE_PUBLIC_API_FALLBACK || '').trim();
       url = fallback || 'https://web-production-ad6a36.up.railway.app';
       if (!explicitUrl) {
@@ -55,7 +110,7 @@ export const API_BASE_URL = (() => {
         );
       }
     } else {
-      url = resolveDevApiFromBrowser() || 'http://localhost:8000';
+      url = resolveDevApiFromBrowser() || 'http://127.0.0.1:8000';
     }
   } else if (import.meta.env.DEV) {
     url = rewriteLocalhostToCurrentHost(url);
@@ -66,6 +121,11 @@ export const API_BASE_URL = (() => {
     if (fromBrowser) {
       url = fromBrowser;
     }
+  }
+
+  // Docker/nginx/mobile tunnel: baked localhost must follow the page origin at runtime.
+  if (typeof window !== 'undefined' && import.meta.env.PROD && /localhost|127\.0\.0\.1/i.test(url)) {
+    return window.location.origin;
   }
 
   if (import.meta.env.PROD && /localhost|127\.0\.0\.1/i.test(url)) {
@@ -126,6 +186,11 @@ syncAuthHeader();
 httpClient.interceptors.request.use(
   (config) => {
     syncAuthHeader();
+
+    const runtimeBase = config.baseURL || httpClient.defaults.baseURL || API_BASE_URL;
+    if (usesNginxApiPrefix(runtimeBase) && typeof config.url === 'string') {
+      config.url = ensureNginxApiPath(config.url);
+    }
 
     if (
       typeof config.baseURL === 'string' &&

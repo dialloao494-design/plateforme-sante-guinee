@@ -46,9 +46,10 @@ export const AuthProvider = ({ children }) => {
     if (
       code === 'err_network' ||
       code === 'econnrefused' ||
-      /failed to fetch|network error|network|econnrefused|connection refused|timeout/.test(detail)
+      /failed to fetch|network error|network|econnrefused|connection refused|timeout|405 not allowed|nginx/.test(detail) ||
+      (!status && /login failed|network error/i.test(String(err?.message || '')))
     ) {
-      return 'Impossible de joindre l’API. Vérifiez que le backend tourne (port 8000) et VITE_API_URL dans .env.development.local.';
+      return 'Impossible de joindre l’API. Vérifiez que le backend tourne sur http://127.0.0.1:8000.';
     }
 
     if (/missing authentication token/.test(detail)) {
