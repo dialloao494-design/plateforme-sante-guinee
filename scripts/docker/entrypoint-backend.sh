@@ -60,7 +60,8 @@ PY
 
 if [ "${ENABLE_PILOT_SEED:-false}" = "true" ]; then
   echo "[entrypoint] Seeding pilot accounts..."
-  python -c "from services.pilot_seed import seed_pilot_accounts; seed_pilot_accounts()"
+  python -c "from services.pilot_seed import seed_pilot_accounts; seed_pilot_accounts()" \
+    || echo "[entrypoint] WARNING: pilot seed skipped (non-fatal)"
 fi
 
 exec "$@"

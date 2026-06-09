@@ -7,9 +7,16 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 VPS_IP="${VPS_IP:-158.220.83.42}"
+
+# Reuse existing DB password when re-deploying (avoids pg volume mismatch)
+if [ -f .env.vps-ip ]; then
+  # shellcheck disable=SC1091
+  set -a; source .env.vps-ip; set +a
+fi
 PG_PASS="${POSTGRES_PASSWORD:-$(openssl rand -base64 24 | tr -dc 'a-zA-Z0-9' | head -c 32)}"
 JWT_SECRET="${SECRET_KEY:-$(openssl rand -hex 32)}"
 JITSI_SECRET="${JITSI_APP_SECRET:-$(openssl rand -base64 32 | tr -d '\n')}"
+STRIPE_DEMO="sk_test_$(openssl rand -hex 16)"
 
 echo "=== DEMO IP deploy — http://${VPS_IP} ==="
 
@@ -28,6 +35,7 @@ VITE_TELECONSULT_PROVIDER=stub
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_placeholder
 EOF
 chmod 600 .env.vps-ip
+cp -f .env.vps-ip .env
 
 mkdir -p deploy/env logs backups
 cat > deploy/env/.env.backend <<EOF
@@ -45,9 +53,9 @@ SECRET_KEY=${JWT_SECRET}
 ACCESS_TOKEN_EXPIRE_MINUTES=480
 ALLOWED_HOSTS=${VPS_IP},backend,localhost,127.0.0.1
 DOMAIN=${VPS_IP}
-STRIPE_SECRET_KEY=sk_test_placeholder_demo_ip_deploy_xx
-STRIPE_PUBLISHABLE_KEY=pk_test_placeholder
-STRIPE_WEBHOOK_SECRET=whsec_placeholder_32chars_minimum
+STRIPE_SECRET_KEY=${STRIPE_DEMO}
+STRIPE_PUBLISHABLE_KEY=pk_test_demo
+STRIPE_WEBHOOK_SECRET=whsec_$(openssl rand -hex 16)
 JITSI_APP_SECRET=${JITSI_SECRET}
 JITSI_APP_ID=plateforme-sante-guinee
 JITSI_DOMAIN=meet.jit.si
@@ -63,13 +71,13 @@ docker compose --env-file .env.vps-ip up -d --build
 
 echo "Waiting for backend..."
 for i in $(seq 1 60); do
-  if curl -fsS "http://127.0.0.1/api/health" >/dev/null 2>&1; then
+  if docker compose --env-file .env.vps-ip exec -T backend curl -fsS http://127.0.0.1:8000/health/ready >/dev/null 2>&1; then
     echo "Backend ready (${i}s)"
     break
   fi
   sleep 5
   if [ "$i" -eq 60 ]; then
-    echo "Timeout — check: docker compose --env-file .env.vps-ip logs backend"
+    echo "Timeout — run: docker compose --env-file .env.vps-ip logs backend --tail 80"
     exit 1
   fi
 done
