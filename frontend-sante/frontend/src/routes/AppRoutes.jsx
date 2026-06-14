@@ -25,6 +25,9 @@ import LabDashboard from "../pages/clinical/LabDashboard.jsx";
 import PharmacyDashboard from "../pages/clinical/PharmacyDashboard.jsx";
 import HospitalizationDashboard from "../pages/clinical/HospitalizationDashboard.jsx";
 import UnifiedBillingDashboard from "../pages/clinical/UnifiedBillingDashboard.jsx";
+import DischargeDashboard from "../pages/clinical/DischargeDashboard.jsx";
+import RadiologyDashboard from "../pages/clinical/RadiologyDashboard.jsx";
+import StaffNotificationCenter from "../pages/clinical/StaffNotificationCenter.jsx";
 import AdminClinicalDashboard from "../pages/clinical/AdminClinicalDashboard.jsx";
 import ClinicOperationsDashboard from "../pages/clinical/ClinicOperationsDashboard.jsx";
 import ProtectedRoute from "./ProtectedRoute";
@@ -214,6 +217,33 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={["admin", "receptionist", "doctor"]}>
             <HospitalizationDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/clinical/discharge"
+        element={
+          <ProtectedRoute allowedRoles={["admin", "receptionist", "doctor"]}>
+            <DischargeDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/clinical/radiology"
+        element={
+          <ProtectedRoute allowedRoles={["admin", "doctor", "lab_technician"]}>
+            <RadiologyDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/clinical/notifications"
+        element={
+          <ProtectedRoute allowedRoles={["admin", "receptionist", "doctor"]}>
+            <StaffNotificationCenter />
           </ProtectedRoute>
         }
       />

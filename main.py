@@ -10,7 +10,7 @@ from database import SessionLocal
 import models
 from routers import patient, patient_record, rendezvous, doctor, auth, teleconsultation, notifications, messages
 from routers import users, appointments, doctor_dashboard, ws, clinical, medical_history, hospitalization
-from routers import unified_billing
+from routers import unified_billing, discharge, radiology, reminders
 from security import hash_password, verify_password
 from services.user_provisioning import register_public_user
 import os
@@ -243,6 +243,9 @@ app.include_router(clinical.router)
 app.include_router(medical_history.router)
 app.include_router(hospitalization.router)
 app.include_router(unified_billing.router)
+app.include_router(discharge.router)
+app.include_router(radiology.router)
+app.include_router(reminders.router)
 app.include_router(ws.router)
 
 
@@ -327,7 +330,7 @@ async def startup_event():
         from database import engine, Base
         # Import all model modules so their tables are registered on Base
         import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message, models.notification_event, models.attachment_access_log, models.clinical_note, models.consultation_summary, models.patient_document, models.clinical_audit_log
-        import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.medical_history, models.hospitalization, models.clinical_visit, models.invoice  # noqa: F401
+        import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.medical_history, models.hospitalization, models.clinical_visit, models.invoice, models.discharge, models.imaging, models.appointment_reminder  # noqa: F401
 
         # Always create tables if they don't exist (safe / idempotent)
         Base.metadata.create_all(bind=engine)
@@ -341,6 +344,9 @@ async def startup_event():
             ensure_doctor_geolocation_columns,
             ensure_medical_history_schema,
             ensure_hospitalization_schema,
+            ensure_discharge_schema,
+            ensure_radiology_schema,
+            ensure_reminders_schema,
             ensure_message_attachment_columns,
             ensure_patient_dossier_schema,
         )
@@ -354,6 +360,9 @@ async def startup_event():
         ensure_clinical_audit_patient_nullable(engine)
         ensure_medical_history_schema(engine)
         ensure_hospitalization_schema(engine)
+        ensure_discharge_schema(engine)
+        ensure_radiology_schema(engine)
+        ensure_reminders_schema(engine)
 
         from database import SessionLocal
         from services.user_provisioning import bootstrap_initial_admin
@@ -416,6 +425,28 @@ async def startup_event():
         logger.info("Optional startup seed (dev test user only) completed.")
     else:
         logger.info("Optional startup seed routines skipped (ENABLE_STARTUP_SEED not set).")
+
+    if _env_flag("ENABLE_REMINDER_CRON", default=False):
+        import asyncio
+
+        async def _reminder_cron_loop() -> None:
+            from services.reminder_service import ReminderService
+
+            while True:
+                try:
+                    db = SessionLocal()
+                    try:
+                        sent = ReminderService.process_due_reminders(db)
+                        if sent:
+                            logger.info("Reminder cron sent %s message(s)", sent)
+                    finally:
+                        db.close()
+                except Exception as exc:
+                    logger.error("Reminder cron error: %s", exc)
+                await asyncio.sleep(int(os.getenv("REMINDER_CRON_INTERVAL_SEC", "900")))
+
+        asyncio.create_task(_reminder_cron_loop())
+        logger.info("Reminder cron enabled (ENABLE_REMINDER_CRON)")
 
     debug_mode = _settings.debug
     port = os.environ.get("PORT")

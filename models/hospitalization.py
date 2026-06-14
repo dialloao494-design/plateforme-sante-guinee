@@ -66,6 +66,7 @@ class Admission(Base):
     patient = relationship("Patient", back_populates="admissions")
     consultation = relationship("ClinicalConsultation", back_populates="admissions")
     stays = relationship("PatientStay", back_populates="admission", cascade="all, delete-orphan")
+    discharge_summaries = relationship("DischargeSummary", back_populates="admission")
 
 
 class PatientStay(Base):

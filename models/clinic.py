@@ -29,6 +29,8 @@ class Clinic(Base):
     admissions = relationship("Admission", back_populates="clinic")
     clinical_visits = relationship("ClinicalVisit", back_populates="clinic")
     invoices = relationship("Invoice", back_populates="clinic")
+    discharge_summaries = relationship("DischargeSummary", back_populates="clinic")
+    imaging_orders = relationship("ImagingOrder", back_populates="clinic")
 
 
 class ClinicStaff(Base):

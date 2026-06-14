@@ -75,6 +75,32 @@ const clinicalApi = {
   generateInvoice: (data) => httpClient.post('/clinical/billing/unified/invoices/generate', data),
   payInvoice: (id, data) => httpClient.post(`/clinical/billing/unified/invoices/${id}/pay`, data),
   invoicePdfUrl: (id) => `${httpClient.defaults.baseURL}/clinical/billing/unified/invoices/${id}/pdf`,
+
+  // Discharge
+  dischargeOpenVisits: () => httpClient.get('/clinical/discharge/visits/open'),
+  dischargeChecklist: (visitId) => httpClient.get(`/clinical/discharge/checklist/${visitId}`),
+  executeDischarge: (data) => httpClient.post('/clinical/discharge/execute', data),
+  dischargeSummaries: (patientId) =>
+    httpClient.get('/clinical/discharge/summaries', { params: patientId ? { patient_id: patientId } : {} }),
+  dischargePdfUrl: (summaryId) =>
+    `${httpClient.defaults.baseURL}/clinical/discharge/summaries/${summaryId}/pdf`,
+
+  // Radiology
+  radiologyQueue: (status) =>
+    httpClient.get('/clinical/radiology/orders', { params: status ? { status } : {} }),
+  orderImaging: (consultationId, data) =>
+    httpClient.post(`/clinical/radiology/consultations/${consultationId}/orders`, data),
+  updateRadiologyOrder: (orderId, data) =>
+    httpClient.patch(`/clinical/radiology/orders/${orderId}`, data),
+  submitRadiologyReport: (orderId, data) =>
+    httpClient.post(`/clinical/radiology/orders/${orderId}/report`, data),
+  validateRadiologyResult: (resultId) =>
+    httpClient.post(`/clinical/radiology/results/${resultId}/validate`),
+
+  // Reminders / notifications
+  reminderNotifications: () => httpClient.get('/clinical/reminders/notifications'),
+  respondToReminder: (appointmentId, data) =>
+    httpClient.post(`/clinical/reminders/appointments/${appointmentId}/respond`, data),
 };
 
 export default clinicalApi;

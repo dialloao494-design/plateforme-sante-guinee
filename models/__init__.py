@@ -29,5 +29,8 @@ from .medical_history import (
 from .hospitalization import HospitalRoom, HospitalBed, Admission, PatientStay
 from .clinical_visit import ClinicalVisit
 from .invoice import Invoice, InvoiceItem, PaymentRecord
+from .discharge import DischargeSummary
+from .imaging import ImagingOrder, ImagingResult
+from .appointment_reminder import AppointmentReminder, ReminderEvent
 
 from . import user_hooks as _user_hooks  # noqa: F401
