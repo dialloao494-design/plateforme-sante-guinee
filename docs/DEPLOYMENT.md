@@ -87,6 +87,19 @@ python scripts/qa_production_e2e.py
 pytest tests/ -q
 ```
 
+## v2.0 modules (hospitalization → reminders)
+
+After `alembic upgrade head` (through `20260620_0012_reminders`):
+
+| Feature | Env / config |
+|---------|----------------|
+| WhatsApp reminders | `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN` |
+| Reminder cron | `ENABLE_REMINDER_CRON=true` (or cron `POST /clinical/reminders/process-due`) |
+
+Frontend routes: `/clinical/hospitalization`, `/clinical/billing`, `/clinical/discharge`, `/clinical/radiology`, `/clinical/notifications`.
+
+See [PRODUCTION_VALIDATION_CHECKLIST.md](./PRODUCTION_VALIDATION_CHECKLIST.md) and [API_MODULES.md](./API_MODULES.md).
+
 ## Backup & restore
 
 See [BACKUP_RESTORE.md](./BACKUP_RESTORE.md).

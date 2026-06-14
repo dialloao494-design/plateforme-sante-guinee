@@ -150,8 +150,29 @@ Simulated history patients: `sim.patient.001@pilot.local` / `SimPatient1!`
 ## Upgrade notes
 
 - Run `alembic upgrade head` before starting the application.
-- Alembic revisions through `20260615_0007` (medical history).
+- Alembic revisions through `20260620_0012_reminders` (hospitalization, billing, discharge, radiology, reminders).
 - No Stripe migration required — feature fully removed.
+
+---
+
+## v2.0 — Full clinic workflow (2026-06)
+
+### Phase 1 — Hospitalization
+- Room/bed management, admissions from consultation, bed assignment, occupancy dashboard.
+
+### Phase 2 — Unified billing
+- Clinical visits, unified invoices, payment records, invoice PDF receipts.
+
+### Phase 3 — Patient discharge
+- Discharge checklist (billing + pharmacy validation), discharge summary PDF, EMR archive.
+
+### Phase 4 — Radiology
+- Imaging orders from consultation, radiology worklist, report entry/validation, EMR attachment, billing integration.
+
+### Phase 5 — WhatsApp reminders
+- 48h/24h reminder scheduling on appointment creation, patient confirm/cancel/reschedule, staff notification center.
+
+See `docs/API_MODULES.md` and `docs/PRODUCTION_VALIDATION_CHECKLIST.md` for deployment validation.
 
 ---
 

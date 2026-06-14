@@ -418,6 +418,29 @@ def run_qa() -> QAReport:
         message=f"Audit logs accessible, count={len(ar.json()) if ar.ok else 0}",
     )
 
+    # --- v2.0 modules: discharge, radiology, reminders ---
+    dr = requests.get(f"{BASE}/clinical/discharge/visits/open", headers=reception_h, timeout=15)
+    report.add(
+        area="Discharge module",
+        status="PASS" if dr.status_code == 200 else "FAIL",
+        message=f"GET /clinical/discharge/visits/open → {dr.status_code}",
+        severity="high" if dr.status_code != 200 else "",
+    )
+    rad = requests.get(f"{BASE}/clinical/radiology/orders", headers=hdr(tokens["lab"]), timeout=15)
+    report.add(
+        area="Radiology module",
+        status="PASS" if rad.status_code == 200 else "FAIL",
+        message=f"GET /clinical/radiology/orders → {rad.status_code}",
+        severity="high" if rad.status_code != 200 else "",
+    )
+    rem = requests.get(f"{BASE}/clinical/reminders/notifications", headers=reception_h, timeout=15)
+    report.add(
+        area="Reminder notifications",
+        status="PASS" if rem.status_code == 200 else "FAIL",
+        message=f"GET /clinical/reminders/notifications → {rem.status_code}",
+        severity="high" if rem.status_code != 200 else "",
+    )
+
     return report
 
 
