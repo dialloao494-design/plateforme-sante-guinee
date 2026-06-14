@@ -456,3 +456,67 @@
   margin: 0.5rem 0 0;
   color: #64748b;
 }
+
+.clinical-grid--2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.clinical-bed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.clinical-bed-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.75rem;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.clinical-bed-card--available {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+}
+
+.clinical-bed-card--occupied {
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+
+.clinical-bed-card--maintenance {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.clinical-bed-card__num {
+  display: block;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.clinical-queue-item--active {
+  background: #eff6ff;
+  border-radius: 6px;
+}
+
+.clinical-form label {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.clinical-form input,
+.clinical-form select {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.4rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+}
+

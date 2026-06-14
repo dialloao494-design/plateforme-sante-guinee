@@ -54,6 +54,20 @@ const clinicalApi = {
 
   // Admin ops
   backupStatus: () => httpClient.get('/clinical/admin/backup-status'),
+
+  // Hospitalization
+  hospitalOccupancy: () => httpClient.get('/clinical/hospitalization/occupancy'),
+  hospitalRooms: () => httpClient.get('/clinical/hospitalization/rooms'),
+  createHospitalRoom: (data) => httpClient.post('/clinical/hospitalization/rooms', data),
+  hospitalBeds: (roomId) =>
+    httpClient.get('/clinical/hospitalization/beds', { params: roomId ? { room_id: roomId } : {} }),
+  addHospitalBed: (roomId, data) => httpClient.post(`/clinical/hospitalization/rooms/${roomId}/beds`, data),
+  hospitalAdmissions: (status) =>
+    httpClient.get('/clinical/hospitalization/admissions', { params: status ? { status } : {} }),
+  createAdmission: (data) => httpClient.post('/clinical/hospitalization/admissions', data),
+  getAdmission: (id) => httpClient.get(`/clinical/hospitalization/admissions/${id}`),
+  updateAdmissionStatus: (id, data) => httpClient.patch(`/clinical/hospitalization/admissions/${id}/status`, data),
+  assignBed: (id, data) => httpClient.post(`/clinical/hospitalization/admissions/${id}/assign-bed`, data),
 };
 
 export default clinicalApi;

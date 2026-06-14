@@ -231,6 +231,36 @@ export default function DoctorClinicalDashboard() {
 
 
 
+  const requestAdmission = async () => {
+
+    if (!consultation) return;
+
+    setError('');
+
+    try {
+
+      const { data } = await clinicalApi.createAdmission({
+
+        consultation_id: consultation.id,
+
+        reason: form.chief_complaint || 'Hospitalisation requise',
+
+        diagnosis_summary: form.diagnosis,
+
+      });
+
+      setMessage(`Admission ${data.admission_number} créée — assignez un lit à l'hospitalisation.`);
+
+    } catch (err) {
+
+      setError(err?.response?.data?.detail || 'Admission impossible');
+
+    }
+
+  };
+
+
+
   const saveVitals = async () => {
 
     if (!consultation) return;
@@ -414,6 +444,12 @@ export default function DoctorClinicalDashboard() {
               <button type="button" className="clinical-btn secondary" onClick={() => saveConsultation(false)}>Enregistrer</button>
 
               <button type="button" className="clinical-btn" onClick={() => saveConsultation(true)}>Terminer</button>
+
+              {consultation && (
+                <button type="button" className="clinical-btn secondary" onClick={requestAdmission}>
+                  Demander admission
+                </button>
+              )}
 
             </div>
 

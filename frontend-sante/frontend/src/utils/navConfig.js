@@ -10,10 +10,19 @@ export const PATIENT_NAV_ITEMS = [
 ];
 
 const ROLE_NAV = {
-  admin: [{ path: '/clinical', label: 'Opérations', icon: 'dash' }],
-  receptionist: [{ path: '/clinical/reception', label: 'Réception', icon: 'calendar' }],
+  admin: [
+    { path: '/clinical', label: 'Opérations', icon: 'dash' },
+    { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'board' },
+  ],
+  receptionist: [
+    { path: '/clinical/reception', label: 'Réception', icon: 'calendar' },
+    { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'board' },
+  ],
   cashier: [{ path: '/clinical/reception', label: 'Réception', icon: 'calendar' }],
-  doctor: [{ path: '/clinical/doctor', label: 'Médecin', icon: 'board' }],
+  doctor: [
+    { path: '/clinical/doctor', label: 'Médecin', icon: 'board' },
+    { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'queue' },
+  ],
   lab_technician: [{ path: '/clinical/lab', label: 'Laboratoire', icon: 'queue' }],
   pharmacist: [{ path: '/clinical/pharmacy', label: 'Pharmacie', icon: 'steth' }],
 };

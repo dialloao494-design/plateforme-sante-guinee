@@ -29,6 +29,8 @@ class Permission(str, Enum):
     ADMIN_STAFF = "admin.staff"
     ADMIN_AUDIT = "admin.audit"
     ADMIN_BACKUP = "admin.backup"
+    ADMISSION_MANAGE = "admission.manage"
+    ADMISSION_BEDS = "admission.beds"
     PATIENT_JOURNEY = "patient.journey"
     CLINIC_OPERATIONS = "clinic.operations"
 
@@ -43,6 +45,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.BILLING_PAY,
             Permission.PATIENT_JOURNEY,
             Permission.CLINIC_OPERATIONS,
+            Permission.ADMISSION_MANAGE,
+            Permission.ADMISSION_BEDS,
         }
     ),
     "cashier": frozenset(
@@ -54,6 +58,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.BILLING_PAY,
             Permission.PATIENT_JOURNEY,
             Permission.CLINIC_OPERATIONS,
+            Permission.ADMISSION_BEDS,
         }
     ),
     "doctor": frozenset(
@@ -62,6 +67,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.DOCTOR_CONSULTATION,
             Permission.PATIENT_JOURNEY,
             Permission.CLINIC_OPERATIONS,
+            Permission.ADMISSION_MANAGE,
         }
     ),
     "lab_technician": frozenset(
@@ -86,6 +92,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.ADMIN_BACKUP,
             Permission.BILLING_REVENUE,
             Permission.CLINIC_OPERATIONS,
+            Permission.ADMISSION_MANAGE,
+            Permission.ADMISSION_BEDS,
         }
     ),
 }

@@ -26,5 +26,6 @@ from .medical_history import (
     PatientVitalSigns,
     FollowUpSchedule,
 )
+from .hospitalization import HospitalRoom, HospitalBed, Admission, PatientStay
 
 from . import user_hooks as _user_hooks  # noqa: F401

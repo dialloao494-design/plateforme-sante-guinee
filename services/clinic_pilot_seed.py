@@ -119,6 +119,9 @@ def seed_clinic_pilot_accounts() -> None:
         for spec in PILOT_STAFF:
             _ensure_staff_account(db, clinic.id, spec["email"], spec["password"], spec["role"])
         _link_demo_doctors_to_clinic(db, clinic.id)
+        from services.hospitalization_seed import seed_hospitalization
+
+        seed_hospitalization(db, clinic.id)
         logger.info("CIS pilot seed complete (clinic_id=%s).", clinic.id)
     except Exception:
         db.rollback()

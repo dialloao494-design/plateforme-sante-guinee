@@ -53,6 +53,8 @@ import models.lab_result  # noqa: F401
 import models.prescription  # noqa: F401
 import models.pharmacy_order  # noqa: F401
 import models.clinic_charge  # noqa: F401
+import models.medical_history  # noqa: F401
+import models.hospitalization  # noqa: F401
 
 from main import app
 from security import hash_password

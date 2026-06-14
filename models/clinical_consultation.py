@@ -40,3 +40,4 @@ class ClinicalConsultation(Base):
     prescriptions = relationship("Prescription", back_populates="consultation", cascade="all, delete-orphan")
     vital_signs = relationship("PatientVitalSigns", back_populates="consultation")
     follow_ups = relationship("FollowUpSchedule", back_populates="consultation")
+    admissions = relationship("Admission", back_populates="consultation")

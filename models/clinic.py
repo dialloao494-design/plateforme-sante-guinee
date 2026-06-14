@@ -25,6 +25,8 @@ class Clinic(Base):
     doctors = relationship("Doctor", back_populates="clinic")
     appointments = relationship("RendezVous", back_populates="clinic")
     consultations = relationship("ClinicalConsultation", back_populates="clinic")
+    hospital_rooms = relationship("HospitalRoom", back_populates="clinic")
+    admissions = relationship("Admission", back_populates="clinic")
 
 
 class ClinicStaff(Base):

@@ -37,3 +37,4 @@ class Patient(Base):
     clinical_notes = relationship("ClinicalNote", back_populates="patient")
     consultation_summaries = relationship("ConsultationSummary", back_populates="patient")
     documents = relationship("PatientDocument", back_populates="patient")
+    admissions = relationship("Admission", back_populates="patient")

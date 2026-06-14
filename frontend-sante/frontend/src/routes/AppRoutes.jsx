@@ -23,6 +23,7 @@ import ReceptionDashboard from "../pages/clinical/ReceptionDashboard.jsx";
 import DoctorClinicalDashboard from "../pages/clinical/DoctorClinicalDashboard.jsx";
 import LabDashboard from "../pages/clinical/LabDashboard.jsx";
 import PharmacyDashboard from "../pages/clinical/PharmacyDashboard.jsx";
+import HospitalizationDashboard from "../pages/clinical/HospitalizationDashboard.jsx";
 import AdminClinicalDashboard from "../pages/clinical/AdminClinicalDashboard.jsx";
 import ClinicOperationsDashboard from "../pages/clinical/ClinicOperationsDashboard.jsx";
 import ProtectedRoute from "./ProtectedRoute";
@@ -197,6 +198,15 @@ const AppRoutes = () => {
         }
       />
       <Route path="/clinical/revenue" element={<Navigate to="/clinical" replace />} />
+
+      <Route
+        path="/clinical/hospitalization"
+        element={
+          <ProtectedRoute allowedRoles={["admin", "receptionist", "doctor"]}>
+            <HospitalizationDashboard />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/users"
