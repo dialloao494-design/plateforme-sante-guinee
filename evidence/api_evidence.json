@@ -1,0 +1,113 @@
+{
+  "1_audit_logs": {
+    "status": 200,
+    "count": 10,
+    "sample": [
+      {
+        "id": 41,
+        "actor_id": 7,
+        "actor_role": "receptionist",
+        "patient_id": 11,
+        "clinic_id": 1,
+        "action": "update",
+        "resource_type": "billing_payment",
+        "resource_id": 9,
+        "timestamp": "2026-06-11T21:54:41.603457",
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": 40,
+        "actor_id": 7,
+        "actor_role": "receptionist",
+        "patient_id": 11,
+        "clinic_id": 1,
+        "action": "update",
+        "resource_type": "billing_payment",
+        "resource_id": 8,
+        "timestamp": "2026-06-11T21:54:41.355138",
+        "ip": "127.0.0.1"
+      },
+      {
+        "id": 39,
+        "actor_id": 7,
+        "actor_role": "receptionist",
+        "patient_id": 11,
+        "clinic_id": 1,
+        "action": "update",
+        "resource_type": "billing_payment",
+        "resource_id": 7,
+        "timestamp": "2026-06-11T21:54:41.132127",
+        "ip": "127.0.0.1"
+      }
+    ]
+  },
+  "2_timeline": {
+    "status": 200,
+    "patient_id": 12,
+    "event_types": [
+      "appointment",
+      "billing_charge",
+      "cis_consultation",
+      "lab_order",
+      "pharmacy_order",
+      "prescription"
+    ]
+  },
+  "3_documents": {
+    "status": 200,
+    "count": 0
+  },
+  "4_backup": {
+    "status": "ok",
+    "backup_dir": "C:\\Users\\wandassai\\Downloads\\plateforme-sante-guinee\\backups",
+    "checked_at": "2026-06-11T21:57:39.924822Z",
+    "latest_backup": "sante_20260611.sql.gz",
+    "age_hours": 19.04,
+    "gzip_valid": true,
+    "message": "Daily backup validation passed"
+  },
+  "5_consultation_billing": {
+    "pending_consultation": 1
+  },
+  "6_laboratory_billing": {
+    "pending_laboratory": 1
+  },
+  "7_pharmacy_billing": {
+    "pending_pharmacy": 1
+  },
+  "payments": [
+    {
+      "id": 10,
+      "type": "consultation",
+      "status": 200,
+      "amount_gnf": 150000
+    },
+    {
+      "id": 11,
+      "type": "laboratory",
+      "status": 200,
+      "amount_gnf": 75000
+    },
+    {
+      "id": 12,
+      "type": "pharmacy",
+      "status": 200,
+      "amount_gnf": 25000
+    }
+  ],
+  "8_daily_revenue": {
+    "date": "2026-06-11",
+    "total_collected_gnf": 1175000,
+    "total_pending_gnf": 0,
+    "paid_count": 12,
+    "pending_count": 0,
+    "by_charge_type": {
+      "consultation": 750000,
+      "laboratory": 375000,
+      "pharmacy": 50000
+    },
+    "by_payment_method": {
+      "cash": 1175000
+    }
+  }
+}

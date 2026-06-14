@@ -1,9 +1,8 @@
 """
 Orange Money / MTN Mobile Money integration layer (Guinea).
 
-This module centralises configuration and initiation. Live HTTP calls to
-Orange/MTN APIs are deferred behind env flags so the platform can ship with
-Stripe while Mobile Money is progressively enabled in production.
+Clinic visit payments are collected at reception (cash / Orange Money).
+This module describes optional mobile-money rails for future treasury integration.
 """
 
 from __future__ import annotations
@@ -22,14 +21,12 @@ def _env_flag(name: str) -> bool:
 
 
 def describe_rails() -> dict[str, Any]:
-    stripe_on = bool(os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY"))
     orange_live = _env_flag("ORANGE_MONEY_LIVE")
     mtn_live = _env_flag("MTN_MOMO_LIVE")
     return {
-        "stripe": {
-            "enabled": stripe_on,
-            "checkout": stripe_on,
-            "notes": "Hosted Checkout / webhooks when STRIPE_* configured.",
+        "clinic_cashier": {
+            "enabled": True,
+            "notes": "Primary path: POST /clinical/billing/charges/{id}/pay (espèces / Orange Money).",
         },
         "mobile_money": {
             "orange_gn": {

@@ -1,0 +1,105 @@
+"""RBAC helpers for clinic-scoped clinical workflows."""
+
+from __future__ import annotations
+
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
+
+import models
+from core.rbac import (
+    ADMIN_ROLES,
+    BILLING_PAY_ROLES,
+    BILLING_READ_ROLES,
+    BILLING_REVENUE_ROLES,
+    CASHIER_ROLES,
+    DOCTOR_ROLES,
+    LAB_QUEUE_ROLES,
+    LAB_ROLES,
+    PHARMACY_QUEUE_ROLES,
+    PHARMACY_ROLES,
+    RECEPTION_ROLES,
+)
+from core.roles import requires_clinic_assignment
+from models.user import User
+
+CLINIC_OPS_ROLES = (
+    "admin",
+    "receptionist",
+    "cashier",
+    "doctor",
+    "lab_technician",
+    "pharmacist",
+)
+
+# Re-export role tuples for routers.
+__all__ = [
+    "RECEPTION_ROLES",
+    "CASHIER_ROLES",
+    "DOCTOR_ROLES",
+    "LAB_ROLES",
+    "PHARMACY_ROLES",
+    "LAB_QUEUE_ROLES",
+    "PHARMACY_QUEUE_ROLES",
+    "ADMIN_ROLES",
+    "CLINIC_OPS_ROLES",
+    "BILLING_READ_ROLES",
+    "BILLING_PAY_ROLES",
+    "BILLING_REVENUE_ROLES",
+    "user_clinic_id",
+    "assert_role",
+    "assert_clinic_access",
+    "resolve_clinic_for_user",
+    "doctor_for_user",
+]
+
+
+def user_clinic_id(user: User) -> int | None:
+    if user.clinic_id:
+        return user.clinic_id
+    if user.role == "doctor" and user.doctor_profile and user.doctor_profile.clinic_id:
+        return user.doctor_profile.clinic_id
+    return None
+
+
+def assert_role(user: User, allowed: tuple[str, ...]) -> None:
+    if user.role not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Requires one of roles: {list(allowed)}",
+        )
+
+
+def assert_clinic_access(user: User, clinic_id: int) -> None:
+    user_cid = user_clinic_id(user)
+    if user_cid != clinic_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied for this clinic",
+        )
+
+
+def resolve_clinic_for_user(db: Session, user: User) -> models.Clinic:
+    cid = user_clinic_id(user)
+    if cid is None:
+        if requires_clinic_assignment(user.role):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User is not assigned to a clinic",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is not assigned to a clinic",
+        )
+    clinic = db.query(models.Clinic).filter(models.Clinic.id == cid).first()
+    if not clinic or not clinic.is_active:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Clinic not found")
+    return clinic
+
+
+def doctor_for_user(db: Session, user: User) -> models.Doctor:
+    if user.role != "doctor":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Doctor only")
+    doc = db.query(models.Doctor).filter(models.Doctor.user_id == user.id).first()
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor profile missing")
+    return doc

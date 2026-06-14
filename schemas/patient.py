@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class PatientBase(BaseModel):
-    user_id: int
+    user_id: Optional[int] = None
     first_name: str
     last_name: str
     age: int

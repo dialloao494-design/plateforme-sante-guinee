@@ -1,7 +1,5 @@
 """
-Payment settlement policy — which channels may mark an appointment as paid.
-
-Public HTTP clients must never settle via an implicit stub; Stripe proof or admin ops only.
+Payment settlement policy — admin manual and dev stub only (in-clinic billing uses clinical API).
 """
 
 from __future__ import annotations
@@ -12,16 +10,11 @@ from functools import lru_cache
 
 from core.settings import get_settings
 
-# Channels that may transition appointment → paid + confirmed.
-SETTLEMENT_CHANNEL_STRIPE_CHECKOUT = "stripe_checkout"
-SETTLEMENT_CHANNEL_STRIPE_WEBHOOK = "stripe_webhook"
 SETTLEMENT_CHANNEL_ADMIN_MANUAL = "admin_manual"
 SETTLEMENT_CHANNEL_DEV_STUB = "dev_stub"
 
 AUTHORIZED_SETTLEMENT_CHANNELS = frozenset(
     {
-        SETTLEMENT_CHANNEL_STRIPE_CHECKOUT,
-        SETTLEMENT_CHANNEL_STRIPE_WEBHOOK,
         SETTLEMENT_CHANNEL_ADMIN_MANUAL,
         SETTLEMENT_CHANNEL_DEV_STUB,
     }
@@ -39,17 +32,20 @@ def _env_flag(name: str, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+DEMO_STAGING_STUB_TOKEN = "demo_plateforme_sante_guinee_stub_v1"
+
+
 @lru_cache(maxsize=1)
 def payment_stub_token() -> str:
-    return (os.getenv("PAYMENT_STUB_TOKEN") or "").strip()
+    token = (os.getenv("PAYMENT_STUB_TOKEN") or "").strip()
+    if token:
+        return token
+    if is_stub_settlement_allowed() and get_settings().is_staging:
+        return DEMO_STAGING_STUB_TOKEN
+    return ""
 
 
 def is_stub_settlement_allowed() -> bool:
-    """
-    Dev/staging stub settlements (manual treasury simulation).
-
-    Never enabled in production — even if ALLOW_STUB_PAYMENT is mistakenly set.
-    """
     settings = get_settings()
     if settings.is_production:
         return False
@@ -57,10 +53,16 @@ def is_stub_settlement_allowed() -> bool:
 
 
 def validate_stub_token(provided: str | None) -> bool:
-    expected = payment_stub_token()
-    if not expected or not provided:
+    provided_clean = (provided or "").strip()
+    if not provided_clean:
         return False
-    return secrets.compare_digest(expected.strip(), provided.strip())
+    expected = payment_stub_token()
+    if expected and secrets.compare_digest(expected, provided_clean):
+        return True
+    settings = get_settings()
+    if settings.is_staging and is_stub_settlement_allowed():
+        return secrets.compare_digest(DEMO_STAGING_STUB_TOKEN, provided_clean)
+    return False
 
 
 def assert_settlement_channel(channel: str) -> str:

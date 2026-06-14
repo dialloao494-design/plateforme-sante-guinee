@@ -181,7 +181,6 @@ const DoctorAppointments = () => {
                 <p><strong>Date:</strong> {new Date(appointment.date).toLocaleString('fr-FR')}</p>
                 <p><strong>Durée:</strong> {appointment.duration_minutes} minutes</p>
                 <p><strong>Prix:</strong> {formatGNF(appointment.price)}</p>
-                <p><strong>Paiement:</strong> {presentation.paymentLabel}</p>
                 <p>
                   <strong>Statut:</strong> <span className={presentation.statusColor}>{presentation.displayStatus}</span>
                 </p>
@@ -191,7 +190,6 @@ const DoctorAppointments = () => {
                 actions={actions}
                 appointment={appointment}
                 onConfirm={(item) => handleConfirm(item.id)}
-                onPay={() => {}}
                 onCancel={() => handleCancel(appointment.id)}
                 onOpenMessages={() => navigate(`/messages/${appointment.id}`)}
                 onJoinConsultation={(item) => navigate(`/consultation/${item.id}`)}

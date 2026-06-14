@@ -8,8 +8,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from database import SessionLocal
 import models
-from routers import patient, patient_record, rendezvous, doctor, auth, payments, teleconsultation, notifications, messages
-from routers import users, appointments, doctor_dashboard, ws
+from routers import patient, patient_record, rendezvous, doctor, auth, teleconsultation, notifications, messages
+from routers import users, appointments, doctor_dashboard, ws, clinical, medical_history
 from security import hash_password, verify_password
 from services.user_provisioning import register_public_user
 import os
@@ -234,11 +234,12 @@ app.include_router(doctor.router)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(appointments.router)
-app.include_router(payments.router)
 app.include_router(teleconsultation.router)
 app.include_router(notifications.router)
 app.include_router(messages.router)
 app.include_router(doctor_dashboard.router)
+app.include_router(clinical.router)
+app.include_router(medical_history.router)
 app.include_router(ws.router)
 
 
@@ -323,6 +324,7 @@ async def startup_event():
         from database import engine, Base
         # Import all model modules so their tables are registered on Base
         import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message, models.notification_event, models.attachment_access_log, models.clinical_note, models.consultation_summary, models.patient_document, models.clinical_audit_log
+        import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.medical_history  # noqa: F401 — CIS + history
 
         # Always create tables if they don't exist (safe / idempotent)
         Base.metadata.create_all(bind=engine)
@@ -330,7 +332,11 @@ async def startup_event():
 
         from database_migrations import (
             ensure_attachment_access_log_table,
+            ensure_clinic_charges_table,
+            ensure_clinical_audit_clinic_id,
+            ensure_clinical_audit_patient_nullable,
             ensure_doctor_geolocation_columns,
+            ensure_medical_history_schema,
             ensure_message_attachment_columns,
             ensure_patient_dossier_schema,
         )
@@ -339,6 +345,10 @@ async def startup_event():
         ensure_message_attachment_columns(engine)
         ensure_attachment_access_log_table(engine)
         ensure_patient_dossier_schema(engine)
+        ensure_clinic_charges_table(engine)
+        ensure_clinical_audit_clinic_id(engine)
+        ensure_clinical_audit_patient_nullable(engine)
+        ensure_medical_history_schema(engine)
 
         from database import SessionLocal
         from services.user_provisioning import bootstrap_initial_admin
@@ -367,6 +377,9 @@ async def startup_event():
             from services.pilot_seed import seed_pilot_accounts
 
             seed_pilot_accounts()
+            from services.clinic_pilot_seed import seed_clinic_pilot_accounts
+
+            seed_clinic_pilot_accounts()
         except Exception as exc:
             logger.error("Failed to seed pilot accounts: %s", exc)
     else:
@@ -379,6 +392,19 @@ async def startup_event():
             seed_demo_clinic_data()
         except Exception as exc:
             logger.error("Failed to seed demo clinic dataset: %s", exc)
+
+    if _env_flag("ENABLE_MEDICAL_HISTORY_SEED", default=False):
+        try:
+            from database import SessionLocal
+            from services.medical_history_seed import seed_medical_history
+
+            db = SessionLocal()
+            try:
+                seed_medical_history(db)
+            finally:
+                db.close()
+        except Exception as exc:
+            logger.error("Failed to seed medical history dataset: %s", exc)
 
     if _env_flag("ENABLE_STARTUP_SEED", default=False):
         ensure_dev_test_user()

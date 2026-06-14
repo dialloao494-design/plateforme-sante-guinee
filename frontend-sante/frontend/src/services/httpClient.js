@@ -15,6 +15,17 @@ const isLocalDevApi = (u) => {
   }
 };
 
+/** Upgrade API URL to HTTPS only when the page is already served over HTTPS. */
+const shouldForceHttps = (url) => {
+  if (!url || !String(url).startsWith('http://')) {
+    return false;
+  }
+  if (isLocalDevApi(url)) {
+    return false;
+  }
+  return typeof window !== 'undefined' && window.location.protocol === 'https:';
+};
+
 const defaultApiPort = () => String(import.meta.env.VITE_API_PORT || '8000').trim();
 
 /** Map browser hostname to a stable API host (Windows: localhost often hits ::1 / Jitsi on :8000). */
@@ -132,7 +143,7 @@ export const API_BASE_URL = (() => {
     throw new Error('Invalid API URL in production: localhost is not allowed');
   }
 
-  if (url.startsWith('http://') && !isLocalDevApi(url)) {
+  if (shouldForceHttps(url)) {
     return url.replace('http://', 'https://');
   }
 
@@ -192,15 +203,11 @@ httpClient.interceptors.request.use(
       config.url = ensureNginxApiPath(config.url);
     }
 
-    if (
-      typeof config.baseURL === 'string' &&
-      config.baseURL.startsWith('http://') &&
-      !isLocalDevApi(config.baseURL)
-    ) {
+    if (typeof config.baseURL === 'string' && shouldForceHttps(config.baseURL)) {
       config.baseURL = config.baseURL.replace('http://', 'https://');
     }
 
-    if (typeof config.url === 'string' && /^http:\/\//i.test(config.url) && !isLocalDevApi(config.url)) {
+    if (typeof config.url === 'string' && /^http:\/\//i.test(config.url) && shouldForceHttps(config.url)) {
       config.url = config.url.replace(/^http:\/\//i, 'https://');
     }
 

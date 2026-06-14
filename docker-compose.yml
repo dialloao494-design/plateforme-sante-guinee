@@ -62,6 +62,8 @@ services:
         VITE_SAME_ORIGIN_API: ${VITE_SAME_ORIGIN_API:-true}
         VITE_TELECONSULT_PROVIDER: ${VITE_TELECONSULT_PROVIDER:-stub}
         VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
+        VITE_ENABLE_PAYMENT_SIMULATION: ${VITE_ENABLE_PAYMENT_SIMULATION:-true}
+        VITE_PAYMENT_STUB_TOKEN: ${VITE_PAYMENT_STUB_TOKEN:-demo_plateforme_sante_guinee_stub_v1}
     restart: unless-stopped
     expose:
       - "80"

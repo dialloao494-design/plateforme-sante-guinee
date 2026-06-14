@@ -1,0 +1,888 @@
+"""Modular clinical information system — REST API."""
+
+from __future__ import annotations
+
+from datetime import date
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy.orm import Session
+
+import models
+from core.clinical_access import (
+    ADMIN_ROLES,
+    BILLING_PAY_ROLES,
+    BILLING_READ_ROLES,
+    BILLING_REVENUE_ROLES,
+    CLINIC_OPS_ROLES,
+    DOCTOR_ROLES,
+    LAB_QUEUE_ROLES,
+    LAB_ROLES,
+    PHARMACY_QUEUE_ROLES,
+    PHARMACY_ROLES,
+    RECEPTION_ROLES,
+    assert_clinic_access,
+    assert_role,
+    doctor_for_user,
+    resolve_clinic_for_user,
+    user_clinic_id,
+)
+from core.http_utils import client_ip
+from database import get_db
+from schemas.clinical import (
+    ChargePaymentRequest,
+    ClinicOperationsSummary,
+    ClinicChargeResponse,
+    ClinicCreate,
+    ClinicResponse,
+    ClinicalAppointmentCreate,
+    ClinicalAppointmentResponse,
+    ClinicalAuditLogResponse,
+    ConsultationResponse,
+    ConsultationStart,
+    ConsultationUpdate,
+    DailyRevenueSummary,
+    LabOrderCreate,
+    LabOrderResponse,
+    LabOrderStatusUpdate,
+    LabResultCreate,
+    LabResultResponse,
+    PatientIntakeCreate,
+    PatientIntakeResponse,
+    PharmacyOrderResponse,
+    PharmacyStatusUpdate,
+    PrescriptionCreate,
+    PrescriptionResponse,
+    StaffCreate,
+    StaffResponse,
+)
+from security import get_current_user
+from services.clinical_audit_service import ClinicalAuditService
+from services.clinic_operations_service import clinic_operations_summary
+from services.clinic_billing_service import ClinicBillingService
+from services.clinical_workflow_service import ClinicalWorkflowService
+from services.medical_history_service import MedicalHistoryService
+from schemas import medical_history as mh_schemas
+from services.cis_audit import log_cis_denied
+from services.backup_validation_service import default_backup_dir, validate_backup_directory
+from services.user_provisioning import EmailAlreadyRegisteredError, create_staff_user
+from models.user import User
+
+router = APIRouter(prefix="/clinical", tags=["Clinical CIS"])
+
+
+def _require_role(
+    db: Session,
+    user: User,
+    allowed: tuple[str, ...],
+    request: Request,
+    *,
+    resource_type: str = "cis",
+    clinic_id: int | None = None,
+) -> None:
+    if user.role in allowed:
+        return
+    log_cis_denied(
+        db,
+        actor=user,
+        action="access",
+        resource_type=resource_type,
+        clinic_id=clinic_id,
+        client_ip=client_ip(request),
+    )
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=f"Requires one of roles: {list(allowed)}",
+    )
+
+
+def _charge_response(charge: models.ClinicCharge) -> ClinicChargeResponse:
+    patient_name = None
+    if charge.patient:
+        patient_name = f"{charge.patient.first_name} {charge.patient.last_name}".strip()
+    return ClinicChargeResponse(
+        id=charge.id,
+        clinic_id=charge.clinic_id,
+        patient_id=charge.patient_id,
+        charge_type=charge.charge_type,
+        source_type=charge.source_type,
+        source_id=charge.source_id,
+        description=charge.description,
+        amount_gnf=charge.amount_gnf,
+        payment_status=charge.payment_status,
+        payment_method=charge.payment_method,
+        paid_at=charge.paid_at,
+        created_at=charge.created_at,
+        patient_name=patient_name,
+    )
+
+
+def _appointment_response(rdv: models.RendezVous) -> ClinicalAppointmentResponse:
+    patient_name = None
+    doctor_name = None
+    if rdv.patient:
+        patient_name = f"{rdv.patient.first_name} {rdv.patient.last_name}".strip()
+    if rdv.doctor:
+        doctor_name = rdv.doctor.name
+    return ClinicalAppointmentResponse(
+        id=rdv.id,
+        clinic_id=rdv.clinic_id,
+        patient_id=rdv.patient_id,
+        doctor_id=rdv.doctor_id,
+        date=rdv.date,
+        duration_minutes=rdv.duration_minutes,
+        status=rdv.status,
+        clinical_status=rdv.clinical_status,
+        consultation_type=rdv.consultation_type,
+        patient_name=patient_name,
+        doctor_name=doctor_name,
+    )
+
+
+def _consultation_response(c: models.ClinicalConsultation) -> ConsultationResponse:
+    patient_name = doctor_name = None
+    if c.patient:
+        patient_name = f"{c.patient.first_name} {c.patient.last_name}".strip()
+    if c.doctor:
+        doctor_name = c.doctor.name
+    return ConsultationResponse(
+        id=c.id,
+        clinic_id=c.clinic_id,
+        appointment_id=c.appointment_id,
+        patient_id=c.patient_id,
+        doctor_id=c.doctor_id,
+        status=c.status,
+        chief_complaint=c.chief_complaint,
+        history=c.history,
+        examination=c.examination,
+        diagnosis=c.diagnosis,
+        treatment_plan=c.treatment_plan,
+        started_at=c.started_at,
+        completed_at=c.completed_at,
+        patient_name=patient_name,
+        doctor_name=doctor_name,
+    )
+
+
+# --- Admin: clinic & staff ---
+
+
+@router.post("/clinics", response_model=ClinicResponse, status_code=status.HTTP_201_CREATED)
+def create_clinic(
+    body: ClinicCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("admin",))
+    clinic = models.Clinic(
+        name=body.name.strip(),
+        address=body.address,
+        city=body.city,
+        phone=body.phone,
+        email=body.email,
+        is_active=True,
+    )
+    db.add(clinic)
+    db.commit()
+    db.refresh(clinic)
+    return clinic
+
+
+@router.get("/clinics", response_model=List[ClinicResponse])
+def list_clinics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role == "admin":
+        return db.query(models.Clinic).filter(models.Clinic.is_active.is_(True)).all()
+    cid = user_clinic_id(current_user)
+    if not cid:
+        raise HTTPException(status_code=400, detail="No clinic assigned")
+    clinic = db.query(models.Clinic).filter(models.Clinic.id == cid).first()
+    return [clinic] if clinic else []
+
+
+@router.post("/staff", response_model=StaffResponse, status_code=status.HTTP_201_CREATED)
+def provision_staff(
+    body: StaffCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("admin",))
+    clinic = db.query(models.Clinic).filter(models.Clinic.id == body.clinic_id).first()
+    if not clinic:
+        raise HTTPException(status_code=404, detail="Clinic not found")
+    try:
+        provisioned = create_staff_user(
+            db,
+            email=body.email,
+            password=body.password,
+            role=body.role,
+            clinic_id=body.clinic_id,
+            channel="admin_api",
+            actor_user_id=current_user.id,
+        )
+    except EmailAlreadyRegisteredError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    user = provisioned.user
+    return StaffResponse(id=user.id, email=user.email, role=user.role, clinic_id=user.clinic_id)
+
+
+# --- Clinic operations (unified dashboard) ---
+
+
+@router.get("/operations/summary", response_model=ClinicOperationsSummary)
+def operations_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, CLINIC_OPS_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return ClinicOperationsSummary(**clinic_operations_summary(db, clinic_id=clinic.id))
+
+
+# --- Reception ---
+
+
+@router.post("/reception/patients", response_model=PatientIntakeResponse, status_code=201)
+def intake_patient(
+    body: PatientIntakeCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, RECEPTION_ROLES, request, clinic_id=clinic.id)
+    patient = ClinicalWorkflowService.register_patient(
+        db,
+        clinic_id=clinic.id,
+        payload=body,
+        actor=current_user,
+        client_ip=client_ip(request),
+    )
+    return patient
+
+
+@router.post("/reception/appointments", response_model=ClinicalAppointmentResponse, status_code=201)
+def create_clinical_appointment(
+    body: ClinicalAppointmentCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, RECEPTION_ROLES, request, clinic_id=clinic.id)
+    rdv = ClinicalWorkflowService.create_appointment(
+        db,
+        clinic_id=clinic.id,
+        payload=body,
+        actor=current_user,
+        client_ip=client_ip(request),
+    )
+    db.refresh(rdv, ["patient", "doctor"])
+    return _appointment_response(rdv)
+
+
+@router.get("/reception/queue", response_model=List[ClinicalAppointmentResponse])
+def reception_queue(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, CLINIC_OPS_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    items = ClinicalWorkflowService.reception_queue(db, clinic_id=clinic.id)
+    for item in items:
+        db.refresh(item, ["patient", "doctor"])
+    return [_appointment_response(i) for i in items]
+
+
+@router.post("/reception/appointments/{appointment_id}/check-in", response_model=ClinicalAppointmentResponse)
+def check_in(
+    appointment_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, RECEPTION_ROLES, request, clinic_id=clinic.id)
+    rdv = ClinicalWorkflowService.check_in_appointment(
+        db,
+        appointment_id=appointment_id,
+        clinic_id=clinic.id,
+        actor=current_user,
+        client_ip=client_ip(request),
+    )
+    db.refresh(rdv, ["patient", "doctor"])
+    return _appointment_response(rdv)
+
+
+@router.get("/reception/doctors")
+def clinic_doctors(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, CLINIC_OPS_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    doctors = (
+        db.query(models.Doctor)
+        .filter(models.Doctor.clinic_id == clinic.id)
+        .order_by(models.Doctor.last_name)
+        .all()
+    )
+    return [{"id": d.id, "name": d.name, "specialty": d.specialty} for d in doctors]
+
+
+@router.get("/reception/follow-ups", response_model=mh_schemas.FollowUpReceptionSummary)
+def reception_follow_ups(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, RECEPTION_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return MedicalHistoryService.reception_follow_up_summary(db, clinic_id=clinic.id)
+
+
+# --- Doctor ---
+
+
+@router.get("/doctor/queue", response_model=List[ClinicalAppointmentResponse])
+def doctor_queue(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, (*DOCTOR_ROLES, *ADMIN_ROLES))
+    clinic = resolve_clinic_for_user(db, current_user)
+    if current_user.role == "doctor":
+        doctor = doctor_for_user(db, current_user)
+        items = ClinicalWorkflowService.doctor_queue(
+            db, clinic_id=clinic.id, doctor_id=doctor.id
+        )
+    else:
+        items = (
+            db.query(models.RendezVous)
+            .filter(
+                models.RendezVous.clinic_id == clinic.id,
+                models.RendezVous.clinical_status.in_(("checked_in", "in_consultation")),
+                models.RendezVous.status != "cancelled",
+            )
+            .order_by(models.RendezVous.date.asc())
+            .all()
+        )
+    for item in items:
+        db.refresh(item, ["patient", "doctor"])
+    return [_appointment_response(i) for i in items]
+
+
+@router.post("/consultations", response_model=ConsultationResponse, status_code=201)
+def start_consultation(
+    body: ConsultationStart,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, DOCTOR_ROLES, request, clinic_id=clinic.id)
+    doctor = doctor_for_user(db, current_user)
+    consultation = ClinicalWorkflowService.start_consultation(
+        db,
+        clinic_id=clinic.id,
+        appointment_id=body.appointment_id,
+        doctor=doctor,
+        chief_complaint=body.chief_complaint,
+        actor=current_user,
+        client_ip=client_ip(request),
+    )
+    db.refresh(consultation, ["patient", "doctor"])
+    return _consultation_response(consultation)
+
+
+@router.patch("/consultations/{consultation_id}", response_model=ConsultationResponse)
+def update_consultation(
+    consultation_id: int,
+    body: ConsultationUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, DOCTOR_ROLES, request, clinic_id=clinic.id)
+    doctor = doctor_for_user(db, current_user)
+    consultation = ClinicalWorkflowService.update_consultation(
+        db,
+        consultation_id=consultation_id,
+        clinic_id=clinic.id,
+        doctor_id=doctor.id,
+        payload=body,
+        actor=current_user,
+        client_ip=client_ip(request),
+    )
+    db.refresh(consultation, ["patient", "doctor"])
+    return _consultation_response(consultation)
+
+
+@router.post("/consultations/{consultation_id}/lab-orders", response_model=LabOrderResponse, status_code=201)
+def order_lab(
+    consultation_id: int,
+    body: LabOrderCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, DOCTOR_ROLES, request, clinic_id=clinic.id)
+    doctor = doctor_for_user(db, current_user)
+    order = ClinicalWorkflowService.create_lab_order(
+        db,
+        clinic_id=clinic.id,
+        consultation_id=consultation_id,
+        doctor=doctor,
+        user=current_user,
+        payload=body,
+        client_ip=client_ip(request),
+    )
+    db.refresh(order, ["patient"])
+    return LabOrderResponse(
+        id=order.id,
+        clinic_id=order.clinic_id,
+        consultation_id=order.consultation_id,
+        patient_id=order.patient_id,
+        test_code=order.test_code,
+        test_name=order.test_name,
+        priority=order.priority,
+        status=order.status,
+        patient_name=f"{order.patient.first_name} {order.patient.last_name}" if order.patient else None,
+    )
+
+
+@router.post("/consultations/{consultation_id}/prescriptions", response_model=PrescriptionResponse, status_code=201)
+def prescribe(
+    consultation_id: int,
+    body: PrescriptionCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, DOCTOR_ROLES, request, clinic_id=clinic.id)
+    doctor = doctor_for_user(db, current_user)
+    rx = ClinicalWorkflowService.create_prescription(
+        db,
+        clinic_id=clinic.id,
+        consultation_id=consultation_id,
+        doctor=doctor,
+        payload=body,
+        actor=current_user,
+        client_ip=client_ip(request),
+    )
+    db.refresh(rx, ["items", "patient"])
+    return PrescriptionResponse(
+        id=rx.id,
+        clinic_id=rx.clinic_id,
+        consultation_id=rx.consultation_id,
+        patient_id=rx.patient_id,
+        status=rx.status,
+        items=[
+            {
+                "medication_name": i.medication_name,
+                "dosage": i.dosage,
+                "route": i.route,
+                "frequency": i.frequency,
+                "duration_days": i.duration_days,
+                "quantity": i.quantity,
+                "instructions": i.instructions,
+            }
+            for i in rx.items
+        ],
+        patient_name=f"{rx.patient.first_name} {rx.patient.last_name}" if rx.patient else None,
+    )
+
+
+@router.post(
+    "/consultations/{consultation_id}/vitals",
+    response_model=mh_schemas.PatientVitalSignsResponse,
+    status_code=201,
+)
+def record_consultation_vitals(
+    consultation_id: int,
+    body: mh_schemas.PatientVitalSignsCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, DOCTOR_ROLES, request, clinic_id=clinic.id)
+    doctor = doctor_for_user(db, current_user)
+    consultation = (
+        db.query(models.ClinicalConsultation)
+        .filter(
+            models.ClinicalConsultation.id == consultation_id,
+            models.ClinicalConsultation.clinic_id == clinic.id,
+            models.ClinicalConsultation.doctor_id == doctor.id,
+            models.ClinicalConsultation.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if not consultation:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+    payload = body.model_copy(update={"consultation_id": consultation_id})
+    return MedicalHistoryService.record_vitals(
+        db,
+        consultation.patient_id,
+        payload,
+        current_user,
+        client_ip=client_ip(request),
+    )
+
+
+@router.post(
+    "/consultations/{consultation_id}/follow-ups",
+    response_model=mh_schemas.FollowUpScheduleResponse,
+    status_code=201,
+)
+def schedule_consultation_follow_up(
+    consultation_id: int,
+    body: mh_schemas.FollowUpScheduleCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, DOCTOR_ROLES, request, clinic_id=clinic.id)
+    doctor = doctor_for_user(db, current_user)
+    consultation = (
+        db.query(models.ClinicalConsultation)
+        .filter(
+            models.ClinicalConsultation.id == consultation_id,
+            models.ClinicalConsultation.clinic_id == clinic.id,
+            models.ClinicalConsultation.doctor_id == doctor.id,
+            models.ClinicalConsultation.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if not consultation:
+        raise HTTPException(status_code=404, detail="Consultation not found")
+    fu = MedicalHistoryService.schedule_follow_up(
+        db,
+        patient_id=consultation.patient_id,
+        clinic_id=clinic.id,
+        consultation_id=consultation_id,
+        doctor_id=doctor.id,
+        payload=body,
+        current_user=current_user,
+        client_ip=client_ip(request),
+    )
+    db.refresh(fu, ["patient"])
+    return mh_schemas.FollowUpScheduleResponse(
+        id=fu.id,
+        patient_id=fu.patient_id,
+        clinic_id=fu.clinic_id,
+        consultation_id=fu.consultation_id,
+        doctor_id=fu.doctor_id,
+        doctor_name=doctor.name,
+        patient_name=f"{fu.patient.first_name} {fu.patient.last_name}" if fu.patient else None,
+        scheduled_date=fu.scheduled_date,
+        interval_type=fu.interval_type,
+        visit_type=fu.visit_type,
+        reason=fu.reason,
+        clinical_notes=fu.clinical_notes,
+        status=fu.status,
+        follow_up_appointment_id=fu.follow_up_appointment_id,
+        created_at=fu.created_at,
+    )
+
+
+# --- Laboratory ---
+
+
+@router.get("/lab/orders", response_model=List[LabOrderResponse])
+def lab_queue(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, LAB_QUEUE_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    orders = ClinicalWorkflowService.lab_queue(db, clinic_id=clinic.id)
+    out = []
+    for order in orders:
+        db.refresh(order, ["patient"])
+        out.append(
+            LabOrderResponse(
+                id=order.id,
+                clinic_id=order.clinic_id,
+                consultation_id=order.consultation_id,
+                patient_id=order.patient_id,
+                test_code=order.test_code,
+                test_name=order.test_name,
+                priority=order.priority,
+                status=order.status,
+                patient_name=f"{order.patient.first_name} {order.patient.last_name}"
+                if order.patient
+                else None,
+            )
+        )
+    return out
+
+
+@router.patch("/lab/orders/{order_id}", response_model=LabOrderResponse)
+def update_lab_order(
+    order_id: int,
+    body: LabOrderStatusUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, LAB_ROLES, request, clinic_id=clinic.id)
+    order = ClinicalWorkflowService.update_lab_order_status(
+        db,
+        order_id=order_id,
+        clinic_id=clinic.id,
+        payload=body,
+        actor=current_user,
+        client_ip=client_ip(request),
+    )
+    db.refresh(order, ["patient"])
+    return LabOrderResponse(
+        id=order.id,
+        clinic_id=order.clinic_id,
+        consultation_id=order.consultation_id,
+        patient_id=order.patient_id,
+        test_code=order.test_code,
+        test_name=order.test_name,
+        priority=order.priority,
+        status=order.status,
+        patient_name=f"{order.patient.first_name} {order.patient.last_name}" if order.patient else None,
+    )
+
+
+@router.post("/lab/orders/{order_id}/results", response_model=LabResultResponse, status_code=201)
+def record_lab_result(
+    order_id: int,
+    body: LabResultCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, LAB_ROLES, request, clinic_id=clinic.id)
+    result = ClinicalWorkflowService.record_lab_result(
+        db,
+        order_id=order_id,
+        clinic_id=clinic.id,
+        user=current_user,
+        payload=body,
+        client_ip=client_ip(request),
+    )
+    return result
+
+
+@router.post("/lab/results/{result_id}/validate", response_model=LabResultResponse)
+def validate_lab_result(
+    result_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, LAB_ROLES, request, clinic_id=clinic.id)
+    result = ClinicalWorkflowService.validate_lab_result(
+        db,
+        result_id=result_id,
+        clinic_id=clinic.id,
+        user=current_user,
+        client_ip=client_ip(request),
+    )
+    return result
+
+
+# --- Pharmacy ---
+
+
+@router.get("/pharmacy/orders", response_model=List[PharmacyOrderResponse])
+def pharmacy_queue(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, PHARMACY_QUEUE_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    orders = ClinicalWorkflowService.pharmacy_queue(db, clinic_id=clinic.id)
+    out = []
+    for order in orders:
+        db.refresh(order, ["patient", "prescription"])
+        meds = ""
+        if order.prescription and order.prescription.items:
+            meds = ", ".join(i.medication_name for i in order.prescription.items)
+        out.append(
+            PharmacyOrderResponse(
+                id=order.id,
+                clinic_id=order.clinic_id,
+                prescription_id=order.prescription_id,
+                patient_id=order.patient_id,
+                status=order.status,
+                patient_name=f"{order.patient.first_name} {order.patient.last_name}"
+                if order.patient
+                else None,
+                medications=meds,
+            )
+        )
+    return out
+
+
+@router.patch("/pharmacy/orders/{order_id}", response_model=PharmacyOrderResponse)
+def update_pharmacy_order(
+    order_id: int,
+    body: PharmacyStatusUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, PHARMACY_ROLES, request, clinic_id=clinic.id)
+    order = ClinicalWorkflowService.update_pharmacy_order(
+        db,
+        order_id=order_id,
+        clinic_id=clinic.id,
+        user=current_user,
+        payload=body,
+        client_ip=client_ip(request),
+    )
+    db.refresh(order, ["patient", "prescription"])
+    meds = ""
+    if order.prescription and order.prescription.items:
+        meds = ", ".join(i.medication_name for i in order.prescription.items)
+    return PharmacyOrderResponse(
+        id=order.id,
+        clinic_id=order.clinic_id,
+        prescription_id=order.prescription_id,
+        patient_id=order.patient_id,
+        status=order.status,
+        patient_name=f"{order.patient.first_name} {order.patient.last_name}" if order.patient else None,
+        medications=meds,
+    )
+
+
+@router.patch("/doctors/{doctor_id}/clinic/{clinic_id}", status_code=status.HTTP_204_NO_CONTENT)
+def assign_doctor_to_clinic(
+    doctor_id: int,
+    clinic_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("admin",))
+    doctor = db.query(models.Doctor).filter(models.Doctor.id == doctor_id).first()
+    clinic = db.query(models.Clinic).filter(models.Clinic.id == clinic_id).first()
+    if not doctor or not clinic:
+        raise HTTPException(status_code=404, detail="Doctor or clinic not found")
+    doctor.clinic_id = clinic_id
+    staff_user = db.query(User).filter(User.id == doctor.user_id).first()
+    if staff_user:
+        staff_user.clinic_id = clinic_id
+    db.commit()
+    return None
+
+
+# --- Journey trace ---
+
+
+@router.get("/patients/{patient_id}/journey")
+def patient_journey(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, RECEPTION_ROLES + DOCTOR_ROLES + LAB_ROLES + PHARMACY_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return ClinicalWorkflowService.patient_journey(db, clinic_id=clinic.id, patient_id=patient_id)
+
+
+# --- Audit compliance ---
+
+
+@router.get("/audit-logs", response_model=List[ClinicalAuditLogResponse])
+def list_audit_logs(
+    request: Request,
+    patient_id: Optional[int] = None,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, CLINIC_OPS_ROLES, request, clinic_id=clinic.id, resource_type="audit_log")
+    logs = ClinicalAuditService.list_for_clinic(
+        db, clinic_id=clinic.id, patient_id=patient_id, limit=min(limit, 500)
+    )
+    return logs
+
+
+# --- Billing ---
+
+
+@router.get("/billing/charges/pending", response_model=List[ClinicChargeResponse])
+def list_pending_charges(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, BILLING_READ_ROLES, request, clinic_id=clinic.id, resource_type="billing")
+    charges = ClinicBillingService.pending_charges(db, clinic_id=clinic.id)
+    for c in charges:
+        db.refresh(c, ["patient"])
+    return [_charge_response(c) for c in charges]
+
+
+@router.post("/billing/charges/{charge_id}/pay", response_model=ClinicChargeResponse)
+def pay_charge(
+    charge_id: int,
+    body: ChargePaymentRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, BILLING_PAY_ROLES, request, clinic_id=clinic.id, resource_type="billing")
+    charge = ClinicBillingService.record_payment(
+        db,
+        charge_id=charge_id,
+        clinic_id=clinic.id,
+        user=current_user,
+        payment_method=body.payment_method,
+    )
+    from services.cis_audit import log_cis
+
+    log_cis(
+        db,
+        actor=current_user,
+        clinic_id=clinic.id,
+        patient_id=charge.patient_id,
+        action="update",
+        resource_type="billing_payment",
+        resource_id=charge.id,
+        client_ip=client_ip(request),
+    )
+    db.refresh(charge, ["patient"])
+    return _charge_response(charge)
+
+
+@router.get("/billing/revenue/daily", response_model=DailyRevenueSummary)
+def daily_revenue(
+    request: Request,
+    day: Optional[date] = Query(None, description="Jour comptable (YYYY-MM-DD), défaut = aujourd'hui"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, BILLING_REVENUE_ROLES, request, clinic_id=clinic.id, resource_type="billing")
+    summary = ClinicBillingService.daily_summary(db, clinic_id=clinic.id, day=day)
+    return DailyRevenueSummary(**summary)
+
+
+# --- Backup validation ---
+
+
+@router.get("/admin/backup-status")
+def backup_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ADMIN_ROLES)

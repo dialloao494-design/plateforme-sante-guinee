@@ -1,0 +1,361 @@
+{
+  "generated_at": "2026-06-14T07:07:38.590415Z",
+  "summary": {
+    "PASS": 39,
+    "WARNING": 0,
+    "FAIL": 0
+  },
+  "findings": [
+    {
+      "area": "Infrastructure",
+      "status": "PASS",
+      "message": "Backend /health OK",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Infrastructure",
+      "status": "PASS",
+      "message": "Frontend HTTP 200",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Authentication",
+      "status": "PASS",
+      "message": "Login OK: patient",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Authentication",
+      "status": "PASS",
+      "message": "Login OK: reception",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Authentication",
+      "status": "PASS",
+      "message": "Login OK: doctor",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Authentication",
+      "status": "PASS",
+      "message": "Login OK: lab",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Authentication",
+      "status": "PASS",
+      "message": "Login OK: pharmacy",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Authentication",
+      "status": "PASS",
+      "message": "Login OK: admin",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Data volume",
+      "status": "PASS",
+      "message": "patients=69 (min 50)",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Data volume",
+      "status": "PASS",
+      "message": "appointments=201 (min 200)",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Data volume",
+      "status": "PASS",
+      "message": "consultations=183 (min 50)",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Data volume",
+      "status": "PASS",
+      "message": "lab_orders=123 (min 50)",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Data volume",
+      "status": "PASS",
+      "message": "prescriptions=180 (min 50)",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Data volume",
+      "status": "PASS",
+      "message": "follow_ups=124 (min 50)",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Data volume",
+      "status": "PASS",
+      "message": "medical_records=52 (min 50)",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Audit logs",
+      "status": "PASS",
+      "message": "audit_logs=259",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Role permissions",
+      "status": "PASS",
+      "message": "reception /clinical/doctor/queue → 403",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Role permissions",
+      "status": "PASS",
+      "message": "doctor /clinical/pharmacy/orders → 403",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Role permissions",
+      "status": "PASS",
+      "message": "doctor /clinical/lab/orders → 403",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Role permissions",
+      "status": "PASS",
+      "message": "lab /clinical/pharmacy/orders → 403",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Role permissions",
+      "status": "PASS",
+      "message": "pharmacy /clinical/lab/orders → 403",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Role permissions",
+      "status": "PASS",
+      "message": "patient /clinical/operations/summary → 403",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Role permissions",
+      "status": "PASS",
+      "message": "patient /clinical/reception/queue → 403",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Role permissions",
+      "status": "PASS",
+      "message": "lab /clinical/consultations → 422",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Role permissions",
+      "status": "PASS",
+      "message": "pharmacy /clinical/admin/backup-status → 403",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Role permissions",
+      "status": "PASS",
+      "message": "reception /clinical/admin/backup-status → 403",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Patient history",
+      "status": "PASS",
+      "message": "Medical history: 1 consults, timeline=1",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Follow-up",
+      "status": "PASS",
+      "message": "Reception follow-ups: today=0 overdue=0 upcoming=0",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Reception workflow",
+      "status": "PASS",
+      "message": "Patient #70 appointment #202",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Cash collection",
+      "status": "PASS",
+      "message": "Encaissement charge #26 → 200",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Doctor consultation",
+      "status": "PASS",
+      "message": "Consultation #184 completed + lab + rx + follow-up",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Laboratory",
+      "status": "PASS",
+      "message": "Lab order #124 validated",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Pharmacy",
+      "status": "PASS",
+      "message": "Pharmacy order dispensed",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Data consistency",
+      "status": "PASS",
+      "message": "Appointment #202 completed in DB",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Patient history",
+      "status": "PASS",
+      "message": "Permanent record for QA patient #70",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Duplicate appointments",
+      "status": "PASS",
+      "message": "Duplicate slot → 409 (expect 409)",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Patient portal",
+      "status": "PASS",
+      "message": "Simulated patient portal history → 200",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Notifications",
+      "status": "PASS",
+      "message": "GET /notifications/ → 200",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    },
+    {
+      "area": "Audit logs",
+      "status": "PASS",
+      "message": "Audit logs accessible, count=5",
+      "severity": "",
+      "repro": "",
+      "root_cause": "",
+      "recommended_fix": ""
+    }
+  ]
+}

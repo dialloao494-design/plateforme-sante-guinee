@@ -1,4 +1,4 @@
-"""Refund handling for Stripe charge.refunded / refund.* webhook events."""
+"""Refund handling for legacy online payment ledger rows (clinic billing is primary)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 import models
-from services.stripe_service import StripeService
 
 logger = logging.getLogger(__name__)
 
@@ -155,25 +154,10 @@ class PaymentRefundService:
         *,
         stripe_event_id: Optional[str] = None,
     ) -> Optional[models.RendezVous]:
-        """Handle refund.created / refund.updated — requires charge expansion or PI lookup."""
-        import stripe
-
-        charge_id = refund.get("charge")
-        if not charge_id:
-            return None
-
-        StripeService.validate_stripe_config()
-        try:
-            charge = stripe.Charge.retrieve(charge_id)
-            charge_data = charge.to_dict() if hasattr(charge, "to_dict") else dict(charge)
-        except stripe.error.StripeError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unable to retrieve charge for refund: {exc}",
-            ) from exc
-
-        return PaymentRefundService.apply_from_charge_object(
-            db, charge_data, stripe_event_id=stripe_event_id
+        """Stripe refunds removed — clinic cashier handles settlement only."""
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Online refund webhooks are disabled; use clinic billing adjustments",
         )
 
     @staticmethod

@@ -76,20 +76,18 @@ def _tele_db(appointment, doctor=None, patient=None):
 
 
 class TestTeleconsultPaymentGate:
-    def test_unpaid_confirmed_blocked(self):
+    def test_unpaid_confirmed_allowed_without_online_payment(self):
         appt = _tele_appointment(status="confirmed", payment_status="unpaid")
         db = _tele_db(appt, patient=MagicMock(id=20, user_id=1))
-        with pytest.raises(HTTPException) as exc:
-            validate_teleconsult_access(42, _tele_user("patient", 1), db)
-        assert exc.value.status_code == 403
-        assert "Paiement requis" in exc.value.detail
+        result = validate_teleconsult_access(42, _tele_user("patient", 1), db)
+        assert result["can_join"] is True
 
     def test_pending_unpaid_blocked_even_in_time_window(self):
         appt = _tele_appointment(status="pending", payment_status="unpaid")
         db = _tele_db(appt, doctor=MagicMock(id=10, user_id=1))
         result = evaluate_teleconsult_room(42, _tele_user("doctor"), db)
         assert result["can_join"] is False
-        assert result["reason"] == "payment_required"
+        assert result["reason"] == "status_blocked"
 
     def test_pending_paid_blocked_no_pending_access(self):
         appt = _tele_appointment(status="pending", payment_status="paid")
@@ -153,12 +151,12 @@ class TestAppointmentStatusAlignment:
         db_session.refresh(rdv)
         return rdv
 
-    def test_cannot_confirm_unpaid_via_service(self, db_session, unpaid_pending):
-        with pytest.raises(HTTPException) as exc:
-            RendezVousService.update_appointment_status(
-                unpaid_pending.id, "confirmed", db_session
-            )
-        assert exc.value.status_code == 403
+    def test_doctor_can_confirm_unpaid_pending(self, db_session, unpaid_pending):
+        updated = RendezVousService.update_appointment_status(
+            unpaid_pending.id, "confirmed", db_session
+        )
+        assert updated.status == "confirmed"
+        assert updated.payment_status == "unpaid"
 
     def test_cannot_set_status_paid_without_treasury(self, db_session, unpaid_pending):
         with pytest.raises(HTTPException) as exc:
@@ -182,7 +180,7 @@ class TestAppointmentStatusAlignment:
         assert rdv.payment_status == "paid"
         assert rdv.status == "confirmed"
 
-    def test_doctor_put_confirm_unpaid_blocked(
+    def test_doctor_put_confirm_unpaid_allowed(
         self, client, db_session, payment_stub_env, unpaid_pending
     ):
         from models.user import User
@@ -202,12 +200,11 @@ class TestAppointmentStatusAlignment:
             json={"status": "confirmed"},
             headers=headers,
         )
-        assert response.status_code == 403
+        assert response.status_code == 200
 
         db_session.expire_all()
         rdv = db_session.query(RendezVous).filter(RendezVous.id == unpaid_pending.id).first()
-        assert rdv.payment_status != "paid"
-        assert rdv.status != "confirmed"
+        assert rdv.status == "confirmed"
 
 
 class TestRefundRevokesTeleconsultAccess:

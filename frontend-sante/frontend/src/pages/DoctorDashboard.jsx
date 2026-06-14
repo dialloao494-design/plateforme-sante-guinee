@@ -101,15 +101,7 @@ const DoctorDashboard = () => {
     [appointments]
   );
 
-  const paidAwaitingConfirm = useMemo(
-    () =>
-      appointments.filter((appointment) => {
-        const st = String(appointment.status || '').toLowerCase();
-        const py = String(appointment.payment_status || '').toLowerCase();
-        return py === 'paid' && (st === 'pending' || st === 'paid');
-      }).length,
-    [appointments]
-  );
+  const awaitingConfirm = pendingCount;
 
   const teleconsultSoon = useMemo(() => {
     const now = new Date();
@@ -174,9 +166,9 @@ const DoctorDashboard = () => {
                 <span className="summary-card-hint">Créneaux du jour</span>
               </article>
               <article className="summary-card summary-card--warn">
-                <h3>Payés à confirmer</h3>
-                <p>{paidAwaitingConfirm}</p>
-                <span className="summary-card-hint">Action cabinet</span>
+                <h3>À confirmer</h3>
+                <p>{awaitingConfirm}</p>
+                <span className="summary-card-hint">Rendez-vous en attente</span>
               </article>
               <article className="summary-card">
                 <h3>File &amp; téléconsult.</h3>
@@ -200,7 +192,7 @@ const DoctorDashboard = () => {
                   <EmptyState
                     preset="calendar"
                     title="Aucun rendez-vous à venir"
-                    description="Lorsque des patients réservent, ils apparaissent ici avec le statut de paiement et les actions possibles."
+                    description="Lorsque des patients réservent, ils apparaissent ici avec leur statut et les actions possibles."
                     actionLabel="Ouvrir l’agenda détaillé"
                     onAction={() => navigate('/doctor/appointments')}
                   />

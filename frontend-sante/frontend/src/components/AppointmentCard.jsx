@@ -44,12 +44,8 @@ const AppointmentCard = ({
           <span className="appointment-card-value">{appointment.duration_minutes} minutes</span>
         </p>
         <p>
-          <span className="appointment-card-label">Prix</span>
+          <span className="appointment-card-label">Prix indicatif</span>
           <span className="appointment-card-value">{formatGNF(appointment.price)}</span>
-        </p>
-        <p>
-          <span className="appointment-card-label">Paiement</span>
-          <span className="appointment-card-value">{presentation.paymentLabel}</span>
         </p>
         <p>
           <span className="appointment-card-label">Statut</span>

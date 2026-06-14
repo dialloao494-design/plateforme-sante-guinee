@@ -42,9 +42,7 @@ const Dashboard = () => {
       return new Date(a.date) < now || normalizeAppointmentStatus(a) === 'completed';
     }).length;
     const tele = appointments.filter((a) => a.consultation_type === 'teleconsultation').length;
-    const actionNeeded = appointments.filter(
-      (a) => isPendingAppointment(a) && String(a.payment_status || '').toLowerCase() === 'paid'
-    ).length;
+    const actionNeeded = appointments.filter((a) => isPendingAppointment(a)).length;
     return { upcoming, past, tele, actionNeeded };
   }, [appointments]);
 
@@ -125,7 +123,7 @@ const Dashboard = () => {
           <article className="dashboard-stat-card dashboard-stat-card--accent">
             <h3>À confirmer</h3>
             <p>{stats.actionNeeded}</p>
-            <span className="dashboard-stat-hint">Payés, en attente du médecin</span>
+            <span className="dashboard-stat-hint">En attente de confirmation</span>
           </article>
         </section>
       )}
@@ -218,7 +216,6 @@ const Dashboard = () => {
                   key={appointment.id}
                   appointment={appointment}
                   title={getPreviewTitle(appointment)}
-                  onPay={() => {}}
                   onConfirm={handleConfirmAppointment}
                   onCancel={() => {}}
                   onOpenMessages={(item) => navigate(`/messages/${item.id}`)}

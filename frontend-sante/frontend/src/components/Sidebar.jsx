@@ -1,5 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import { getNavItemsForRole, getNavSectionTitle } from '../utils/navConfig.js';
+import { isClinicPortalRole, portalLabel, portalSubtitle } from '../utils/portalAccess.js';
 import './Sidebar.css';
 
 function initialsFromUser(user) {
@@ -16,21 +18,12 @@ function initialsFromUser(user) {
 const ROLE_LABELS = {
   patient: 'Patient',
   doctor: 'Médecin',
-  admin: 'Administrateur',
+  admin: 'Manager',
+  receptionist: 'Réception',
+  cashier: 'Réception',
+  lab_technician: 'Laboratoire',
+  pharmacist: 'Pharmacie',
 };
-
-const navItems = [
-  { path: '/dashboard', label: 'Tableau de bord', icon: 'dash', roles: ['patient', 'doctor', 'admin'] },
-  { path: '/teleconsultation', label: 'Téléconsultation', icon: 'video', roles: ['patient', 'doctor', 'admin'] },
-  { path: '/notifications', label: 'Notifications', icon: 'bell', roles: ['patient', 'doctor', 'admin'] },
-  { path: '/appointments', label: 'Mes rendez-vous', icon: 'calendar', roles: ['patient', 'admin'] },
-  { path: '/doctors', label: 'Médecins', labelDoctor: 'Annuaire', icon: 'steth', roles: ['patient', 'doctor', 'admin'] },
-  { path: '/doctor/dashboard', label: 'Agenda clinique', icon: 'board', roles: ['doctor', 'admin'] },
-  { path: '/doctor/appointments', label: 'File d’attente', icon: 'queue', roles: ['doctor', 'admin'] },
-  { path: '/doctor/messages', label: 'Messagerie', icon: 'chat', roles: ['doctor', 'admin'] },
-  { path: '/patients', label: 'Patients', icon: 'people', roles: ['doctor', 'admin'] },
-  { path: '/users', label: 'Utilisateurs', icon: 'shield', roles: ['admin'] },
-];
 
 function NavIcon({ name }) {
   const common = { className: 'sidebar-svg', viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': true };
@@ -131,6 +124,9 @@ function NavIcon({ name }) {
 }
 
 function pathIsActive(pathname, itemPath) {
+  if (itemPath === '/clinical') {
+    return pathname === '/clinical';
+  }
   if (itemPath === '/dashboard') {
     return pathname === '/dashboard';
   }
@@ -140,15 +136,6 @@ function pathIsActive(pathname, itemPath) {
   if (itemPath === '/teleconsultation') {
     return pathname === '/teleconsultation' || pathname.startsWith('/consultation/');
   }
-  if (itemPath === '/doctor/dashboard') {
-    return pathname === '/doctor/dashboard';
-  }
-  if (itemPath === '/doctor/appointments') {
-    return pathname === '/doctor/appointments';
-  }
-  if (itemPath === '/doctor/messages') {
-    return pathname === '/doctor/messages';
-  }
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
 }
 
@@ -157,10 +144,9 @@ const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const { logout, user, authLoading } = useAuth();
   const role = String(user?.role || user?.user_role || localStorage.getItem('user_role') || '').toLowerCase();
+  const clinicPortal = isClinicPortalRole(role);
 
-  const visibleItems = authLoading
-    ? []
-    : navItems.filter((item) => (role ? item.roles.includes(role) : false));
+  const navItems = authLoading ? [] : getNavItemsForRole(role);
 
   const handleLogout = () => {
     logout();
@@ -176,13 +162,6 @@ const Sidebar = ({ isOpen, onClose }) => {
     }
   };
 
-  const linkLabel = (item) => {
-    if (item.path === '/doctors' && (role === 'doctor' || role === 'admin')) {
-      return item.labelDoctor || item.label;
-    }
-    return item.label;
-  };
-
   return (
     <>
       <button
@@ -196,8 +175,8 @@ const Sidebar = ({ isOpen, onClose }) => {
         <div className="sidebar-brand">
           <span className="sidebar-brand-mark" aria-hidden />
           <div>
-            <div className="sidebar-brand-title">Plateforme Santé</div>
-            <div className="sidebar-brand-sub">Guinée · Clinique numérique</div>
+            <div className="sidebar-brand-title">{portalLabel(role)}</div>
+            <div className="sidebar-brand-sub">{portalSubtitle(role)}</div>
           </div>
         </div>
 
@@ -208,41 +187,49 @@ const Sidebar = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" aria-label="Menu principal">
           {authLoading && <p className="sidebar-loading">Chargement…</p>}
-          <ul>
-            {visibleItems.map((item) => (
-              <li key={`${item.path}-${item.label}`}>
-                <Link
-                  to={item.path}
-                  className={`sidebar-link ${pathIsActive(location.pathname, item.path) ? 'active' : ''}`}
-                  onClick={closeIfMobile}
-                >
-                  <span className="sidebar-icon-wrap" aria-hidden>
-                    <NavIcon name={item.icon} />
+          <div className="sidebar-nav-scroll">
+            {navItems.length > 0 && (
+              <div className="sidebar-section">
+                <h3 className="sidebar-section-title">{getNavSectionTitle(role)}</h3>
+                <ul>
+                  {navItems.map((item) => (
+                    <li key={item.path}>
+                      <Link
+                        to={item.path}
+                        className={`sidebar-link ${pathIsActive(location.pathname, item.path) ? 'active' : ''}`}
+                        onClick={closeIfMobile}
+                      >
+                        <span className="sidebar-icon-wrap" aria-hidden>
+                          <NavIcon name={item.icon} />
+                        </span>
+                        <span className="label">{item.label}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+          <div className="sidebar-nav-footer">
+            {user && (
+              <div className="sidebar-user" aria-label="Compte connecté">
+                <div className="sidebar-user-avatar" aria-hidden>
+                  {initialsFromUser(user)}
+                </div>
+                <div className="sidebar-user-meta">
+                  <span className="sidebar-user-email">{user.email}</span>
+                  <span className="sidebar-user-role">
+                    {ROLE_LABELS[role] || role}
                   </span>
-                  <span className="label">{linkLabel(item)}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          {user && (
-            <div className="sidebar-user" aria-label="Compte connecté">
-              <div className="sidebar-user-avatar" aria-hidden>
-                {initialsFromUser(user)}
+                </div>
               </div>
-              <div className="sidebar-user-meta">
-                <span className="sidebar-user-email">{user.email}</span>
-                <span className="sidebar-user-role">
-                  {ROLE_LABELS[String(user.role || user.user_role || '').toLowerCase()] ||
-                    String(user.role || user.user_role || '')}
-                </span>
-              </div>
-            </div>
-          )}
-          <button type="button" className="logout-btn" onClick={handleLogout}>
-            Déconnexion
-          </button>
+            )}
+            <button type="button" className="logout-btn" onClick={handleLogout}>
+              Déconnexion
+            </button>
+          </div>
         </nav>
       </aside>
     </>

@@ -30,6 +30,7 @@ __all__ = [
     "EmailAlreadyRegisteredError",
     "register_public_user",
     "create_admin_user",
+    "create_staff_user",
     "bootstrap_initial_admin",
     "provision_cli_user",
     "ProvisionedUser",
@@ -201,6 +202,7 @@ def create_admin_user(
     *,
     email: str,
     password: str,
+    clinic_id: int | None = None,
     channel: str = "admin_api",
     actor_user_id: int | None = None,
 ) -> ProvisionedUser:
@@ -234,6 +236,14 @@ def create_admin_user(
             raise EmailAlreadyRegisteredError("Email already registered") from exc
         raise UserProvisioningError("Error creating administrator.") from exc
 
+    if clinic_id is not None:
+        user.clinic_id = clinic_id
+        db.add(
+            models.ClinicStaff(clinic_id=clinic_id, user_id=user.id, is_active=True)
+        )
+        db.commit()
+        db.refresh(user)
+
     logger.info(
         "Administrator provisioned id=%s email=%s channel=%s actor_user_id=%s",
         user.id,
@@ -242,6 +252,63 @@ def create_admin_user(
         actor_user_id,
     )
     return ProvisionedUser(user=user, doctor_id=None)
+
+
+def create_staff_user(
+    db: Session,
+    *,
+    email: str,
+    password: str,
+    role: str,
+    clinic_id: int,
+    channel: str = "admin_api",
+    actor_user_id: int | None = None,
+) -> ProvisionedUser:
+    """Create clinic staff (receptionist, cashier, lab_technician, pharmacist, doctor, admin)."""
+    from core.roles import CLINICAL_STAFF_ROLES
+
+    normalized = assert_known_role(role)
+    if normalized not in CLINICAL_STAFF_ROLES | {"admin"}:
+        raise UserProvisioningError(f"Role '{role}' is not a staff role.")
+
+    try:
+        user = _persist_user(
+            db,
+            email=email,
+            password=password,
+            role=normalized,
+            channel=channel,
+        )
+    except IntegrityError as exc:
+        db.rollback()
+        if "email" in str(exc).lower() or "unique" in str(exc).lower():
+            raise EmailAlreadyRegisteredError("Email already registered") from exc
+        raise UserProvisioningError("Error creating staff user.") from exc
+
+    user.clinic_id = clinic_id
+    db.add(
+        models.ClinicStaff(clinic_id=clinic_id, user_id=user.id, is_active=True)
+    )
+    if normalized == "doctor":
+        doc = _ensure_doctor_profile(db, user)
+        doc.clinic_id = clinic_id
+    db.commit()
+    db.refresh(user)
+
+    doctor_id = None
+    if user.role == "doctor":
+        doc = db.query(models.Doctor).filter(models.Doctor.user_id == user.id).first()
+        if doc:
+            doctor_id = doc.id
+
+    logger.info(
+        "Staff provisioned id=%s role=%s clinic_id=%s actor=%s",
+        user.id,
+        user.role,
+        clinic_id,
+        actor_user_id,
+    )
+    return ProvisionedUser(user=user, doctor_id=doctor_id)
 
 
 def bootstrap_initial_admin(db: Session) -> User | None:

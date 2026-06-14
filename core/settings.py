@@ -141,7 +141,6 @@ class AppSettings:
 
         jwt_secret = _first_env("JWT_SECRET", "SECRET_KEY")
         db_password = _first_env("DB_PASSWORD", "POSTGRES_PASSWORD") or _password_from_database_url()
-        stripe_secret = _first_env("STRIPE_SECRET", "STRIPE_SECRET_KEY", "STRIPE_API_KEY")
         jitsi_secret = _resolve_jitsi_secret()
 
         failures: list[str] = []
@@ -151,17 +150,6 @@ class AppSettings:
 
         if is_insecure_secret(db_password, min_length=12, extra_weak_tokens=("sante_dev", "postgres")):
             failures.append("DB_PASSWORD/POSTGRES_PASSWORD must be a strong database password")
-
-        stripe_min = 20
-        stripe_weak = ("YOUR_TEST", "YOUR_LIVE", "sk_test_") if self.is_production else ("YOUR_TEST", "YOUR_LIVE")
-        stripe_insecure = is_insecure_secret(
-            stripe_secret,
-            min_length=stripe_min,
-            extra_weak_tokens=stripe_weak,
-        )
-        # Staging may use sk_test_* keys; global weak-pattern matcher flags sk_test_ — exempt staging.
-        if stripe_insecure and not (self.is_staging and stripe_secret.startswith("sk_test_")):
-            failures.append("STRIPE_SECRET/STRIPE_SECRET_KEY must be a live production Stripe secret")
 
         jitsi_min = 16 if _is_jaas_jitsi_mode() else 12
         if is_insecure_secret(jitsi_secret, min_length=jitsi_min):

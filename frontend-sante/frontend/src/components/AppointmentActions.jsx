@@ -1,7 +1,6 @@
 const AppointmentActions = ({
   actions,
   appointment,
-  onPay,
   onConfirm,
   onCancel,
   onOpenMessages,
@@ -14,7 +13,6 @@ const AppointmentActions = ({
   }
 
   const handlers = {
-    pay: onPay,
     confirm: onConfirm,
     cancel: onCancel,
     message: onOpenMessages,
@@ -25,11 +23,10 @@ const AppointmentActions = ({
     <div className="appointment-card-actions">
       {actions.map((action) => {
         const handler = handlers[action.kind];
-        const isLoadingPay = action.kind === 'pay' && isPaying;
         const isLoadingCancel = action.kind === 'cancel' && isCancelling;
         const isLoadingConfirm = action.kind === 'confirm' && isPaying;
         let buttonClassName = 'button-secondary';
-        if (action.kind === 'pay' || action.kind === 'confirm') {
+        if (action.kind === 'confirm') {
           buttonClassName = 'button-pay';
         } else if (action.kind === 'cancel') {
           buttonClassName = 'delete-btn';
@@ -37,7 +34,7 @@ const AppointmentActions = ({
           buttonClassName = 'button-secondary join-consultation-btn';
         }
 
-        const isBusy = isLoadingPay || isLoadingCancel || isLoadingConfirm;
+        const isBusy = isLoadingCancel || isLoadingConfirm;
 
         return (
           <button
@@ -47,17 +44,14 @@ const AppointmentActions = ({
             disabled={isBusy}
             className={buttonClassName}
           >
-            {isLoadingPay && action.kind === 'pay'
-              ? 'Traitement...'
-              : isLoadingConfirm && action.kind === 'confirm'
-                ? 'Confirmation...'
-                : isLoadingCancel
-                  ? 'Annulation...'
-                  : action.label}
+            {isLoadingConfirm && action.kind === 'confirm'
+              ? 'Confirmation...'
+              : isLoadingCancel
+                ? 'Annulation...'
+                : action.label}
           </button>
         );
       })}
-      {actions.some((action) => action.kind === 'pay') && <small className="payment-helper-text">Simulation de paiement</small>}
     </div>
   );
 };

@@ -22,7 +22,7 @@ class RendezVousUpdate(BaseModel):
     """Schema for updating appointment status"""
     status: Optional[str] = Field(
         None, 
-        description="New status (pending, confirmed, cancelled)"
+        description="New status (pending, confirmed, checked_in, completed, cancelled)"
     )
 
 
@@ -31,7 +31,7 @@ class RendezVousResponse(BaseModel):
     id: int
     date: datetime = Field(..., description="Appointment start time")
     duration_minutes: int = Field(..., description="Duration in minutes")
-    status: str = Field(..., description="Current status (pending, paid, confirmed, completed, cancelled)")
+    status: str = Field(..., description="Current status (pending, confirmed, checked_in, completed, cancelled)")
     payment_status: str = Field(..., description="Payment status (paid, unpaid)")
     is_paid: bool = Field(..., description="True when payment is confirmed")
     price: float = Field(..., description="Appointment price")
@@ -55,7 +55,7 @@ class RendezVousResponse(BaseModel):
 
 class PatientSummary(BaseModel):
     id: int
-    user_id: int
+    user_id: Optional[int] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     age: Optional[int] = None

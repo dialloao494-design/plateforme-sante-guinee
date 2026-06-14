@@ -163,7 +163,8 @@ def ensure_patient_dossier_schema(engine: Engine) -> None:
                 id INTEGER PRIMARY KEY{autoinc},
                 actor_id INTEGER NOT NULL REFERENCES users(id),
                 actor_role {varchar32} NOT NULL,
-                patient_id INTEGER NOT NULL REFERENCES patients(id),
+                clinic_id INTEGER REFERENCES clinics(id),
+                patient_id INTEGER REFERENCES patients(id),
                 action {varchar32} NOT NULL,
                 resource_type {varchar64} NOT NULL,
                 resource_id INTEGER,
@@ -207,3 +208,262 @@ def ensure_attachment_access_log_table(engine: Engine) -> None:
         logger.info("Created attachment_access_logs audit table")
     except Exception as exc:
         logger.warning("Attachment access log table migration skipped or failed: %s", exc)
+
+
+def ensure_clinic_charges_table(engine: Engine) -> None:
+    """Create in-clinic billing charges table (idempotent)."""
+    insp = inspect(engine)
+    if "clinic_charges" in insp.get_table_names():
+        return
+    dialect = engine.dialect.name
+    datetime_type = "TIMESTAMP" if dialect == "postgresql" else "DATETIME"
+    autoinc = " AUTOINCREMENT" if dialect == "sqlite" else ""
+    stmt = f"""
+        CREATE TABLE clinic_charges (
+            id INTEGER PRIMARY KEY{autoinc},
+            clinic_id INTEGER NOT NULL REFERENCES clinics(id),
+            patient_id INTEGER NOT NULL REFERENCES patients(id),
+            charge_type VARCHAR(32) NOT NULL,
+            source_type VARCHAR(32) NOT NULL,
+            source_id INTEGER NOT NULL,
+            description TEXT NOT NULL,
+            amount_gnf INTEGER NOT NULL DEFAULT 0,
+            payment_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+            payment_method VARCHAR(32),
+            recorded_by_user_id INTEGER REFERENCES users(id),
+            paid_at {datetime_type},
+            created_at {datetime_type} NOT NULL,
+            updated_at {datetime_type} NOT NULL
+        )
+    """
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(stmt))
+        logger.info("Created clinic_charges table")
+    except Exception as exc:
+        logger.warning("clinic_charges table migration skipped or failed: %s", exc)
+
+
+def ensure_clinical_audit_clinic_id(engine: Engine) -> None:
+    """Add clinic_id to clinical_audit_logs on existing SQLite/Postgres deployments."""
+    insp = inspect(engine)
+    if "clinical_audit_logs" not in insp.get_table_names():
+        return
+    cols = {c["name"] for c in insp.get_columns("clinical_audit_logs")}
+    if "clinic_id" in cols:
+        return
+    dialect = engine.dialect.name
+    try:
+        with engine.begin() as conn:
+            if dialect == "sqlite":
+                conn.execute(text("ALTER TABLE clinical_audit_logs ADD COLUMN clinic_id INTEGER"))
+            else:
+                conn.execute(text("ALTER TABLE clinical_audit_logs ADD COLUMN clinic_id INTEGER REFERENCES clinics(id)"))
+        logger.info("Added clinic_id column to clinical_audit_logs")
+    except Exception as exc:
+        logger.warning("clinical_audit_logs clinic_id migration skipped or failed: %s", exc)
+
+
+def ensure_clinical_audit_patient_nullable(engine: Engine) -> None:
+    """Allow NULL patient_id for denied-access and system audit rows (SQLite rebuild)."""
+    insp = inspect(engine)
+    if "clinical_audit_logs" not in insp.get_table_names():
+        return
+    cols = {c["name"]: c for c in insp.get_columns("clinical_audit_logs")}
+    if "patient_id" not in cols:
+        return
+    if cols["patient_id"].get("nullable"):
+        return
+    dialect = engine.dialect.name
+    if dialect != "sqlite":
+        try:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE clinical_audit_logs ALTER COLUMN patient_id DROP NOT NULL"))
+            logger.info("Relaxed patient_id NOT NULL on clinical_audit_logs")
+        except Exception as exc:
+            logger.warning("clinical_audit_logs patient_id nullable migration skipped: %s", exc)
+        return
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("""
+                CREATE TABLE clinical_audit_logs_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    actor_id INTEGER NOT NULL REFERENCES users(id),
+                    actor_role VARCHAR NOT NULL,
+                    clinic_id INTEGER REFERENCES clinics(id),
+                    patient_id INTEGER REFERENCES patients(id),
+                    action VARCHAR NOT NULL,
+                    resource_type VARCHAR NOT NULL,
+                    resource_id INTEGER,
+                    timestamp DATETIME NOT NULL,
+                    ip VARCHAR
+                )
+            """))
+            conn.execute(text("""
+                INSERT INTO clinical_audit_logs_new
+                (id, actor_id, actor_role, clinic_id, patient_id, action, resource_type, resource_id, timestamp, ip)
+                SELECT id, actor_id, actor_role, clinic_id, patient_id, action, resource_type, resource_id, timestamp, ip
+                FROM clinical_audit_logs
+            """))
+            conn.execute(text("DROP TABLE clinical_audit_logs"))
+            conn.execute(text("ALTER TABLE clinical_audit_logs_new RENAME TO clinical_audit_logs"))
+        logger.info("Rebuilt clinical_audit_logs with nullable patient_id")
+    except Exception as exc:
+        logger.warning("clinical_audit_logs patient_id rebuild skipped: %s", exc)
+
+
+def ensure_medical_history_schema(engine: Engine) -> None:
+    """Medical history tables and soft-delete columns (idempotent)."""
+    insp = inspect(engine)
+    dialect = engine.dialect.name
+    datetime_type = "TIMESTAMP" if dialect == "postgresql" else "DATETIME"
+    date_type = "DATE"
+    text_type = "TEXT"
+    bool_type = "BOOLEAN" if dialect == "postgresql" else "INTEGER"
+    float_type = "DOUBLE PRECISION" if dialect == "postgresql" else "FLOAT"
+    autoinc = " AUTOINCREMENT" if dialect == "sqlite" else ""
+
+    if "patients" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("patients")}
+        for col, stmt in [
+            ("is_archived", f"ALTER TABLE patients ADD COLUMN is_archived {bool_type} NOT NULL DEFAULT 0"),
+            ("archived_at", f"ALTER TABLE patients ADD COLUMN archived_at {datetime_type}"),
+        ]:
+            if col not in cols:
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text(stmt))
+                    logger.info("Applied patients migration: %s", col)
+                except Exception as exc:
+                    logger.warning("patients %s migration skipped: %s", col, exc)
+
+    for table, col in [
+        ("consultations", "deleted_at"),
+        ("lab_orders", "deleted_at"),
+        ("prescriptions", "deleted_at"),
+    ]:
+        if table in insp.get_table_names():
+            cols = {c["name"] for c in insp.get_columns(table)}
+            if col not in cols:
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {datetime_type}"))
+                    logger.info("Added %s to %s", col, table)
+                except Exception as exc:
+                    logger.warning("%s.%s migration skipped: %s", table, col, exc)
+
+    tables = set(insp.get_table_names())
+
+    if "patient_medical_records" not in tables:
+        stmt = f"""
+            CREATE TABLE patient_medical_records (
+                id INTEGER PRIMARY KEY{autoinc},
+                patient_id INTEGER NOT NULL UNIQUE REFERENCES patients(id),
+                blood_type VARCHAR(8),
+                general_notes {text_type},
+                created_at {datetime_type} NOT NULL,
+                updated_at {datetime_type} NOT NULL
+            )
+        """
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+            logger.info("Created patient_medical_records table")
+        except Exception as exc:
+            logger.warning("patient_medical_records migration failed: %s", exc)
+
+    if "patient_allergies" not in tables:
+        stmt = f"""
+            CREATE TABLE patient_allergies (
+                id INTEGER PRIMARY KEY{autoinc},
+                patient_id INTEGER NOT NULL REFERENCES patients(id),
+                allergen VARCHAR(255) NOT NULL,
+                severity VARCHAR(32) NOT NULL DEFAULT 'moderate',
+                reaction {text_type},
+                recorded_by_user_id INTEGER REFERENCES users(id),
+                is_active {bool_type} NOT NULL DEFAULT 1,
+                deleted_at {datetime_type},
+                created_at {datetime_type} NOT NULL
+            )
+        """
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+            logger.info("Created patient_allergies table")
+        except Exception as exc:
+            logger.warning("patient_allergies migration failed: %s", exc)
+
+    if "patient_chronic_conditions" not in tables:
+        stmt = f"""
+            CREATE TABLE patient_chronic_conditions (
+                id INTEGER PRIMARY KEY{autoinc},
+                patient_id INTEGER NOT NULL REFERENCES patients(id),
+                condition_name VARCHAR(255) NOT NULL,
+                diagnosed_at {date_type},
+                status VARCHAR(32) NOT NULL DEFAULT 'active',
+                notes {text_type},
+                recorded_by_user_id INTEGER REFERENCES users(id),
+                deleted_at {datetime_type},
+                created_at {datetime_type} NOT NULL
+            )
+        """
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+            logger.info("Created patient_chronic_conditions table")
+        except Exception as exc:
+            logger.warning("patient_chronic_conditions migration failed: %s", exc)
+
+    if "patient_vital_signs" not in tables:
+        stmt = f"""
+            CREATE TABLE patient_vital_signs (
+                id INTEGER PRIMARY KEY{autoinc},
+                patient_id INTEGER NOT NULL REFERENCES patients(id),
+                consultation_id INTEGER REFERENCES consultations(id),
+                bp_systolic INTEGER,
+                bp_diastolic INTEGER,
+                heart_rate INTEGER,
+                temperature_c {float_type},
+                weight_kg {float_type},
+                height_cm {float_type},
+                spo2 INTEGER,
+                notes {text_type},
+                recorded_by_user_id INTEGER REFERENCES users(id),
+                recorded_at {datetime_type} NOT NULL,
+                deleted_at {datetime_type}
+            )
+        """
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+            logger.info("Created patient_vital_signs table")
+        except Exception as exc:
+            logger.warning("patient_vital_signs migration failed: %s", exc)
+
+    if "follow_up_schedules" not in tables:
+        stmt = f"""
+            CREATE TABLE follow_up_schedules (
+                id INTEGER PRIMARY KEY{autoinc},
+                patient_id INTEGER NOT NULL REFERENCES patients(id),
+                clinic_id INTEGER NOT NULL REFERENCES clinics(id),
+                consultation_id INTEGER REFERENCES consultations(id),
+                doctor_id INTEGER NOT NULL REFERENCES doctors(id),
+                scheduled_date {date_type} NOT NULL,
+                interval_type VARCHAR(16) NOT NULL,
+                visit_type VARCHAR(32) NOT NULL DEFAULT 'follow_up',
+                reason {text_type},
+                clinical_notes {text_type},
+                status VARCHAR(32) NOT NULL DEFAULT 'scheduled',
+                follow_up_appointment_id INTEGER REFERENCES rendezvous(id),
+                created_by_user_id INTEGER REFERENCES users(id),
+                deleted_at {datetime_type},
+                created_at {datetime_type} NOT NULL,
+                updated_at {datetime_type} NOT NULL
+            )
+        """
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+            logger.info("Created follow_up_schedules table")
+        except Exception as exc:
+            logger.warning("follow_up_schedules migration failed: %s", exc)

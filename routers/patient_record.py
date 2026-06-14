@@ -9,6 +9,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 import schemas.patient_record as record_schemas
+from core.http_utils import client_ip
 from database import get_db
 from models.user import User
 from security import get_current_user, require_roles
@@ -16,14 +17,8 @@ from services.patient_record_service import PatientRecordService
 
 router = APIRouter(prefix="/patients", tags=["Patient Dossier"])
 
-
-def _client_ip(request: Request) -> str | None:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    if request.client:
-        return request.client.host
-    return None
+DOSSIER_READ_ROLES = ["admin", "doctor", "patient", "receptionist", "lab_technician", "pharmacist"]
+DOSSIER_WRITE_ROLES = ["admin", "doctor", "lab_technician", "pharmacist", "receptionist"]
 
 
 @router.get("/{patient_id}/notes", response_model=List[record_schemas.ClinicalNoteResponse])
@@ -31,10 +26,10 @@ def list_clinical_notes(
     patient_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin", "doctor", "patient"])),
+    current_user: User = Depends(require_roles(DOSSIER_READ_ROLES)),
 ):
     return PatientRecordService.list_notes(
-        db, patient_id, current_user, client_ip=_client_ip(request)
+        db, patient_id, current_user, client_ip=client_ip(request)
     )
 
 
@@ -51,7 +46,7 @@ def create_clinical_note(
     current_user: User = Depends(require_roles(["admin", "doctor"])),
 ):
     return PatientRecordService.create_note(
-        db, patient_id, payload, current_user, client_ip=_client_ip(request)
+        db, patient_id, payload, current_user, client_ip=client_ip(request)
     )
 
 
@@ -60,10 +55,10 @@ def list_consultation_summaries(
     patient_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin", "doctor", "patient"])),
+    current_user: User = Depends(require_roles(DOSSIER_READ_ROLES)),
 ):
     return PatientRecordService.list_summaries(
-        db, patient_id, current_user, client_ip=_client_ip(request)
+        db, patient_id, current_user, client_ip=client_ip(request)
     )
 
 
@@ -80,7 +75,7 @@ def create_consultation_summary(
     current_user: User = Depends(require_roles(["admin", "doctor"])),
 ):
     return PatientRecordService.create_summary(
-        db, patient_id, payload, current_user, client_ip=_client_ip(request)
+        db, patient_id, payload, current_user, client_ip=client_ip(request)
     )
 
 
@@ -89,10 +84,10 @@ def list_patient_documents(
     patient_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin", "doctor", "patient"])),
+    current_user: User = Depends(require_roles(DOSSIER_READ_ROLES)),
 ):
     return PatientRecordService.list_documents(
-        db, patient_id, current_user, client_ip=_client_ip(request)
+        db, patient_id, current_user, client_ip=client_ip(request)
     )
 
 
@@ -107,7 +102,7 @@ async def upload_patient_document(
     type_document: str = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin", "doctor"])),
+    current_user: User = Depends(require_roles(DOSSIER_WRITE_ROLES)),
 ):
     return await PatientRecordService.upload_document(
         db,
@@ -115,7 +110,7 @@ async def upload_patient_document(
         type_document=type_document,
         file=file,
         current_user=current_user,
-        client_ip=_client_ip(request),
+        client_ip=client_ip(request),
     )
 
 
@@ -125,10 +120,10 @@ def download_patient_document(
     document_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin", "doctor", "patient"])),
+    current_user: User = Depends(require_roles(DOSSIER_READ_ROLES)),
 ):
     content, mime, filename = PatientRecordService.download_document(
-        db, patient_id, document_id, current_user, client_ip=_client_ip(request)
+        db, patient_id, document_id, current_user, client_ip=client_ip(request)
     )
     return Response(
         content=content,
@@ -142,8 +137,8 @@ def get_patient_timeline(
     patient_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin", "doctor", "patient"])),
+    current_user: User = Depends(require_roles(DOSSIER_READ_ROLES)),
 ):
     return PatientRecordService.build_timeline(
-        db, patient_id, current_user, client_ip=_client_ip(request)
+        db, patient_id, current_user, client_ip=client_ip(request)
     )

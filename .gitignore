@@ -105,6 +105,11 @@ stripe_*.env
 .stripe_keys
 
 # ==========================================
+# QA EVIDENCE (JSON reports committed; screenshots local only)
+# ==========================================
+evidence/*.png
+
+# ==========================================
 # TESTING
 # ==========================================
 .pytest_cache/

@@ -1,14 +1,11 @@
 """
-Security tests for payment settlement (audit item #2 — confirm-payment abuse).
+Security tests for admin manual payment settlement (clinic reception billing is separate).
 """
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
-import models
 from models.doctor import Doctor
 from models.patient import Patient
 from models.rendezvous import RendezVous
@@ -71,71 +68,7 @@ def patient_headers(client, payment_stub_env, patient_with_pending_appointment):
     return {"Authorization": f"Bearer {login.json()['access_token']}"}
 
 
-class TestConfirmPaymentBlocked:
-    def test_confirm_payment_without_stub_rejected(
-        self, client, patient_headers, patient_with_pending_appointment
-    ):
-        aid = patient_with_pending_appointment["appointment"].id
-        response = client.post(
-            f"/payments/{aid}/confirm-payment",
-            headers=patient_headers,
-        )
-        assert response.status_code == 403
-        detail = str(response.json().get("detail", "")).lower()
-        assert "stub" in detail or "stripe" in detail or "checkout" in detail
-
-    def test_confirm_payment_wrong_stub_rejected(
-        self, client, patient_headers, patient_with_pending_appointment
-    ):
-        aid = patient_with_pending_appointment["appointment"].id
-        response = client.post(
-            f"/payments/{aid}/confirm-payment",
-            headers={
-                **patient_headers,
-                "X-Payment-Stub-Token": "wrong-token",
-            },
-        )
-        assert response.status_code == 403
-
-    def test_no_paid_state_after_blocked_confirm(
-        self, client, db_session, patient_headers, patient_with_pending_appointment
-    ):
-        aid = patient_with_pending_appointment["appointment"].id
-        client.post(f"/payments/{aid}/confirm-payment", headers=patient_headers)
-        db_session.expire_all()
-        rdv = db_session.query(RendezVous).filter(RendezVous.id == aid).first()
-        assert rdv.payment_status != "paid"
-        assert rdv.status != "confirmed"
-
-
-class TestConfirmPaymentStubAllowed:
-    def test_confirm_payment_with_valid_stub_succeeds(
-        self, client, db_session, patient_headers, patient_with_pending_appointment
-    ):
-        aid = patient_with_pending_appointment["appointment"].id
-        response = client.post(
-            f"/payments/{aid}/confirm-payment",
-            headers={
-                **patient_headers,
-                "X-Payment-Stub-Token": os.environ["PAYMENT_STUB_TOKEN"],
-            },
-        )
-        assert response.status_code == 200, response.text
-        body = response.json()
-        assert body["payment_status"] == "paid"
-        assert body["status"] == "confirmed"
-
-        payment = (
-            db_session.query(models.Payment)
-            .filter(models.Payment.appointment_id == aid)
-            .first()
-        )
-        assert payment is not None
-        assert payment.status == "paid"
-        assert payment.payment_id.startswith("stub-")
-
-
-class TestRendezvousConfirmPaymentLegacy:
+class TestRendezvousConfirmPayment:
     def test_patient_cannot_use_rendezvous_confirm_payment(
         self, client, patient_headers, patient_with_pending_appointment
     ):
@@ -146,12 +79,22 @@ class TestRendezvousConfirmPaymentLegacy:
         )
         assert response.status_code == 403
 
-    def test_admin_can_settle_via_manual_confirm(
+    def test_no_paid_state_after_blocked_confirm(
+        self, client, db_session, patient_headers, patient_with_pending_appointment
+    ):
+        aid = patient_with_pending_appointment["appointment"].id
+        client.post(f"/rendezvous/{aid}/confirm-payment", headers=patient_headers)
+        db_session.expire_all()
+        rdv = db_session.query(RendezVous).filter(RendezVous.id == aid).first()
+        assert rdv.payment_status != "paid"
+        assert rdv.status != "confirmed"
+
+    def test_admin_can_settle_via_rendezvous_confirm(
         self, client, admin_headers, db_session, patient_with_pending_appointment
     ):
         aid = patient_with_pending_appointment["appointment"].id
         response = client.post(
-            f"/payments/{aid}/manual-confirm",
+            f"/rendezvous/{aid}/confirm-payment",
             headers=admin_headers,
         )
         assert response.status_code == 200
@@ -159,28 +102,6 @@ class TestRendezvousConfirmPaymentLegacy:
         rdv = db_session.query(RendezVous).filter(RendezVous.id == aid).first()
         assert rdv.status == "confirmed"
         assert rdv.payment_status == "paid"
-
-
-class TestProductionStubPolicy:
-    def test_stub_disabled_when_environment_production(
-        self, client, monkeypatch, patient_headers, patient_with_pending_appointment
-    ):
-        monkeypatch.setenv("ENVIRONMENT", "production")
-        monkeypatch.setenv("ALLOW_STUB_PAYMENT", "true")
-        monkeypatch.setenv("PAYMENT_STUB_TOKEN", "pytest-payment-stub-secret")
-        from core.settings import get_settings
-
-        get_settings.cache_clear()
-
-        aid = patient_with_pending_appointment["appointment"].id
-        response = client.post(
-            f"/payments/{aid}/confirm-payment",
-            headers={
-                **patient_headers,
-                "X-Payment-Stub-Token": "pytest-payment-stub-secret",
-            },
-        )
-        assert response.status_code == 403
 
 
 class TestSettlementService:

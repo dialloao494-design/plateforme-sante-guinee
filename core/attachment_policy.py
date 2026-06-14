@@ -9,7 +9,7 @@ import os
 # Maximum attachment size (default 10 MiB — suitable for PDF prescriptions / imaging snapshots).
 MAX_ATTACHMENT_BYTES = int(os.getenv("ATTACHMENT_MAX_BYTES", str(10 * 1024 * 1024)))
 
-ALLOWED_EXTENSIONS = frozenset({".pdf", ".png", ".jpg", ".jpeg", ".webp"})
+ALLOWED_EXTENSIONS = frozenset({".pdf", ".png", ".jpg", ".jpeg", ".webp", ".txt"})
 
 ALLOWED_MIME_TYPES = frozenset(
     {
@@ -17,6 +17,7 @@ ALLOWED_MIME_TYPES = frozenset(
         "image/png",
         "image/jpeg",
         "image/webp",
+        "text/plain",
     }
 )
 
@@ -27,6 +28,7 @@ EXTENSION_MIME_MAP = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
     ".webp": "image/webp",
+    ".txt": "text/plain",
 }
 
 SECURE_ATTACHMENT_ROOT = os.getenv("SECURE_ATTACHMENT_ROOT", "uploads/secure")

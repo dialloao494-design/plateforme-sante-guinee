@@ -1,0 +1,184 @@
+[
+  {
+    "email": "admin@pilot.local",
+    "expected_role": "admin",
+    "login": 200,
+    "role": "admin",
+    "/clinical/reception/queue": {
+      "status": 200,
+      "detail": "ok"
+    },
+    "/clinical/doctor/queue": {
+      "status": 403,
+      "detail": "{\"detail\":\"Doctor only\"}"
+    },
+    "/clinical/lab/orders": {
+      "status": 200,
+      "detail": "ok"
+    },
+    "/clinical/pharmacy/orders": {
+      "status": 200,
+      "detail": "ok"
+    },
+    "/clinical/admin/backup-status": {
+      "status": 200,
+      "detail": "ok"
+    }
+  },
+  {
+    "email": "reception@pilot.local",
+    "expected_role": "receptionist",
+    "login": 200,
+    "role": "receptionist",
+    "/clinical/reception/queue": {
+      "status": 200,
+      "detail": "ok"
+    },
+    "/clinical/doctor/queue": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'doctor']\"}"
+    },
+    "/clinical/lab/orders": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'lab_technician']\"}"
+    },
+    "/clinical/pharmacy/orders": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'pharmacist']\"}"
+    },
+    "/clinical/admin/backup-status": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin']\"}"
+    }
+  },
+  {
+    "email": "dr.pilot@pilot.local",
+    "expected_role": "doctor",
+    "login": 200,
+    "role": "doctor",
+    "/clinical/reception/queue": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'receptionist']\"}"
+    },
+    "/clinical/doctor/queue": {
+      "status": 200,
+      "detail": "ok"
+    },
+    "/clinical/lab/orders": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'lab_technician']\"}"
+    },
+    "/clinical/pharmacy/orders": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'pharmacist']\"}"
+    },
+    "/clinical/admin/backup-status": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin']\"}"
+    }
+  },
+  {
+    "email": "lab@pilot.local",
+    "expected_role": "lab_technician",
+    "login": 200,
+    "role": "lab_technician",
+    "/clinical/reception/queue": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'receptionist']\"}"
+    },
+    "/clinical/doctor/queue": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'doctor']\"}"
+    },
+    "/clinical/lab/orders": {
+      "status": 200,
+      "detail": "ok"
+    },
+    "/clinical/pharmacy/orders": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'pharmacist']\"}"
+    },
+    "/clinical/admin/backup-status": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin']\"}"
+    }
+  },
+  {
+    "email": "pharmacy@pilot.local",
+    "expected_role": "pharmacist",
+    "login": 200,
+    "role": "pharmacist",
+    "/clinical/reception/queue": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'receptionist']\"}"
+    },
+    "/clinical/doctor/queue": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'doctor']\"}"
+    },
+    "/clinical/lab/orders": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'lab_technician']\"}"
+    },
+    "/clinical/pharmacy/orders": {
+      "status": 200,
+      "detail": "ok"
+    },
+    "/clinical/admin/backup-status": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin']\"}"
+    }
+  },
+  {
+    "email": "dr.mamady@example.com",
+    "expected_role": "doctor",
+    "login": 200,
+    "role": "doctor",
+    "/clinical/reception/queue": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'receptionist']\"}"
+    },
+    "/clinical/doctor/queue": {
+      "status": 200,
+      "detail": "ok"
+    },
+    "/clinical/lab/orders": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'lab_technician']\"}"
+    },
+    "/clinical/pharmacy/orders": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'pharmacist']\"}"
+    },
+    "/clinical/admin/backup-status": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin']\"}"
+    }
+  },
+  {
+    "email": "test.patient@example.com",
+    "expected_role": "patient",
+    "login": 200,
+    "role": "patient",
+    "/clinical/reception/queue": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'receptionist']\"}"
+    },
+    "/clinical/doctor/queue": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'doctor']\"}"
+    },
+    "/clinical/lab/orders": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'lab_technician']\"}"
+    },
+    "/clinical/pharmacy/orders": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin', 'pharmacist']\"}"
+    },
+    "/clinical/admin/backup-status": {
+      "status": 403,
+      "detail": "{\"detail\":\"Requires one of roles: ['admin']\"}"
+    }
+  }
+]

@@ -61,14 +61,16 @@ class RendezVousService:
         except Exception:
             db.rollback()
     
-    # Valid status transitions — ``paid`` appointment status is legacy; treasury via settlement only.
+    # Patient portal workflow: pending → confirmed → checked_in → completed (or cancelled).
     VALID_TRANSITIONS = {
         "pending": ["confirmed", "cancelled"],
-        "paid": ["confirmed", "cancelled"],
-        "confirmed": ["completed", "cancelled"],
+        "confirmed": ["checked_in", "completed", "cancelled"],
+        "checked_in": ["completed", "cancelled"],
         "completed": [],
         "cancelled": [],
-        "confirmé": ["completed", "cancelled"],
+        # legacy aliases kept for existing rows
+        "paid": ["confirmed", "cancelled"],
+        "confirmé": ["checked_in", "completed", "cancelled"],
     }
 
     @staticmethod
@@ -378,8 +380,24 @@ class RendezVousService:
             consultation_type=rdv.consultation_type,
         )
 
+        if doctor.clinic_id:
+            from services.clinic_billing_service import ClinicBillingService
+
+            new_rdv.clinic_id = doctor.clinic_id
+            new_rdv.clinical_status = "scheduled"
+
         db.add(new_rdv)
         db.flush()
+
+        if doctor.clinic_id:
+            ClinicBillingService.create_consultation_charge(
+                db,
+                clinic_id=doctor.clinic_id,
+                patient_id=patient.id,
+                appointment_id=new_rdv.id,
+                amount_gnf=int(doctor.consultation_fee or 150_000),
+                description=f"Consultation — Dr. {doctor.name}",
+            )
 
         # Teleconsult join URLs are never pre-generated before payment (R1).
         new_rdv.meeting_link = None
@@ -547,96 +565,17 @@ class RendezVousService:
             return f"{hours} h {minutes} min"
 
     @staticmethod
-    def create_payment_intent(
-        appointment_id: int,
-        db: Session
-    ) -> dict:
-        """
-        Create a Stripe payment intent for an appointment.
-        
-        Called when a patient initiates payment for an appointment.
-        Does NOT confirm the appointment - confirmation happens after successful payment.
-        
-        Args:
-            appointment_id: ID of the appointment to create payment for
-            db: Database session
-            
-        Returns:
-            Dict with client_secret and payment intent details
-            
-        Raises:
-            HTTPException if appointment not found or payment creation fails
-        """
-        from services.stripe_service import StripeService
-
-        RendezVousService.ensure_schema(db)
-        
-        appointment = db.query(models.RendezVous).filter(
-            models.RendezVous.id == appointment_id
-        ).first()
-        
-        if not appointment:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Appointment not found"
-            )
-        
-        # Prevent creating payment intent for already paid or cancelled appointments
-        if appointment.payment_status == "paid":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Payment has already been made for this appointment"
-            )
-
-        if appointment.status == "cancelled":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot create payment intent for a cancelled appointment"
-            )
-        
-        # Get patient info for checkout session
-        patient = db.query(models.Patient).filter(
-            models.Patient.id == appointment.patient_id
-        ).first()
-
-        if not patient:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Patient not found"
-            )
-
-        # Create Stripe Checkout session
-        payment_intent = StripeService.create_checkout_session(
-            appointment_id=appointment_id,
-            appointment_price=appointment.price,
-            patient_email=patient.user.email if patient.user else "patient@sante.gn",
-            db=db
+    def create_payment_intent(appointment_id: int, db: Session) -> dict:
+        """Online card checkout removed — patients pay at reception (clinical billing)."""
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Online payment is disabled; pay at clinic reception",
         )
-        
-        return payment_intent
 
     @staticmethod
-    def handle_stripe_webhook(
-        event: dict,
-        db: Session
-    ) -> dict:
-        """
-        Handle Stripe webhook events.
-        
-        Processes payment status changes:
-        - payment_intent.succeeded: Confirm appointment and mark as paid
-        - payment_intent.payment_failed: Mark as failed
-        
-        Args:
-            event: Parsed Stripe webhook event
-            db: Database session
-            
-        Returns:
-            Dict with webhook processing result
-            
-        Raises:
-            HTTPException on validation errors
-        """
-        from services.stripe_service import StripeService
-        
-        return StripeService.handle_webhook_event(event, db)
+    def handle_stripe_webhook(event: dict, db: Session) -> dict:
+        """Legacy webhook handler removed with Stripe integration."""
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Online payment webhooks are disabled",
+        )

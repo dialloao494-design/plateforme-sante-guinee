@@ -5,15 +5,12 @@ import { useAppointmentContext } from '../contexts/AppointmentContext.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import AppointmentCard from '../components/AppointmentCard.jsx';
 import AppointmentActions from '../components/AppointmentActions.jsx';
-import PaymentConfirmationModal from '../components/PaymentConfirmationModal.jsx';
-import { doctorsAPI, paymentsAPI } from '../services/api.js';
-import { createCheckoutForAppointment } from '../services/paymentFlow.js';
+import { doctorsAPI } from '../services/api.js';
 import {
   formatGNF,
   getAppointmentState,
   getAppointmentActions,
 } from '../utils/appointmentPresentation.js';
-import { loadSimulatedPayments } from '../utils/simulatedPaymentsStorage.js';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import './Appointments.css';
@@ -50,19 +47,9 @@ const Appointments = () => {
   const [actionError, setActionError] = useState('');
   const [lastAppointment, setLastAppointment] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [isPaying, setIsPaying] = useState(false);
-  const [paymentAttemptStarted, setPaymentAttemptStarted] = useState(false);
-  const [paymentError, setPaymentError] = useState('');
   const [isCreatingAppointment, setIsCreatingAppointment] = useState(false);
-  const [payingAppointmentId, setPayingAppointmentId] = useState(null);
   const [cancellingAppointmentId, setCancellingAppointmentId] = useState(null);
-  const [paymentModalAppointment, setPaymentModalAppointment] = useState(null);
   const [searchParams] = useSearchParams();
-  const SIM_ENABLED = import.meta.env.VITE_ENABLE_PAYMENT_SIMULATION === 'true';
-  const PAYMENT_STUB_TOKEN = import.meta.env.VITE_PAYMENT_STUB_TOKEN || '';
-  const [simulatedPayments] = useState(() => (SIM_ENABLED ? loadSimulatedPayments() : {}));
-  const [paymentRows, setPaymentRows] = useState([]);
-  const [loadingPaymentHistory, setLoadingPaymentHistory] = useState(false);
 
   const getApiErrorMessage = (err, fallback) => {
     if (!err?.response && /network|failed to fetch/i.test(String(err?.message || ''))) {
@@ -102,26 +89,9 @@ const Appointments = () => {
     }
   }, []);
 
-  const fetchPaymentHistory = useCallback(async () => {
-    if (!isPatient) return;
-    setLoadingPaymentHistory(true);
-    try {
-      const { data } = await paymentsAPI.list();
-      setPaymentRows(Array.isArray(data) ? data : []);
-    } catch {
-      setPaymentRows([]);
-    } finally {
-      setLoadingPaymentHistory(false);
-    }
-  }, [isPatient]);
-
   useEffect(() => {
     void fetchDoctors();
   }, [fetchDoctors]);
-
-  useEffect(() => {
-    void fetchPaymentHistory();
-  }, [fetchPaymentHistory]);
 
   useEffect(() => {
     const fromQuery = searchParams.get('doctor_id');
@@ -137,7 +107,6 @@ const Appointments = () => {
     setIsCreatingAppointment(true);
     setActionError('');
     setSuccess('');
-    setPaymentError('');
 
     if (!formData.doctorId || !formData.date) {
       setActionError('Choisissez un médecin et une date.');
@@ -180,7 +149,6 @@ const Appointments = () => {
       await deleteAppointment(id);
       setSuccess('Rendez-vous annulé');
       toast.success('Rendez-vous annulé');
-      await fetchPaymentHistory();
       if (lastAppointment?.id === id) {
         setLastAppointment(null);
         setShowConfirmation(false);
@@ -239,84 +207,13 @@ const Appointments = () => {
     });
   }, [appointments, selectedDoctorFilter, searchQuery, getDoctorName]);
 
-  const withSimulatedPayment = useCallback(
-    (appointment) => {
-      if (!appointment || !simulatedPayments[appointment.id]) {
-        return appointment;
-      }
-
-      return {
-        ...appointment,
-        payment_status: 'paid',
-        status: 'confirmed',
-      };
-    },
-    [simulatedPayments]
-  );
-
-  const displayedAppointments = useMemo(
-    () => filteredAppointments.map(withSimulatedPayment),
-    [filteredAppointments, withSimulatedPayment]
-  );
-
   const resolveForUser = (appointment) => getAppointmentState(appointment);
-
-  const displayedLastAppointment = lastAppointment ? withSimulatedPayment(lastAppointment) : null;
-  const displayedLastPresentation = displayedLastAppointment ? resolveForUser(displayedLastAppointment) : null;
-  const displayedLastActions = displayedLastAppointment ? getAppointmentActions(displayedLastAppointment) : [];
-
-  const openPaymentModal = (appointment = lastAppointment) => {
-    setPaymentError('');
-    setPaymentModalAppointment(appointment);
-  };
-
-  const handleConfirmPayment = async (appointment) => {
-    if (!appointment?.id) {
-      setPaymentError('Rendez-vous introuvable pour le paiement.');
-      return;
-    }
-
-    setIsPaying(true);
-    setPayingAppointmentId(appointment.id);
-    setPaymentAttemptStarted(true);
-
-    try {
-      if (SIM_ENABLED) {
-        if (!PAYMENT_STUB_TOKEN) {
-          throw new Error(
-            'Simulation de paiement : définissez VITE_PAYMENT_STUB_TOKEN (aligné sur PAYMENT_STUB_TOKEN backend).'
-          );
-        }
-        const response = await paymentsAPI.confirmPayment(appointment.id, PAYMENT_STUB_TOKEN);
-        await fetchAppointments();
-        await fetchPaymentHistory();
-        setSuccess('Paiement simulé validé côté serveur.');
-        toast.success('Paiement validé (mode démo)');
-        setPaymentModalAppointment(null);
-        if (lastAppointment?.id === appointment.id && response?.data) {
-          setLastAppointment(response.data);
-        }
-        return;
-      }
-
-      const checkoutUrl = await createCheckoutForAppointment(appointment);
-      window.location.assign(checkoutUrl);
-    } catch (err) {
-      const message = getApiErrorMessage(err, 'Erreur lors de la confirmation du paiement.');
-      setPaymentError(message);
-      toast.error(message);
-      setPaymentAttemptStarted(false);
-    } finally {
-      setIsPaying(false);
-      setPayingAppointmentId(null);
-    }
-  };
+  const displayedLastPresentation = lastAppointment ? resolveForUser(lastAppointment) : null;
+  const displayedLastActions = lastAppointment ? getAppointmentActions(lastAppointment) : [];
 
   const handleNewBooking = () => {
     setShowConfirmation(false);
     setLastAppointment(null);
-    setPaymentError('');
-    setPaymentAttemptStarted(false);
   };
 
   return (
@@ -324,11 +221,11 @@ const Appointments = () => {
       <header className="appointments-header">
         <div>
           <h1>Rendez-vous</h1>
-          <p>Planifiez vos consultations et payez via Mobile Money en toute simplicité.</p>
+          <p>Planifiez vos consultations — le paiement se fait à la caisse de la clinique.</p>
         </div>
       </header>
 
-      {isPatient && showConfirmation && displayedLastAppointment && (
+      {isPatient && showConfirmation && lastAppointment && (
         <div className="confirmation-card">
           <div className="confirmation-top">
             <div>
@@ -342,23 +239,19 @@ const Appointments = () => {
           <div className="confirmation-details">
             <div>
               <p className="detail-label">Médecin</p>
-              <p>{getDoctorName(displayedLastAppointment)}</p>
+              <p>{getDoctorName(lastAppointment)}</p>
             </div>
             <div>
               <p className="detail-label">Date et heure</p>
-              <p>{new Date(displayedLastAppointment.date).toLocaleString('fr-FR')}</p>
+              <p>{new Date(lastAppointment.date).toLocaleString('fr-FR')}</p>
             </div>
             <div>
               <p className="detail-label">Durée</p>
-              <p>{displayedLastAppointment.duration_minutes} minutes</p>
+              <p>{lastAppointment.duration_minutes} minutes</p>
             </div>
             <div>
-              <p className="detail-label">Paiement</p>
-              <p>{displayedLastPresentation?.paymentLabel}</p>
-            </div>
-            <div>
-              <p className="detail-label">Prix</p>
-              <p>{formatGNF(displayedLastAppointment.price)}</p>
+              <p className="detail-label">Prix indicatif</p>
+              <p>{formatGNF(lastAppointment.price)}</p>
             </div>
             <div>
               <p className="detail-label">Statut</p>
@@ -369,15 +262,12 @@ const Appointments = () => {
           </div>
           <AppointmentActions
             actions={displayedLastActions}
-            appointment={displayedLastAppointment}
-            onPay={openPaymentModal}
+            appointment={lastAppointment}
             onCancel={handleDelete}
             onOpenMessages={(item) => navigate(`/messages/${item.id}`)}
             onJoinConsultation={(item) => navigate(`/consultation/${item.id}`)}
-            isPaying={isPaying || paymentAttemptStarted || payingAppointmentId === displayedLastAppointment.id}
             isCancelling={false}
           />
-          {paymentError && <p className="error">{paymentError}</p>}
         </div>
       )}
 
@@ -499,7 +389,7 @@ const Appointments = () => {
             />
           )}
 
-          {!loading && appointments.length > 0 && displayedAppointments.length === 0 && (
+          {!loading && appointments.length > 0 && filteredAppointments.length === 0 && (
             <EmptyState
               preset="clipboard"
               title="Aucun résultat"
@@ -507,9 +397,9 @@ const Appointments = () => {
             />
           )}
 
-          {displayedAppointments.length > 0 && (
+          {filteredAppointments.length > 0 && (
             <ul className="appointments-cards">
-              {displayedAppointments.map((appointment) => {
+              {filteredAppointments.map((appointment) => {
                 const presentation = resolveForUser(appointment);
                 const actions = getAppointmentActions(appointment);
                 return (
@@ -517,13 +407,11 @@ const Appointments = () => {
                     key={appointment.id}
                     appointment={appointment}
                     title={getDoctorName(appointment)}
-                    onPay={openPaymentModal}
                     onCancel={(item) => handleDelete(item.id)}
                     onOpenMessages={(item) => navigate(`/messages/${item.id}`)}
                     onJoinConsultation={(item) => navigate(`/consultation/${item.id}`)}
                     presentation={presentation}
                     actions={actions}
-                    isPaying={isPaying && payingAppointmentId === appointment.id}
                     isCancelling={cancellingAppointmentId === appointment.id}
                   />
                 );
@@ -532,54 +420,6 @@ const Appointments = () => {
           )}
         </div>
       </div>
-
-      {isPatient && (
-        <section className="appointments-payment-history" aria-labelledby="payment-history-title">
-          <h2 id="payment-history-title">Historique paiements &amp; rendez-vous</h2>
-          <p className="appointments-payment-history-lead">
-            Liste renvoyée par l’API (même périmètre que vos rendez-vous) — utile pour contrôler statut de paiement et
-            suivi cabinet.
-          </p>
-          {loadingPaymentHistory && <PageSkeleton lines={4} />}
-          {!loadingPaymentHistory && paymentRows.length === 0 && (
-            <p className="appointments-muted">Aucun enregistrement pour le moment.</p>
-          )}
-          {!loadingPaymentHistory && paymentRows.length > 0 && (
-            <div className="appointments-payment-table-wrap">
-              <table className="appointments-payment-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Date</th>
-                    <th scope="col">Médecin</th>
-                    <th scope="col">Montant</th>
-                    <th scope="col">Paiement</th>
-                    <th scope="col">Statut RDV</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paymentRows.map((row) => (
-                    <tr key={row.id}>
-                      <td>{new Date(row.date).toLocaleString('fr-FR')}</td>
-                      <td>{getDoctorName(row)}</td>
-                      <td>{formatGNF(row.price)}</td>
-                      <td>{String(row.payment_status || '—')}</td>
-                      <td>{String(row.status || '—')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      )}
-
-      <PaymentConfirmationModal
-        isOpen={Boolean(paymentModalAppointment)}
-        appointment={paymentModalAppointment}
-        onConfirm={handleConfirmPayment}
-        onClose={() => setPaymentModalAppointment(null)}
-        isProcessing={isPaying}
-      />
     </div>
   );
 };

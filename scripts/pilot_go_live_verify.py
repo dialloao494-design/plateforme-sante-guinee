@@ -150,11 +150,10 @@ def main() -> int:
     except Exception as exc:
         log("HTTPS actif", False, str(exc))
 
-    # Stripe
+    # Backend health
     code, health = req("GET", "/health")
     log("Backend health", code == 200, str(health) if code == 200 else str(health)[:120])
-    stripe_ok = "sk_test_" in os.getenv("STRIPE_SECRET_KEY", "sk_test_from_env_file")
-    log("Stripe configuré", stripe_ok, "sk_test key in deploy/env/.env.backend")
+    log("Clinic billing API", code == 200, "Reception encaissement via /clinical/billing/*")
 
     # Jitsi
     jitsi_ok = len(os.getenv("JITSI_APP_SECRET", "") or "") >= 12

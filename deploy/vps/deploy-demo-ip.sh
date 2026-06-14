@@ -31,8 +31,9 @@ ENABLE_PILOT_SEED=true
 BYPASS_AVAILABILITY_VALIDATION=false
 VITE_API_URL=/api
 VITE_SAME_ORIGIN_API=true
-VITE_TELECONSULT_PROVIDER=stub
-VITE_STRIPE_PUBLISHABLE_KEY=pk_test_placeholder
+PAYMENT_STUB_TOKEN=demo_plateforme_sante_guinee_stub_v1
+VITE_ENABLE_PAYMENT_SIMULATION=true
+VITE_PAYMENT_STUB_TOKEN=demo_plateforme_sante_guinee_stub_v1
 EOF
 chmod 600 .env.vps-ip
 cp -f .env.vps-ip .env
@@ -59,7 +60,7 @@ STRIPE_WEBHOOK_SECRET=whsec_$(openssl rand -hex 16)
 JITSI_APP_SECRET=${JITSI_SECRET}
 JITSI_APP_ID=plateforme-sante-guinee
 JITSI_DOMAIN=meet.jit.si
-PAYMENT_STUB_TOKEN=$(openssl rand -base64 24 | tr -d '\n')
+PAYMENT_STUB_TOKEN=demo_plateforme_sante_guinee_stub_v1
 FRONTEND_URL=http://${VPS_IP}
 CORS_ORIGINS=http://${VPS_IP}
 LOG_LEVEL=INFO

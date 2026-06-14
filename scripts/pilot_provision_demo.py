@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Provision demo doctors + 5 availability slots each (one-shot, ENABLE_PILOT_SEED=false at boot)."""
+"""Provision demo doctors + wide availability slots (08:00–20:00, Mon–Sun)."""
 from __future__ import annotations
 
 import os
@@ -8,13 +8,17 @@ import sys
 # Ensure project root on path when run via docker exec
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from datetime import time
-
 from database import SessionLocal
 import models
 from models.availability import DoctorAvailability
-from services.availability_service import AvailabilityService
-from services.pilot_seed import PILOT_DOCTORS, seed_pilot_accounts
+from services.pilot_seed import (
+    PILOT_DEMO_AVAILABILITY_DAYS,
+    PILOT_DEMO_AVAILABILITY_END,
+    PILOT_DEMO_AVAILABILITY_START,
+    PILOT_DOCTORS,
+    seed_pilot_accounts,
+    _ensure_pilot_availability,
+)
 
 
 def main() -> int:
@@ -25,31 +29,14 @@ def main() -> int:
     try:
         doctors = db.query(models.Doctor).all()
         print(f"Doctors in DB: {len(doctors)}")
-        created = 0
-        for doc in doctors:
-            existing = (
-                db.query(DoctorAvailability)
-                .filter(DoctorAvailability.doctor_id == doc.id, DoctorAvailability.is_active.is_(True))
-                .count()
-            )
-            if existing >= 5:
-                print(f"  doctor_id={doc.id} already has {existing} slots — skip")
-                continue
-            # 5 weekdays Mon–Fri 09:00–12:00
-            for day in range(5):
-                AvailabilityService.set_doctor_working_hours(
-                    doctor_id=doc.id,
-                    day_of_week=day,
-                    start_time=time(9, 0),
-                    end_time=time(12, 0),
-                    db=db,
-                )
-                created += 1
-            db.commit()
-            print(f"  doctor_id={doc.id} ({doc.first_name} {doc.last_name}) → +5 slots")
-        total = db.query(DoctorAvailability).count()
-        print(f"Availability slots total: {total} (created {created})")
-        print(f"Pilot doctors seeded: {len(PILOT_DOCTORS)} canonical emails")
+        _ensure_pilot_availability(db)
+        total = db.query(DoctorAvailability).filter(DoctorAvailability.is_active.is_(True)).count()
+        print(
+            f"Availability synced: {PILOT_DEMO_AVAILABILITY_START.strftime('%H:%M')}-"
+            f"{PILOT_DEMO_AVAILABILITY_END.strftime('%H:%M')} × {len(PILOT_DEMO_AVAILABILITY_DAYS)} days/doctor"
+        )
+        print(f"Active slots total: {total}")
+        print(f"Pilot doctors: {len(PILOT_DOCTORS)} canonical emails")
     finally:
         db.close()
     return 0

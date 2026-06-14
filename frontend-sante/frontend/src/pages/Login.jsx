@@ -6,8 +6,12 @@ import './Login.css';
 
 const PILOT_DEMO_ACCOUNTS = import.meta.env.DEV
   ? {
-      doctor: { email: 'dr.mamady@example.com', password: 'Doctor123!', label: 'Médecin démo' },
-      patient: { email: 'test.patient@example.com', password: 'Patient123!', label: 'Patient démo' },
+      patient: { email: 'test.patient@example.com', password: 'Patient123!', label: 'Patient' },
+      reception: { email: 'reception@pilot.local', password: 'ReceptionPilot1!', label: 'Réception' },
+      doctor: { email: 'dr.pilot@pilot.local', password: 'DoctorPilot1!', label: 'Médecin' },
+      lab: { email: 'lab@pilot.local', password: 'LabPilot1!', label: 'Laboratoire' },
+      pharmacy: { email: 'pharmacy@pilot.local', password: 'PharmacyPilot1!', label: 'Pharmacie' },
+      manager: { email: 'admin@pilot.local', password: 'AdminPilot1!', label: 'Manager' },
     }
   : null;
 
@@ -67,7 +71,7 @@ const Login = () => {
       <div className="login-card login-card--narrow">
         <p className="login-eyebrow">Plateforme Santé · Guinée</p>
         <h1 className="login-title">Connexion</h1>
-        <p className="login-lead">Accédez à votre espace patient ou professionnel de santé.</p>
+        <p className="login-lead">Accédez à votre espace selon votre rôle.</p>
         <form onSubmit={handleSubmit} className="login-form">
           <div className="login-field">
             <label htmlFor="email">Email</label>
@@ -105,29 +109,20 @@ const Login = () => {
 
           {PILOT_DEMO_ACCOUNTS && (
             <div className="login-demo-hint" aria-label="Comptes de démonstration">
-              <p className="login-demo-title">Comptes de test (développement)</p>
+              <p className="login-demo-title">Comptes pilote (développement)</p>
               <div className="login-demo-actions">
-                <button
-                  type="button"
-                  className="login-demo-btn"
-                  disabled={loading}
-                  onClick={() => fillDemoAccount(PILOT_DEMO_ACCOUNTS.doctor)}
-                >
-                  {PILOT_DEMO_ACCOUNTS.doctor.label}
-                </button>
-                <button
-                  type="button"
-                  className="login-demo-btn"
-                  disabled={loading}
-                  onClick={() => fillDemoAccount(PILOT_DEMO_ACCOUNTS.patient)}
-                >
-                  {PILOT_DEMO_ACCOUNTS.patient.label}
-                </button>
+                {Object.values(PILOT_DEMO_ACCOUNTS).map((account) => (
+                  <button
+                    key={account.label}
+                    type="button"
+                    className="login-demo-btn"
+                    disabled={loading}
+                    onClick={() => fillDemoAccount(account)}
+                  >
+                    {account.label}
+                  </button>
+                ))}
               </div>
-              <p className="login-demo-note">
-                Médecin : <code>dr.mamady@example.com</code> · Mot de passe : <code>Doctor123!</code>{' '}
-                (D majuscule, point d’exclamation)
-              </p>
             </div>
           )}
 

@@ -1,17 +1,36 @@
 /**
  * Breadcrumbs for the authenticated app chrome (no duplicate visible page titles).
  */
+import { getRoleHomePath } from './rolePaths.js';
+import { isClinicPortalRole } from './portalAccess.js';
+
 function c(to, label) {
   return { to, label };
 }
 
+const CLINICAL_CRUMBS = {
+  '/clinical': 'Opérations',
+  '/clinical/reception': 'Réception',
+  '/clinical/cashier': 'Caisse',
+  '/clinical/doctor': 'Consultations',
+  '/clinical/lab': 'Laboratoire',
+  '/clinical/pharmacy': 'Pharmacie',
+  '/clinical/admin': 'Administration',
+  '/clinical/revenue': 'Recettes',
+};
+
 export function getShellContext(pathname, role) {
   const r = String(role || '').toLowerCase();
-  const isDoctorLike = r === 'doctor' || r === 'admin';
-  const homeTo = isDoctorLike ? '/doctor/dashboard' : '/dashboard';
-  const homeLabel = isDoctorLike ? 'Praticien' : 'Accueil';
+  const homeTo = isClinicPortalRole(r) ? getRoleHomePath(r) : '/dashboard';
+  const homeLabel = isClinicPortalRole(r) ? 'Clinique' : 'Accueil';
 
   const withHome = (rest) => [c(homeTo, homeLabel), ...rest];
+
+  for (const [prefix, label] of Object.entries(CLINICAL_CRUMBS)) {
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+      return { crumbs: withHome([{ label, to: null }]) };
+    }
+  }
 
   if (pathname.startsWith('/consultation/')) {
     return {
@@ -27,19 +46,10 @@ export function getShellContext(pathname, role) {
   if (pathname.startsWith('/doctor/patient/')) {
     return {
       crumbs: withHome([
-        c(isDoctorLike ? '/doctor/appointments' : '/patients', isDoctorLike ? 'File d’attente' : 'Patients'),
+        c('/clinical/doctor', 'Consultations'),
         { label: 'Dossier patient', to: null },
       ]),
     };
-  }
-  if (pathname === '/doctor/dashboard') {
-    return { crumbs: withHome([{ label: 'Agenda clinique', to: null }]) };
-  }
-  if (pathname === '/doctor/appointments') {
-    return { crumbs: withHome([{ label: 'File d’attente', to: null }]) };
-  }
-  if (pathname === '/doctor/messages') {
-    return { crumbs: withHome([{ label: 'Messagerie', to: null }]) };
   }
   if (pathname === '/patients') {
     return { crumbs: withHome([{ label: 'Patients', to: null }]) };
@@ -51,12 +61,12 @@ export function getShellContext(pathname, role) {
     return { crumbs: withHome([{ label: 'Rendez-vous', to: null }]) };
   }
   if (pathname.startsWith('/doctors/') && pathname !== '/doctors') {
-    return { crumbs: withHome([c('/doctors', isDoctorLike ? 'Annuaire' : 'Médecins'), { label: 'Fiche praticien', to: null }]) };
+    return {
+      crumbs: withHome([c('/doctors', 'Médecins'), { label: 'Fiche praticien', to: null }]),
+    };
   }
   if (pathname === '/doctors') {
-    return {
-      crumbs: withHome([{ label: isDoctorLike ? 'Annuaire' : 'Médecins', to: null }]),
-    };
+    return { crumbs: withHome([{ label: 'Médecins', to: null }]) };
   }
   if (pathname === '/users') {
     return { crumbs: withHome([{ label: 'Utilisateurs', to: null }]) };

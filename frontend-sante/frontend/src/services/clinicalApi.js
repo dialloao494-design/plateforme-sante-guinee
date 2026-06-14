@@ -1,0 +1,59 @@
+import httpClient from './httpClient';
+
+const clinicalApi = {
+  operationsSummary: () => httpClient.get('/clinical/operations/summary'),
+
+  // Admin
+  createClinic: (data) => httpClient.post('/clinical/clinics', data),
+  listClinics: () => httpClient.get('/clinical/clinics'),
+  createStaff: (data) => httpClient.post('/clinical/staff', data),
+
+  // Reception
+  intakePatient: (data) => httpClient.post('/clinical/reception/patients', data),
+  createAppointment: (data) => httpClient.post('/clinical/reception/appointments', data),
+  receptionQueue: () => httpClient.get('/clinical/reception/queue'),
+  checkIn: (appointmentId) =>
+    httpClient.post(`/clinical/reception/appointments/${appointmentId}/check-in`),
+  clinicDoctors: () => httpClient.get('/clinical/reception/doctors'),
+
+  // Doctor
+  doctorQueue: () => httpClient.get('/clinical/doctor/queue'),
+  startConsultation: (data) => httpClient.post('/clinical/consultations', data),
+  updateConsultation: (id, data) => httpClient.patch(`/clinical/consultations/${id}`, data),
+  orderLab: (consultationId, data) =>
+    httpClient.post(`/clinical/consultations/${consultationId}/lab-orders`, data),
+  prescribe: (consultationId, data) =>
+    httpClient.post(`/clinical/consultations/${consultationId}/prescriptions`, data),
+
+  // Lab
+  labQueue: () => httpClient.get('/clinical/lab/orders'),
+  updateLabOrder: (id, data) => httpClient.patch(`/clinical/lab/orders/${id}`, data),
+  recordLabResult: (orderId, data) => httpClient.post(`/clinical/lab/orders/${orderId}/results`, data),
+  validateLabResult: (resultId) => httpClient.post(`/clinical/lab/results/${resultId}/validate`),
+
+  // Pharmacy
+  pharmacyQueue: () => httpClient.get('/clinical/pharmacy/orders'),
+  updatePharmacyOrder: (id, data) => httpClient.patch(`/clinical/pharmacy/orders/${id}`, data),
+
+  receptionFollowUps: () => httpClient.get('/clinical/reception/follow-ups'),
+  recordVitals: (consultationId, data) =>
+    httpClient.post(`/clinical/consultations/${consultationId}/vitals`, data),
+  scheduleFollowUp: (consultationId, data) =>
+    httpClient.post(`/clinical/consultations/${consultationId}/follow-ups`, data),
+  patientJourney: (patientId) => httpClient.get(`/clinical/patients/${patientId}/journey`),
+
+  // Audit
+  auditLogs: (params) => httpClient.get('/clinical/audit-logs', { params }),
+
+  // Billing
+  pendingCharges: () => httpClient.get('/clinical/billing/charges/pending'),
+  payCharge: (chargeId, paymentMethod) =>
+    httpClient.post(`/clinical/billing/charges/${chargeId}/pay`, { payment_method: paymentMethod }),
+  dailyRevenue: (day) =>
+    httpClient.get('/clinical/billing/revenue/daily', { params: day ? { day } : {} }),
+
+  // Admin ops
+  backupStatus: () => httpClient.get('/clinical/admin/backup-status'),
+};
+
+export default clinicalApi;

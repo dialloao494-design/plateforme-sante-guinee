@@ -23,7 +23,6 @@ def _apply_valid_production_env(monkeypatch) -> None:
         "DATABASE_URL",
         "postgresql://sante:StrongProductionDb!" + "Z" * 8 + "@db:5432/sante",
     )
-    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_live_" + "b" * 24)
     monkeypatch.setenv("JITSI_APP_ID", "prod-jitsi-app")
     monkeypatch.setenv("JITSI_APP_SECRET", "jitsi-production-secret-" + "C" * 8)
     monkeypatch.setenv("ENABLE_PILOT_SEED", "false")
@@ -100,13 +99,6 @@ class TestProductionBootSecrets:
         monkeypatch.setenv("DATABASE_URL", "postgresql://sante:sante_dev_password@db:5432/sante")
         with pytest.raises(RuntimeError, match="DB_PASSWORD"):
             AppSettings().enforce_production_boot()
-
-    def test_stripe_test_key_rejected_in_production(self, monkeypatch):
-        _apply_valid_production_env(monkeypatch)
-        monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_" + "x" * 24)
-        with pytest.raises(RuntimeError, match="STRIPE_SECRET"):
-            AppSettings().enforce_production_boot()
-
     def test_missing_jitsi_secret_rejected(self, monkeypatch):
         _apply_valid_production_env(monkeypatch)
         monkeypatch.delenv("JITSI_APP_SECRET", raising=False)

@@ -3,7 +3,7 @@ import logging
 import os
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from core.limiter import limiter
+from core.limiter import limiter, login_rate_limit, register_rate_limit
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from database import get_db
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/register", response_model=UserResponse, status_code=201)
-@limiter.limit(os.getenv("RATE_LIMIT_REGISTER", "5/minute"))
+@limiter.limit(register_rate_limit())
 def register(request: Request, user: PublicRegistration, db: Session = Depends(get_db)):
     """
     Public self-service registration (patient or doctor only).
@@ -123,7 +123,7 @@ def create_token_response(user: User):
 
 
 @router.post("/login", response_model=Token)
-@limiter.limit(os.getenv("RATE_LIMIT_LOGIN", "10/minute"))
+@limiter.limit(login_rate_limit())
 def login(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -164,7 +164,7 @@ def login(
 
 
 @router.post("/login-json", response_model=Token)
-@limiter.limit(os.getenv("RATE_LIMIT_LOGIN", "10/minute"))
+@limiter.limit(login_rate_limit())
 def login_json(
     request: Request,
     credentials: UserLogin,

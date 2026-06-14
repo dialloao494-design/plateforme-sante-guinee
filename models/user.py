@@ -2,12 +2,17 @@ from sqlalchemy import CheckConstraint, Column, Integer, String
 from sqlalchemy.orm import relationship
 from database import Base
 
+_CLINICAL_ROLES = (
+    "'patient', 'doctor', 'admin', "
+    "'receptionist', 'cashier', 'lab_technician', 'pharmacist'"
+)
+
 
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (
         CheckConstraint(
-            "role IN ('patient', 'doctor', 'admin')",
+            f"role IN ({_CLINICAL_ROLES})",
             name="ck_users_role_allowed",
         ),
     )
@@ -15,7 +20,8 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    role = Column(String, nullable=False)  # patient / doctor / admin
+    role = Column(String, nullable=False)
+    clinic_id = Column(Integer, nullable=True, index=True)  # staff home clinic
 
     patient_profile = relationship("Patient", back_populates="user", uselist=False)
     doctor_profile = relationship("Doctor", back_populates="user", uselist=False)

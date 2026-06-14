@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from typing import List
@@ -58,6 +60,9 @@ def create_patient(
     db.add(new_patient)
     db.commit()
     db.refresh(new_patient)
+    from services.medical_history_service import ensure_medical_record
+
+    ensure_medical_record(db, new_patient.id)
     return new_patient
 
 
@@ -119,6 +124,9 @@ def get_my_patient_profile(
         if changed:
             db.commit()
             db.refresh(patient)
+    from services.medical_history_service import ensure_medical_record
+
+    ensure_medical_record(db, patient.id)
     return patient
 
 
@@ -143,9 +151,20 @@ def delete_patient(
     patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
-    db.delete(patient)
+    has_clinical = (
+        db.query(models.ClinicalConsultation)
+        .filter(models.ClinicalConsultation.patient_id == patient_id)
+        .first()
+    )
+    if has_clinical:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete patient with clinical history. Archive only.",
+        )
+    patient.is_archived = True
+    patient.archived_at = datetime.utcnow()
     db.commit()
-    return {"detail": "Patient deleted successfully"}
+    return {"detail": "Patient archived successfully"}
 
 
 @router.put("/{patient_id}", response_model=schemas.PatientResponse)

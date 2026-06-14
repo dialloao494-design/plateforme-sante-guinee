@@ -37,6 +37,12 @@ import models.clinical_note  # noqa: F401
 import models.consultation_summary  # noqa: F401
 import models.patient_document  # noqa: F401
 import models.clinical_audit_log  # noqa: F401
+import models.clinic  # noqa: F401
+import models.clinical_consultation  # noqa: F401
+import models.lab_order  # noqa: F401
+import models.lab_result  # noqa: F401
+import models.prescription  # noqa: F401
+import models.pharmacy_order  # noqa: F401
 
 from database import engine, Base
 from database_migrations import ensure_doctor_geolocation_columns, ensure_patient_dossier_schema

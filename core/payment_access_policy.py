@@ -27,10 +27,8 @@ BUSINESS_ACTIVE_APPOINTMENT_STATUSES = frozenset(
     {"confirmed", "completed", "checked_in", "active"}
 )
 
-# Status transitions patients/doctors may request manually (not via settlement).
-MANUAL_STATUS_TARGETS_REQUIRING_PAYMENT = frozenset(
-    {"confirmed", "completed", "checked_in", "active", "paid"}
-)
+# Patient portal: appointment workflow no longer gated by online payment (clinic cashier).
+MANUAL_STATUS_TARGETS_REQUIRING_PAYMENT = frozenset()
 
 
 class PaymentAccessPolicy:
@@ -96,18 +94,8 @@ class PaymentAccessPolicy:
         appointment: models.RendezVous,
         new_status: str,
     ) -> None:
-        """
-        Block manual status changes that imply a paid/confirmed service without treasury proof.
-        """
+        """Allow workflow transitions without online treasury (payment at clinic cashier)."""
         target = PaymentAccessPolicy.normalize_appointment_status(new_status)
-        if target not in MANUAL_STATUS_TARGETS_REQUIRING_PAYMENT:
-            return
-
-        PaymentAccessPolicy.assert_treasury_cleared(
-            appointment,
-            context=f"transition vers status='{target}'",
-        )
-
         if target == "confirmed" and PaymentAccessPolicy.is_access_revoked(appointment):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -137,17 +125,6 @@ class PaymentAccessPolicy:
                 "payment_status": appointment.payment_status,
             }
 
-        if not PaymentAccessPolicy.is_treasury_cleared(appointment):
-            return {
-                "can_join": False,
-                "reason": "payment_required",
-                "message": (
-                    "Paiement requis avant d'accéder à la téléconsultation. "
-                    "Veuillez régler votre rendez-vous."
-                ),
-                "payment_status": appointment.payment_status,
-            }
-
         status_norm = PaymentAccessPolicy.normalize_appointment_status(appointment.status)
         if status_norm in {"cancelled", "expired"}:
             return None  # handled upstream
@@ -157,7 +134,7 @@ class PaymentAccessPolicy:
                 "can_join": False,
                 "reason": "status_blocked",
                 "message": (
-                    "Le rendez-vous doit être confirmé et payé avant d'ouvrir la salle. "
+                    "Le rendez-vous doit être confirmé avant d'ouvrir la salle. "
                     f"(statut actuel : {appointment.status})"
                 ),
                 "status": appointment.status,

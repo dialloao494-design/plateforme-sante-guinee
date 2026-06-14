@@ -23,9 +23,16 @@ class RendezVous(Base):
 
     doctor_id = Column(Integer, ForeignKey("doctors.id"), nullable=False, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False, index=True)
+    clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=True, index=True)
+    clinical_status = Column(String(32), default="scheduled", nullable=False, index=True)
+    # scheduled | checked_in | in_consultation | completed | cancelled
 
     doctor = relationship("Doctor", back_populates="rendezvous")
     patient = relationship("Patient", back_populates="rendezvous")
+    clinic = relationship("Clinic", back_populates="appointments")
+    clinical_consultation = relationship(
+        "ClinicalConsultation", back_populates="appointment", uselist=False
+    )
     payments = relationship("Payment", back_populates="appointment", cascade="all, delete-orphan")
     messages = relationship("Message", back_populates="appointment", cascade="all, delete-orphan")
 

@@ -426,8 +426,155 @@ class PatientRecordService:
                     summary=f"Rendez-vous ({rdv.status})",
                     payload={
                         "status": rdv.status,
+                        "clinical_status": rdv.clinical_status,
                         "consultation_type": rdv.consultation_type,
                         "doctor_id": rdv.doctor_id,
+                        "clinic_id": rdv.clinic_id,
+                        "payment_status": rdv.payment_status,
+                    },
+                )
+            )
+
+        for consultation in (
+            db.query(models.ClinicalConsultation)
+            .filter(
+                models.ClinicalConsultation.patient_id == patient_id,
+                models.ClinicalConsultation.deleted_at.is_(None),
+            )
+            .all()
+        ):
+            ts = consultation.started_at or consultation.updated_at or datetime.utcnow()
+            events.append(
+                record_schemas.TimelineEvent(
+                    event_type="cis_consultation",
+                    resource_id=consultation.id,
+                    timestamp=ts,
+                    summary=f"Consultation CIS ({consultation.status})",
+                    payload={
+                        "status": consultation.status,
+                        "chief_complaint": consultation.chief_complaint,
+                        "diagnosis": consultation.diagnosis,
+                        "treatment_plan": consultation.treatment_plan,
+                        "doctor_id": consultation.doctor_id,
+                        "clinic_id": consultation.clinic_id,
+                        "appointment_id": consultation.appointment_id,
+                    },
+                )
+            )
+
+        for lab_order in (
+            db.query(models.LabOrder)
+            .filter(
+                models.LabOrder.patient_id == patient_id,
+                models.LabOrder.deleted_at.is_(None),
+            )
+            .all()
+        ):
+            ts = lab_order.created_at or datetime.utcnow()
+            events.append(
+                record_schemas.TimelineEvent(
+                    event_type="lab_order",
+                    resource_id=lab_order.id,
+                    timestamp=ts,
+                    summary=f"Examen labo — {lab_order.test_name} ({lab_order.status})",
+                    payload={
+                        "test_code": lab_order.test_code,
+                        "test_name": lab_order.test_name,
+                        "status": lab_order.status,
+                        "priority": lab_order.priority,
+                        "consultation_id": lab_order.consultation_id,
+                    },
+                )
+            )
+            for result in lab_order.results or []:
+                rts = result.validated_at or result.updated_at or result.created_at or ts
+                events.append(
+                    record_schemas.TimelineEvent(
+                        event_type="lab_result",
+                        resource_id=result.id,
+                        timestamp=rts,
+                        summary=f"Résultat labo — {lab_order.test_name} ({result.status})",
+                        payload={
+                            "lab_order_id": lab_order.id,
+                            "result_summary": result.result_summary,
+                            "reference_range": result.reference_range,
+                            "interpretation": result.interpretation,
+                            "status": result.status,
+                        },
+                    )
+                )
+
+        for rx in (
+            db.query(models.Prescription)
+            .filter(
+                models.Prescription.patient_id == patient_id,
+                models.Prescription.deleted_at.is_(None),
+            )
+            .all()
+        ):
+            ts = rx.created_at or datetime.utcnow()
+            meds = ", ".join(i.medication_name for i in (rx.items or []))
+            events.append(
+                record_schemas.TimelineEvent(
+                    event_type="prescription",
+                    resource_id=rx.id,
+                    timestamp=ts,
+                    summary=f"Ordonnance ({rx.status})",
+                    payload={
+                        "status": rx.status,
+                        "medications": meds,
+                        "consultation_id": rx.consultation_id,
+                        "items": [
+                            {
+                                "medication_name": i.medication_name,
+                                "dosage": i.dosage,
+                                "frequency": i.frequency,
+                                "duration_days": i.duration_days,
+                            }
+                            for i in (rx.items or [])
+                        ],
+                    },
+                )
+            )
+
+        for ph_order in (
+            db.query(models.PharmacyOrder)
+            .filter(models.PharmacyOrder.patient_id == patient_id)
+            .all()
+        ):
+            ts = ph_order.dispensed_at or ph_order.created_at or datetime.utcnow()
+            events.append(
+                record_schemas.TimelineEvent(
+                    event_type="pharmacy_order",
+                    resource_id=ph_order.id,
+                    timestamp=ts,
+                    summary=f"Pharmacie ({ph_order.status})",
+                    payload={
+                        "status": ph_order.status,
+                        "prescription_id": ph_order.prescription_id,
+                        "dispensed_at": ph_order.dispensed_at.isoformat() if ph_order.dispensed_at else None,
+                    },
+                )
+            )
+
+        for charge in (
+            db.query(models.ClinicCharge)
+            .filter(models.ClinicCharge.patient_id == patient_id)
+            .all()
+        ):
+            ts = charge.paid_at or charge.created_at or datetime.utcnow()
+            events.append(
+                record_schemas.TimelineEvent(
+                    event_type="billing_charge",
+                    resource_id=charge.id,
+                    timestamp=ts,
+                    summary=f"Facturation {charge.charge_type} ({charge.payment_status})",
+                    payload={
+                        "charge_type": charge.charge_type,
+                        "amount_gnf": charge.amount_gnf,
+                        "payment_status": charge.payment_status,
+                        "payment_method": charge.payment_method,
+                        "description": charge.description,
                     },
                 )
             )

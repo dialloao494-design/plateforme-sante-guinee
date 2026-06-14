@@ -15,6 +15,7 @@ Passwords (documented in FINAL_AUTH_STABILIZATION.md):
 from __future__ import annotations
 
 import logging
+from datetime import time
 from typing import Any
 
 from sqlalchemy import func
@@ -23,6 +24,7 @@ from sqlalchemy.orm import Session
 import models
 from security import hash_password, verify_password
 from services.user_provisioning import EmailAlreadyRegisteredError, register_public_user
+from services.availability_service import AvailabilityService
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +84,11 @@ PILOT_DOCTORS: list[dict[str, Any]] = [
 ]
 
 PILOT_PATIENT_EMAIL = "test.patient@example.com"
+
+# Demo-friendly working hours — synced on every pilot seed (Mon–Sun, wide window).
+PILOT_DEMO_AVAILABILITY_START = time(8, 0)
+PILOT_DEMO_AVAILABILITY_END = time(20, 0)
+PILOT_DEMO_AVAILABILITY_DAYS = range(7)
 
 # Legacy typo from earlier seeds — merge into canonical email if present.
 _LEGACY_DOCTOR_EMAIL_RENAMES = {
@@ -230,6 +237,32 @@ def _ensure_pilot_patient(db: Session) -> None:
             db.commit()
 
 
+def _ensure_pilot_availability(db: Session) -> None:
+    """Ensure all pilot doctors accept bookings 08:00–20:00 every day (demo)."""
+    for row in PILOT_DOCTORS:
+        email = row["email"].lower().strip()
+        user = db.query(models.User).filter(func.lower(models.User.email) == email).first()
+        if not user:
+            continue
+        doc = db.query(models.Doctor).filter(models.Doctor.user_id == user.id).first()
+        if not doc:
+            continue
+        for day in PILOT_DEMO_AVAILABILITY_DAYS:
+            AvailabilityService.set_doctor_working_hours(
+                doctor_id=doc.id,
+                day_of_week=day,
+                start_time=PILOT_DEMO_AVAILABILITY_START,
+                end_time=PILOT_DEMO_AVAILABILITY_END,
+                db=db,
+            )
+        logger.info(
+            "Pilot seed: demo availability %s–%s (7j) for %s",
+            PILOT_DEMO_AVAILABILITY_START.strftime("%H:%M"),
+            PILOT_DEMO_AVAILABILITY_END.strftime("%H:%M"),
+            email,
+        )
+
+
 def seed_pilot_accounts() -> None:
     """
     Idempotent pilot seed. Call once per process startup (or from reset script).
@@ -243,6 +276,7 @@ def seed_pilot_accounts() -> None:
         for row in PILOT_DOCTORS:
             _ensure_user_doctor(db, row["email"], PILOT_DOCTOR_PASSWORD, row)
         _ensure_pilot_patient(db)
+        _ensure_pilot_availability(db)
         logger.info("Pilot seed: all accounts verified.")
     except Exception:
         db.rollback()

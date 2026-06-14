@@ -184,9 +184,9 @@ def confirm_appointment_payment(
     current_user=Depends(require_roles(["admin"])),
 ):
     """
-    Legacy admin settlement path — use ``POST /payments/{id}/manual-confirm`` instead.
+    Admin-only manual settlement for legacy portal appointments.
 
-    Patients must use Stripe Checkout + ``/payments/confirm-checkout``.
+    Patients pay at clinic reception via ``POST /clinical/billing/charges/{id}/pay``.
     """
     rdv = db.query(models.RendezVous).filter(models.RendezVous.id == rdv_id).first()
     if not rdv:

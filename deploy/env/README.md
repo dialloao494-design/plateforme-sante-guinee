@@ -7,5 +7,5 @@
 
 ```bash
 cp deploy/env/.env.backend.example deploy/env/.env.backend
-# Edit SECRET_KEY, Stripe, Jitsi, SMTP on the server only
+# Edit SECRET_KEY, Jitsi, SMTP on the server only
 ```

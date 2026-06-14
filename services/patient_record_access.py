@@ -3,6 +3,7 @@ RBAC for server-side patient dossier access.
 
 - admin: all patients
 - doctor: patients with at least one rendezvous link
+- clinical staff (receptionist, lab_technician, pharmacist): patients with clinic appointment
 - patient: own dossier only (user_id match)
 """
 
@@ -12,6 +13,8 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 import models
+from core.clinical_access import user_clinic_id
+from core.roles import CLINICAL_STAFF_ROLES
 from models.user import User
 
 
@@ -42,6 +45,18 @@ def _doctor_linked_to_patient(db: Session, doctor_id: int, patient_id: int) -> b
     )
 
 
+def _clinic_linked_to_patient(db: Session, clinic_id: int, patient_id: int) -> bool:
+    return (
+        db.query(models.RendezVous)
+        .filter(
+            models.RendezVous.clinic_id == clinic_id,
+            models.RendezVous.patient_id == patient_id,
+        )
+        .first()
+        is not None
+    )
+
+
 class PatientRecordAccessPolicy:
     @staticmethod
     def assert_can_read_dossier(db: Session, current_user: User, patient_id: int) -> models.Patient:
@@ -65,13 +80,22 @@ class PatientRecordAccessPolicy:
                 )
             return patient
 
+        if current_user.role in CLINICAL_STAFF_ROLES:
+            cid = user_clinic_id(current_user)
+            if cid and _clinic_linked_to_patient(db, cid, patient_id):
+                return patient
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to access this patient dossier",
+            )
+
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     @staticmethod
     def assert_can_write_clinical(
         db: Session, current_user: User, patient_id: int
     ) -> tuple[models.Patient, models.Doctor | None]:
-        """Notes, summaries, and clinical documents — doctor or admin only."""
+        """Notes, summaries, and clinical documents — doctor, admin, or clinical staff at clinic."""
         patient = PatientRecordAccessPolicy.assert_can_read_dossier(db, current_user, patient_id)
 
         if current_user.role == "admin":
@@ -86,9 +110,12 @@ class PatientRecordAccessPolicy:
                 )
             return patient, doctor
 
+        if current_user.role in ("lab_technician", "pharmacist", "receptionist"):
+            return patient, None
+
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only doctors and administrators can modify clinical records",
+            detail="Only clinical staff can modify clinical records",
         )
 
     @staticmethod

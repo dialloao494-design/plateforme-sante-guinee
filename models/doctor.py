@@ -17,8 +17,10 @@ class Doctor(Base):
     consultation_fee = Column(Float, default=0.0, nullable=False)  # Price per consultation in GNF or local currency
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
+    clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=True, index=True)
 
     user = relationship("User", back_populates="doctor_profile")
+    clinic = relationship("Clinic", back_populates="doctors")
 
     @property
     def location(self):

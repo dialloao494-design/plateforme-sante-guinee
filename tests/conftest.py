@@ -41,12 +41,18 @@ import models.rendezvous  # noqa: F401
 import models.payment  # noqa: F401
 import models.availability  # noqa: F401
 import models.message  # noqa: F401
-import models.stripe_webhook_event  # noqa: F401
 import models.attachment_access_log  # noqa: F401
 import models.clinical_note  # noqa: F401
 import models.consultation_summary  # noqa: F401
 import models.patient_document  # noqa: F401
 import models.clinical_audit_log  # noqa: F401
+import models.clinic  # noqa: F401
+import models.clinical_consultation  # noqa: F401
+import models.lab_order  # noqa: F401
+import models.lab_result  # noqa: F401
+import models.prescription  # noqa: F401
+import models.pharmacy_order  # noqa: F401
+import models.clinic_charge  # noqa: F401
 
 from main import app
 from security import hash_password

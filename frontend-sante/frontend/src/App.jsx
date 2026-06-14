@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar.jsx';
 import { useAuth } from './contexts/AuthContext.jsx';
 import { ToastContainer } from 'react-toastify';
 import { getShellContext } from './utils/appShellMeta.js';
+import { portalLabel } from './utils/portalAccess.js';
 import './AppLayout.css';
 
 const PUBLIC_PATHS = new Set(['/', '/login', '/signup']);
@@ -20,6 +21,9 @@ function App() {
     () => getShellContext(location.pathname, user?.role || user?.user_role),
     [location.pathname, user?.role, user?.user_role]
   );
+
+  const role = user?.role || user?.user_role;
+  const topbarTitle = user ? portalLabel(role) : 'Plateforme Santé';
 
   if (authLoading) {
     return (
@@ -70,7 +74,7 @@ function App() {
         <div className="app-topbar-brand">
           <span className="app-topbar-mark" aria-hidden />
           <div className="app-topbar-text">
-            <span className="app-topbar-title">Plateforme Santé</span>
+            <span className="app-topbar-title">{topbarTitle}</span>
             <span className="app-topbar-tag">Guinée</span>
           </div>
         </div>

@@ -6,26 +6,12 @@ const normalizeStatus = (statusValue) => {
 
   if (normalized === 'annule' || normalized === 'annulee' || normalized === 'canceled' || normalized === 'cancelled')
     return 'cancelled';
-  if (normalized === 'expire' || normalized === 'expired') return 'expired';
   if (normalized === 'checked_in' || normalized === 'checked in' || normalized === 'present') return 'checked_in';
-  if (normalized === 'active' || normalized === 'in_progress' || normalized === 'en cours') return 'active';
+  if (normalized === 'active' || normalized === 'in_progress' || normalized === 'in_consultation' || normalized === 'en cours')
+    return 'checked_in';
   if (normalized === 'termine' || normalized === 'completed' || normalized === 'done') return 'completed';
   if (normalized === 'confirme' || normalized === 'confirmee' || normalized === 'confirmed') return 'confirmed';
-  if (normalized === 'paid' || normalized === 'paye' || normalized === 'payee') return 'paid';
-  if (normalized === 'pending' || normalized === 'en attente') return 'pending';
-  return normalized;
-};
-
-const normalizePaymentStatus = (paymentStatus) => {
-  const normalized = String(paymentStatus || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-
-  if (normalized === 'paid' || normalized === 'paye' || normalized === 'payee') return 'paid';
-  if (normalized === 'refunded' || normalized === 'rembourse') return 'refunded';
-  if (normalized === 'partially_refunded' || normalized === 'partial') return 'partially_refunded';
-  if (normalized === 'unpaid' || normalized === 'non paye') return 'unpaid';
+  if (normalized === 'paid' || normalized === 'paye' || normalized === 'payee') return 'confirmed';
   if (normalized === 'pending' || normalized === 'en attente') return 'pending';
   return normalized;
 };
@@ -33,31 +19,17 @@ const normalizePaymentStatus = (paymentStatus) => {
 const STATUS_LABELS = {
   pending: 'En attente',
   confirmed: 'Confirmé',
+  checked_in: 'Présent',
   completed: 'Terminé',
   cancelled: 'Annulé',
-  expired: 'Expiré',
-  checked_in: 'Présent',
-  active: 'En consultation',
-  paid: 'Payé',
-};
-
-const PAYMENT_LABELS = {
-  paid: 'Payé',
-  unpaid: 'Non payé',
-  pending: 'En attente',
-  refunded: 'Remboursé',
-  partially_refunded: 'Remboursé partiellement',
 };
 
 const STATUS_COLORS = {
   pending: 'status-badge status-pending',
   confirmed: 'status-badge status-confirmed',
+  checked_in: 'status-badge status-confirmed',
   completed: 'status-badge status-confirmed',
   cancelled: 'status-badge status-cancelled',
-  expired: 'status-badge status-cancelled',
-  checked_in: 'status-badge status-confirmed',
-  active: 'status-badge status-confirmed',
-  paid: 'status-badge status-paid',
 };
 
 const CONSULTATION_LABELS = {
@@ -65,126 +37,54 @@ const CONSULTATION_LABELS = {
   physical: 'Consultation physique',
 };
 
-const resolveDisplayStatus = (status, paymentStatus) => {
-  if (status === 'cancelled') {
-    return 'cancelled';
-  }
-  if (status === 'expired') {
-    return 'expired';
-  }
-
-  if (paymentStatus === 'paid' && status === 'pending') {
-    return 'confirmed';
-  }
-
-  if (status === 'completed') {
-    return 'completed';
-  }
-
-  if (STATUS_LABELS[status]) {
-    return status;
-  }
-
-  return 'pending';
-};
-
-const resolveConsultationType = (appointment) => {
-  if (typeof appointment === 'string') {
-    return appointment;
-  }
-  return appointment?.consultation_type;
-};
-
-const resolvePaymentStatusInput = (appointmentOrPaymentStatus) => {
-  if (appointmentOrPaymentStatus && typeof appointmentOrPaymentStatus === 'object') {
-    return appointmentOrPaymentStatus.payment_status;
-  }
-  return appointmentOrPaymentStatus;
-};
+const ACTIVE_STATUSES = new Set(['confirmed', 'checked_in']);
 
 const resolveAppointmentState = (appointment = {}) => {
-  const rawStatus = appointment?.status;
-  const rawPaymentStatus = appointment?.payment_status;
-  const status = normalizeStatus(rawStatus);
-  const paymentStatus = normalizePaymentStatus(rawPaymentStatus);
-  const displayStatusKey = resolveDisplayStatus(status, paymentStatus);
-  const isJoinEligibleStatus =
-    paymentStatus === 'paid' &&
-    (status === 'confirmed' ||
-      status === 'completed' ||
-      status === 'checked_in' ||
-      status === 'active');
+  const status = normalizeStatus(appointment?.status);
   const isTeleconsultation = appointment?.consultation_type === 'teleconsultation';
-  const paymentRevoked =
-    paymentStatus === 'refunded' || paymentStatus === 'partially_refunded';
+  const displayStatusKey = STATUS_LABELS[status] ? status : 'pending';
 
-  const finalState =
-    status === 'cancelled' || status === 'expired'
-      ? 'cancelled'
-      : isJoinEligibleStatus
-        ? 'confirmed'
-        : 'pending';
+  const isCancelled = status === 'cancelled';
+  const isCompleted = status === 'completed';
+  const isPending = status === 'pending';
+  const isActive = ACTIVE_STATUSES.has(status);
 
-  const resolved = {
-    canPay:
-      !paymentRevoked &&
-      status === 'pending' &&
-      paymentStatus !== 'paid',
-    canCancel:
-      !paymentRevoked &&
-      status === 'pending' &&
-      paymentStatus !== 'paid',
-    canJoin: isJoinEligibleStatus && isTeleconsultation && !paymentRevoked,
-    hasExternalMeetingLink: isJoinEligibleStatus && isTeleconsultation && !paymentRevoked,
-    canMessage: finalState !== 'cancelled',
-    displayStatus: STATUS_LABELS[displayStatusKey],
-    paymentLabel:
-      paymentStatus === 'paid'
-        ? PAYMENT_LABELS.paid
-        : paymentStatus === 'refunded'
-          ? PAYMENT_LABELS.refunded
-          : paymentStatus === 'partially_refunded'
-            ? PAYMENT_LABELS.partially_refunded
-            : paymentStatus === 'pending'
-              ? PAYMENT_LABELS.pending
-              : PAYMENT_LABELS.unpaid,
+  return {
+    canPay: false,
+    canCancel: isPending || status === 'confirmed',
+    canJoin: isActive && isTeleconsultation && !isCancelled && !isCompleted,
+    hasExternalMeetingLink: isActive && isTeleconsultation,
+    canMessage: !isCancelled,
+    displayStatus: STATUS_LABELS[displayStatusKey] || STATUS_LABELS.pending,
     statusColor: STATUS_COLORS[displayStatusKey] || STATUS_COLORS.pending,
-
-    state: finalState,
-    isCancelled: finalState === 'cancelled',
-    isConfirmed: finalState === 'confirmed',
-    isPending: finalState === 'pending',
+    state: isCancelled ? 'cancelled' : isCompleted ? 'completed' : isActive ? 'confirmed' : 'pending',
+    isCancelled,
+    isConfirmed: isActive,
+    isPending,
     consultationLabel: CONSULTATION_LABELS[appointment?.consultation_type] || 'Consultation',
   };
-
-  return resolved;
 };
 
 export const getAppointmentState = (appointment) => resolveAppointmentState(appointment);
 
-/** Raw workflow status from API (lowercased canonical token). */
 export const normalizeAppointmentStatus = (appointment) => normalizeStatus(appointment?.status);
 
-/** Appointments visible on the doctor queue (excludes cancelled, expired, completed). */
 export const isDoctorQueueAppointment = (appointment) => {
   const raw = normalizeAppointmentStatus(appointment);
-  if (raw === 'cancelled' || raw === 'expired' || raw === 'completed') return false;
-  return true;
+  return raw !== 'cancelled' && raw !== 'completed';
 };
+
 export const getAppointmentStatusLabel = (appointment) => resolveAppointmentState(appointment).displayStatus;
 export const getAppointmentStatusColor = (appointment) => resolveAppointmentState(appointment).statusColor;
-export const getPaymentLabel = (appointmentOrPaymentStatus) => {
-  const paymentStatus = normalizePaymentStatus(resolvePaymentStatusInput(appointmentOrPaymentStatus));
-  if (paymentStatus === 'paid') return PAYMENT_LABELS.paid;
-  if (paymentStatus === 'pending') return PAYMENT_LABELS.pending;
-  return PAYMENT_LABELS.unpaid;
-};
 export const getConsultationTypeLabel = (appointmentOrConsultationType) => {
-  const consultationType = resolveConsultationType(appointmentOrConsultationType);
+  const consultationType =
+    typeof appointmentOrConsultationType === 'string'
+      ? appointmentOrConsultationType
+      : appointmentOrConsultationType?.consultation_type;
   return CONSULTATION_LABELS[consultationType] || 'Consultation';
 };
 export const canJoinConsultation = (appointment) => resolveAppointmentState(appointment).canJoin;
-export const canPayAppointment = (appointment) => resolveAppointmentState(appointment).canPay;
+export const canPayAppointment = () => false;
 export const canCancelAppointment = (appointment) => resolveAppointmentState(appointment).canCancel;
 export const canMessageAppointment = (appointment) => resolveAppointmentState(appointment).canMessage;
 export const isCancelledAppointment = (appointment) => resolveAppointmentState(appointment).isCancelled;
@@ -211,9 +111,9 @@ export const getAppointmentActions = (appointment, options = {}) => {
   const resolved = resolveAppointmentState(appointment);
   const viewerRole = String(options.viewerRole || 'patient').toLowerCase();
   const isDoctorLike = viewerRole === 'doctor' || viewerRole === 'admin';
-  const paymentStatus = normalizePaymentStatus(appointment?.payment_status);
+  const status = normalizeStatus(appointment?.status);
 
-  if (['cancelled', 'expired'].includes(normalizeStatus(appointment?.status))) {
+  if (status === 'cancelled' || status === 'completed') {
     return [];
   }
 
@@ -231,34 +131,24 @@ export const getAppointmentActions = (appointment, options = {}) => {
     return actions;
   }
 
-  if (isDoctorLike && resolved.state === 'pending') {
-    const actions = [];
-    if (paymentStatus === 'paid') {
-      actions.push({ key: 'confirm', kind: 'confirm', label: 'Confirmer le rendez-vous' });
-    }
-    actions.push({ key: 'message', kind: 'message', label: 'Messages' });
-    return actions;
+  if (isDoctorLike && status === 'pending') {
+    return [
+      { key: 'confirm', kind: 'confirm', label: 'Confirmer le rendez-vous' },
+      { key: 'message', kind: 'message', label: 'Messages' },
+    ];
   }
 
-  if (!resolved.canPay && resolved.state === 'pending') {
-    return [{ key: 'message', kind: 'message', label: 'Messages' }];
+  const actions = [];
+  if (resolved.canCancel) {
+    actions.push({ key: 'cancel', kind: 'cancel', label: 'Annuler' });
   }
-
-  if (resolved.state === 'pending') {
-    const actions = [];
-    if (resolved.canPay) {
-      actions.push({ key: 'pay', kind: 'pay', label: 'Payer via Mobile Money' });
-    }
-    if (resolved.canCancel) {
-      actions.push({ key: 'cancel', kind: 'cancel', label: 'Annuler' });
-    }
-    actions.push({ key: 'message', kind: 'message', label: 'Messages' });
-    return actions;
-  }
-
-  return [];
+  actions.push({ key: 'message', kind: 'message', label: 'Messages' });
+  return actions;
 };
 
 export const getConsultationTypeBadgeClass = (consultationType) => {
   return consultationType === 'teleconsultation' ? 'consultation-type-tele' : 'consultation-type-physical';
 };
+
+/** @deprecated Payment removed from patient portal */
+export const getPaymentLabel = () => '—';

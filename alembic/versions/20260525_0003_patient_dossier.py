@@ -14,71 +14,93 @@ def upgrade() -> None:
     bind = op.get_bind()
     dialect = bind.dialect.name
     datetime_type = sa.DateTime(timezone=True) if dialect == "postgresql" else sa.DateTime()
+    insp = sa.inspect(bind)
+    patient_cols = (
+        {c["name"] for c in insp.get_columns("patients")}
+        if insp.has_table("patients")
+        else set()
+    )
 
     with op.batch_alter_table("patients", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("date_of_birth", sa.Date(), nullable=True))
-        batch_op.add_column(sa.Column("phone", sa.String(length=32), nullable=True))
-        batch_op.add_column(sa.Column("address", sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column("emergency_contact", sa.String(length=255), nullable=True))
-        batch_op.add_column(
-            sa.Column("created_at", datetime_type, server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False)
+        if "date_of_birth" not in patient_cols:
+            batch_op.add_column(sa.Column("date_of_birth", sa.Date(), nullable=True))
+        if "phone" not in patient_cols:
+            batch_op.add_column(sa.Column("phone", sa.String(length=32), nullable=True))
+        if "address" not in patient_cols:
+            batch_op.add_column(sa.Column("address", sa.Text(), nullable=True))
+        if "emergency_contact" not in patient_cols:
+            batch_op.add_column(sa.Column("emergency_contact", sa.String(length=255), nullable=True))
+        if "created_at" not in patient_cols:
+            if dialect == "sqlite":
+                batch_op.add_column(sa.Column("created_at", datetime_type, nullable=True))
+            else:
+                batch_op.add_column(
+                    sa.Column("created_at", datetime_type, server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False)
+                )
+        if "updated_at" not in patient_cols:
+            if dialect == "sqlite":
+                batch_op.add_column(sa.Column("updated_at", datetime_type, nullable=True))
+            else:
+                batch_op.add_column(
+                    sa.Column("updated_at", datetime_type, server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False)
+                )
+
+    if not insp.has_table("clinical_notes"):
+        op.create_table(
+            "clinical_notes",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id"), nullable=False),
+            sa.Column("doctor_id", sa.Integer(), sa.ForeignKey("doctors.id"), nullable=True),
+            sa.Column("appointment_id", sa.Integer(), sa.ForeignKey("rendezvous.id"), nullable=True),
+            sa.Column("note_type", sa.String(length=32), nullable=False, server_default="consultation"),
+            sa.Column("contenu", sa.Text(), nullable=False),
+            sa.Column("created_at", datetime_type, nullable=False),
+            sa.Column("updated_at", datetime_type, nullable=False),
         )
-        batch_op.add_column(
-            sa.Column("updated_at", datetime_type, server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False)
+        op.create_index("ix_clinical_notes_patient_id", "clinical_notes", ["patient_id"])
+        op.create_index("ix_clinical_notes_created_at", "clinical_notes", ["created_at"])
+
+    if not insp.has_table("consultation_summaries"):
+        op.create_table(
+            "consultation_summaries",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id"), nullable=False),
+            sa.Column("doctor_id", sa.Integer(), sa.ForeignKey("doctors.id"), nullable=True),
+            sa.Column("appointment_id", sa.Integer(), sa.ForeignKey("rendezvous.id"), nullable=True),
+            sa.Column("diagnostic", sa.Text(), nullable=True),
+            sa.Column("traitement", sa.Text(), nullable=True),
+            sa.Column("recommandations", sa.Text(), nullable=True),
+            sa.Column("created_at", datetime_type, nullable=False),
         )
+        op.create_index("ix_consultation_summaries_patient_id", "consultation_summaries", ["patient_id"])
 
-    op.create_table(
-        "clinical_notes",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id"), nullable=False),
-        sa.Column("doctor_id", sa.Integer(), sa.ForeignKey("doctors.id"), nullable=True),
-        sa.Column("appointment_id", sa.Integer(), sa.ForeignKey("rendezvous.id"), nullable=True),
-        sa.Column("note_type", sa.String(length=32), nullable=False, server_default="consultation"),
-        sa.Column("contenu", sa.Text(), nullable=False),
-        sa.Column("created_at", datetime_type, nullable=False),
-        sa.Column("updated_at", datetime_type, nullable=False),
-    )
-    op.create_index("ix_clinical_notes_patient_id", "clinical_notes", ["patient_id"])
-    op.create_index("ix_clinical_notes_created_at", "clinical_notes", ["created_at"])
+    if not insp.has_table("patient_documents"):
+        op.create_table(
+            "patient_documents",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id"), nullable=False),
+            sa.Column("uploaded_by", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
+            sa.Column("type_document", sa.String(length=64), nullable=False),
+            sa.Column("file_path", sa.String(length=255), nullable=False),
+            sa.Column("created_at", datetime_type, nullable=False),
+        )
+        op.create_index("ix_patient_documents_patient_id", "patient_documents", ["patient_id"])
 
-    op.create_table(
-        "consultation_summaries",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id"), nullable=False),
-        sa.Column("doctor_id", sa.Integer(), sa.ForeignKey("doctors.id"), nullable=True),
-        sa.Column("appointment_id", sa.Integer(), sa.ForeignKey("rendezvous.id"), nullable=True),
-        sa.Column("diagnostic", sa.Text(), nullable=True),
-        sa.Column("traitement", sa.Text(), nullable=True),
-        sa.Column("recommandations", sa.Text(), nullable=True),
-        sa.Column("created_at", datetime_type, nullable=False),
-    )
-    op.create_index("ix_consultation_summaries_patient_id", "consultation_summaries", ["patient_id"])
-
-    op.create_table(
-        "patient_documents",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id"), nullable=False),
-        sa.Column("uploaded_by", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
-        sa.Column("type_document", sa.String(length=64), nullable=False),
-        sa.Column("file_path", sa.String(length=255), nullable=False),
-        sa.Column("created_at", datetime_type, nullable=False),
-    )
-    op.create_index("ix_patient_documents_patient_id", "patient_documents", ["patient_id"])
-
-    op.create_table(
-        "clinical_audit_logs",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("actor_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
-        sa.Column("actor_role", sa.String(length=32), nullable=False),
-        sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id"), nullable=False),
-        sa.Column("action", sa.String(length=32), nullable=False),
-        sa.Column("resource_type", sa.String(length=64), nullable=False),
-        sa.Column("resource_id", sa.Integer(), nullable=True),
-        sa.Column("timestamp", datetime_type, nullable=False),
-        sa.Column("ip", sa.String(length=64), nullable=True),
-    )
-    op.create_index("ix_clinical_audit_logs_patient_id", "clinical_audit_logs", ["patient_id"])
-    op.create_index("ix_clinical_audit_logs_timestamp", "clinical_audit_logs", ["timestamp"])
+    if not insp.has_table("clinical_audit_logs"):
+        op.create_table(
+            "clinical_audit_logs",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column("actor_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
+            sa.Column("actor_role", sa.String(length=32), nullable=False),
+            sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id"), nullable=False),
+            sa.Column("action", sa.String(length=32), nullable=False),
+            sa.Column("resource_type", sa.String(length=64), nullable=False),
+            sa.Column("resource_id", sa.Integer(), nullable=True),
+            sa.Column("timestamp", datetime_type, nullable=False),
+            sa.Column("ip", sa.String(length=64), nullable=True),
+        )
+        op.create_index("ix_clinical_audit_logs_patient_id", "clinical_audit_logs", ["patient_id"])
+        op.create_index("ix_clinical_audit_logs_timestamp", "clinical_audit_logs", ["timestamp"])
 
 
 def downgrade() -> None:

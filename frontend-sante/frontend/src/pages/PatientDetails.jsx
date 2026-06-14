@@ -17,6 +17,7 @@ const PatientDetails = () => {
   const [appointments, setAppointments] = useState([]);
   const [clinicalNotes, setClinicalNotes] = useState([]);
   const [timeline, setTimeline] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [notesDraft, setNotesDraft] = useState('');
   const [noteType, setNoteType] = useState('suivi');
   const [savingNote, setSavingNote] = useState(false);
@@ -65,6 +66,13 @@ const PatientDetails = () => {
         setTimeline(Array.isArray(timelineResponse.data) ? timelineResponse.data : []);
       } catch {
         setTimeline([]);
+      }
+
+      try {
+        const docsResponse = await patientRecordAPI.listDocuments(id);
+        setDocuments(Array.isArray(docsResponse.data) ? docsResponse.data : []);
+      } catch {
+        setDocuments([]);
       }
 
       setError('');
@@ -151,6 +159,57 @@ const PatientDetails = () => {
     return map;
   }, [timeline]);
 
+  const timelineLabel = (event) => {
+    const map = {
+      cis_consultation: 'Consultation CIS',
+      lab_order: 'Examen laboratoire',
+      lab_result: 'Résultat labo',
+      prescription: 'Ordonnance',
+      pharmacy_order: 'Pharmacie',
+      billing_charge: 'Facturation',
+      clinical_note: 'Note clinique',
+      consultation_summary: 'Synthèse téléconsultation',
+      patient_document: 'Document',
+      appointment: 'Rendez-vous',
+    };
+    return map[event.event_type] || event.summary || event.event_type;
+  };
+
+  const handleUploadDocument = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const type = e.target.dataset.type || 'scan';
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type_document', type);
+    try {
+      await patientRecordAPI.uploadDocument(id, formData);
+      toast.success('Document enregistré');
+      const docsResponse = await patientRecordAPI.listDocuments(id);
+      setDocuments(Array.isArray(docsResponse.data) ? docsResponse.data : []);
+      const timelineResponse = await patientRecordAPI.getTimeline(id);
+      setTimeline(Array.isArray(timelineResponse.data) ? timelineResponse.data : []);
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Upload impossible'));
+    }
+    e.target.value = '';
+  };
+
+  const handleDownloadDocument = async (docId, typeDocument) => {
+    try {
+      const response = await patientRecordAPI.downloadDocument(id, docId);
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${typeDocument}_${docId}`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Téléchargement impossible'));
+    }
+  };
+
   return (
     <div className="patient-details-page ds-page">
       <header className="patient-details-header">
@@ -221,9 +280,80 @@ const PatientDetails = () => {
 
           <section className="patient-card patient-card--timeline">
             <div className="patient-section-head">
-              <h2>Parcours de soins</h2>
+              <h2>Historique unifié</h2>
               <p className="patient-section-lead">
-                Vue chronologique des rendez-vous et synthèses de téléconsultation enregistrées sur le serveur.
+                Consultations CIS, examens, ordonnances, facturation et documents — chronologie serveur.
+              </p>
+            </div>
+            {timeline.length === 0 && (
+              <p className="patient-empty-inline">Aucun événement clinique enregistré.</p>
+            )}
+            <ol className="patient-timeline">
+              {timeline.map((event) => (
+                <li key={`${event.event_type}-${event.resource_id}`} className="patient-timeline-item is-past">
+                  <div className="patient-timeline-marker" aria-hidden />
+                  <div className="patient-timeline-body">
+                    <div className="patient-timeline-top">
+                      <time dateTime={event.timestamp}>
+                        {event.timestamp ? new Date(event.timestamp).toLocaleString('fr-FR') : '—'}
+                      </time>
+                      <span className="patient-status-badge">{timelineLabel(event)}</span>
+                    </div>
+                    <p className="patient-timeline-detail">{event.summary}</p>
+                    {event.event_type === 'lab_result' && event.payload?.result_summary && (
+                      <p className="patient-timeline-summary">{event.payload.result_summary}</p>
+                    )}
+                    {event.event_type === 'cis_consultation' && event.payload?.diagnosis && (
+                      <p className="patient-timeline-summary">Diagnostic : {event.payload.diagnosis}</p>
+                    )}
+                    {event.event_type === 'billing_charge' && (
+                      <p className="patient-timeline-summary">
+                        {formatGNF(event.payload?.amount_gnf)} · {event.payload?.payment_status}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          <section className="patient-card patient-card--documents">
+            <div className="patient-section-head">
+              <h2>Documents cliniques</h2>
+              <p className="patient-section-lead">Résultats labo, scans et pièces jointes — stockage sécurisé.</p>
+            </div>
+            {documents.length > 0 && (
+              <ul className="patient-notes-list">
+                {documents.map((doc) => (
+                  <li key={doc.id}>
+                    <strong>{doc.type_document}</strong>
+                    <span className="patient-note-date">
+                      {doc.created_at ? new Date(doc.created_at).toLocaleString('fr-FR') : ''}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => handleDownloadDocument(doc.id, doc.type_document)}
+                    >
+                      Télécharger
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {canWriteClinical && (
+              <div className="patient-doc-upload">
+                <label htmlFor="doc-scan">Ajouter un scan / document</label>
+                <input id="doc-scan" type="file" data-type="scan" accept=".pdf,.jpg,.jpeg,.png,.txt" onChange={handleUploadDocument} />
+              </div>
+            )}
+          </section>
+
+          <section className="patient-card patient-card--timeline">
+            <div className="patient-section-head">
+              <h2>Parcours rendez-vous</h2>
+              <p className="patient-section-lead">
+                Vue des rendez-vous et synthèses de téléconsultation.
               </p>
             </div>
             {appointments.length === 0 && (

@@ -71,6 +71,11 @@ class SecureAttachmentStorage:
             return "image/png"
         if len(content) >= 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP":
             return "image/webp"
+        try:
+            content[:2048].decode("utf-8")
+            return "text/plain"
+        except UnicodeDecodeError:
+            pass
         return "application/octet-stream"
 
     @staticmethod

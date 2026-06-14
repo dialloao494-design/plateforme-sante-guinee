@@ -59,6 +59,9 @@ export const patientRecordAPI = {
       responseType: 'blob',
     }),
   getTimeline: (patientId) => httpClient.get(`/patients/${patientId}/timeline`),
+  getMedicalHistory: (patientId) => httpClient.get(`/patients/${patientId}/medical-history`),
+  getMyMedicalHistory: () => httpClient.get('/patients/me/medical-history'),
+  getTimelineGrouped: (patientId) => httpClient.get(`/patients/${patientId}/timeline-grouped`),
 };
 
 export const doctorsAPI = {
@@ -98,19 +101,6 @@ export const appointmentsAPI = {
 
 export const doctorDashboardAPI = {
   getAppointments: () => httpClient.get('/doctor/appointments'),
-};
-
-export const paymentsAPI = {
-  createIntent: (appointmentId) => httpClient.post('/payments/create-intent', { appointment_id: appointmentId }),
-  confirmCheckout: (sessionId) => httpClient.post('/payments/confirm-checkout', { session_id: sessionId }),
-  confirmPayment: (appointmentId, stubToken) =>
-    httpClient.post(`/payments/${appointmentId}/confirm-payment`, null, {
-      headers: stubToken ? { 'X-Payment-Stub-Token': stubToken } : {},
-    }),
-  getStatus: (appointmentId) => httpClient.get(`/payments/${appointmentId}/status`),
-  list: () => httpClient.get('/payments/'),
-  railConfig: () => httpClient.get('/payments/rail-config'),
-  mobileMoneyInitiate: (body) => httpClient.post('/payments/mobile-money/initiate', body),
 };
 
 export const notificationsAPI = {
