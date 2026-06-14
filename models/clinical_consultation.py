@@ -37,6 +37,7 @@ class ClinicalConsultation(Base):
     patient = relationship("Patient")
     doctor = relationship("Doctor")
     lab_orders = relationship("LabOrder", back_populates="consultation", cascade="all, delete-orphan")
+    imaging_orders = relationship("ImagingOrder", back_populates="consultation", cascade="all, delete-orphan")
     prescriptions = relationship("Prescription", back_populates="consultation", cascade="all, delete-orphan")
     vital_signs = relationship("PatientVitalSigns", back_populates="consultation")
     follow_ups = relationship("FollowUpSchedule", back_populates="consultation")

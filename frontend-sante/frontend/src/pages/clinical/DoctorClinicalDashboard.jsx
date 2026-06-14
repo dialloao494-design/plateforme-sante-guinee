@@ -46,6 +46,15 @@ export default function DoctorClinicalDashboard() {
 
   const [labForm, setLabForm] = useState({ test_code: 'NFS', test_name: 'Numération formule sanguine', priority: 'routine' });
 
+  const [imagingForm, setImagingForm] = useState({
+    modality: 'xray',
+    body_part: 'Thorax',
+    clinical_indication: '',
+    priority: 'routine',
+  });
+
+  const [recentImaging, setRecentImaging] = useState([]);
+
   const [rxForm, setRxForm] = useState({
 
     medication_name: '',
@@ -196,6 +205,28 @@ export default function DoctorClinicalDashboard() {
     } catch (err) {
 
       setError(err?.response?.data?.detail || 'Prescription labo impossible');
+
+    }
+
+  };
+
+
+
+  const orderImaging = async () => {
+
+    if (!consultation) return;
+
+    try {
+
+      const { data } = await clinicalApi.orderImaging(consultation.id, imagingForm);
+
+      setRecentImaging((prev) => [{ ...imagingForm, id: data?.id, at: new Date().toISOString() }, ...prev]);
+
+      setMessage(`Imagerie ${imagingForm.modality} prescrite`);
+
+    } catch (err) {
+
+      setError(err?.response?.data?.detail || 'Prescription imagerie impossible');
 
     }
 
@@ -498,6 +529,64 @@ export default function DoctorClinicalDashboard() {
                   <li key={`${lab.test_code}-${lab.at}`}>
 
                     {lab.test_name} ({lab.test_code}) · <span className="clinical-badge">{lab.priority}</span>
+
+                  </li>
+
+                ))}
+
+              </ul>
+
+            )}
+
+
+
+            <h3 id="doctor-imaging" style={{ marginTop: '1.25rem' }}>Imagerie médicale</h3>
+
+            <div className="clinical-field">
+
+              <label>Modalité</label>
+
+              <select value={imagingForm.modality} onChange={(e) => setImagingForm({ ...imagingForm, modality: e.target.value })}>
+
+                <option value="xray">Radiographie</option>
+
+                <option value="ultrasound">Échographie</option>
+
+                <option value="ct_scan">Scanner</option>
+
+                <option value="mri">IRM</option>
+
+              </select>
+
+            </div>
+
+            <div className="clinical-field">
+
+              <label>Région</label>
+
+              <input value={imagingForm.body_part} onChange={(e) => setImagingForm({ ...imagingForm, body_part: e.target.value })} />
+
+            </div>
+
+            <div className="clinical-field">
+
+              <label>Indication clinique</label>
+
+              <input value={imagingForm.clinical_indication} onChange={(e) => setImagingForm({ ...imagingForm, clinical_indication: e.target.value })} />
+
+            </div>
+
+            <button type="button" className="clinical-btn" onClick={orderImaging}>Prescrire imagerie</button>
+
+            {recentImaging.length > 0 && (
+
+              <ul className="clinical-list" style={{ marginTop: '0.75rem' }}>
+
+                {recentImaging.map((img) => (
+
+                  <li key={`${img.modality}-${img.at}`}>
+
+                    {img.modality} — {img.body_part} · <span className="clinical-badge">{img.priority}</span>
 
                   </li>
 
