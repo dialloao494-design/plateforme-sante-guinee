@@ -134,6 +134,34 @@ class AppSettings:
             )
         return hosts
 
+    def resolve_trusted_proxy_hosts(self) -> list[str]:
+        """
+        Hosts allowed to set X-Forwarded-* via ProxyHeadersMiddleware.
+        Never use '*' in staging/production — restrict to the reverse proxy.
+        """
+        raw = (os.getenv("TRUSTED_PROXY_HOSTS") or "").strip()
+        if not self.is_deployed:
+            if not raw or raw == "*":
+                return ["127.0.0.1", "localhost", "::1"]
+            return [h.strip() for h in raw.split(",") if h.strip()]
+
+        hosts: list[str] = []
+        for part in raw.split(","):
+            part = part.strip()
+            if part and part != "*" and part not in hosts:
+                hosts.append(part)
+
+        for internal in ("127.0.0.1", "localhost", "::1", "backend"):
+            if internal not in hosts:
+                hosts.append(internal)
+
+        if not raw or raw == "*":
+            raise RuntimeError(
+                "TRUSTED_PROXY_HOSTS must list your reverse proxy IPs/hostnames in "
+                "staging/production (never '*')"
+            )
+        return hosts
+
     def validate_production_secrets(self) -> None:
         """Validate required secrets for staging/production deployments."""
         if not self.is_deployed:
@@ -155,6 +183,12 @@ class AppSettings:
         if is_insecure_secret(jitsi_secret, min_length=jitsi_min):
             failures.append("JITSI_SECRET/JITSI_APP_SECRET (or JaaS private key) must be configured securely")
 
+        reminder_token = (os.getenv("REMINDER_RESPOND_TOKEN") or "").strip()
+        if self.is_production and is_insecure_secret(reminder_token, min_length=32):
+            failures.append(
+                "REMINDER_RESPOND_TOKEN must be a strong random value (32+ chars) in production"
+            )
+
         if failures:
             raise RuntimeError("Insecure deployment secrets: " + "; ".join(failures))
 
@@ -167,6 +201,24 @@ class AppSettings:
                     "remove pilot/demo accounts before go-live"
                 )
 
+            if _env_flag("ENABLE_STARTUP_TEST_USER", default=False):
+                raise RuntimeError(
+                    "ENABLE_STARTUP_TEST_USER=true is forbidden in production — "
+                    "remove weak startup test accounts before go-live"
+                )
+
+            if _env_flag("ENABLE_STARTUP_SEED", default=False):
+                raise RuntimeError(
+                    "ENABLE_STARTUP_SEED=true is forbidden in production — "
+                    "dev seed routines must remain disabled"
+                )
+
+            if _env_flag("ENABLE_DEMO_CLINIC_SEED", default=False):
+                raise RuntimeError(
+                    "ENABLE_DEMO_CLINIC_SEED=true is forbidden in production — "
+                    "demo datasets must remain disabled"
+                )
+
             bypass_raw = (os.getenv("BYPASS_AVAILABILITY_VALIDATION") or "false").strip().lower()
             if bypass_raw in {"1", "true", "yes", "on"}:
                 raise RuntimeError(
@@ -176,3 +228,4 @@ class AppSettings:
 
         if self.is_deployed:
             self.validate_production_secrets()
+            self.resolve_trusted_proxy_hosts()

@@ -25,7 +25,7 @@ def _ensure_user(db_session, email: str, role: str):
     existing = db_session.query(User).filter(User.email == email).first()
     if existing:
         return existing
-    return register_public_user(db_session, email=email, password="secret12", role=role).user
+    return register_public_user(db_session, email=email, password="Secret12", role=role).user
 
 
 @pytest.fixture()
@@ -53,7 +53,7 @@ def patient_with_pending_appointment(db_session, payment_stub_env):
     db_session.add(rdv)
     db_session.commit()
     db_session.refresh(rdv)
-    return {"user": user, "patient": patient, "appointment": rdv, "password": "secret12"}
+    return {"user": user, "patient": patient, "appointment": rdv, "password": "Secret12"}
 
 
 @pytest.fixture()
@@ -112,14 +112,14 @@ class TestSettlementService:
         provisioned = register_public_user(
             db_session,
             email="direct.settle@test.gn",
-            password="secret12",
+            password="Secret12",
             role="patient",
         )
         patient = db_session.query(Patient).filter(Patient.user_id == provisioned.user.id).first()
         doctor_user = register_public_user(
             db_session,
             email="doc.settle@test.gn",
-            password="secret12",
+            password="Secret12",
             role="doctor",
         )
         doctor = db_session.query(Doctor).filter(Doctor.user_id == doctor_user.user.id).first()

@@ -20,6 +20,7 @@ from services.user_provisioning import (
     EmailAlreadyRegisteredError,
     PublicRegistrationRoleError,
     PrivilegedRoleAssignmentError,
+    UserProvisioningError,
     register_public_user,
 )
 from fastapi.security import OAuth2PasswordRequestForm
@@ -55,6 +56,11 @@ def register(request: Request, user: PublicRegistration, db: Session = Depends(g
             detail=str(exc),
         ) from exc
     except (PublicRegistrationRoleError, PrivilegedRoleAssignmentError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except UserProvisioningError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),

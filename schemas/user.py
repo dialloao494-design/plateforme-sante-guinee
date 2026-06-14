@@ -29,8 +29,7 @@ class PublicRegistration(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password_field(cls, v: str) -> str:
-        if len(v) < 6:
-            raise ValueError("Password must be at least 6 characters long")
+        validate_password(v)
         return v
 
     @field_validator("role")

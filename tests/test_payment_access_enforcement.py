@@ -125,14 +125,14 @@ class TestAppointmentStatusAlignment:
         patient_user = register_public_user(
             db_session,
             email=f"access.patient.{suffix}@test.gn",
-            password="secret12",
+            password="Secret12",
             role="patient",
         ).user
         patient = db_session.query(Patient).filter(Patient.user_id == patient_user.id).first()
         doctor_user = register_public_user(
             db_session,
             email=f"access.doctor.{suffix}@test.gn",
-            password="secret12",
+            password="Secret12",
             role="doctor",
         ).user
         doctor = db_session.query(Doctor).filter(Doctor.user_id == doctor_user.id).first()
@@ -190,7 +190,7 @@ class TestAppointmentStatusAlignment:
 
         login = client.post(
             "/auth/login-json",
-            json={"email": doctor_user.email, "password": "secret12"},
+            json={"email": doctor_user.email, "password": "Secret12"},
         )
         assert login.status_code == 200, login.text
         headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
@@ -213,11 +213,11 @@ class TestRefundRevokesTeleconsultAccess:
         from services.payment_settlement import PaymentSettlementService
 
         patient_user = register_public_user(
-            db_session, email="refund.patient@test.gn", password="secret12", role="patient"
+            db_session, email="refund.patient@test.gn", password="Secret12", role="patient"
         ).user
         patient = db_session.query(Patient).filter(Patient.user_id == patient_user.id).first()
         doctor_user = register_public_user(
-            db_session, email="refund.doctor@test.gn", password="secret12", role="doctor"
+            db_session, email="refund.doctor@test.gn", password="Secret12", role="doctor"
         ).user
         doctor = db_session.query(Doctor).filter(Doctor.user_id == doctor_user.id).first()
         rdv = RendezVous(

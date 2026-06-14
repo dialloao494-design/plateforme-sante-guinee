@@ -17,7 +17,7 @@ class TestPublicRegistrationEndpoint:
             "/auth/register",
             json={
                 "email": "patient.secure@example.com",
-                "password": "secret12",
+                "password": "Secret12",
                 "role": "patient",
             },
         )
@@ -31,7 +31,7 @@ class TestPublicRegistrationEndpoint:
             "/auth/register",
             json={
                 "email": "doctor.secure@example.com",
-                "password": "secret12",
+                "password": "Secret12",
                 "role": "doctor",
             },
         )
@@ -39,12 +39,23 @@ class TestPublicRegistrationEndpoint:
         assert response.json()["role"] == "doctor"
         assert response.json().get("doctor_id") is not None
 
+    def test_register_weak_password_rejected(self, client):
+        response = client.post(
+            "/auth/register",
+            json={
+                "email": "weak.pass@example.com",
+                "password": "short1",
+                "role": "patient",
+            },
+        )
+        assert response.status_code == 422
+
     def test_register_admin_role_rejected(self, client):
         response = client.post(
             "/auth/register",
             json={
                 "email": "evil.admin@example.com",
-                "password": "secret12",
+                "password": "Secret12",
                 "role": "admin",
             },
         )
@@ -59,7 +70,7 @@ class TestPublicRegistrationEndpoint:
                 "/auth/register",
                 json={
                     "email": f"case.{role_value.strip().lower()}@example.com",
-                    "password": "secret12",
+                    "password": "Secret12",
                     "role": role_value,
                 },
             )
@@ -70,7 +81,7 @@ class TestPublicRegistrationEndpoint:
             "/auth/register",
             json={
                 "email": "superuser@example.com",
-                "password": "secret12",
+                "password": "Secret12",
                 "role": "superadmin",
             },
         )
@@ -81,7 +92,7 @@ class TestPublicRegistrationEndpoint:
             "/auth/register",
             json={
                 "email": "inject@example.com",
-                "password": "secret12",
+                "password": "Secret12",
                 "role": "patient",
                 "is_admin": True,
             },
@@ -93,7 +104,7 @@ class TestPublicRegistrationEndpoint:
             "/auth/register",
             json={
                 "email": "adm1n@example.com",
-                "password": "secret12",
+                "password": "Secret12",
                 "role": "adm1n",
             },
         )
@@ -104,7 +115,7 @@ class TestPublicRegistrationEndpoint:
             "/auth/register",
             json={
                 "email": "blocked.admin@example.com",
-                "password": "secret12",
+                "password": "Secret12",
                 "role": "admin",
             },
         )
@@ -132,13 +143,13 @@ class TestAdminProvisioningEndpoint:
             "/auth/register",
             json={
                 "email": "not.admin@example.com",
-                "password": "secret12",
+                "password": "Secret12",
                 "role": "patient",
             },
         )
         login = client.post(
             "/auth/login-json",
-            json={"email": "not.admin@example.com", "password": "secret12"},
+            json={"email": "not.admin@example.com", "password": "Secret12"},
         )
         token = login.json()["access_token"]
         response = client.post(
@@ -181,7 +192,7 @@ class TestUserProvisioningService:
             register_public_user(
                 db_session,
                 email="service.admin@example.com",
-                password="secret12",
+                password="Secret12",
                 role="admin",
             )
 
@@ -195,7 +206,7 @@ class TestOrmPrivilegedRoleGuard:
         with pytest.raises(PrivilegedRoleAssignmentError):
             user = User(
                 email="orm.bypass@example.com",
-                hashed_password=hash_password("secret12"),
+                hashed_password=hash_password("Secret12"),
                 role="admin",
             )
             db_session.add(user)
@@ -209,7 +220,7 @@ class TestOrmPrivilegedRoleGuard:
         with provisioning_channel("test_fixture"):
             user = User(
                 email="orm.allowed@example.com",
-                hashed_password=hash_password("secret12"),
+                hashed_password=hash_password("Secret12"),
                 role="admin",
             )
             db_session.add(user)
@@ -224,7 +235,7 @@ class TestOrmPrivilegedRoleGuard:
 
         user = User(
             email="escalate@example.com",
-            hashed_password=hash_password("secret12"),
+            hashed_password=hash_password("Secret12"),
             role="patient",
         )
         db_session.add(user)
@@ -242,7 +253,7 @@ class TestJwtRoleIntegrity:
             "/auth/register",
             json={
                 "email": "jwt.victim@example.com",
-                "password": "secret12",
+                "password": "Secret12",
                 "role": "patient",
             },
         )
@@ -298,7 +309,7 @@ class TestAdminBootstrap:
         email = "existing.patient@bootstrap.test"
         user = User(
             email=email,
-            hashed_password=hash_password("secret12"),
+            hashed_password=hash_password("Secret12"),
             role="patient",
         )
         db_session.add(user)

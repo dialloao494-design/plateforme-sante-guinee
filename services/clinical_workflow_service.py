@@ -107,14 +107,20 @@ class ClinicalWorkflowService:
         return patient
 
     @staticmethod
-    def search_patients(db: Session, *, query: str, limit: int = 20) -> list[models.Patient]:
+    def search_patients(
+        db: Session, *, clinic_id: int, query: str, limit: int = 20
+    ) -> list[models.Patient]:
         q = query.strip()
         if len(q) < 2:
             return []
         pattern = f"%{q}%"
+        from core.clinic_patient_scope import clinic_patient_ids_query
+
+        linked_ids = clinic_patient_ids_query(db, clinic_id).subquery()
         return (
             db.query(models.Patient)
             .filter(
+                models.Patient.id.in_(db.query(linked_ids.c.patient_id)),
                 models.Patient.is_archived.is_(False),
                 (
                     models.Patient.first_name.ilike(pattern)

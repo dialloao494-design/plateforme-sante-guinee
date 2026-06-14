@@ -257,7 +257,8 @@ def search_patients(
     current_user: User = Depends(get_current_user),
 ):
     assert_role(current_user, RECEPTION_ROLES)
-    return ClinicalWorkflowService.search_patients(db, query=q)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return ClinicalWorkflowService.search_patients(db, clinic_id=clinic.id, query=q)
 
 
 @router.post("/reception/patients", response_model=PatientIntakeResponse, status_code=201)

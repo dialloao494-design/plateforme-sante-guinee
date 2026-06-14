@@ -11,6 +11,7 @@ from pydantic import BaseModel
 class ReminderResponseRequest(BaseModel):
     action: str
     payload: Optional[str] = None
+    token: Optional[str] = None
 
 
 class ReminderEventResponse(BaseModel):

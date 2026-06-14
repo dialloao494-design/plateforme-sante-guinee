@@ -174,6 +174,11 @@ def register_public_user(db: Session, *, email: str, password: str, role: str) -
     """
     Public self-service registration (patient or doctor only).
     """
+    try:
+        validate_password(password)
+    except ValueError as exc:
+        raise UserProvisioningError(str(exc)) from exc
+
     public_role = assert_public_registration_role(role)
     try:
         user = _persist_user(
@@ -270,6 +275,11 @@ def create_staff_user(
     normalized = assert_known_role(role)
     if normalized not in CLINICAL_STAFF_ROLES | {"admin"}:
         raise UserProvisioningError(f"Role '{role}' is not a staff role.")
+
+    try:
+        validate_password(password)
+    except ValueError as exc:
+        raise UserProvisioningError(str(exc)) from exc
 
     try:
         user = _persist_user(

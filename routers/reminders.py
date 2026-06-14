@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from core.clinical_access import RECEPTION_ROLES, DOCTOR_ROLES, ADMIN_ROLES, resolve_clinic_for_user
+from core.reminder_security import verify_reminder_respond_token
 from database import get_db
 from models.user import User
 from schemas.reminders import ReminderEventResponse, ReminderResponseRequest, StaffNotificationItem
@@ -30,7 +31,7 @@ def staff_notifications(
     if current_user.role not in STAFF_ROLES:
         raise HTTPException(status_code=403, detail="Staff only")
     clinic_id = None
-    if current_user.role != "admin":
+    if current_user.role != "admin" or current_user.clinic_id is not None:
         clinic = resolve_clinic_for_user(db, current_user)
         clinic_id = clinic.id
     return ReminderService.staff_notifications(db, clinic_id=clinic_id, limit=limit)
@@ -38,14 +39,20 @@ def staff_notifications(
 
 @router.post("/appointments/{appointment_id}/respond", response_model=ReminderEventResponse)
 def patient_respond(
+    request: Request,
     appointment_id: int,
-    payload: ReminderResponseRequest,
+    submission: ReminderResponseRequest,
     db: Session = Depends(get_db),
 ):
     """Patient confirmation/cancellation/reschedule (also via WhatsApp webhook)."""
+    if not verify_reminder_respond_token(appointment_id, submission.token):
+        raise HTTPException(status_code=403, detail="Invalid reminder response token")
     try:
         event = ReminderService.handle_patient_response(
-            db, appointment_id=appointment_id, action=payload.action, payload=payload.payload
+            db,
+            appointment_id=appointment_id,
+            action=submission.action,
+            payload=submission.payload,
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

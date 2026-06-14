@@ -183,7 +183,8 @@ class ClinicBillingService:
 
     @staticmethod
     def daily_summary(db: Session, *, clinic_id: int, day: date | None = None) -> dict:
-        target = day or date.today()
+        # paid_at is stored in UTC (datetime.utcnow); use UTC calendar day for consistency.
+        target = day or datetime.utcnow().date()
         start = datetime.combine(target, time.min)
         end = datetime.combine(target, time.max)
 

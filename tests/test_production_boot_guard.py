@@ -27,6 +27,11 @@ def _apply_valid_production_env(monkeypatch) -> None:
     monkeypatch.setenv("JITSI_APP_SECRET", "jitsi-production-secret-" + "C" * 8)
     monkeypatch.setenv("ENABLE_PILOT_SEED", "false")
     monkeypatch.setenv("BYPASS_AVAILABILITY_VALIDATION", "false")
+    monkeypatch.setenv("ENABLE_STARTUP_TEST_USER", "false")
+    monkeypatch.setenv("ENABLE_STARTUP_SEED", "false")
+    monkeypatch.setenv("ENABLE_DEMO_CLINIC_SEED", "false")
+    monkeypatch.setenv("TRUSTED_PROXY_HOSTS", "127.0.0.1,backend")
+    monkeypatch.setenv("REMINDER_RESPOND_TOKEN", "reminder-respond-token-" + "R" * 32)
     _clear_settings_cache()
 
 
@@ -81,6 +86,38 @@ class TestProductionBootGuardA4:
         settings.enforce_production_boot()
 
 
+class TestProductionBootGuardSeedFlags:
+    """Demo/dev seed flags must abort production startup."""
+
+    @pytest.mark.parametrize(
+        "flag_name",
+        [
+            "ENABLE_STARTUP_TEST_USER",
+            "ENABLE_STARTUP_SEED",
+            "ENABLE_DEMO_CLINIC_SEED",
+        ],
+    )
+    def test_seed_flags_forbidden_in_production(self, monkeypatch, flag_name: str):
+        _apply_valid_production_env(monkeypatch)
+        monkeypatch.setenv(flag_name, "true")
+        settings = AppSettings()
+        with pytest.raises(RuntimeError, match=flag_name):
+            settings.enforce_production_boot()
+
+
+class TestTrustedProxyHosts:
+    def test_wildcard_proxy_hosts_rejected_in_production(self, monkeypatch):
+        _apply_valid_production_env(monkeypatch)
+        monkeypatch.setenv("TRUSTED_PROXY_HOSTS", "*")
+        settings = AppSettings()
+        with pytest.raises(RuntimeError, match="TRUSTED_PROXY_HOSTS"):
+            settings.enforce_production_boot()
+
+    def test_explicit_proxy_hosts_allowed_in_production(self, monkeypatch):
+        _apply_valid_production_env(monkeypatch)
+        AppSettings().resolve_trusted_proxy_hosts()
+
+
 class TestProductionBootSecrets:
     def test_valid_production_configuration_passes(self, monkeypatch):
         _apply_valid_production_env(monkeypatch)
@@ -104,6 +141,12 @@ class TestProductionBootSecrets:
         monkeypatch.delenv("JITSI_APP_SECRET", raising=False)
         monkeypatch.delenv("JITSI_SECRET", raising=False)
         with pytest.raises(RuntimeError, match="JITSI_SECRET"):
+            AppSettings().enforce_production_boot()
+
+    def test_missing_reminder_token_rejected_in_production(self, monkeypatch):
+        _apply_valid_production_env(monkeypatch)
+        monkeypatch.delenv("REMINDER_RESPOND_TOKEN", raising=False)
+        with pytest.raises(RuntimeError, match="REMINDER_RESPOND_TOKEN"):
             AppSettings().enforce_production_boot()
 
 

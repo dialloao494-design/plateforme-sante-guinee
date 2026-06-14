@@ -110,8 +110,9 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 _allowed_hosts = _settings.resolve_allowed_hosts()
+_trusted_proxy_hosts = _settings.resolve_trusted_proxy_hosts()
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts)
-app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=_trusted_proxy_hosts)
 
 # Clinical attachments are never served from a public static mount.
 # Legacy /uploads/* URLs are explicitly blocked (defense in depth).
@@ -131,7 +132,7 @@ def ensure_dev_test_user():
     """Create or repair a default development login user and its patient profile."""
     db = SessionLocal()
     email = "test@test.com"
-    plain_password = "test123"
+    plain_password = "Test123!"
 
     try:
         user = db.query(models.User).filter(models.User.email == email).first()
@@ -192,10 +193,10 @@ def ensure_dev_test_user():
 
 
 def _ensure_production_test_user():
-    """Idempotently create the production test user (test123@gmail.com / 123456)."""
+    """Idempotently create the optional startup test user (disabled in production)."""
     db = SessionLocal()
     email = "test123@gmail.com"
-    plain_password = "123456"
+    plain_password = "Test123!"
     try:
         user = db.query(models.User).filter(models.User.email == email).first()
         if user is None:
@@ -349,6 +350,7 @@ async def startup_event():
             ensure_radiology_schema,
             ensure_reminders_schema,
             ensure_pharmacy_inventory_schema,
+            ensure_patient_user_id_unique,
             ensure_message_attachment_columns,
             ensure_patient_dossier_schema,
         )
@@ -366,6 +368,7 @@ async def startup_event():
         ensure_radiology_schema(engine)
         ensure_reminders_schema(engine)
         ensure_pharmacy_inventory_schema(engine)
+        ensure_patient_user_id_unique(engine)
 
         from database import SessionLocal
         from services.user_provisioning import bootstrap_initial_admin
