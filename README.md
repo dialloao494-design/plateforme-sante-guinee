@@ -30,6 +30,7 @@ npm run dev
 | Guide | Description |
 |-------|-------------|
 | [docs/PRODUCTION_DEPLOYMENT_PACKAGE.md](docs/PRODUCTION_DEPLOYMENT_PACKAGE.md) | **Pilot go-live — all checklists** |
+| [RELEASE_NOTES.md](RELEASE_NOTES.md) | **v1.0.0-pilot release notes** |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Environment, Docker, VPS production |
 | [docs/MIGRATIONS.md](docs/MIGRATIONS.md) | Alembic & schema upgrades |
 | [docs/BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md) | PostgreSQL backup & recovery |
