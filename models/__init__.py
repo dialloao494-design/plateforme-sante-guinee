@@ -27,5 +27,7 @@ from .medical_history import (
     FollowUpSchedule,
 )
 from .hospitalization import HospitalRoom, HospitalBed, Admission, PatientStay
+from .clinical_visit import ClinicalVisit
+from .invoice import Invoice, InvoiceItem, PaymentRecord
 
 from . import user_hooks as _user_hooks  # noqa: F401

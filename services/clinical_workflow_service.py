@@ -259,6 +259,9 @@ class ClinicalWorkflowService:
         db.add(consultation)
         db.commit()
         db.refresh(consultation)
+        from services.visit_service import VisitService
+
+        VisitService.ensure_for_consultation(db, consultation)
         if actor:
             log_cis(
                 db,

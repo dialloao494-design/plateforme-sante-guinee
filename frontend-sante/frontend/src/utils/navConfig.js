@@ -13,10 +13,12 @@ const ROLE_NAV = {
   admin: [
     { path: '/clinical', label: 'Opérations', icon: 'dash' },
     { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'board' },
+    { path: '/clinical/billing', label: 'Facturation', icon: 'calendar' },
   ],
   receptionist: [
     { path: '/clinical/reception', label: 'Réception', icon: 'calendar' },
     { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'board' },
+    { path: '/clinical/billing', label: 'Facturation', icon: 'calendar' },
   ],
   cashier: [{ path: '/clinical/reception', label: 'Réception', icon: 'calendar' }],
   doctor: [

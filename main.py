@@ -10,6 +10,7 @@ from database import SessionLocal
 import models
 from routers import patient, patient_record, rendezvous, doctor, auth, teleconsultation, notifications, messages
 from routers import users, appointments, doctor_dashboard, ws, clinical, medical_history, hospitalization
+from routers import unified_billing
 from security import hash_password, verify_password
 from services.user_provisioning import register_public_user
 import os
@@ -241,6 +242,7 @@ app.include_router(doctor_dashboard.router)
 app.include_router(clinical.router)
 app.include_router(medical_history.router)
 app.include_router(hospitalization.router)
+app.include_router(unified_billing.router)
 app.include_router(ws.router)
 
 
@@ -325,7 +327,7 @@ async def startup_event():
         from database import engine, Base
         # Import all model modules so their tables are registered on Base
         import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message, models.notification_event, models.attachment_access_log, models.clinical_note, models.consultation_summary, models.patient_document, models.clinical_audit_log
-        import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.medical_history, models.hospitalization  # noqa: F401
+        import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.medical_history, models.hospitalization, models.clinical_visit, models.invoice  # noqa: F401
 
         # Always create tables if they don't exist (safe / idempotent)
         Base.metadata.create_all(bind=engine)

@@ -29,6 +29,9 @@ class ClinicCharge(Base):
     payment_method = Column(String(32), nullable=True)
     # cash | orange_money | mtn | card
 
+    visit_id = Column(Integer, ForeignKey("clinical_visits.id"), nullable=True, index=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=True, index=True)
+
     recorded_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     paid_at = Column(DateTime, nullable=True)
 
@@ -37,3 +40,6 @@ class ClinicCharge(Base):
 
     patient = relationship("Patient")
     clinic = relationship("Clinic")
+    visit = relationship("ClinicalVisit", back_populates="charges")
+    invoice = relationship("Invoice", foreign_keys=[invoice_id])
+    invoice_item = relationship("InvoiceItem", back_populates="clinic_charge", uselist=False)

@@ -158,6 +158,10 @@ class HospitalizationService:
         db.add(admission)
         db.commit()
         db.refresh(admission)
+        from services.visit_service import VisitService
+
+        visit = VisitService.ensure_for_consultation(db, consultation)
+        VisitService.link_admission(db, visit, admission.id)
         log_cis(
             db,
             actor=actor,

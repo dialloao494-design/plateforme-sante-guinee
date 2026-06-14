@@ -68,6 +68,13 @@ const clinicalApi = {
   getAdmission: (id) => httpClient.get(`/clinical/hospitalization/admissions/${id}`),
   updateAdmissionStatus: (id, data) => httpClient.patch(`/clinical/hospitalization/admissions/${id}/status`, data),
   assignBed: (id, data) => httpClient.post(`/clinical/hospitalization/admissions/${id}/assign-bed`, data),
+
+  // Unified billing
+  listInvoices: (status) =>
+    httpClient.get('/clinical/billing/unified/invoices', { params: status ? { status } : {} }),
+  generateInvoice: (data) => httpClient.post('/clinical/billing/unified/invoices/generate', data),
+  payInvoice: (id, data) => httpClient.post(`/clinical/billing/unified/invoices/${id}/pay`, data),
+  invoicePdfUrl: (id) => `${httpClient.defaults.baseURL}/clinical/billing/unified/invoices/${id}/pdf`,
 };
 
 export default clinicalApi;

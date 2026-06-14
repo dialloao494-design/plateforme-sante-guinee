@@ -24,6 +24,7 @@ import DoctorClinicalDashboard from "../pages/clinical/DoctorClinicalDashboard.j
 import LabDashboard from "../pages/clinical/LabDashboard.jsx";
 import PharmacyDashboard from "../pages/clinical/PharmacyDashboard.jsx";
 import HospitalizationDashboard from "../pages/clinical/HospitalizationDashboard.jsx";
+import UnifiedBillingDashboard from "../pages/clinical/UnifiedBillingDashboard.jsx";
 import AdminClinicalDashboard from "../pages/clinical/AdminClinicalDashboard.jsx";
 import ClinicOperationsDashboard from "../pages/clinical/ClinicOperationsDashboard.jsx";
 import ProtectedRoute from "./ProtectedRoute";
@@ -197,7 +198,16 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-      <Route path="/clinical/revenue" element={<Navigate to="/clinical" replace />} />
+      <Route path="/clinical/revenue" element={<Navigate to="/clinical/billing" replace />} />
+
+      <Route
+        path="/clinical/billing"
+        element={
+          <ProtectedRoute allowedRoles={["receptionist", "cashier", "admin"]}>
+            <UnifiedBillingDashboard />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/clinical/hospitalization"
