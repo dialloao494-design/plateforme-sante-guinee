@@ -133,6 +133,8 @@ class ReminderService:
         elif action == "cancelled" and appt:
             appt.status = "cancelled"
             appt.clinical_status = "cancelled"
+        elif action == "reschedule_requested" and appt:
+            appt.clinical_status = "reschedule_requested"
 
         db.commit()
         db.refresh(event)
@@ -164,3 +166,32 @@ class ReminderService:
                 }
             )
         return out
+
+    @staticmethod
+    def _phone_suffix(phone: str) -> str:
+        return "".join(c for c in phone if c.isdigit())[-9:]
+
+    @staticmethod
+    def resolve_appointment_id_by_phone(db: Session, phone: str) -> int | None:
+        """Find the next upcoming appointment for a patient matched by phone suffix."""
+        suffix = ReminderService._phone_suffix(phone)
+        if len(suffix) < 7:
+            return None
+        patient_ids = [
+            p.id
+            for p in db.query(models.Patient).filter(models.Patient.phone.isnot(None)).all()
+            if ReminderService._phone_suffix(p.phone or "") == suffix
+        ]
+        if not patient_ids:
+            return None
+        appt = (
+            db.query(models.RendezVous)
+            .filter(
+                models.RendezVous.patient_id.in_(patient_ids),
+                models.RendezVous.status.notin_(["cancelled", "completed"]),
+                models.RendezVous.date >= datetime.utcnow(),
+            )
+            .order_by(models.RendezVous.date.asc())
+            .first()
+        )
+        return appt.id if appt else None

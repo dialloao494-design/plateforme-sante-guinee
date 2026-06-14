@@ -366,3 +366,49 @@ class HospitalizationService:
         if not admission:
             raise HTTPException(status_code=404, detail="Admission not found")
         return admission
+
+    @staticmethod
+    def update_room(
+        db: Session,
+        *,
+        clinic_id: int,
+        room_id: int,
+        status: str | None = None,
+        notes: str | None = None,
+        room_type: str | None = None,
+    ) -> models.HospitalRoom:
+        room = (
+            db.query(models.HospitalRoom)
+            .filter(models.HospitalRoom.id == room_id, models.HospitalRoom.clinic_id == clinic_id)
+            .first()
+        )
+        if not room:
+            raise HTTPException(status_code=404, detail="Room not found")
+        if status:
+            room.status = status
+        if notes is not None:
+            room.notes = notes
+        if room_type:
+            room.room_type = room_type
+        db.commit()
+        db.refresh(room)
+        return room
+
+    @staticmethod
+    def update_bed(
+        db: Session, *, clinic_id: int, bed_id: int, status: str
+    ) -> models.HospitalBed:
+        bed = (
+            db.query(models.HospitalBed)
+            .join(models.HospitalRoom)
+            .filter(models.HospitalBed.id == bed_id, models.HospitalRoom.clinic_id == clinic_id)
+            .first()
+        )
+        if not bed:
+            raise HTTPException(status_code=404, detail="Bed not found")
+        if bed.status == "occupied" and status == "maintenance":
+            raise HTTPException(status_code=400, detail="Cannot maintenance an occupied bed")
+        bed.status = status
+        db.commit()
+        db.refresh(bed)
+        return bed

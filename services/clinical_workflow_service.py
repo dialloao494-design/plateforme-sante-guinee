@@ -63,6 +63,20 @@ class ClinicalWorkflowService:
         actor: User | None = None,
         client_ip: str | None = None,
     ) -> models.Patient:
+        if payload.phone:
+            digits = "".join(c for c in payload.phone if c.isdigit())[-9:]
+            existing = (
+                db.query(models.Patient)
+                .filter(models.Patient.phone.isnot(None), models.Patient.is_archived.is_(False))
+                .all()
+            )
+            for p in existing:
+                p_digits = "".join(c for c in (p.phone or "") if c.isdigit())[-9:]
+                if p_digits and p_digits == digits:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"Patient déjà enregistré (#{p.id} — {p.first_name} {p.last_name})",
+                    )
         patient = models.Patient(
             first_name=payload.first_name.strip(),
             last_name=payload.last_name.strip(),
@@ -70,6 +84,8 @@ class ClinicalWorkflowService:
             gender=payload.gender,
             phone=payload.phone,
             address=payload.address,
+            date_of_birth=payload.date_of_birth,
+            emergency_contact=payload.emergency_contact,
         )
         db.add(patient)
         db.commit()
@@ -89,6 +105,27 @@ class ClinicalWorkflowService:
                 client_ip=client_ip,
             )
         return patient
+
+    @staticmethod
+    def search_patients(db: Session, *, query: str, limit: int = 20) -> list[models.Patient]:
+        q = query.strip()
+        if len(q) < 2:
+            return []
+        pattern = f"%{q}%"
+        return (
+            db.query(models.Patient)
+            .filter(
+                models.Patient.is_archived.is_(False),
+                (
+                    models.Patient.first_name.ilike(pattern)
+                    | models.Patient.last_name.ilike(pattern)
+                    | models.Patient.phone.ilike(pattern)
+                ),
+            )
+            .order_by(models.Patient.last_name, models.Patient.first_name)
+            .limit(limit)
+            .all()
+        )
 
     @staticmethod
     def create_appointment(
@@ -705,6 +742,14 @@ class ClinicalWorkflowService:
         if payload.status == "dispensed":
             order.dispensed_at = datetime.utcnow()
             order.prescription.status = "dispensed"
+            meds = ", ".join(
+                i.medication_name for i in (order.prescription.items or [])
+            ) if order.prescription else ""
+            from services.pharmacy_inventory_service import PharmacyInventoryService
+
+            PharmacyInventoryService.deduct_for_prescription(
+                db, clinic_id=clinic_id, medications_text=meds
+            )
 
         order.updated_at = datetime.utcnow()
         db.commit()

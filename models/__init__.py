@@ -32,5 +32,6 @@ from .invoice import Invoice, InvoiceItem, PaymentRecord
 from .discharge import DischargeSummary
 from .imaging import ImagingOrder, ImagingResult
 from .appointment_reminder import AppointmentReminder, ReminderEvent
+from .pharmacy_inventory import PharmacyInventoryItem
 
 from . import user_hooks as _user_hooks  # noqa: F401

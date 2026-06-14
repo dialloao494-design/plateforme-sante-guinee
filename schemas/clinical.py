@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -59,6 +59,8 @@ class PatientIntakeCreate(BaseModel):
     gender: str = "other"
     phone: Optional[str] = None
     address: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    emergency_contact: Optional[str] = None
 
 
 class PatientIntakeResponse(BaseModel):
@@ -68,6 +70,19 @@ class PatientIntakeResponse(BaseModel):
     age: int
     gender: str
     phone: Optional[str]
+    address: Optional[str] = None
+    emergency_contact: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PatientSearchResponse(BaseModel):
+    id: int
+    first_name: str
+    last_name: str
+    phone: Optional[str] = None
+    age: int
 
     class Config:
         from_attributes = True

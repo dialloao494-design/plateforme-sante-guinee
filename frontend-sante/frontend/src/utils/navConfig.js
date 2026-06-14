@@ -17,6 +17,7 @@ const ROLE_NAV = {
     { path: '/clinical/discharge', label: 'Sortie patient', icon: 'queue' },
     { path: '/clinical/radiology', label: 'Radiologie', icon: 'steth' },
     { path: '/clinical/notifications', label: 'Notifications', icon: 'bell' },
+    { path: '/clinical/reports', label: 'Rapports', icon: 'calendar' },
   ],
   receptionist: [
     { path: '/clinical/reception', label: 'Réception', icon: 'calendar' },
@@ -24,6 +25,7 @@ const ROLE_NAV = {
     { path: '/clinical/billing', label: 'Facturation', icon: 'calendar' },
     { path: '/clinical/discharge', label: 'Sortie patient', icon: 'queue' },
     { path: '/clinical/notifications', label: 'Notifications', icon: 'bell' },
+    { path: '/clinical/reports', label: 'Rapports', icon: 'calendar' },
   ],
   cashier: [{ path: '/clinical/reception', label: 'Réception', icon: 'calendar' }],
   doctor: [

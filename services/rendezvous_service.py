@@ -411,6 +411,11 @@ class RendezVousService:
             appointment_end = rdv.date + timedelta(minutes=rdv.duration_minutes)
             RendezVousService.reserve_availability_slot(availability_slot, rdv.date, appointment_end, db)
 
+        if doctor.clinic_id and new_rdv.status not in ("cancelled",):
+            from services.reminder_service import ReminderService
+
+            ReminderService.schedule_for_appointment(db, new_rdv)
+
         return new_rdv
 
     @staticmethod

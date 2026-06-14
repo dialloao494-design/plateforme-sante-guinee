@@ -10,6 +10,7 @@ const clinicalApi = {
 
   // Reception
   intakePatient: (data) => httpClient.post('/clinical/reception/patients', data),
+  searchPatients: (q) => httpClient.get('/clinical/reception/patients', { params: { q } }),
   createAppointment: (data) => httpClient.post('/clinical/reception/appointments', data),
   receptionQueue: () => httpClient.get('/clinical/reception/queue'),
   checkIn: (appointmentId) =>
@@ -101,6 +102,46 @@ const clinicalApi = {
   reminderNotifications: () => httpClient.get('/clinical/reminders/notifications'),
   respondToReminder: (appointmentId, data) =>
     httpClient.post(`/clinical/reminders/appointments/${appointmentId}/respond`, data),
+
+  // Clinical reporting
+  clinicalReportSummary: (params) => httpClient.get('/clinical/reports/summary', { params }),
+  clinicalReportRevenue: (params) => httpClient.get('/clinical/reports/revenue', { params }),
+  downloadClinicalReportCsv: (params) =>
+    httpClient.get('/clinical/reports/export.csv', { params, responseType: 'blob' }),
+  downloadClinicalReportPdf: (params, filename) =>
+    import('../utils/downloadPdf').then(({ downloadAuthenticatedPdf }) =>
+      downloadAuthenticatedPdf('/clinical/reports/export.pdf', filename, params)
+    ),
+
+  // Medical history (staff)
+  patientMedicalHistory: (patientId) => httpClient.get(`/patients/${patientId}/medical-history`),
+
+  // Pharmacy inventory
+  pharmacyInventory: () => httpClient.get('/clinical/pharmacy/inventory'),
+  upsertPharmacyInventory: (data) => httpClient.post('/clinical/pharmacy/inventory', data),
+  adjustPharmacyInventory: (id, data) => httpClient.patch(`/clinical/pharmacy/inventory/${id}`, data),
+
+  // Bed / room management
+  updateHospitalRoom: (roomId, data) => httpClient.patch(`/clinical/hospitalization/rooms/${roomId}`, data),
+  updateHospitalBed: (bedId, data) => httpClient.patch(`/clinical/hospitalization/beds/${bedId}`, data),
+
+  // Authenticated PDF downloads
+  downloadInvoicePdf: (id, filename) =>
+    import('../utils/downloadPdf').then(({ downloadAuthenticatedPdf }) =>
+      downloadAuthenticatedPdf(`/clinical/billing/unified/invoices/${id}/pdf`, filename)
+    ),
+  downloadDischargePdf: (id, filename) =>
+    import('../utils/downloadPdf').then(({ downloadAuthenticatedPdf }) =>
+      downloadAuthenticatedPdf(`/clinical/discharge/summaries/${id}/pdf`, filename)
+    ),
+  downloadRadiologyPdf: (resultId, filename) =>
+    import('../utils/downloadPdf').then(({ downloadAuthenticatedPdf }) =>
+      downloadAuthenticatedPdf(`/clinical/radiology/results/${resultId}/pdf`, filename)
+    ),
+  downloadLabPdf: (resultId, filename) =>
+    import('../utils/downloadPdf').then(({ downloadAuthenticatedPdf }) =>
+      downloadAuthenticatedPdf(`/clinical/lab/results/${resultId}/pdf`, filename)
+    ),
 };
 
 export default clinicalApi;

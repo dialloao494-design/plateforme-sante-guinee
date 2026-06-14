@@ -206,19 +206,33 @@ class ClinicBillingService:
             .all()
         )
 
-        by_type: dict[str, int] = {"consultation": 0, "laboratory": 0, "pharmacy": 0}
+        by_type: dict[str, int] = {}
         by_method: dict[str, int] = {}
         for c in paid:
             by_type[c.charge_type] = by_type.get(c.charge_type, 0) + c.amount_gnf
             method = c.payment_method or "unknown"
             by_method[method] = by_method.get(method, 0) + c.amount_gnf
 
+        paid_invoices = (
+            db.query(models.Invoice)
+            .filter(
+                models.Invoice.clinic_id == clinic_id,
+                models.Invoice.status == "paid",
+                models.Invoice.paid_at >= start,
+                models.Invoice.paid_at <= end,
+            )
+            .all()
+        )
+        invoice_total = sum(i.paid_amount_gnf or 0 for i in paid_invoices)
+        by_type["unified_invoice"] = by_type.get("unified_invoice", 0) + invoice_total
+
         return {
             "date": target.isoformat(),
-            "total_collected_gnf": sum(c.amount_gnf for c in paid),
+            "total_collected_gnf": sum(c.amount_gnf for c in paid) + invoice_total,
             "total_pending_gnf": sum(c.amount_gnf for c in pending),
-            "paid_count": len(paid),
+            "paid_count": len(paid) + len(paid_invoices),
             "pending_count": len(pending),
             "by_charge_type": by_type,
             "by_payment_method": by_method,
+            "invoices_paid_gnf": invoice_total,
         }

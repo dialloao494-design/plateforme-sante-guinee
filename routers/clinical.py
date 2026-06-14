@@ -49,12 +49,18 @@ from schemas.clinical import (
     LabResultResponse,
     PatientIntakeCreate,
     PatientIntakeResponse,
+    PatientSearchResponse,
     PharmacyOrderResponse,
     PharmacyStatusUpdate,
     PrescriptionCreate,
     PrescriptionResponse,
     StaffCreate,
     StaffResponse,
+)
+from schemas.pharmacy_inventory import (
+    PharmacyInventoryAdjust,
+    PharmacyInventoryItemResponse,
+    PharmacyInventoryUpsert,
 )
 from security import get_current_user
 from services.clinical_audit_service import ClinicalAuditService
@@ -242,6 +248,16 @@ def operations_summary(
 
 
 # --- Reception ---
+
+
+@router.get("/reception/patients", response_model=List[PatientSearchResponse])
+def search_patients(
+    q: str = Query(..., min_length=2),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, RECEPTION_ROLES)
+    return ClinicalWorkflowService.search_patients(db, query=q)
 
 
 @router.post("/reception/patients", response_model=PatientIntakeResponse, status_code=201)
@@ -695,6 +711,45 @@ def validate_lab_result(
     return result
 
 
+@router.get("/lab/results/{result_id}/pdf")
+def lab_result_pdf_download(
+    result_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from fastapi.responses import Response
+    from services.pdf_service import lab_result_pdf
+
+    assert_role(current_user, LAB_ROLES + DOCTOR_ROLES + ADMIN_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    result = (
+        db.query(models.LabResult)
+        .join(models.LabOrder)
+        .filter(models.LabResult.id == result_id, models.LabOrder.clinic_id == clinic.id)
+        .first()
+    )
+    if not result or result.status != "validated":
+        raise HTTPException(status_code=404, detail="Validated lab result not found")
+    order = result.lab_order
+    patient_name = f"{order.patient.first_name} {order.patient.last_name}".strip() if order.patient else "—"
+    pdf_bytes = lab_result_pdf(
+        patient_name,
+        {
+            "test_name": order.test_name,
+            "test_code": order.test_code,
+            "result_summary": result.result_summary,
+            "reference_range": result.reference_range,
+            "interpretation": result.interpretation,
+            "validated_at": str(result.validated_at or ""),
+        },
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="lab-result-{result_id}.pdf"'},
+    )
+
+
 # --- Pharmacy ---
 
 
@@ -758,6 +813,89 @@ def update_pharmacy_order(
         status=order.status,
         patient_name=f"{order.patient.first_name} {order.patient.last_name}" if order.patient else None,
         medications=meds,
+    )
+
+
+@router.get("/pharmacy/inventory", response_model=List[PharmacyInventoryItemResponse])
+def pharmacy_inventory_list(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, PHARMACY_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    from services.pharmacy_inventory_service import PharmacyInventoryService
+
+    PharmacyInventoryService.ensure_default_stock(db, clinic_id=clinic.id)
+    items = PharmacyInventoryService.list_items(db, clinic_id=clinic.id)
+    return [
+        PharmacyInventoryItemResponse(
+            id=i.id,
+            clinic_id=i.clinic_id,
+            sku=i.sku,
+            medication_name=i.medication_name,
+            quantity=i.quantity,
+            reorder_level=i.reorder_level,
+            unit_price_gnf=i.unit_price_gnf,
+            low_stock=i.quantity <= i.reorder_level,
+        )
+        for i in items
+    ]
+
+
+@router.post("/pharmacy/inventory", response_model=PharmacyInventoryItemResponse, status_code=201)
+def pharmacy_inventory_upsert(
+    body: PharmacyInventoryUpsert,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from services.pharmacy_inventory_service import PharmacyInventoryService
+
+    assert_role(current_user, PHARMACY_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    item = PharmacyInventoryService.upsert_item(
+        db,
+        clinic_id=clinic.id,
+        sku=body.sku,
+        medication_name=body.medication_name,
+        quantity=body.quantity,
+        reorder_level=body.reorder_level,
+        unit_price_gnf=body.unit_price_gnf,
+    )
+    return PharmacyInventoryItemResponse(
+        id=item.id,
+        clinic_id=item.clinic_id,
+        sku=item.sku,
+        medication_name=item.medication_name,
+        quantity=item.quantity,
+        reorder_level=item.reorder_level,
+        unit_price_gnf=item.unit_price_gnf,
+        low_stock=item.quantity <= item.reorder_level,
+    )
+
+
+@router.patch("/pharmacy/inventory/{item_id}", response_model=PharmacyInventoryItemResponse)
+def pharmacy_inventory_adjust(
+    item_id: int,
+    body: PharmacyInventoryAdjust,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from services.pharmacy_inventory_service import PharmacyInventoryService
+
+    assert_role(current_user, PHARMACY_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    item = PharmacyInventoryService.adjust_quantity(
+        db, clinic_id=clinic.id, item_id=item_id, delta=body.delta
+    )
+    return PharmacyInventoryItemResponse(
+        id=item.id,
+        clinic_id=item.clinic_id,
+        sku=item.sku,
+        medication_name=item.medication_name,
+        quantity=item.quantity,
+        reorder_level=item.reorder_level,
+        unit_price_gnf=item.unit_price_gnf,
+        low_stock=item.quantity <= item.reorder_level,
     )
 
 

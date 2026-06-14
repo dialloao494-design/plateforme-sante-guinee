@@ -62,6 +62,14 @@ export default function RadiologyDashboard() {
     }
   };
 
+  const downloadPdf = async (resultId) => {
+    try {
+      await clinicalApi.downloadRadiologyPdf(resultId, `imagerie-${resultId}.pdf`);
+    } catch (err) {
+      setError(err?.response?.data?.detail || 'PDF indisponible');
+    }
+  };
+
   const stats = [
     { label: 'File imagerie', value: orders.length, hint: 'Actifs' },
     { label: 'Urgent', value: orders.filter((o) => o.priority === 'urgent').length, hint: 'Priorité', variant: 'warning' },
@@ -98,6 +106,9 @@ export default function RadiologyDashboard() {
                     <small>{r.impression}</small>
                     {r.status === 'reported' && (
                       <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => validate(r.id)}>Valider</button>
+                    )}
+                    {r.status === 'validated' && (
+                      <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => downloadPdf(r.id)}>PDF</button>
                     )}
                   </div>
                 ))}

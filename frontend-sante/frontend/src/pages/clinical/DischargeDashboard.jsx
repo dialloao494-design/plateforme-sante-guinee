@@ -141,9 +141,13 @@ export default function DischargeDashboard() {
               <span className="clinical-badge">{s.discharge_type}</span>
               <div>{s.diagnoses || '—'}</div>
               {s.archived_to_emr && <span className="clinical-badge">EMR</span>}
-              <a href={clinicalApi.dischargePdfUrl(s.id)} target="_blank" rel="noreferrer">
+              <button
+                type="button"
+                className="clinical-btn clinical-btn--secondary"
+                onClick={() => clinicalApi.downloadDischargePdf(s.id, `sortie-${s.id}.pdf`)}
+              >
                 PDF sortie
-              </a>
+              </button>
             </li>
           ))}
         </ul>

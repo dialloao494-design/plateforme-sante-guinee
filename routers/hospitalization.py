@@ -19,8 +19,10 @@ from schemas.hospitalization import (
     BedAssignmentRequest,
     HospitalBedCreate,
     HospitalBedResponse,
+    HospitalBedUpdate,
     HospitalRoomCreate,
     HospitalRoomResponse,
+    HospitalRoomUpdate,
     OccupancySummary,
     PatientStayResponse,
 )
@@ -182,6 +184,41 @@ def add_bed(
         payload=payload,
         actor=current_user,
         client_ip=client_ip(request),
+    )
+    return _bed_response(bed)
+
+
+@router.patch("/rooms/{room_id}", response_model=HospitalRoomResponse)
+def update_room(
+    room_id: int,
+    payload: HospitalRoomUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, BED_ADMIN_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    room = HospitalizationService.update_room(
+        db,
+        clinic_id=clinic.id,
+        room_id=room_id,
+        status=payload.status,
+        notes=payload.notes,
+        room_type=payload.room_type,
+    )
+    return _room_response(room)
+
+
+@router.patch("/beds/{bed_id}", response_model=HospitalBedResponse)
+def update_bed(
+    bed_id: int,
+    payload: HospitalBedUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, BED_ADMIN_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    bed = HospitalizationService.update_bed(
+        db, clinic_id=clinic.id, bed_id=bed_id, status=payload.status
     )
     return _bed_response(bed)
 

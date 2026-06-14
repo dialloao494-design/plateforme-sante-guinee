@@ -16,6 +16,12 @@ class HospitalRoomCreate(BaseModel):
     notes: Optional[str] = None
 
 
+class HospitalRoomUpdate(BaseModel):
+    status: Optional[str] = Field(None, pattern="^(active|maintenance|closed)$")
+    notes: Optional[str] = None
+    room_type: Optional[str] = None
+
+
 class HospitalRoomResponse(BaseModel):
     id: int
     clinic_id: int
@@ -34,6 +40,10 @@ class HospitalRoomResponse(BaseModel):
 
 class HospitalBedCreate(BaseModel):
     bed_number: str = Field(..., min_length=1, max_length=32)
+
+
+class HospitalBedUpdate(BaseModel):
+    status: str = Field(..., pattern="^(available|occupied|maintenance|reserved)$")
 
 
 class HospitalBedResponse(BaseModel):

@@ -81,3 +81,48 @@ def discharge_pdf(patient_name: str, summary: dict) -> bytes:
         f"Suivi: {summary.get('follow_up_instructions') or '—'}",
     ]
     return build_simple_pdf("BON DE SORTIE — Plateforme Santé Guinée", lines)
+
+
+def imaging_report_pdf(patient_name: str, order: dict, result: dict) -> bytes:
+    lines = [
+        f"Patient: {patient_name}",
+        f"Examen: {order.get('modality', '—')} — {order.get('body_part') or '—'}",
+        f"Indication: {order.get('clinical_indication') or '—'}",
+        "",
+        f"Constats: {result.get('findings') or '—'}",
+        f"Conclusion: {result.get('impression') or '—'}",
+        f"Recommandations: {result.get('recommendations') or '—'}",
+    ]
+    return build_simple_pdf("COMPTE-RENDU IMAGERIE — Plateforme Santé Guinée", lines)
+
+
+def lab_result_pdf(patient_name: str, result: dict) -> bytes:
+    lines = [
+        f"Patient: {patient_name}",
+        f"Examen: {result.get('test_name', '—')} ({result.get('test_code', '—')})",
+        "",
+        f"Résultat: {result.get('result_summary') or '—'}",
+        f"Référence: {result.get('reference_range') or '—'}",
+        f"Interprétation: {result.get('interpretation') or '—'}",
+        f"Validé le: {result.get('validated_at') or '—'}",
+    ]
+    return build_simple_pdf("RÉSULTAT LABORATOIRE — Plateforme Santé Guinée", lines)
+
+
+def clinical_report_pdf(summary: dict) -> bytes:
+    rev = summary.get("revenue") or {}
+    lines = [
+        f"Période: {summary.get('period_start')} → {summary.get('period_end')}",
+        "",
+        f"RDV total: {summary.get('appointments_total', 0)}",
+        f"RDV complétés: {summary.get('appointments_completed', 0)}",
+        f"Consultations: {summary.get('consultations', 0)}",
+        f"Labo: {summary.get('lab_orders', 0)} · Imagerie: {summary.get('imaging_orders', 0)}",
+        f"Pharmacie délivrée: {summary.get('pharmacy_dispensed', 0)}",
+        f"Admissions: {summary.get('admissions', 0)} · Sorties: {summary.get('discharges', 0)}",
+        "",
+        f"Recettes totales: {rev.get('total_collected_gnf', 0):,} GNF".replace(",", " "),
+        f"Factures payées: {rev.get('paid_invoices_count', 0)}",
+        f"Charges en attente: {rev.get('pending_charges_count', 0)}",
+    ]
+    return build_simple_pdf("RAPPORT CLINIQUE — Plateforme Santé Guinée", lines)

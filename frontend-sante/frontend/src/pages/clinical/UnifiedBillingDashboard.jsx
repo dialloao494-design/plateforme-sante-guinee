@@ -14,6 +14,7 @@ export default function UnifiedBillingDashboard() {
   const [invoices, setInvoices] = useState([]);
   const [patientId, setPatientId] = useState('');
   const [visitId, setVisitId] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -47,7 +48,7 @@ export default function UnifiedBillingDashboard() {
 
   const pay = async (invoiceId) => {
     try {
-      await clinicalApi.payInvoice(invoiceId, { payment_method: 'cash' });
+      await clinicalApi.payInvoice(invoiceId, { payment_method: paymentMethod });
       setMessage('Paiement enregistré');
       load();
     } catch (err) {
@@ -55,9 +56,13 @@ export default function UnifiedBillingDashboard() {
     }
   };
 
-  const downloadPdf = (invoiceId, invoiceNumber) => {
-    window.open(clinicalApi.invoicePdfUrl(invoiceId), '_blank');
-    setMessage(`PDF ${invoiceNumber}`);
+  const downloadPdf = async (invoiceId, invoiceNumber) => {
+    try {
+      await clinicalApi.downloadInvoicePdf(invoiceId, `${invoiceNumber}.pdf`);
+      setMessage(`PDF ${invoiceNumber} téléchargé`);
+    } catch (err) {
+      setError(err?.response?.data?.detail || 'PDF indisponible');
+    }
   };
 
   const pending = invoices.filter((i) => i.status !== 'paid');
@@ -94,6 +99,16 @@ export default function UnifiedBillingDashboard() {
 
       <section className="clinical-panel">
         <h2>Factures</h2>
+        <div className="clinical-form" style={{ marginBottom: '1rem' }}>
+          <label>
+            Mode de paiement
+            <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+              <option value="cash">Espèces</option>
+              <option value="orange_money">Orange Money</option>
+              <option value="mobile_money">Mobile Money</option>
+            </select>
+          </label>
+        </div>
         <ul className="clinical-queue">
           {invoices.length === 0 && <li>Aucune facture.</li>}
           {invoices.map((inv) => (

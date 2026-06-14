@@ -39,10 +39,11 @@ npm run dev
 ## Clinical workflow
 
 ```
-Patient → Reception (intake + encaissement) → Doctor → Laboratory → Pharmacy → Follow-up → Completed
+Enregistrement → RDV → Consultation → Labo / Radiologie → Admission (si besoin)
+→ Facturation unifiée → Pharmacie → Sortie → Archivage dossier
 ```
 
-Payments are collected **at reception** (cash / Orange Money). Each role has an isolated dashboard and API permissions.
+Payments via **unified invoice** at reception (cash / Orange Money). See `docs/API_MODULES.md`.
 
 ## Pilot accounts
 

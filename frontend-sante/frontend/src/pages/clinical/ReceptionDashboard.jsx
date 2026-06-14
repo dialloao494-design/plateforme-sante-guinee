@@ -32,6 +32,9 @@ export default function ReceptionDashboard() {
     age: 30,
     gender: 'other',
     phone: '',
+    address: '',
+    emergency_contact: '',
+    date_of_birth: '',
   });
   const [apptForm, setApptForm] = useState({
     patient_id: '',
@@ -39,6 +42,8 @@ export default function ReceptionDashboard() {
     date: '',
     duration_minutes: 30,
   });
+  const [patientSearch, setPatientSearch] = useState('');
+  const [patientMatches, setPatientMatches] = useState([]);
 
   const load = useCallback(async () => {
     try {
@@ -68,10 +73,24 @@ export default function ReceptionDashboard() {
     setError('');
     setMessage('');
     try {
-      const { data } = await clinicalApi.intakePatient(patientForm);
+      const { data } = await clinicalApi.intakePatient({
+        ...patientForm,
+        date_of_birth: patientForm.date_of_birth || undefined,
+        address: patientForm.address || undefined,
+        emergency_contact: patientForm.emergency_contact || undefined,
+      });
       setMessage(`Patient enregistré : ${data.first_name} ${data.last_name} (#${data.id})`);
       setApptForm((prev) => ({ ...prev, patient_id: String(data.id) }));
-      setPatientForm({ first_name: '', last_name: '', age: 30, gender: 'other', phone: '' });
+      setPatientForm({
+        first_name: '',
+        last_name: '',
+        age: 30,
+        gender: 'other',
+        phone: '',
+        address: '',
+        emergency_contact: '',
+        date_of_birth: '',
+      });
       load();
     } catch (err) {
       setError(err?.response?.data?.detail || 'Enregistrement impossible');
@@ -117,6 +136,16 @@ export default function ReceptionDashboard() {
       load();
     } catch (err) {
       setError(err?.response?.data?.detail || 'Paiement impossible');
+    }
+  };
+
+  const searchPatients = async () => {
+    if (patientSearch.trim().length < 2) return;
+    try {
+      const { data } = await clinicalApi.searchPatients(patientSearch.trim());
+      setPatientMatches(data || []);
+    } catch (err) {
+      setError(err?.response?.data?.detail || 'Recherche impossible');
     }
   };
 
@@ -182,12 +211,42 @@ export default function ReceptionDashboard() {
               <label>Téléphone</label>
               <input value={patientForm.phone} onChange={(e) => setPatientForm({ ...patientForm, phone: e.target.value })} />
             </div>
+            <div className="clinical-field">
+              <label>Date de naissance</label>
+              <input type="date" value={patientForm.date_of_birth} onChange={(e) => setPatientForm({ ...patientForm, date_of_birth: e.target.value })} />
+            </div>
+            <div className="clinical-field">
+              <label>Adresse</label>
+              <input value={patientForm.address} onChange={(e) => setPatientForm({ ...patientForm, address: e.target.value })} />
+            </div>
+            <div className="clinical-field">
+              <label>Contact d&apos;urgence</label>
+              <input value={patientForm.emergency_contact} onChange={(e) => setPatientForm({ ...patientForm, emergency_contact: e.target.value })} />
+            </div>
             <button type="submit" className="clinical-btn">Enregistrer</button>
           </form>
         </section>
 
         <section id="reception-rdv" className="clinical-card">
           <h2>Rendez-vous</h2>
+          <div className="clinical-field">
+            <label>Rechercher patient (nom / téléphone)</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input value={patientSearch} onChange={(e) => setPatientSearch(e.target.value)} placeholder="Min. 2 caractères" />
+              <button type="button" className="clinical-btn secondary" onClick={searchPatients}>Rechercher</button>
+            </div>
+            {patientMatches.length > 0 && (
+              <ul className="clinical-list">
+                {patientMatches.map((p) => (
+                  <li key={p.id}>
+                    <button type="button" className="clinical-btn secondary" onClick={() => setApptForm((prev) => ({ ...prev, patient_id: String(p.id) }))}>
+                      {p.first_name} {p.last_name} #{p.id} {p.phone ? `· ${p.phone}` : ''}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           <form onSubmit={bookAppointment}>
             <div className="clinical-field">
               <label>ID patient</label>

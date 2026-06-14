@@ -116,7 +116,7 @@ CLINIC_OPS_ROLES = (
 
 BILLING_READ_ROLES = ("receptionist", "cashier", "admin")
 BILLING_PAY_ROLES = ("receptionist", "cashier")
-BILLING_REVENUE_ROLES = ("admin",)
+BILLING_REVENUE_ROLES = ("admin", "receptionist", "cashier")
 LAB_QUEUE_ROLES = LAB_ROLES + ADMIN_ROLES
 PHARMACY_QUEUE_ROLES = PHARMACY_ROLES + ADMIN_ROLES
 

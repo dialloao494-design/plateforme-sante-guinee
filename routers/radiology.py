@@ -180,3 +180,52 @@ def validate_report(
         reported_at=result.reported_at,
         validated_at=result.validated_at,
     )
+
+
+@router.get("/results/{result_id}/pdf")
+def imaging_report_pdf_download(
+    result_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from fastapi import HTTPException
+    from fastapi.responses import Response
+
+    from services.pdf_service import imaging_report_pdf
+
+    _require_role(current_user, RADIOLOGY_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    result = (
+        db.query(models.ImagingResult)
+        .join(models.ImagingOrder)
+        .filter(
+            models.ImagingResult.id == result_id,
+            models.ImagingOrder.clinic_id == clinic.id,
+            models.ImagingResult.status == "validated",
+        )
+        .first()
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Validated imaging result not found")
+    order = result.order
+    patient_name = "—"
+    if order.patient:
+        patient_name = f"{order.patient.first_name} {order.patient.last_name}".strip()
+    pdf_bytes = imaging_report_pdf(
+        patient_name,
+        {
+            "modality": order.modality,
+            "body_part": order.body_part,
+            "clinical_indication": order.clinical_indication,
+        },
+        {
+            "findings": result.findings,
+            "impression": result.impression,
+            "recommendations": result.recommendations,
+        },
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="imagerie-{result_id}.pdf"'},
+    )

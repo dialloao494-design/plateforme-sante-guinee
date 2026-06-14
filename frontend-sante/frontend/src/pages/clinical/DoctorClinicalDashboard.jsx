@@ -90,6 +90,8 @@ export default function DoctorClinicalDashboard() {
 
   const [error, setError] = useState('');
 
+  const [patientHistory, setPatientHistory] = useState(null);
+
 
 
   const load = useCallback(async () => {
@@ -115,6 +117,26 @@ export default function DoctorClinicalDashboard() {
     load();
 
   }, [load]);
+
+
+
+  useEffect(() => {
+
+    if (!consultation?.patient_id) {
+
+      setPatientHistory(null);
+
+      return;
+
+    }
+
+    clinicalApi.patientMedicalHistory(consultation.patient_id)
+
+      .then(({ data }) => setPatientHistory(data))
+
+      .catch(() => setPatientHistory(null));
+
+  }, [consultation?.patient_id]);
 
 
 
@@ -449,6 +471,17 @@ export default function DoctorClinicalDashboard() {
             <h2>Consultation #{consultation.id}</h2>
 
             <p><strong>{consultation.patient_name}</strong></p>
+
+            {patientHistory && (
+              <div className="clinical-panel" style={{ marginBottom: '1rem' }}>
+                <h3>Dossier médical</h3>
+                <ul className="clinical-list">
+                  <li>Allergies: {(patientHistory.allergies || []).map((a) => a.allergen).join(', ') || '—'}</li>
+                  <li>Antécédents: {(patientHistory.chronic_conditions || []).map((c) => c.condition_name).join(', ') || '—'}</li>
+                  <li>Groupe sanguin: {patientHistory.medical_record?.blood_type || '—'}</li>
+                </ul>
+              </div>
+            )}
 
             {Object.keys(FIELD_LABELS).map((field) => (
 

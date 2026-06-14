@@ -60,6 +60,7 @@ import models.invoice  # noqa: F401
 import models.discharge  # noqa: F401
 import models.imaging  # noqa: F401
 import models.appointment_reminder  # noqa: F401
+import models.pharmacy_inventory  # noqa: F401
 
 from main import app
 from security import hash_password

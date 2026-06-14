@@ -91,3 +91,59 @@ def test_reminder_scheduling_and_patient_response(client, db_session, admin_user
     assert r.status_code == 200
     appt = db_session.query(models.RendezVous).filter(models.RendezVous.id == appt_id).first()
     assert appt.status == "cancelled"
+
+
+def test_reschedule_requested_notification(client, db_session, admin_user):
+    suffix = uuid.uuid4().hex[:8]
+    r = client.post(
+        "/clinical/clinics",
+        json={"name": f"Resched Clinic {suffix}", "city": "Conakry"},
+        headers=_auth(admin_user),
+    )
+    clinic_id = r.json()["id"]
+    admin_user.clinic_id = clinic_id
+    db_session.add(models.ClinicStaff(clinic_id=clinic_id, user_id=admin_user.id, is_active=True))
+    with provisioning_channel("test_fixture"):
+        reception = models.User(
+            email=f"res.reception.{suffix}@test.com",
+            hashed_password=hash_password("StaffPass1"),
+            role="receptionist",
+            clinic_id=clinic_id,
+        )
+        db_session.add(reception)
+        db_session.flush()
+        doctor = models.Doctor(
+            user_id=admin_user.id,
+            first_name="Res",
+            last_name="Doc",
+            specialty="MG",
+            city="Conakry",
+            phone="+224600000333",
+            clinic_id=clinic_id,
+            consultation_fee=150_000,
+        )
+        db_session.add(doctor)
+        db_session.commit()
+        db_session.refresh(reception)
+        db_session.refresh(doctor)
+
+    r = client.post(
+        "/clinical/reception/patients",
+        json={"first_name": "Aissatou", "last_name": "Keita", "age": 25, "gender": "F", "phone": "+224622000333"},
+        headers=_auth(reception),
+    )
+    patient_id = r.json()["id"]
+    appt_date = (datetime.now() + timedelta(days=5)).replace(second=0, microsecond=0)
+    r = client.post(
+        "/clinical/reception/appointments",
+        json={"patient_id": patient_id, "doctor_id": doctor.id, "date": appt_date.isoformat(), "duration_minutes": 30},
+        headers=_auth(reception),
+    )
+    appt_id = r.json()["id"]
+    r = client.post(
+        f"/clinical/reminders/appointments/{appt_id}/respond",
+        json={"action": "reschedule_requested"},
+    )
+    assert r.status_code == 200
+    r = client.get("/clinical/reminders/notifications", headers=_auth(reception))
+    assert any(n["event_type"] == "reschedule_requested" for n in r.json())

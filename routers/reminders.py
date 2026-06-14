@@ -84,9 +84,13 @@ async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
             return {"status": "ignored"}
         msg = messages[0]
         text = (msg.get("text") or {}).get("body", "").strip().upper()
-        # Map phone to appointment via context metadata if available
+        from_phone = msg.get("from", "")
         context = msg.get("context") or {}
-        appointment_id = int(context.get("appointment_id", 0) or os.getenv("WHATSAPP_DEFAULT_APPOINTMENT_ID", "0"))
+        appointment_id = int(context.get("appointment_id", 0) or 0)
+        if not appointment_id and from_phone:
+            appointment_id = ReminderService.resolve_appointment_id_by_phone(db, from_phone) or 0
+        if not appointment_id:
+            appointment_id = int(os.getenv("WHATSAPP_DEFAULT_APPOINTMENT_ID", "0") or 0)
         if not appointment_id:
             return {"status": "no_appointment_context"}
         action = "confirmed"
