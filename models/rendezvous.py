@@ -35,6 +35,7 @@ class RendezVous(Base):
     )
     payments = relationship("Payment", back_populates="appointment", cascade="all, delete-orphan")
     messages = relationship("Message", back_populates="appointment", cascade="all, delete-orphan")
+    reminders = relationship("AppointmentReminder", back_populates="appointment", cascade="all, delete-orphan")
 
     @property
     def is_paid(self) -> bool:

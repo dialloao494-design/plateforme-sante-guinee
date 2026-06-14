@@ -148,6 +148,9 @@ class ClinicalWorkflowService:
                 resource_id=rdv.id,
                 client_ip=client_ip,
             )
+        from services.reminder_service import ReminderService
+
+        ReminderService.schedule_for_appointment(db, rdv)
         return rdv
 
     @staticmethod
