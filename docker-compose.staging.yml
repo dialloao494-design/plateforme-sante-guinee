@@ -14,6 +14,8 @@ services:
       LOG_FORMAT: json
       DOMAIN: ${DOMAIN}
       ALLOWED_HOSTS: ${DOMAIN},backend
+      TRUSTED_PROXY_HOSTS: ${TRUSTED_PROXY_HOSTS:-127.0.0.1,backend}
+      REMINDER_RESPOND_TOKEN: ${REMINDER_RESPOND_TOKEN:-}
     deploy:
       resources:
         limits:

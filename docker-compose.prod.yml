@@ -12,6 +12,8 @@ services:
       ENABLE_STARTUP_SEED: "false"
       ENABLE_PILOT_SEED: ${ENABLE_PILOT_SEED:-false}
       BYPASS_AVAILABILITY_VALIDATION: "false"
+      TRUSTED_PROXY_HOSTS: ${TRUSTED_PROXY_HOSTS:-127.0.0.1,backend}
+      REMINDER_RESPOND_TOKEN: ${REMINDER_RESPOND_TOKEN:?REMINDER_RESPOND_TOKEN must be set in .env.production}
     deploy:
       resources:
         limits:

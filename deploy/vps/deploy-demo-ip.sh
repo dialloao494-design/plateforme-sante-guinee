@@ -16,6 +16,7 @@ fi
 PG_PASS="${POSTGRES_PASSWORD:-$(openssl rand -base64 24 | tr -dc 'a-zA-Z0-9' | head -c 32)}"
 JWT_SECRET="${SECRET_KEY:-$(openssl rand -hex 32)}"
 JITSI_SECRET="${JITSI_APP_SECRET:-$(openssl rand -base64 32 | tr -d '\n')}"
+REMINDER_TOKEN="${REMINDER_RESPOND_TOKEN:-$(openssl rand -hex 32)}"
 STRIPE_DEMO="sk_test_$(openssl rand -hex 16)"
 
 echo "=== DEMO IP deploy — http://${VPS_IP} ==="
@@ -29,6 +30,8 @@ POSTGRES_DB=sante
 ENVIRONMENT=staging
 ENABLE_PILOT_SEED=true
 BYPASS_AVAILABILITY_VALIDATION=false
+TRUSTED_PROXY_HOSTS=127.0.0.1,backend
+REMINDER_RESPOND_TOKEN=${REMINDER_TOKEN}
 VITE_API_URL=/api
 VITE_SAME_ORIGIN_API=true
 PAYMENT_STUB_TOKEN=demo_plateforme_sante_guinee_stub_v1
@@ -54,6 +57,8 @@ SECRET_KEY=${JWT_SECRET}
 ACCESS_TOKEN_EXPIRE_MINUTES=480
 ALLOWED_HOSTS=${VPS_IP},backend,localhost,127.0.0.1
 DOMAIN=${VPS_IP}
+TRUSTED_PROXY_HOSTS=127.0.0.1,backend
+REMINDER_RESPOND_TOKEN=${REMINDER_TOKEN}
 STRIPE_SECRET_KEY=${STRIPE_DEMO}
 STRIPE_PUBLISHABLE_KEY=pk_test_demo
 STRIPE_WEBHOOK_SECRET=whsec_$(openssl rand -hex 16)

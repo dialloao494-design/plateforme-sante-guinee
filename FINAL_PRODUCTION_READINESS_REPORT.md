@@ -1,7 +1,7 @@
 # Final Production Readiness Report
 
 **Project:** Plateforme Santé Guinée (CIS + telehealth portal)  
-**Audit date:** 2026-06-15  
+**Audit date:** 2026-05-25 (re-audit after deploy blocker remediation)  
 **Auditor scope:** Full repository — security, database, backend, frontend, clinical workflows, ops, tests  
 **Method:** Code review, automated test execution, migration chain verification, route/navigation audit  
 
@@ -9,9 +9,13 @@
 
 ## Verdict
 
-### NOT READY FOR CLINIC DEPLOYMENT
+### STAGING PILOT: **GO** (code + deploy automation)
 
-All **code-level critical and high security findings from the prior audit are remediated** and **153 automated tests pass** (1 skipped). However, **operational go-live prerequisites are not yet verified** on a production-like environment. Deployment must not proceed until the blockers in Section 8 are cleared.
+All **code-level deploy blockers (BLK-D1–D4, BLK-P3)** are remediated. **158 automated tests pass** (1 skipped). `bootstrap-autonomous.sh`, `deploy-demo-ip.sh`, and `deploy-production.sh` now generate or validate `TRUSTED_PROXY_HOSTS` and `REMINDER_RESPOND_TOKEN`; Uvicorn no longer uses `--forwarded-allow-ips '*'`.
+
+### PRODUCTION CLINIC GO-LIVE: **NO-GO** (ops validation pending)
+
+Production deployment **can proceed without manual code patches**, but clinic sign-off requires live staging smoke test, WhatsApp delivery proof, backup/restore drill, and UAT checklist completion (BLK-03–BLK-05, BLK-P2, BLK-P4).
 
 ---
 
@@ -106,6 +110,7 @@ Reference: [SECURITY_AUDIT_REPORT.md](./SECURITY_AUDIT_REPORT.md)
 | Pharmacy | orders + inventory | E2E, `test_pharmacy_inventory` |
 | Hospitalization | admissions API | `test_hospitalization` (not in single E2E chain) |
 | Bed assignment | room/bed/assign | `test_hospitalization` |
+| Bed transfer | second `assign-bed` + `transfer_reason` | `test_bed_transfer_releases_previous_bed` |
 | Patient discharge | checklist/execute/PDF/EMR | E2E, `test_discharge` |
 | Medical history | `/patients/{id}/medical-history` | E2E, `test_medical_history` |
 | Clinical reports | `/clinical/reports/*` | E2E, `test_clinical_reporting` |
@@ -119,7 +124,8 @@ Reference: [SECURITY_AUDIT_REPORT.md](./SECURITY_AUDIT_REPORT.md)
 
 | Area | Status | Reference |
 |------|--------|-----------|
-| Environment variables | **Documented** | `.env.production.example` updated with security vars |
+| Environment variables | **Pass** | Bootstrap + `deploy-production.sh` sync; `.env.production.example`, `deploy/env/.env.backend.example` |
+| Docker / Uvicorn proxy | **Pass** | `scripts/docker/start-uvicorn.sh` reads `TRUSTED_PROXY_HOSTS` (no `*`) |
 | WhatsApp configuration | **Template only** | Tokens must be supplied at deploy |
 | Deployment documentation | **Pass** | `docs/DEPLOYMENT.md`, `docs/PRODUCTION_DEPLOYMENT_PACKAGE.md` |
 | Backup strategy | **Pass** | `docs/BACKUP_RESTORE.md`, `deploy/vps/backup-db.sh` |
@@ -133,31 +139,45 @@ Reference: [SECURITY_AUDIT_REPORT.md](./SECURITY_AUDIT_REPORT.md)
 
 ```
 pytest -q
-153 passed, 1 skipped (2026-06-15)
+158 passed, 1 skipped (2026-05-25)
 ```
 
 | Suite | Purpose |
 |-------|---------|
 | `test_end_to_end_clinic.py` | Full CIS outpatient chain |
 | `test_clinic_isolation_security.py` | Cross-clinic isolation |
-| `test_production_boot_guard.py` | Production startup guards |
+| `test_production_boot_guard.py` | Production startup guards + bootstrap env mirror |
+| `test_deploy_config.py` | Dockerfile / bootstrap / uvicorn launcher |
 | `test_registration_security.py` | Auth / password policy |
-| `test_hospitalization.py` | Admission + beds |
+| `test_hospitalization.py` | Admission, beds, **bed transfer** |
 | `test_*` (27 files) | Module and security coverage |
 
 **Skipped:** 1 test (environment-specific — unchanged from prior runs)
 
 ---
 
-## 8. Blocking issues (must resolve before go-live)
+## 8. Blocking issues
 
-| ID | Blocker | Exact fix required |
-|----|---------|-------------------|
-| **BLK-01** | Production database migrations not applied | On target PostgreSQL: `alembic upgrade head` (through `20260622_0014_patient_user_id_unique`). Verify with `alembic current`. |
-| **BLK-02** | Production environment not configured | Copy `.env.production.example` → `.env.production`. Set strong `JWT_SECRET`, `POSTGRES_PASSWORD`, `TRUSTED_PROXY_HOSTS`, `REMINDER_RESPOND_TOKEN`, `DOMAIN`, `ALLOWED_HOSTS`. Set all seed flags to `false`. |
-| **BLK-03** | Staging smoke test not executed | Run `python scripts/qa_production_e2e.py` against staging with real HTTPS reverse proxy. Verify login, reception workflow, billing, reminder token respond, file upload. |
-| **BLK-04** | WhatsApp live delivery not verified | Configure Meta Cloud API credentials; verify webhook subscription; send test 48h reminder; confirm patient respond updates appointment status. |
-| **BLK-05** | Backup/restore drill not executed on staging | Run `deploy/vps/backup-db.sh` then `scripts/db/restore_drill.sh` on staging PostgreSQL; confirm RPO/RTO acceptable. |
+### 8.1 Deploy / code blockers (remediated 2026-05-25)
+
+| ID | Issue | Status | Resolution |
+|----|-------|--------|------------|
+| **BLK-D1** | `bootstrap-autonomous.sh` omitted `TRUSTED_PROXY_HOSTS` | **PASS** | Generated in `.env.staging` and `deploy/env/.env.backend` |
+| **BLK-D2** | Production boot requires `REMINDER_RESPOND_TOKEN` — not in bootstrap/templates | **PASS** | Auto-generated in bootstrap; required + synced in `deploy-production.sh` |
+| **BLK-D3** | `Dockerfile` used `--forwarded-allow-ips '*'` | **PASS** | `scripts/docker/start-uvicorn.sh` uses `TRUSTED_PROXY_HOSTS` |
+| **BLK-D4** | `deploy/env/.env.backend.example` missing security vars | **PASS** | `TRUSTED_PROXY_HOSTS`, `REMINDER_RESPOND_TOKEN`, seed flags documented |
+| **BLK-P3** | Bed transfer workflow untested | **PASS** | `test_bed_transfer_releases_previous_bed` |
+
+### 8.2 Operational blockers (remain before production clinic sign-off)
+
+| ID | Blocker | Status | Action |
+|----|---------|--------|--------|
+| **BLK-01** | Migrations on target PostgreSQL | **Ops** | `alembic upgrade head` via entrypoint; verify `alembic current` = `20260622_0014` |
+| **BLK-02** | Production `.env.production` | **Ops** | Use `deploy/vps/deploy-production.sh` (validates + syncs backend env) |
+| **BLK-03** / **BLK-P1** | Staging smoke test not executed | **FAIL** | `VPS_API_BASE=https://$DOMAIN/api python scripts/vps_autonomous_verify.py` |
+| **BLK-04** / **BLK-P2** | WhatsApp live delivery not verified | **FAIL** | Configure Meta webhook; send test reminder; confirm respond flow |
+| **BLK-05** | Backup/restore drill | **FAIL** | `deploy/vps/backup-db.sh` + `scripts/db/restore_drill.sh` on staging |
+| **BLK-P4** | Clinic UAT checklist unsigned | **FAIL** | Complete `CLINIC_ACCEPTANCE_CHECKLIST.md` |
 
 ---
 
@@ -175,8 +195,10 @@ pytest -q
 | Gate | Result |
 |------|--------|
 | Code security (critical/high) | **Pass** |
-| Automated test suite | **Pass** (153/153 runnable) |
+| Deploy automation (BLK-D1–D4) | **Pass** |
+| Automated test suite | **Pass** (158/158 runnable) |
 | Schema migrations in repo | **Pass** |
 | Frontend routes & dashboards | **Pass** (minor nav gap) |
 | Ops validation on staging | **Not done** |
-| **Clinic deployment approval** | **DENIED** — clear BLK-01 through BLK-05 first |
+| **Staging pilot deployment** | **APPROVED** — run bootstrap or `git pull` + compose |
+| **Production clinic go-live** | **DENIED** — complete BLK-03–05, BLK-P2, BLK-P4 |

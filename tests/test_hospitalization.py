@@ -148,3 +148,87 @@ def test_admit_from_consultation_and_assign_bed(client, db_session, admin_user):
     )
     assert r.status_code == 200
     assert r.json()["status"] == "in_care"
+
+
+def test_bed_transfer_releases_previous_bed(client, db_session, admin_user):
+    """Assign bed A then bed B — admission status transferred, bed A available."""
+    clinic_id, reception, doc_user, doctor = _setup_clinic(client, db_session, admin_user)
+
+    r = client.post(
+        "/clinical/hospitalization/rooms",
+        json={"ward_name": "Transfert", "room_number": "T101", "capacity": 2},
+        headers=_auth(admin_user),
+    )
+    room_a_id = r.json()["id"]
+    r = client.post(
+        f"/clinical/hospitalization/rooms/{room_a_id}/beds",
+        json={"bed_number": "A1"},
+        headers=_auth(admin_user),
+    )
+    bed_a_id = r.json()["id"]
+
+    r = client.post(
+        "/clinical/hospitalization/rooms",
+        json={"ward_name": "Transfert", "room_number": "T102", "capacity": 1},
+        headers=_auth(admin_user),
+    )
+    room_b_id = r.json()["id"]
+    r = client.post(
+        f"/clinical/hospitalization/rooms/{room_b_id}/beds",
+        json={"bed_number": "B1"},
+        headers=_auth(admin_user),
+    )
+    bed_b_id = r.json()["id"]
+
+    r = client.post(
+        "/clinical/reception/patients",
+        json={"first_name": "Transfer", "last_name": "Patient", "age": 45, "gender": "M"},
+        headers=_auth(reception),
+    )
+    patient_id = r.json()["id"]
+    slot = (datetime.now() + timedelta(hours=7)).replace(second=0, microsecond=0)
+    r = client.post(
+        "/clinical/reception/appointments",
+        json={"patient_id": patient_id, "doctor_id": doctor.id, "date": slot.isoformat(), "duration_minutes": 30},
+        headers=_auth(reception),
+    )
+    appt_id = r.json()["id"]
+    client.post(f"/clinical/reception/appointments/{appt_id}/check-in", headers=_auth(reception))
+    r = client.post(
+        "/clinical/consultations",
+        json={"appointment_id": appt_id, "chief_complaint": "Transfert lit"},
+        headers=_auth(doc_user),
+    )
+    consult_id = r.json()["id"]
+    r = client.post(
+        "/clinical/hospitalization/admissions",
+        json={"consultation_id": consult_id, "reason": "Observation"},
+        headers=_auth(doc_user),
+    )
+    admission_id = r.json()["id"]
+
+    r = client.post(
+        f"/clinical/hospitalization/admissions/{admission_id}/assign-bed",
+        json={"bed_id": bed_a_id},
+        headers=_auth(reception),
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "admitted"
+    assert r.json()["current_bed"]["bed_number"] == "A1"
+
+    r = client.post(
+        f"/clinical/hospitalization/admissions/{admission_id}/assign-bed",
+        json={"bed_id": bed_b_id, "transfer_reason": "Besoin chambre individuelle"},
+        headers=_auth(reception),
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "transferred"
+    assert body["current_bed"]["bed_number"] == "B1"
+    assert len(body["stays"]) == 2
+    assert sum(1 for s in body["stays"] if s["is_current"]) == 1
+
+    bed_a = db_session.query(models.HospitalBed).filter(models.HospitalBed.id == bed_a_id).first()
+    bed_b = db_session.query(models.HospitalBed).filter(models.HospitalBed.id == bed_b_id).first()
+    assert bed_a.status == "available"
+    assert bed_b.status == "occupied"

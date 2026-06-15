@@ -17,9 +17,9 @@ RUN pip install --upgrade pip && pip install -r requirements-prod.txt
 
 COPY . .
 
-RUN sed -i 's/\r$//' scripts/docker/entrypoint-backend.sh \
+RUN sed -i 's/\r$//' scripts/docker/entrypoint-backend.sh scripts/docker/start-uvicorn.sh \
     && mkdir -p uploads logs \
-    && chmod +x scripts/docker/entrypoint-backend.sh
+    && chmod +x scripts/docker/entrypoint-backend.sh scripts/docker/start-uvicorn.sh
 
 EXPOSE 8000
 
@@ -27,4 +27,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
     CMD curl -fsS http://127.0.0.1:8000/health/ready || exit 1
 
 ENTRYPOINT ["/app/scripts/docker/entrypoint-backend.sh"]
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+CMD ["/app/scripts/docker/start-uvicorn.sh"]

@@ -150,6 +150,23 @@ class TestProductionBootSecrets:
             AppSettings().enforce_production_boot()
 
 
+    def test_staging_bootstrap_env_passes_boot_guard(self, monkeypatch):
+        """Mirrors deploy/vps/bootstrap-autonomous.sh generated env."""
+        monkeypatch.setenv("ENVIRONMENT", "staging")
+        monkeypatch.setenv("DOMAIN", "staging.sante.example.gn")
+        monkeypatch.setenv("JWT_SECRET", "staging-jwt-secret-" + "A" * 32)
+        monkeypatch.setenv("SECRET_KEY", "staging-jwt-secret-" + "A" * 32)
+        monkeypatch.setenv("POSTGRES_PASSWORD", "StrongStagingDb!" + "Z" * 8)
+        monkeypatch.setenv(
+            "DATABASE_URL",
+            "postgresql://sante:StrongStagingDb!" + "Z" * 8 + "@db:5432/sante",
+        )
+        monkeypatch.setenv("JITSI_APP_SECRET", "jitsi-staging-secret-" + "C" * 8)
+        monkeypatch.setenv("TRUSTED_PROXY_HOSTS", "127.0.0.1,backend")
+        monkeypatch.setenv("REMINDER_RESPOND_TOKEN", "reminder-staging-token-" + "R" * 16)
+        AppSettings().enforce_production_boot()
+
+
 class TestProductionStartupIntegration:
     def test_main_module_loads_in_development(self):
         import main  # noqa: F401 — must not SystemExit
