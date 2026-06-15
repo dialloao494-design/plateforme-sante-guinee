@@ -438,6 +438,7 @@ class MedicalHistoryService:
         client_ip: str | None = None,
     ) -> mh_schemas.PatientMedicalHistoryResponse:
         patient = PatientRecordAccessPolicy.assert_can_read_dossier(db, current_user, patient_id)
+        clinic_id = PatientRecordAccessPolicy.dossier_clinic_id(db, current_user, patient)
         record = (
             db.query(models.PatientMedicalRecord)
             .filter(models.PatientMedicalRecord.patient_id == patient_id)
@@ -476,6 +477,7 @@ class MedicalHistoryService:
             db.query(models.ClinicalConsultation)
             .filter(
                 models.ClinicalConsultation.patient_id == patient_id,
+                models.ClinicalConsultation.clinic_id == clinic_id,
                 models.ClinicalConsultation.deleted_at.is_(None),
             )
             .order_by(models.ClinicalConsultation.started_at.desc())
@@ -536,6 +538,7 @@ class MedicalHistoryService:
             db.query(models.Prescription)
             .filter(
                 models.Prescription.patient_id == patient_id,
+                models.Prescription.clinic_id == clinic_id,
                 models.Prescription.deleted_at.is_(None),
             )
             .order_by(models.Prescription.created_at.desc())
@@ -558,6 +561,7 @@ class MedicalHistoryService:
             db.query(models.LabOrder)
             .filter(
                 models.LabOrder.patient_id == patient_id,
+                models.LabOrder.clinic_id == clinic_id,
                 models.LabOrder.deleted_at.is_(None),
             )
             .order_by(models.LabOrder.created_at.desc())

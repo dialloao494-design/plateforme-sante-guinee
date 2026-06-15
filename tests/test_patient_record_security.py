@@ -15,6 +15,7 @@ from models.doctor import Doctor
 from models.patient import Patient
 from models.rendezvous import RendezVous
 from security import create_access_token
+from tests.clinic_fixtures import bind_clinic_booking
 from services.user_provisioning import create_admin_user, register_public_user
 
 
@@ -46,10 +47,12 @@ def dossier_context(db_session):
     patient = db_session.query(Patient).filter(Patient.user_id == patient_user.id).first()
     doctor_a = db_session.query(Doctor).filter(Doctor.user_id == doctor_a_user.id).first()
     doctor_b = db_session.query(Doctor).filter(Doctor.user_id == doctor_b_user.id).first()
+    clinic = bind_clinic_booking(db_session, doctor=doctor_a, patient=patient)
 
     rdv = RendezVous(
         patient_id=patient.id,
         doctor_id=doctor_a.id,
+        clinic_id=clinic.id,
         date=datetime.utcnow() + timedelta(days=2),
         status="confirmed",
         payment_status="paid",

@@ -106,7 +106,7 @@ def admin_user(db_session: Session) -> User:
         user = User(
             email=email,
             hashed_password=hash_password("AdminPass1"),
-            role="admin",
+            role="platform_admin",
         )
         db_session.add(user)
         db_session.commit()

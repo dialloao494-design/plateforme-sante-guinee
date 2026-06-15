@@ -131,19 +131,22 @@ def test_invoice_access_is_scoped_to_clinic(client, db_session, admin_user):
     assert r.status_code == 404
 
 
-def test_patient_user_id_unique(db_session):
+def test_patient_clinic_user_composite_unique(db_session):
     with provisioning_channel("test_fixture"):
+        clinic = models.Clinic(name="Unique Clinic", city="Conakry", is_active=True)
         user = models.User(
             email=f"dup.patient.{uuid.uuid4().hex[:8]}@test.com",
             hashed_password=hash_password("Secret12"),
             role="patient",
         )
-        db_session.add(user)
+        db_session.add_all([clinic, user])
         db_session.commit()
+        db_session.refresh(clinic)
         db_session.refresh(user)
 
     db_session.add(
         models.Patient(
+            clinic_id=clinic.id,
             user_id=user.id,
             first_name="First",
             last_name="Profile",
@@ -155,6 +158,7 @@ def test_patient_user_id_unique(db_session):
 
     db_session.add(
         models.Patient(
+            clinic_id=clinic.id,
             user_id=user.id,
             first_name="Second",
             last_name="Profile",
@@ -168,3 +172,127 @@ def test_patient_user_id_unique(db_session):
     with pytest.raises(IntegrityError):
         db_session.commit()
     db_session.rollback()
+
+
+def test_cross_clinic_reception_appointment_rejected(client, db_session, admin_user):
+    clinic_a_id, reception_a = _seed_clinic(client, db_session, admin_user, "apptA")
+    clinic_b_id, reception_b = _seed_clinic(client, db_session, admin_user, "apptB")
+
+    r = client.post(
+        "/clinical/reception/patients",
+        json={
+            "first_name": "Cross",
+            "last_name": "ClinicAppt",
+            "age": 30,
+            "gender": "M",
+            "phone": "+224622111003",
+        },
+        headers=_auth(reception_a),
+    )
+    patient_a_id = r.json()["id"]
+
+    suffix = uuid.uuid4().hex[:8]
+    with provisioning_channel("test_fixture"):
+        doc_user_b = models.User(
+            email=f"doc.b.{suffix}@test.com",
+            hashed_password=hash_password("DoctorPass1"),
+            role="doctor",
+            clinic_id=clinic_b_id,
+        )
+        db_session.add(doc_user_b)
+        db_session.flush()
+        doctor_b = models.Doctor(
+            user_id=doc_user_b.id,
+            first_name="Doc",
+            last_name="ClinicB",
+            specialty="GP",
+            city="Conakry",
+            phone="+224600000099",
+            clinic_id=clinic_b_id,
+        )
+        db_session.add(doctor_b)
+        db_session.commit()
+        db_session.refresh(doctor_b)
+
+    from datetime import datetime, timedelta
+
+    slot = (datetime.now() + timedelta(days=2)).replace(second=0, microsecond=0)
+    r = client.post(
+        "/clinical/reception/appointments",
+        json={
+            "patient_id": patient_a_id,
+            "doctor_id": doctor_b.id,
+            "date": slot.isoformat(),
+            "duration_minutes": 30,
+        },
+        headers=_auth(reception_b),
+    )
+    assert r.status_code == 403, r.text
+
+
+def test_cross_clinic_dossier_denied(client, db_session, admin_user):
+    clinic_a_id, reception_a = _seed_clinic(client, db_session, admin_user, "dossA")
+    _clinic_b_id, reception_b = _seed_clinic(client, db_session, admin_user, "dossB")
+
+    r = client.post(
+        "/clinical/reception/patients",
+        json={
+            "first_name": "Dossier",
+            "last_name": "Private",
+            "age": 50,
+            "gender": "F",
+            "phone": "+224622111004",
+        },
+        headers=_auth(reception_a),
+    )
+    patient_a_id = r.json()["id"]
+
+    r = client.get(
+        f"/patients/{patient_a_id}/timeline",
+        headers=_auth(reception_b),
+    )
+    assert r.status_code == 403
+
+    r = client.get(
+        f"/patients/{patient_a_id}/medical-history",
+        headers=_auth(reception_b),
+    )
+    assert r.status_code == 403
+
+
+def test_same_user_different_clinic_patients_allowed(db_session):
+    with provisioning_channel("test_fixture"):
+        c1 = models.Clinic(name="C1", city="Conakry", is_active=True)
+        c2 = models.Clinic(name="C2", city="Conakry", is_active=True)
+        user = models.User(
+            email=f"multi.{uuid.uuid4().hex[:8]}@test.com",
+            hashed_password=hash_password("Secret12"),
+            role="patient",
+        )
+        db_session.add_all([c1, c2, user])
+        db_session.commit()
+        db_session.refresh(c1)
+        db_session.refresh(c2)
+        db_session.refresh(user)
+
+    db_session.add_all(
+        [
+            models.Patient(
+                clinic_id=c1.id,
+                user_id=user.id,
+                first_name="A",
+                last_name="User",
+                age=20,
+                gender="M",
+            ),
+            models.Patient(
+                clinic_id=c2.id,
+                user_id=user.id,
+                first_name="A",
+                last_name="User",
+                age=20,
+                gender="M",
+            ),
+        ]
+    )
+    db_session.commit()

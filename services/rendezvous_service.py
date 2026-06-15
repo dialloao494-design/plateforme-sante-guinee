@@ -194,8 +194,14 @@ class RendezVousService:
                 models.RendezVous.doctor_id == doctor.id
             ).all()
 
-        if current_user.role == "admin":
+        if current_user.role == "platform_admin":
             return db.query(models.RendezVous).all()
+
+        if current_user.role in ("clinic_admin", "admin"):
+            cid = current_user.clinic_id
+            if cid is None:
+                return []
+            return db.query(models.RendezVous).filter(models.RendezVous.clinic_id == cid).all()
 
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -369,35 +375,48 @@ class RendezVousService:
             )
 
         # Create appointment with price from doctor's consultation fee
+        if not doctor.clinic_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Doctor must belong to a clinic",
+            )
+
+        if patient.clinic_id is not None and patient.clinic_id != doctor.clinic_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Patient belongs to another clinic",
+            )
+
+        if patient.clinic_id is None:
+            patient.clinic_id = doctor.clinic_id
+            db.add(patient)
+
         new_rdv = models.RendezVous(
             date=rdv.date,
             duration_minutes=rdv.duration_minutes,
             patient_id=patient.id,
             doctor_id=doctor.id,
+            clinic_id=doctor.clinic_id,
             status="pending",
             payment_status="unpaid",
             price=doctor.consultation_fee,
             consultation_type=rdv.consultation_type,
+            clinical_status="scheduled",
         )
 
-        if doctor.clinic_id:
-            from services.clinic_billing_service import ClinicBillingService
-
-            new_rdv.clinic_id = doctor.clinic_id
-            new_rdv.clinical_status = "scheduled"
+        from services.clinic_billing_service import ClinicBillingService
 
         db.add(new_rdv)
         db.flush()
 
-        if doctor.clinic_id:
-            ClinicBillingService.create_consultation_charge(
-                db,
-                clinic_id=doctor.clinic_id,
-                patient_id=patient.id,
-                appointment_id=new_rdv.id,
-                amount_gnf=int(doctor.consultation_fee or 150_000),
-                description=f"Consultation — Dr. {doctor.name}",
-            )
+        ClinicBillingService.create_consultation_charge(
+            db,
+            clinic_id=doctor.clinic_id,
+            patient_id=patient.id,
+            appointment_id=new_rdv.id,
+            amount_gnf=int(doctor.consultation_fee or 150_000),
+            description=f"Consultation — Dr. {doctor.name}",
+        )
 
         # Teleconsult join URLs are never pre-generated before payment (R1).
         new_rdv.meeting_link = None
@@ -411,7 +430,7 @@ class RendezVousService:
             appointment_end = rdv.date + timedelta(minutes=rdv.duration_minutes)
             RendezVousService.reserve_availability_slot(availability_slot, rdv.date, appointment_end, db)
 
-        if doctor.clinic_id and new_rdv.status not in ("cancelled",):
+        if new_rdv.status not in ("cancelled",):
             from services.reminder_service import ReminderService
 
             ReminderService.schedule_for_appointment(db, new_rdv)

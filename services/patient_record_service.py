@@ -343,7 +343,8 @@ class PatientRecordService:
         *,
         client_ip: Optional[str] = None,
     ) -> list[record_schemas.TimelineEvent]:
-        PatientRecordAccessPolicy.assert_can_read_dossier(db, current_user, patient_id)
+        patient = PatientRecordAccessPolicy.assert_can_read_dossier(db, current_user, patient_id)
+        clinic_id = PatientRecordAccessPolicy.dossier_clinic_id(db, current_user, patient)
 
         events: list[record_schemas.TimelineEvent] = []
 
@@ -414,7 +415,10 @@ class PatientRecordService:
 
         for rdv in (
             db.query(models.RendezVous)
-            .filter(models.RendezVous.patient_id == patient_id)
+            .filter(
+                models.RendezVous.patient_id == patient_id,
+                models.RendezVous.clinic_id == clinic_id,
+            )
             .all()
         ):
             ts = rdv.date if isinstance(rdv.date, datetime) else datetime.utcnow()
@@ -439,6 +443,7 @@ class PatientRecordService:
             db.query(models.ClinicalConsultation)
             .filter(
                 models.ClinicalConsultation.patient_id == patient_id,
+                models.ClinicalConsultation.clinic_id == clinic_id,
                 models.ClinicalConsultation.deleted_at.is_(None),
             )
             .all()

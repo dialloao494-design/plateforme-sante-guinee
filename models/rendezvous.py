@@ -23,7 +23,7 @@ class RendezVous(Base):
 
     doctor_id = Column(Integer, ForeignKey("doctors.id"), nullable=False, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False, index=True)
-    clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=True, index=True)
+    clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=False, index=True)
     clinical_status = Column(String(32), default="scheduled", nullable=False, index=True)
     # scheduled | checked_in | in_consultation | completed | cancelled
 

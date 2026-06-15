@@ -22,6 +22,7 @@ from services.payment_settlement import PaymentSettlementService
 from services.rendezvous_service import RendezVousService
 from services.teleconsult_room import jitsi_embed_mode, meeting_link_for_appointment, room_name
 from services.teleconsultation_access import validate_teleconsult_access
+from tests.clinic_fixtures import bind_clinic_booking
 from services.user_provisioning import register_public_user
 
 
@@ -51,6 +52,7 @@ def teleconsult_booking(db_session, client):
         db_session, email=f"tc.doctor.{suffix}@test.gn", password="Secret12", role="doctor"
     ).user
     doctor = db_session.query(Doctor).filter(Doctor.user_id == doctor_user.id).first()
+    clinic = bind_clinic_booking(db_session, doctor=doctor, patient=patient)
 
     start = datetime.now() + timedelta(minutes=10)
     rdv = RendezVous(
@@ -58,6 +60,7 @@ def teleconsult_booking(db_session, client):
         duration_minutes=30,
         patient_id=patient.id,
         doctor_id=doctor.id,
+        clinic_id=clinic.id,
         status="pending",
         payment_status="unpaid",
         price=float(doctor.consultation_fee or 50000),

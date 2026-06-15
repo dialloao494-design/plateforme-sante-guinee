@@ -96,16 +96,43 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.ADMISSION_BEDS,
         }
     ),
+    "clinic_admin": frozenset(
+        {
+            Permission.ADMIN_CLINIC,
+            Permission.ADMIN_STAFF,
+            Permission.ADMIN_AUDIT,
+            Permission.ADMIN_BACKUP,
+            Permission.BILLING_REVENUE,
+            Permission.CLINIC_OPERATIONS,
+            Permission.ADMISSION_MANAGE,
+            Permission.ADMISSION_BEDS,
+        }
+    ),
+    "platform_admin": frozenset(
+        {
+            Permission.ADMIN_CLINIC,
+            Permission.ADMIN_STAFF,
+            Permission.ADMIN_AUDIT,
+            Permission.ADMIN_BACKUP,
+            Permission.BILLING_REVENUE,
+            Permission.CLINIC_OPERATIONS,
+            Permission.ADMISSION_MANAGE,
+            Permission.ADMISSION_BEDS,
+        }
+    ),
 }
 
-# Legacy tuple exports for clinical_access / routers (no cross-role admin access).
 RECEPTION_ROLES = ("receptionist",)
 CASHIER_ROLES = ("cashier",)
 DOCTOR_ROLES = ("doctor",)
 LAB_ROLES = ("lab_technician",)
 PHARMACY_ROLES = ("pharmacist",)
-ADMIN_ROLES = ("admin",)
+CLINIC_ADMIN_ROLES = ("clinic_admin", "admin")
+PLATFORM_ADMIN_ROLES = ("platform_admin",)
+ADMIN_ROLES = CLINIC_ADMIN_ROLES
 CLINIC_OPS_ROLES = (
+    "platform_admin",
+    "clinic_admin",
     "admin",
     "receptionist",
     "cashier",
@@ -114,11 +141,11 @@ CLINIC_OPS_ROLES = (
     "pharmacist",
 )
 
-BILLING_READ_ROLES = ("receptionist", "cashier", "admin")
+BILLING_READ_ROLES = ("receptionist", "cashier", "clinic_admin", "admin", "platform_admin")
 BILLING_PAY_ROLES = ("receptionist", "cashier")
-BILLING_REVENUE_ROLES = ("admin", "receptionist", "cashier")
-LAB_QUEUE_ROLES = LAB_ROLES + ADMIN_ROLES
-PHARMACY_QUEUE_ROLES = PHARMACY_ROLES + ADMIN_ROLES
+BILLING_REVENUE_ROLES = ("clinic_admin", "admin", "platform_admin", "receptionist", "cashier")
+LAB_QUEUE_ROLES = LAB_ROLES + CLINIC_ADMIN_ROLES
+PHARMACY_QUEUE_ROLES = PHARMACY_ROLES + CLINIC_ADMIN_ROLES
 
 
 def permissions_for_role(role: str) -> frozenset[Permission]:

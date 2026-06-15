@@ -32,6 +32,7 @@ class Clinic(Base):
     discharge_summaries = relationship("DischargeSummary", back_populates="clinic")
     imaging_orders = relationship("ImagingOrder", back_populates="clinic")
     pharmacy_inventory = relationship("PharmacyInventoryItem", back_populates="clinic")
+    patients = relationship("Patient", back_populates="clinic")
 
 
 class ClinicStaff(Base):

@@ -22,7 +22,13 @@ def _get_doctor_for_user(db: Session, user_id: int) -> models.Doctor | None:
 
 
 def _assert_can_access_appointment(db: Session, appointment: models.RendezVous, current_user) -> None:
-    if current_user.role == "admin":
+    if current_user.role == "platform_admin":
+        return
+
+    if current_user.role in ("clinic_admin", "admin"):
+        cid = current_user.clinic_id
+        if cid is not None and appointment.clinic_id != cid:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
         return
 
     if current_user.role == "patient":

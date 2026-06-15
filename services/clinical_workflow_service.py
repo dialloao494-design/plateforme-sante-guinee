@@ -67,7 +67,11 @@ class ClinicalWorkflowService:
             digits = "".join(c for c in payload.phone if c.isdigit())[-9:]
             existing = (
                 db.query(models.Patient)
-                .filter(models.Patient.phone.isnot(None), models.Patient.is_archived.is_(False))
+                .filter(
+                    models.Patient.clinic_id == clinic_id,
+                    models.Patient.phone.isnot(None),
+                    models.Patient.is_archived.is_(False),
+                )
                 .all()
             )
             for p in existing:
@@ -75,9 +79,10 @@ class ClinicalWorkflowService:
                 if p_digits and p_digits == digits:
                     raise HTTPException(
                         status_code=409,
-                        detail=f"Patient déjà enregistré (#{p.id} — {p.first_name} {p.last_name})",
+                        detail="Un patient avec ce numéro existe déjà dans cette clinique",
                     )
         patient = models.Patient(
+            clinic_id=clinic_id,
             first_name=payload.first_name.strip(),
             last_name=payload.last_name.strip(),
             age=payload.age,
@@ -114,13 +119,10 @@ class ClinicalWorkflowService:
         if len(q) < 2:
             return []
         pattern = f"%{q}%"
-        from core.clinic_patient_scope import clinic_patient_ids_query
-
-        linked_ids = clinic_patient_ids_query(db, clinic_id).subquery()
         return (
             db.query(models.Patient)
             .filter(
-                models.Patient.id.in_(db.query(linked_ids.c.patient_id)),
+                models.Patient.clinic_id == clinic_id,
                 models.Patient.is_archived.is_(False),
                 (
                     models.Patient.first_name.ilike(pattern)
@@ -146,6 +148,16 @@ class ClinicalWorkflowService:
         doctor = db.query(models.Doctor).filter(models.Doctor.id == payload.doctor_id).first()
         if not patient or not doctor:
             raise HTTPException(status_code=404, detail="Patient or doctor not found")
+        if patient.clinic_id is None:
+            raise HTTPException(
+                status_code=403,
+                detail="Patient is not registered at this clinic",
+            )
+        if patient.clinic_id != clinic_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Patient belongs to another clinic",
+            )
         if doctor.clinic_id and doctor.clinic_id != clinic_id:
             raise HTTPException(status_code=400, detail="Doctor not in this clinic")
 

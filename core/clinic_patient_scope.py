@@ -1,37 +1,32 @@
-"""Resolve which patient records belong to a clinic (cross-clinic isolation)."""
+"""Resolve which patient records belong to a clinic (tenant isolation)."""
 
 from __future__ import annotations
 
-from sqlalchemy import union
 from sqlalchemy.orm import Query, Session
 
 import models
 
 
 def clinic_patient_ids_query(db: Session, clinic_id: int) -> Query:
-    """
-    Distinct patient IDs linked to a clinic via appointments, visits, billing,
-    admissions, or reception intake audit rows.
-    """
-    sources = [
-        db.query(models.RendezVous.patient_id.label("patient_id")).filter(
-            models.RendezVous.clinic_id == clinic_id,
-            models.RendezVous.patient_id.isnot(None),
-        ),
-        db.query(models.ClinicalVisit.patient_id.label("patient_id")).filter(
-            models.ClinicalVisit.clinic_id == clinic_id
-        ),
-        db.query(models.Invoice.patient_id.label("patient_id")).filter(
-            models.Invoice.clinic_id == clinic_id
-        ),
-        db.query(models.Admission.patient_id.label("patient_id")).filter(
-            models.Admission.clinic_id == clinic_id
-        ),
-        db.query(models.ClinicalAuditLog.patient_id.label("patient_id")).filter(
-            models.ClinicalAuditLog.clinic_id == clinic_id,
-            models.ClinicalAuditLog.resource_type == "patient",
-            models.ClinicalAuditLog.patient_id.isnot(None),
-        ),
-    ]
-    linked = union(*sources).subquery()
-    return db.query(linked.c.patient_id).distinct()
+    """Distinct patient IDs owned by a clinic."""
+    return (
+        db.query(models.Patient.id.label("patient_id"))
+        .filter(
+            models.Patient.clinic_id == clinic_id,
+            models.Patient.is_archived.is_(False),
+        )
+        .distinct()
+    )
+
+
+def patient_belongs_to_clinic(db: Session, *, patient_id: int, clinic_id: int) -> bool:
+    return (
+        db.query(models.Patient.id)
+        .filter(
+            models.Patient.id == patient_id,
+            models.Patient.clinic_id == clinic_id,
+            models.Patient.is_archived.is_(False),
+        )
+        .first()
+        is not None
+    )

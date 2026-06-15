@@ -71,8 +71,14 @@ def get_patients(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles(["doctor", "admin"])),
 ):
-    if current_user.role == "admin":
+    if current_user.role == "platform_admin":
         return db.query(models.Patient).all()
+
+    if current_user.role in ("clinic_admin", "admin"):
+        cid = current_user.clinic_id
+        if not cid:
+            return []
+        return db.query(models.Patient).filter(models.Patient.clinic_id == cid).all()
 
     doctor = _doctor_for_user(db, current_user.id)
     if not doctor:
@@ -135,7 +141,7 @@ def get_patient(
     patient_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["doctor", "admin", "patient"])),
+    current_user=Depends(require_roles(["platform_admin", "clinic_admin", "admin", "doctor", "patient"])),
 ):
     return PatientRecordService.get_patient_detail(
         db, patient_id, current_user, client_ip=_client_ip(request)

@@ -27,7 +27,10 @@ def _get_doctor_for_user(db: Session, user_id: int) -> Optional[models.Doctor]:
 
 
 def assert_appointment_access(db: Session, appointment: models.RendezVous, current_user: User) -> None:
-    if current_user.role == "admin":
+    if current_user.role == "platform_admin":
+        return
+
+    if current_user.role in ("clinic_admin", "admin"):
         return
 
     if current_user.role == "patient":

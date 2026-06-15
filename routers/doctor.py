@@ -191,7 +191,7 @@ def create_doctor_availability(
     doctor_id: int,
     availability: DoctorAvailabilityCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "doctor"])),
+    current_user=Depends(require_roles(["platform_admin", "clinic_admin", "admin", "doctor"])),
 ):
     """Create a working hours availability slot (doctor owns schedule; admin may assist)."""
     return DoctorAvailabilityAccessService.create_slot(
@@ -203,7 +203,7 @@ def create_doctor_availability(
 def get_doctor_availability(
     doctor_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "doctor", "patient"])),
+    current_user=Depends(require_roles(["platform_admin", "clinic_admin", "admin", "doctor", "patient"])),
 ):
     """Get all active working hours for a doctor."""
     return (
@@ -220,7 +220,7 @@ def update_doctor_availability(
     availability_id: int,
     availability_update: DoctorAvailabilityUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "doctor"])),
+    current_user=Depends(require_roles(["platform_admin", "clinic_admin", "admin", "doctor"])),
 ):
     """Update a doctor's availability slot (ownership enforced)."""
     return DoctorAvailabilityAccessService.update_slot(
@@ -237,7 +237,7 @@ def delete_doctor_availability(
     doctor_id: int,
     availability_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "doctor"])),
+    current_user=Depends(require_roles(["platform_admin", "clinic_admin", "admin", "doctor"])),
 ):
     """Delete (deactivate) a doctor's availability slot (ownership enforced)."""
     return DoctorAvailabilityAccessService.deactivate_slot(

@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from database import Base
 
 _CLINICAL_ROLES = (
-    "'patient', 'doctor', 'admin', "
+    "'patient', 'doctor', 'platform_admin', 'clinic_admin', 'admin', "
     "'receptionist', 'cashier', 'lab_technician', 'pharmacist'"
 )
 

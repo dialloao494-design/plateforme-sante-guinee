@@ -1,4 +1,6 @@
-"""RBAC helpers for clinic-scoped clinical workflows."""
+"""
+RBAC helpers for clinic-scoped clinical workflows.
+"""
 
 from __future__ import annotations
 
@@ -12,17 +14,22 @@ from core.rbac import (
     BILLING_READ_ROLES,
     BILLING_REVENUE_ROLES,
     CASHIER_ROLES,
+    CLINIC_ADMIN_ROLES,
     DOCTOR_ROLES,
     LAB_QUEUE_ROLES,
     LAB_ROLES,
     PHARMACY_QUEUE_ROLES,
     PHARMACY_ROLES,
+    PLATFORM_ADMIN_ROLES,
     RECEPTION_ROLES,
 )
 from core.roles import requires_clinic_assignment
+from core.tenant import is_platform_admin, user_clinic_id
 from models.user import User
 
 CLINIC_OPS_ROLES = (
+    "platform_admin",
+    "clinic_admin",
     "admin",
     "receptionist",
     "cashier",
@@ -31,7 +38,6 @@ CLINIC_OPS_ROLES = (
     "pharmacist",
 )
 
-# Re-export role tuples for routers.
 __all__ = [
     "RECEPTION_ROLES",
     "CASHIER_ROLES",
@@ -41,6 +47,8 @@ __all__ = [
     "LAB_QUEUE_ROLES",
     "PHARMACY_QUEUE_ROLES",
     "ADMIN_ROLES",
+    "CLINIC_ADMIN_ROLES",
+    "PLATFORM_ADMIN_ROLES",
     "CLINIC_OPS_ROLES",
     "BILLING_READ_ROLES",
     "BILLING_PAY_ROLES",
@@ -53,14 +61,6 @@ __all__ = [
 ]
 
 
-def user_clinic_id(user: User) -> int | None:
-    if user.clinic_id:
-        return user.clinic_id
-    if user.role == "doctor" and user.doctor_profile and user.doctor_profile.clinic_id:
-        return user.doctor_profile.clinic_id
-    return None
-
-
 def assert_role(user: User, allowed: tuple[str, ...]) -> None:
     if user.role not in allowed:
         raise HTTPException(
@@ -70,6 +70,8 @@ def assert_role(user: User, allowed: tuple[str, ...]) -> None:
 
 
 def assert_clinic_access(user: User, clinic_id: int) -> None:
+    if is_platform_admin(user):
+        return
     user_cid = user_clinic_id(user)
     if user_cid != clinic_id:
         raise HTTPException(
@@ -81,6 +83,11 @@ def assert_clinic_access(user: User, clinic_id: int) -> None:
 def resolve_clinic_for_user(db: Session, user: User) -> models.Clinic:
     cid = user_clinic_id(user)
     if cid is None:
+        if is_platform_admin(user):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Platform admin must specify clinic context or assign clinic_id",
+            )
         if requires_clinic_assignment(user.role):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

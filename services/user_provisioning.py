@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 import models
 from core.provisioning_context import provisioning_channel as authorized_channel
 from core.roles import (
+    CLINIC_ADMIN_ROLES,
     PRIVILEGED_ROLES,
     PublicRegistrationRoleError,
     PrivilegedRoleAssignmentError,
@@ -219,7 +220,7 @@ def create_admin_user(
     from core.provisioning_context import AUTHORIZED_PRIVILEGED_CHANNELS
 
     validate_password(password)
-    admin_role = "admin"
+    admin_role = "platform_admin"
     if admin_role not in PRIVILEGED_ROLES:
         raise UserProvisioningError("Admin role is not configured.")
     if channel not in AUTHORIZED_PRIVILEGED_CHANNELS:
@@ -273,7 +274,7 @@ def create_staff_user(
     from core.roles import CLINICAL_STAFF_ROLES
 
     normalized = assert_known_role(role)
-    if normalized not in CLINICAL_STAFF_ROLES | {"admin"}:
+    if normalized not in CLINICAL_STAFF_ROLES | CLINIC_ADMIN_ROLES | {"platform_admin"}:
         raise UserProvisioningError(f"Role '{role}' is not a staff role.")
 
     try:

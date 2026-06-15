@@ -22,6 +22,7 @@ from models.patient import Patient
 from models.rendezvous import RendezVous
 from security import create_access_token
 from services.secure_attachment_storage import SecureAttachmentStorage
+from tests.clinic_fixtures import bind_clinic_booking
 from services.user_provisioning import create_admin_user, register_public_user
 
 
@@ -81,11 +82,14 @@ def messaging_context(db_session, secure_attachment_root, client):
         channel="test_fixture",
     ).user
 
+    clinic = bind_clinic_booking(db_session, doctor=doctor, patient=patient)
+
     rdv = RendezVous(
         date=datetime.utcnow() + timedelta(days=1),
         duration_minutes=30,
         patient_id=patient.id,
         doctor_id=doctor.id,
+        clinic_id=clinic.id,
         status="confirmed",
         payment_status="paid",
         price=45000.0,
@@ -218,7 +222,7 @@ class TestAttachmentDownloadAuth:
             .all()
         )
         assert len(logs) == 1
-        assert logs[0].user_role == "admin"
+        assert logs[0].user_role == "platform_admin"
         assert logs[0].storage_kind == "secure"
 
 

@@ -9,6 +9,7 @@ import pytest
 from models.doctor import Doctor
 from models.patient import Patient
 from models.rendezvous import RendezVous
+from tests.clinic_fixtures import bind_clinic_booking
 from services.user_provisioning import register_public_user
 
 
@@ -39,12 +40,14 @@ def patient_with_pending_appointment(db_session, payment_stub_env):
 
     doctor_user = _ensure_user(db_session, f"doctor.pay.{suffix}@test.gn", "doctor")
     doctor = db_session.query(Doctor).filter(Doctor.user_id == doctor_user.id).first()
+    clinic = bind_clinic_booking(db_session, doctor=doctor, patient=patient)
 
     rdv = RendezVous(
         date=datetime.utcnow() + timedelta(days=2),
         duration_minutes=30,
         patient_id=patient.id,
         doctor_id=doctor.id,
+        clinic_id=clinic.id,
         status="pending",
         payment_status="unpaid",
         price=45000.0,
@@ -97,7 +100,7 @@ class TestRendezvousConfirmPayment:
             f"/rendezvous/{aid}/confirm-payment",
             headers=admin_headers,
         )
-        assert response.status_code == 200
+        assert response.status_code == 200, response.text
         db_session.expire_all()
         rdv = db_session.query(RendezVous).filter(RendezVous.id == aid).first()
         assert rdv.status == "confirmed"
@@ -125,11 +128,13 @@ class TestSettlementService:
         doctor = db_session.query(Doctor).filter(Doctor.user_id == doctor_user.user.id).first()
         from datetime import datetime, timedelta
 
+        clinic = bind_clinic_booking(db_session, doctor=doctor, patient=patient)
         rdv = RendezVous(
             date=datetime.utcnow() + timedelta(days=1),
             duration_minutes=30,
             patient_id=patient.id,
             doctor_id=doctor.id,
+            clinic_id=clinic.id,
             status="pending",
             payment_status="unpaid",
             price=10000.0,

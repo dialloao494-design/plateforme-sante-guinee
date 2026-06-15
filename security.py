@@ -121,8 +121,27 @@ def require_roles(required_roles: list[str]):
     return role_dependency
 
 
+def get_current_platform_admin(current_user: User = Depends(get_current_user)):
+    if current_user.role != "platform_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Platform administrator privileges required",
+        )
+    return current_user
+
+
+def get_current_clinic_admin(current_user: User = Depends(get_current_user)):
+    if current_user.role not in ("clinic_admin", "admin", "platform_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Clinic administrator privileges required",
+        )
+    return current_user
+
+
 def get_current_admin(current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
+    """Legacy alias — clinic or platform admin."""
+    if current_user.role not in ("platform_admin", "clinic_admin", "admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required",
@@ -186,7 +205,7 @@ def require_doctor(current_user: User = Depends(get_current_user)):
 
 
 def require_admin(current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
+    if current_user.role not in ("platform_admin", "clinic_admin", "admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required",

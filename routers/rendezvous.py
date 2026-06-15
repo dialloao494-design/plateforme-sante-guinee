@@ -45,7 +45,13 @@ def _get_doctor_for_user(db: Session, user_id: int) -> models.Doctor | None:
 
 
 def _assert_can_access_appointment(db: Session, appointment: models.RendezVous, current_user) -> None:
-    if current_user.role == "admin":
+    if current_user.role == "platform_admin":
+        return
+
+    if current_user.role in ("clinic_admin", "admin"):
+        cid = current_user.clinic_id
+        if cid is not None and appointment.clinic_id != cid:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         return
 
     if current_user.role == "patient":
@@ -97,7 +103,7 @@ def create_appointment(
 @router.get("/", response_model=List[rendezvous_schemas.RendezVousResponse])
 def list_appointments(
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "doctor", "patient"])),
+    current_user=Depends(require_roles(["platform_admin", "clinic_admin", "admin", "doctor", "patient"])),
 ):
     """List appointments for current user scope."""
     return RendezVousService.list_appointments_for_user(current_user, db)
@@ -107,7 +113,7 @@ def list_appointments(
 def get_appointment(
     rdv_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "doctor", "patient"])),
+    current_user=Depends(require_roles(["platform_admin", "clinic_admin", "admin", "doctor", "patient"])),
 ):
     """Get one appointment with ownership checks."""
     rdv = db.query(models.RendezVous).filter(models.RendezVous.id == rdv_id).first()
@@ -123,7 +129,7 @@ def update_appointment_status(
     rdv_id: int,
     update: rendezvous_schemas.RendezVousUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "doctor"])),
+    current_user=Depends(require_roles(["platform_admin", "clinic_admin", "admin", "doctor"])),
 ):
     """Update appointment status (doctor/admin only).
     
@@ -154,7 +160,7 @@ def update_appointment_status(
 def cancel_appointment(
     rdv_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "patient", "doctor"])),
+    current_user=Depends(require_roles(["platform_admin", "clinic_admin", "admin", "patient", "doctor"])),
 ):
     """Cancel appointment with role rules.
 
@@ -181,7 +187,7 @@ def cancel_appointment(
 def confirm_appointment_payment(
     rdv_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin"])),
+    current_user=Depends(require_roles(["platform_admin"])),
 ):
     """
     Admin-only manual settlement for legacy portal appointments.
@@ -210,7 +216,7 @@ def confirm_appointment_payment(
 def mark_appointment_payment_failed(
     rdv_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin"])),
+    current_user=Depends(require_roles(["platform_admin"])),
 ):
     """Mark appointment payment as unpaid (admin only)."""
     rdv = db.query(models.RendezVous).filter(models.RendezVous.id == rdv_id).first()
@@ -224,7 +230,7 @@ def mark_appointment_payment_failed(
 def get_doctor_available_slots(
     doctor_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "doctor", "patient"])),
+    current_user=Depends(require_roles(["platform_admin", "clinic_admin", "admin", "doctor", "patient"])),
 ):
     """Get active availability slots for a doctor."""
     doctor = db.query(models.Doctor).filter(models.Doctor.id == doctor_id).first()

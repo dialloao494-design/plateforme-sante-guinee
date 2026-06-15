@@ -179,7 +179,7 @@ def create_clinic(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assert_role(current_user, ("admin",))
+    assert_role(current_user, ("platform_admin",))
     clinic = models.Clinic(
         name=body.name.strip(),
         address=body.address,
@@ -199,7 +199,7 @@ def list_clinics(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role == "admin":
+    if current_user.role == "platform_admin":
         return db.query(models.Clinic).filter(models.Clinic.is_active.is_(True)).all()
     cid = user_clinic_id(current_user)
     if not cid:
@@ -214,7 +214,8 @@ def provision_staff(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assert_role(current_user, ("admin",))
+    assert_role(current_user, ("platform_admin", "clinic_admin", "admin"))
+    assert_clinic_access(current_user, body.clinic_id)
     clinic = db.query(models.Clinic).filter(models.Clinic.id == body.clinic_id).first()
     if not clinic:
         raise HTTPException(status_code=404, detail="Clinic not found")
@@ -907,7 +908,7 @@ def assign_doctor_to_clinic(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assert_role(current_user, ("admin",))
+    assert_role(current_user, ("platform_admin", "clinic_admin", "admin"))
     doctor = db.query(models.Doctor).filter(models.Doctor.id == doctor_id).first()
     clinic = db.query(models.Clinic).filter(models.Clinic.id == clinic_id).first()
     if not doctor or not clinic:
@@ -931,6 +932,9 @@ def patient_journey(
 ):
     assert_role(current_user, RECEPTION_ROLES + DOCTOR_ROLES + LAB_ROLES + PHARMACY_ROLES)
     clinic = resolve_clinic_for_user(db, current_user)
+    from core.tenant import assert_patient_in_clinic
+
+    assert_patient_in_clinic(db, patient_id=patient_id, clinic_id=clinic.id)
     return ClinicalWorkflowService.patient_journey(db, clinic_id=clinic.id, patient_id=patient_id)
 
 

@@ -714,56 +714,51 @@ def ensure_reminders_schema(engine: Engine) -> None:
 
 
 def ensure_patient_user_id_unique(engine: Engine) -> None:
-    """Enforce one patient profile per user account (nullable user_id stays allowed)."""
+    """Multi-tenant patients: clinic_id + composite (clinic_id, user_id) uniqueness."""
     insp = inspect(engine)
     if "patients" not in insp.get_table_names():
         return
     dialect = engine.dialect.name
+    cols = {c["name"] for c in insp.get_columns("patients")}
 
-    with engine.begin() as conn:
-        dupes = conn.execute(
-            text(
-                """
-                SELECT user_id, MIN(id) AS keep_id
-                FROM patients
-                WHERE user_id IS NOT NULL
-                GROUP BY user_id
-                HAVING COUNT(*) > 1
-                """
-            )
-        ).fetchall()
-        for row in dupes:
-            conn.execute(
-                text(
-                    "UPDATE patients SET user_id = NULL "
-                    "WHERE user_id = :uid AND id != :keep_id"
-                ),
-                {"uid": row.user_id, "keep_id": row.keep_id},
-            )
-        if dupes:
-            logger.info("Deduped %s patients.user_id rows before unique constraint", len(dupes))
+    if "clinic_id" not in cols:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE patients ADD COLUMN clinic_id INTEGER"))
+            logger.info("Added patients.clinic_id column")
+        except Exception as exc:
+            logger.warning("patients.clinic_id migration skipped: %s", exc)
 
     indexes = {idx["name"] for idx in insp.get_indexes("patients")}
-    unique_name = "uq_patients_user_id"
-    if unique_name in indexes:
-        return
+    if "uq_patients_user_id" in indexes:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text("DROP INDEX uq_patients_user_id"))
+            logger.info("Dropped legacy uq_patients_user_id index")
+        except Exception as exc:
+            logger.warning("Could not drop uq_patients_user_id: %s", exc)
 
-    try:
-        with engine.begin() as conn:
-            if dialect == "sqlite":
-                conn.execute(
-                    text("CREATE UNIQUE INDEX IF NOT EXISTS uq_patients_user_id ON patients (user_id)")
-                )
-            else:
-                conn.execute(
-                    text(
-                        "CREATE UNIQUE INDEX uq_patients_user_id ON patients (user_id) "
-                        "WHERE user_id IS NOT NULL"
+    if "uq_patients_clinic_user" not in indexes:
+        try:
+            with engine.begin() as conn:
+                if dialect == "sqlite":
+                    conn.execute(
+                        text(
+                            "CREATE UNIQUE INDEX IF NOT EXISTS uq_patients_clinic_user "
+                            "ON patients (clinic_id, user_id)"
+                        )
                     )
-                )
-        logger.info("Applied unique constraint on patients.user_id")
-    except Exception as exc:
-        logger.warning("patients.user_id unique migration skipped or failed: %s", exc)
+                else:
+                    conn.execute(
+                        text(
+                            "CREATE UNIQUE INDEX uq_patients_clinic_user "
+                            "ON patients (clinic_id, user_id) "
+                            "WHERE user_id IS NOT NULL"
+                        )
+                    )
+            logger.info("Applied composite unique on patients (clinic_id, user_id)")
+        except Exception as exc:
+            logger.warning("patients clinic/user unique migration skipped: %s", exc)
 
 
 def ensure_pharmacy_inventory_schema(engine: Engine) -> None:

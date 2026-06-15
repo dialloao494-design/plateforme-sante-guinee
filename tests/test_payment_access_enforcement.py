@@ -21,6 +21,7 @@ from models.rendezvous import RendezVous
 from services.payment_refunds import PaymentRefundService
 from services.rendezvous_service import RendezVousService
 from services.teleconsultation_access import evaluate_teleconsult_room, validate_teleconsult_access
+from tests.clinic_fixtures import bind_clinic_booking
 from services.user_provisioning import register_public_user
 
 
@@ -136,11 +137,13 @@ class TestAppointmentStatusAlignment:
             role="doctor",
         ).user
         doctor = db_session.query(Doctor).filter(Doctor.user_id == doctor_user.id).first()
+        clinic = bind_clinic_booking(db_session, doctor=doctor, patient=patient)
         rdv = RendezVous(
             date=datetime.utcnow() + timedelta(days=2),
             duration_minutes=30,
             patient_id=patient.id,
             doctor_id=doctor.id,
+            clinic_id=clinic.id,
             status="pending",
             payment_status="unpaid",
             price=50000.0,
@@ -220,11 +223,13 @@ class TestRefundRevokesTeleconsultAccess:
             db_session, email="refund.doctor@test.gn", password="Secret12", role="doctor"
         ).user
         doctor = db_session.query(Doctor).filter(Doctor.user_id == doctor_user.id).first()
+        clinic = bind_clinic_booking(db_session, doctor=doctor, patient=patient)
         rdv = RendezVous(
             date=datetime.utcnow() + timedelta(minutes=15),
             duration_minutes=30,
             patient_id=patient.id,
             doctor_id=doctor.id,
+            clinic_id=clinic.id,
             status="pending",
             payment_status="unpaid",
             price=50.0,

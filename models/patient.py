@@ -1,15 +1,19 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, Date, DateTime, Integer, String, ForeignKey, Text
+from sqlalchemy import Boolean, Column, Date, DateTime, Integer, String, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from database import Base
 
 
 class Patient(Base):
     __tablename__ = "patients"
+    __table_args__ = (
+        UniqueConstraint("clinic_id", "user_id", name="uq_patients_clinic_user"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, unique=True, index=True)
+    clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     first_name = Column(String, index=True)
     last_name = Column(String, index=True)
     age = Column(Integer)
@@ -25,6 +29,7 @@ class Patient(Base):
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
 
+    clinic = relationship("Clinic", back_populates="patients")
     user = relationship("User", back_populates="patient_profile")
     medical_record = relationship(
         "PatientMedicalRecord", back_populates="patient", uselist=False, cascade="all, delete-orphan"
