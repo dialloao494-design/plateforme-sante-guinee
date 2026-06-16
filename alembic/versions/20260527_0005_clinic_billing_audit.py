@@ -13,6 +13,15 @@ depends_on = None
 def upgrade() -> None:
     bind = op.get_bind()
     dialect = bind.dialect.name
+    if dialect == "postgresql" and sa.inspect(bind).has_table("alembic_version"):
+        bind.execute(
+            sa.text(
+                "ALTER TABLE alembic_version "
+                "ALTER COLUMN version_num TYPE VARCHAR(64) "
+                "USING version_num::varchar(64)"
+            )
+        )
+
     datetime_type = sa.DateTime(timezone=True) if dialect == "postgresql" else sa.DateTime()
     insp = sa.inspect(bind)
 

@@ -725,7 +725,8 @@ def ensure_alembic_version_column(engine: Engine) -> None:
                 conn.execute(
                     text(
                         "ALTER TABLE alembic_version "
-                        "ALTER COLUMN version_num TYPE VARCHAR(64)"
+                        "ALTER COLUMN version_num TYPE VARCHAR(64) "
+                        "USING version_num::varchar(64)"
                     )
                 )
             elif dialect == "sqlite":

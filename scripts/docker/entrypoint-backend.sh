@@ -56,8 +56,6 @@ from database_migrations import (
 Base.metadata.create_all(bind=engine)
 ensure_alembic_version_column(engine)
 
-ensure_alembic_version_column(engine)
-
 try:
     from alembic.config import Config
     from alembic import command

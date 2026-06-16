@@ -10,6 +10,11 @@ depends_on = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    if insp.has_table("pharmacy_inventory"):
+        return
+
     op.create_table(
         "pharmacy_inventory",
         sa.Column("id", sa.Integer(), primary_key=True),

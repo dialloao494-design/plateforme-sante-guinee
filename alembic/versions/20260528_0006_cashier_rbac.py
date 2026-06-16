@@ -10,7 +10,7 @@ branch_labels = None
 depends_on = None
 
 _NEW_ROLES = (
-    "'patient', 'doctor', 'admin', "
+    "'patient', 'doctor', 'platform_admin', 'clinic_admin', 'admin', "
     "'receptionist', 'cashier', 'lab_technician', 'pharmacist'"
 )
 

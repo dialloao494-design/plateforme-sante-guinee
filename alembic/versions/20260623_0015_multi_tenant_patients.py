@@ -52,33 +52,39 @@ def _backfill_rendezvous_clinic_id(bind) -> None:
 def upgrade() -> None:
     bind = op.get_bind()
     dialect = bind.dialect.name
+    insp = sa.inspect(bind)
 
-    with op.batch_alter_table("patients") as batch:
-        batch.add_column(sa.Column("clinic_id", sa.Integer(), nullable=True))
-        batch.create_foreign_key("fk_patients_clinic_id", "clinics", ["clinic_id"], ["id"])
+    patient_cols = {c["name"] for c in insp.get_columns("patients")} if insp.has_table("patients") else set()
+    if "clinic_id" not in patient_cols:
+        with op.batch_alter_table("patients") as batch:
+            batch.add_column(sa.Column("clinic_id", sa.Integer(), nullable=True))
+            batch.create_foreign_key("fk_patients_clinic_id", "clinics", ["clinic_id"], ["id"])
 
-    op.create_index("ix_patients_clinic_id", "patients", ["clinic_id"])
-    _backfill_patient_clinic_id(bind)
-    _backfill_rendezvous_clinic_id(bind)
+        op.create_index("ix_patients_clinic_id", "patients", ["clinic_id"], unique=False)
+        _backfill_patient_clinic_id(bind)
+        _backfill_rendezvous_clinic_id(bind)
 
-    try:
-        op.drop_index("uq_patients_user_id", table_name="patients")
-    except Exception:
-        pass
+    indexes = {idx["name"] for idx in insp.get_indexes("patients")} if insp.has_table("patients") else set()
+    if "uq_patients_user_id" in indexes:
+        try:
+            op.drop_index("uq_patients_user_id", table_name="patients")
+        except Exception:
+            pass
 
-    if dialect == "sqlite":
-        op.create_index(
-            "uq_patients_clinic_user",
-            "patients",
-            ["clinic_id", "user_id"],
-            unique=True,
-        )
-    else:
-        op.create_unique_constraint(
-            "uq_patients_clinic_user",
-            "patients",
-            ["clinic_id", "user_id"],
-        )
+    if "uq_patients_clinic_user" not in indexes:
+        if dialect == "sqlite":
+            op.create_index(
+                "uq_patients_clinic_user",
+                "patients",
+                ["clinic_id", "user_id"],
+                unique=True,
+            )
+        else:
+            op.create_unique_constraint(
+                "uq_patients_clinic_user",
+                "patients",
+                ["clinic_id", "user_id"],
+            )
 
     bind.execute(sa.text("UPDATE users SET role = 'clinic_admin' WHERE role = 'admin'"))
 

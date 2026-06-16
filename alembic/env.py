@@ -51,6 +51,16 @@ def run_migrations_online() -> None:
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():
+            from sqlalchemy import inspect, text
+
+            if inspect(connection).has_table("alembic_version"):
+                connection.execute(
+                    text(
+                        "ALTER TABLE alembic_version "
+                        "ALTER COLUMN version_num TYPE VARCHAR(64) "
+                        "USING version_num::varchar(64)"
+                    )
+                )
             context.run_migrations()
 
 
