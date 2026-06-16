@@ -47,9 +47,14 @@ import models.prescription  # noqa: F401
 import models.pharmacy_order  # noqa: F401
 
 from database import engine, Base
-from database_migrations import ensure_doctor_geolocation_columns, ensure_patient_dossier_schema
+from database_migrations import (
+    ensure_alembic_version_column,
+    ensure_doctor_geolocation_columns,
+    ensure_patient_dossier_schema,
+)
 
 Base.metadata.create_all(bind=engine)
+ensure_alembic_version_column(engine)
 
 try:
     from alembic.config import Config

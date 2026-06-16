@@ -127,6 +127,18 @@ class AppSettings:
             if internal not in hosts:
                 hosts.append(internal)
 
+        # Railway edge + health probe hosts (required for deploy healthchecks).
+        if os.getenv("RAILWAY_ENVIRONMENT"):
+            for railway_host in (
+                "healthcheck.railway.app",
+                "*.up.railway.app",
+            ):
+                if railway_host not in hosts:
+                    hosts.append(railway_host)
+            public_domain = (os.getenv("RAILWAY_PUBLIC_DOMAIN") or "").strip()
+            if public_domain and public_domain not in hosts:
+                hosts.append(public_domain)
+
         if not hosts or (len(hosts) <= 3 and not self.domain and not raw.replace("*", "").strip()):
             raise RuntimeError(
                 "ALLOWED_HOSTS or DOMAIN must be set for staging/production "

@@ -713,6 +713,45 @@ def ensure_reminders_schema(engine: Engine) -> None:
             logger.warning("reminder_events migration failed: %s", exc)
 
 
+def ensure_alembic_version_column(engine: Engine) -> None:
+    """Widen alembic_version.version_num — Railway Postgres defaults to VARCHAR(32)."""
+    insp = inspect(engine)
+    if "alembic_version" not in insp.get_table_names():
+        return
+    dialect = engine.dialect.name
+    try:
+        with engine.begin() as conn:
+            if dialect == "postgresql":
+                conn.execute(
+                    text(
+                        "ALTER TABLE alembic_version "
+                        "ALTER COLUMN version_num TYPE VARCHAR(64)"
+                    )
+                )
+            elif dialect == "sqlite":
+                # SQLite cannot ALTER COLUMN type easily; recreate if too narrow.
+                row = conn.execute(text("PRAGMA table_info(alembic_version)")).fetchall()
+                version_col = next((r for r in row if r[1] == "version_num"), None)
+                if version_col and "32" in str(version_col[2]):
+                    conn.execute(text("ALTER TABLE alembic_version RENAME TO alembic_version_old"))
+                    conn.execute(
+                        text(
+                            "CREATE TABLE alembic_version "
+                            "(version_num VARCHAR(64) NOT NULL PRIMARY KEY)"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            "INSERT INTO alembic_version (version_num) "
+                            "SELECT version_num FROM alembic_version_old"
+                        )
+                    )
+                    conn.execute(text("DROP TABLE alembic_version_old"))
+        logger.info("Ensured alembic_version.version_num width >= 64")
+    except Exception as exc:
+        logger.warning("alembic_version column widen skipped: %s", exc)
+
+
 def ensure_patient_user_id_unique(engine: Engine) -> None:
     """Multi-tenant patients: clinic_id + composite (clinic_id, user_id) uniqueness."""
     insp = inspect(engine)
