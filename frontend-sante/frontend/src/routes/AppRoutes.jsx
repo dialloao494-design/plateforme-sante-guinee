@@ -31,7 +31,15 @@ import StaffNotificationCenter from "../pages/clinical/StaffNotificationCenter.j
 import ClinicalReportsDashboard from "../pages/clinical/ClinicalReportsDashboard.jsx";
 import AdminClinicalDashboard from "../pages/clinical/AdminClinicalDashboard.jsx";
 import ClinicOperationsDashboard from "../pages/clinical/ClinicOperationsDashboard.jsx";
+import AccountProfile from "../pages/AccountProfile.jsx";
+import ChangePassword from "../pages/ChangePassword.jsx";
 import ProtectedRoute from "./ProtectedRoute";
+
+const STAFF_ADMIN_ROLES = ["admin", "clinic_admin", "platform_admin"];
+const CLINIC_ADMIN_ROLES = ["admin", "clinic_admin"];
+const RECEPTION_ROLES = ["receptionist", "cashier"];
+const BILLING_ROLES = ["receptionist", "cashier", "admin", "clinic_admin"];
+const HOSPITALIZATION_ROLES = ["admin", "clinic_admin", "platform_admin", "receptionist", "doctor"];
 
 const AppRoutes = () => {
   return (
@@ -39,6 +47,23 @@ const AppRoutes = () => {
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+
+      <Route
+        path="/account/profile"
+        element={
+          <ProtectedRoute>
+            <AccountProfile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/account/password"
+        element={
+          <ProtectedRoute>
+            <ChangePassword />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Patient portal */}
       <Route
@@ -152,7 +177,7 @@ const AppRoutes = () => {
       <Route
         path="/clinical"
         element={
-          <ProtectedRoute allowedRoles={["admin"]}>
+          <ProtectedRoute allowedRoles={CLINIC_ADMIN_ROLES.concat(['platform_admin'])}>
             <ClinicOperationsDashboard />
           </ProtectedRoute>
         }
@@ -160,7 +185,7 @@ const AppRoutes = () => {
       <Route
         path="/clinical/admin"
         element={
-          <ProtectedRoute allowedRoles={["admin"]}>
+          <ProtectedRoute allowedRoles={STAFF_ADMIN_ROLES}>
             <AdminClinicalDashboard />
           </ProtectedRoute>
         }
@@ -170,7 +195,7 @@ const AppRoutes = () => {
       <Route
         path="/clinical/reception"
         element={
-          <ProtectedRoute allowedRoles={["receptionist", "cashier"]}>
+          <ProtectedRoute allowedRoles={RECEPTION_ROLES}>
             <ReceptionDashboard />
           </ProtectedRoute>
         }
@@ -207,7 +232,7 @@ const AppRoutes = () => {
       <Route
         path="/clinical/billing"
         element={
-          <ProtectedRoute allowedRoles={["receptionist", "cashier", "admin"]}>
+          <ProtectedRoute allowedRoles={BILLING_ROLES}>
             <UnifiedBillingDashboard />
           </ProtectedRoute>
         }
@@ -216,7 +241,7 @@ const AppRoutes = () => {
       <Route
         path="/clinical/hospitalization"
         element={
-          <ProtectedRoute allowedRoles={["admin", "receptionist", "doctor"]}>
+          <ProtectedRoute allowedRoles={HOSPITALIZATION_ROLES}>
             <HospitalizationDashboard />
           </ProtectedRoute>
         }
@@ -225,7 +250,7 @@ const AppRoutes = () => {
       <Route
         path="/clinical/discharge"
         element={
-          <ProtectedRoute allowedRoles={["admin", "receptionist", "doctor"]}>
+          <ProtectedRoute allowedRoles={HOSPITALIZATION_ROLES}>
             <DischargeDashboard />
           </ProtectedRoute>
         }
@@ -234,7 +259,7 @@ const AppRoutes = () => {
       <Route
         path="/clinical/radiology"
         element={
-          <ProtectedRoute allowedRoles={["admin", "doctor", "lab_technician"]}>
+          <ProtectedRoute allowedRoles={["admin", "clinic_admin", "doctor", "lab_technician", "platform_admin"]}>
             <RadiologyDashboard />
           </ProtectedRoute>
         }
@@ -243,7 +268,7 @@ const AppRoutes = () => {
       <Route
         path="/clinical/notifications"
         element={
-          <ProtectedRoute allowedRoles={["admin", "receptionist", "doctor"]}>
+          <ProtectedRoute allowedRoles={["admin", "clinic_admin", "receptionist", "doctor", "platform_admin"]}>
             <StaffNotificationCenter />
           </ProtectedRoute>
         }
@@ -252,7 +277,7 @@ const AppRoutes = () => {
       <Route
         path="/clinical/reports"
         element={
-          <ProtectedRoute allowedRoles={["admin", "receptionist", "doctor", "cashier"]}>
+          <ProtectedRoute allowedRoles={["admin", "clinic_admin", "receptionist", "doctor", "cashier", "platform_admin"]}>
             <ClinicalReportsDashboard />
           </ProtectedRoute>
         }
@@ -261,7 +286,7 @@ const AppRoutes = () => {
       <Route
         path="/users"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'clinic_admin', 'platform_admin']}>
             <Users />
           </ProtectedRoute>
         }

@@ -1,0 +1,105 @@
+.sidebar-user-panel {
+  margin: 0.75rem 0.5rem 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border, #e2e8f0);
+}
+
+.sidebar-user-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-md, 12px);
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface-muted, #f8fafc);
+}
+
+.sidebar-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary, #0d9488), #0f766e);
+}
+
+.sidebar-user-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.sidebar-user-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-text, #0f172a);
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.sidebar-user-role {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-primary-hover, #0f766e);
+}
+
+.sidebar-user-clinic {
+  font-size: 0.72rem;
+  color: var(--color-text-muted, #64748b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-user-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+
+.sidebar-user-action {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text, #334155);
+  text-decoration: none;
+  text-align: left;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sidebar-user-action:hover {
+  background: rgba(13, 148, 136, 0.08);
+  color: var(--color-text, #0f172a);
+}
+
+.sidebar-user-action-logout {
+  margin-top: 0.15rem;
+  background: var(--color-danger-soft, #fef2f2);
+  color: var(--color-danger, #dc2626);
+  border-color: rgba(220, 38, 38, 0.2);
+}
+
+.sidebar-user-action-logout:hover {
+  background: #fee2e2;
+  color: var(--color-danger, #dc2626);
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sidebar-user-name {
+    font-size: 0.82rem;
+  }
+}

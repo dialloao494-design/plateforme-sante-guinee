@@ -33,6 +33,11 @@ export const authAPI = {
   login,
   me: getAuthenticatedUser,
   signup: (userData) => httpClient.post('/auth/register', userData),
+  changePassword: (currentPassword, newPassword) =>
+    httpClient.post('/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
 };
 
 export const patientsAPI = {

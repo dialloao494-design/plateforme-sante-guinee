@@ -9,14 +9,24 @@ export const PATIENT_NAV_ITEMS = [
   { path: '/notifications', label: 'Notifications', icon: 'bell' },
 ];
 
+const CLINIC_ADMIN_NAV = [
+  { path: '/clinical', label: 'Opérations', icon: 'dash' },
+  { path: '/clinical/admin', label: 'Administration', icon: 'shield' },
+  { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'board' },
+  { path: '/clinical/billing', label: 'Facturation', icon: 'calendar' },
+  { path: '/clinical/discharge', label: 'Sortie patient', icon: 'queue' },
+  { path: '/clinical/radiology', label: 'Radiologie', icon: 'steth' },
+  { path: '/clinical/notifications', label: 'Notifications', icon: 'bell' },
+  { path: '/clinical/reports', label: 'Rapports', icon: 'calendar' },
+];
+
 const ROLE_NAV = {
-  admin: [
+  admin: CLINIC_ADMIN_NAV,
+  clinic_admin: CLINIC_ADMIN_NAV,
+  platform_admin: [
+    { path: '/users', label: 'Utilisateurs', icon: 'people' },
     { path: '/clinical', label: 'Opérations', icon: 'dash' },
-    { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'board' },
-    { path: '/clinical/billing', label: 'Facturation', icon: 'calendar' },
-    { path: '/clinical/discharge', label: 'Sortie patient', icon: 'queue' },
-    { path: '/clinical/radiology', label: 'Radiologie', icon: 'steth' },
-    { path: '/clinical/notifications', label: 'Notifications', icon: 'bell' },
+    { path: '/clinical/admin', label: 'Administration', icon: 'shield' },
     { path: '/clinical/reports', label: 'Rapports', icon: 'calendar' },
   ],
   receptionist: [
@@ -27,7 +37,11 @@ const ROLE_NAV = {
     { path: '/clinical/notifications', label: 'Notifications', icon: 'bell' },
     { path: '/clinical/reports', label: 'Rapports', icon: 'calendar' },
   ],
-  cashier: [{ path: '/clinical/reception', label: 'Réception', icon: 'calendar' }],
+  cashier: [
+    { path: '/clinical/reception', label: 'Réception', icon: 'calendar' },
+    { path: '/clinical/billing', label: 'Facturation', icon: 'calendar' },
+    { path: '/clinical/reports', label: 'Rapports', icon: 'calendar' },
+  ],
   doctor: [
     { path: '/clinical/doctor', label: 'Médecin', icon: 'board' },
     { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'queue' },
@@ -51,6 +65,7 @@ export function getNavItemsForRole(role) {
 export function getNavSectionTitle(role) {
   const r = String(role || '').toLowerCase();
   if (r === 'patient') return 'Mon espace';
-  if (r === 'admin') return 'Pilotage';
+  if (r === 'admin' || r === 'clinic_admin') return 'Pilotage';
+  if (r === 'platform_admin') return 'Plateforme';
   return 'Mon poste';
 }

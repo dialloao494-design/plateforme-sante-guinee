@@ -2,6 +2,8 @@
 
 export const CLINIC_PORTAL_ROLES = [
   'admin',
+  'clinic_admin',
+  'platform_admin',
   'receptionist',
   'cashier',
   'doctor',
@@ -15,6 +17,8 @@ export function isClinicStaffRole(role) {
 
 const ROLE_HOME = {
   admin: '/clinical',
+  clinic_admin: '/clinical',
+  platform_admin: '/users',
   receptionist: '/clinical/reception',
   cashier: '/clinical/reception',
   doctor: '/clinical/doctor',

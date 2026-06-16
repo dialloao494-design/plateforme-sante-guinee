@@ -70,6 +70,17 @@ class UserLogin(BaseModel):
     password: str
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v: str) -> str:
+        validate_password(v)
+        return v
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -86,3 +97,6 @@ class UserResponse(BaseModel):
     email: str
     role: str
     doctor_id: Optional[int] = None
+    full_name: Optional[str] = None
+    clinic_id: Optional[int] = None
+    clinic_name: Optional[str] = None

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.user import User
 import models
-from schemas.user import PublicRegistration, UserLogin, UserResponse, Token
+from schemas.user import PublicRegistration, UserLogin, UserResponse, Token, ChangePasswordRequest
 from security import (
     get_current_user,
     hash_password,
@@ -210,6 +210,49 @@ def login_json(
     return create_token_response(user)
 
 
+def build_user_response(db: Session, user: User) -> dict:
+    """Enrich user profile with display name and clinic context."""
+    doctor_id = None
+    full_name = None
+    clinic_id = user.clinic_id
+    clinic_name = None
+
+    if user.role == "doctor":
+        doc = db.query(models.Doctor).filter(models.Doctor.user_id == user.id).first()
+        if doc:
+            doctor_id = doc.id
+            full_name = doc.full_name
+            if clinic_id is None:
+                clinic_id = doc.clinic_id
+    elif user.role == "patient":
+        pat = db.query(models.Patient).filter(models.Patient.user_id == user.id).first()
+        if pat and pat.first_name:
+            full_name = f"{pat.first_name} {pat.last_name}".strip()
+            if clinic_id is None:
+                clinic_id = pat.clinic_id
+
+    if not full_name:
+        local = (user.email or "").split("@")[0]
+        full_name = local.replace(".", " ").replace("_", " ").strip().title() or user.email
+
+    if clinic_id:
+        clinic = db.query(models.Clinic).filter(models.Clinic.id == clinic_id).first()
+        if clinic:
+            clinic_name = clinic.name
+    elif user.role == "platform_admin":
+        clinic_name = "Plateforme nationale"
+
+    return {
+        "id": user.id,
+        "email": user.email,
+        "role": user.role,
+        "doctor_id": doctor_id,
+        "full_name": full_name,
+        "clinic_id": clinic_id,
+        "clinic_name": clinic_name,
+    }
+
+
 @router.get("/me", response_model=UserResponse)
 def read_current_user(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
@@ -225,14 +268,23 @@ def read_current_user(current_user: User = Depends(get_current_user), db: Sessio
 
     **Errors:** 401 when token is invalid or missing
     """
-    doctor_id = None
-    if current_user.role == "doctor":
-        doc = db.query(models.Doctor).filter(models.Doctor.user_id == current_user.id).first()
-        if doc:
-            doctor_id = doc.id
-    return {
-        "id": current_user.id,
-        "email": current_user.email,
-        "role": current_user.role,
-        "doctor_id": doctor_id,
-    }
+    return build_user_response(db, current_user)
+
+
+@router.post("/change-password")
+def change_password(
+    body: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Change password for the authenticated user."""
+    if not verify_password(body.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mot de passe actuel incorrect",
+        )
+    current_user.hashed_password = hash_password(body.new_password)
+    db.add(current_user)
+    db.commit()
+    logger.info("Password changed for user id=%s", current_user.id)
+    return {"message": "Mot de passe mis à jour"}

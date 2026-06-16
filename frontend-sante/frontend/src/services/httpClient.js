@@ -87,6 +87,8 @@ const ensureNginxApiPath = (url = '') => {
   return `/api${path}`;
 };
 
+import { clearAllClientStorage } from '../utils/authStorage.js';
+
 // Resolve API base URL from environment variable
 export const API_BASE_URL = (() => {
   const explicitUrl = (import.meta.env.VITE_API_URL || '').trim();
@@ -160,10 +162,7 @@ export function clearClientAuth() {
   if (typeof window === 'undefined') {
     return;
   }
-  localStorage.removeItem('token');
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('user_role');
-  localStorage.removeItem('user_id');
+  clearAllClientStorage();
   syncAuthHeader();
 }
 

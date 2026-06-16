@@ -1,0 +1,30 @@
+/** Role normalization and RBAC helpers for routes and navigation. */
+
+const ALIASES = {
+  admin: ['clinic_admin'],
+  clinic_admin: ['admin'],
+};
+
+export function normalizeRole(role) {
+  return String(role || '').toLowerCase();
+}
+
+export function expandAllowedRoles(allowedRoles = []) {
+  const expanded = new Set();
+  for (const role of allowedRoles) {
+    const r = normalizeRole(role);
+    expanded.add(r);
+    for (const alias of ALIASES[r] || []) {
+      expanded.add(alias);
+    }
+  }
+  return expanded;
+}
+
+export function userHasRole(userRole, allowedRoles = []) {
+  if (!allowedRoles.length) {
+    return true;
+  }
+  const r = normalizeRole(userRole);
+  return expandAllowedRoles(allowedRoles).has(r);
+}

@@ -71,6 +71,12 @@ export function getShellContext(pathname, role) {
   if (pathname === '/users') {
     return { crumbs: withHome([{ label: 'Utilisateurs', to: null }]) };
   }
+  if (pathname === '/account/profile') {
+    return { crumbs: withHome([{ label: 'Mon profil', to: null }]) };
+  }
+  if (pathname === '/account/password') {
+    return { crumbs: withHome([c('/account/profile', 'Mon profil'), { label: 'Mot de passe', to: null }]) };
+  }
   if (pathname === '/dashboard') {
     return { crumbs: [{ label: 'Tableau de bord', to: null }] };
   }

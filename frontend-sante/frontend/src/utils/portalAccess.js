@@ -4,6 +4,8 @@ export const PATIENT_PORTAL_ROLES = ['patient'];
 /** Clinic portal — CIS staff workflows (tenant-scoped). */
 export const CLINIC_PORTAL_ROLES = [
   'admin',
+  'clinic_admin',
+  'platform_admin',
   'receptionist',
   'cashier',
   'doctor',
@@ -25,8 +27,10 @@ export function isPatientPortalRole(role) {
 
 const PORTAL_LABELS = {
   admin: 'Pilotage clinique',
+  clinic_admin: 'Pilotage clinique',
+  platform_admin: 'Admin plateforme',
   receptionist: 'Réception',
-  cashier: 'Réception',
+  cashier: 'Caisse',
   doctor: 'Consultation',
   lab_technician: 'Laboratoire',
   pharmacist: 'Pharmacie',
@@ -41,6 +45,7 @@ export function portalLabel(role) {
 export function portalSubtitle(role) {
   const r = normalizeRole(role);
   if (r === 'patient') return 'Guinée · Soins & rendez-vous';
-  if (r === 'admin') return 'Guinée · Opérations';
+  if (r === 'platform_admin') return 'Guinée · Administration nationale';
+  if (r === 'admin' || r === 'clinic_admin') return 'Guinée · Opérations';
   return 'Guinée · Parcours patient';
 }

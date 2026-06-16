@@ -1,6 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api.js';
 import { clearClientAuth } from '../services/httpClient.js';
+import { touchSessionActivity } from '../utils/authStorage.js';
+import { useSessionTimeout } from '../hooks/useSessionTimeout.js';
+import SessionTimeoutModal from '../components/SessionTimeoutModal.jsx';
 
 const devLog = (...args) => {
   if (import.meta.env.DEV) {
@@ -59,7 +63,7 @@ export const AuthProvider = ({ children }) => {
     return 'Une erreur est survenue, veuillez réessayer';
   };
 
-  const normalizeAndStoreUser = (data) => {
+  const normalizeAndStoreUser = useCallback((data) => {
     if (!data) {
       return null;
     }
@@ -75,9 +79,24 @@ export const AuthProvider = ({ children }) => {
     if (normalizedUser.role) {
       localStorage.setItem('user_role', normalizedUser.role);
     }
+    touchSessionActivity();
 
     return normalizedUser;
-  };
+  }, []);
+
+  const logout = useCallback(() => {
+    clearPasswordResetFlags();
+    clearClientAuth();
+    setUser(null);
+    setError(null);
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    const data = await authAPI.me();
+    const normalizedUser = normalizeAndStoreUser(data);
+    setUser(normalizedUser);
+    return normalizedUser;
+  }, [normalizeAndStoreUser]);
 
   useEffect(() => {
     clearPasswordResetFlags();
@@ -108,7 +127,7 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
       })
       .finally(() => setAuthLoading(false));
-  }, []);
+  }, [normalizeAndStoreUser]);
 
   const login = async (email, password) => {
     setActionLoading(true);
@@ -127,7 +146,6 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Login response missing access_token');
       }
 
-      // Ignore any legacy password-reset markers to avoid blocking access after login.
       clearPasswordResetFlags();
       devLog('[AUTH] Login successful, storing token');
       localStorage.setItem('token', access_token);
@@ -152,11 +170,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    clearPasswordResetFlags();
-    clearClientAuth();
-    setUser(null);
+  const changePassword = async (currentPassword, newPassword) => {
+    setActionLoading(true);
     setError(null);
+    try {
+      await authAPI.changePassword(currentPassword, newPassword);
+      return { success: true };
+    } catch (err) {
+      const message =
+        err?.response?.data?.detail ||
+        'Impossible de modifier le mot de passe. Vérifiez le mot de passe actuel.';
+      setError(message);
+      return { success: false, error: message };
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const value = {
@@ -166,8 +194,47 @@ export const AuthProvider = ({ children }) => {
     error,
     login,
     logout,
+    refreshUser,
+    changePassword,
     isAuthenticated: Boolean(user),
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      <SessionTimeoutBridge logout={logout} isAuthenticated={Boolean(user)} authLoading={authLoading}>
+        {children}
+      </SessionTimeoutBridge>
+    </AuthContext.Provider>
+  );
 };
+
+function SessionTimeoutBridge({ children, logout, isAuthenticated, authLoading }) {
+  const navigate = useNavigate();
+
+  const handleExpire = useCallback(() => {
+    logout();
+    navigate('/login', { replace: true });
+  }, [logout, navigate]);
+
+  const { warningVisible, secondsLeft, staySignedIn } = useSessionTimeout({
+    enabled: isAuthenticated && !authLoading,
+    onExpire: handleExpire,
+  });
+
+  const handleLogoutFromModal = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
+
+  return (
+    <>
+      {children}
+      <SessionTimeoutModal
+        open={warningVisible}
+        secondsLeft={secondsLeft}
+        onStaySignedIn={staySignedIn}
+        onLogout={handleLogoutFromModal}
+      />
+    </>
+  );
+}

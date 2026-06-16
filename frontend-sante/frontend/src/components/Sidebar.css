@@ -127,7 +127,6 @@
 .sidebar-nav-footer {
   flex-shrink: 0;
   padding: 0 0 1rem;
-  border-top: 1px solid var(--color-border, #e2e8f0);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, #ffffff 100%);
 }
 

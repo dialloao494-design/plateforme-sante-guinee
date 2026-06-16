@@ -1,0 +1,58 @@
+.session-timeout-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.session-timeout-card {
+  width: min(420px, 100%);
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
+}
+
+.session-timeout-card h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+  color: #0f172a;
+}
+
+.session-timeout-card p {
+  margin: 0 0 1.25rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.session-timeout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.session-timeout-primary,
+.session-timeout-secondary {
+  flex: 1 1 auto;
+  min-width: 140px;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.session-timeout-primary {
+  border: none;
+  background: #0d9488;
+  color: #fff;
+}
+
+.session-timeout-secondary {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
+}

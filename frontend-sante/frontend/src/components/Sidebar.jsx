@@ -1,29 +1,9 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { getNavItemsForRole, getNavSectionTitle } from '../utils/navConfig.js';
-import { isClinicPortalRole, portalLabel, portalSubtitle } from '../utils/portalAccess.js';
+import { portalLabel, portalSubtitle } from '../utils/portalAccess.js';
+import SidebarUserPanel from './SidebarUserPanel.jsx';
 import './Sidebar.css';
-
-function initialsFromUser(user) {
-  const email = String(user?.email || '').trim();
-  if (!email) return '?';
-  const local = email.split('@')[0] || email;
-  const parts = local.replace(/[^a-zA-Z0-9.]/g, ' ').split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  }
-  return local.slice(0, 2).toUpperCase() || '?';
-}
-
-const ROLE_LABELS = {
-  patient: 'Patient',
-  doctor: 'Médecin',
-  admin: 'Manager',
-  receptionist: 'Réception',
-  cashier: 'Réception',
-  lab_technician: 'Laboratoire',
-  pharmacist: 'Pharmacie',
-};
 
 function NavIcon({ name }) {
   const common = { className: 'sidebar-svg', viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': true };
@@ -141,20 +121,10 @@ function pathIsActive(pathname, itemPath) {
 
 const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { logout, user, authLoading } = useAuth();
-  const role = String(user?.role || user?.user_role || localStorage.getItem('user_role') || '').toLowerCase();
-  const clinicPortal = isClinicPortalRole(role);
+  const { user, authLoading } = useAuth();
+  const role = String(user?.role || user?.user_role || '').toLowerCase();
 
   const navItems = authLoading ? [] : getNavItemsForRole(role);
-
-  const handleLogout = () => {
-    logout();
-    if (typeof onClose === 'function') {
-      onClose();
-    }
-    navigate('/login');
-  };
 
   const closeIfMobile = () => {
     if (typeof onClose === 'function') {
@@ -213,22 +183,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             )}
           </div>
           <div className="sidebar-nav-footer">
-            {user && (
-              <div className="sidebar-user" aria-label="Compte connecté">
-                <div className="sidebar-user-avatar" aria-hidden>
-                  {initialsFromUser(user)}
-                </div>
-                <div className="sidebar-user-meta">
-                  <span className="sidebar-user-email">{user.email}</span>
-                  <span className="sidebar-user-role">
-                    {ROLE_LABELS[role] || role}
-                  </span>
-                </div>
-              </div>
-            )}
-            <button type="button" className="logout-btn" onClick={handleLogout}>
-              Déconnexion
-            </button>
+            <SidebarUserPanel role={role} onNavigate={closeIfMobile} />
           </div>
         </nav>
       </aside>

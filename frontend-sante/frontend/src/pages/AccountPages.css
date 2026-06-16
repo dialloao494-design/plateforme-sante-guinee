@@ -1,0 +1,102 @@
+.account-page {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.account-header h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+  color: #0f172a;
+}
+
+.account-header p {
+  margin: 0 0 1.25rem;
+  color: #64748b;
+}
+
+.account-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+}
+
+.account-dl {
+  margin: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.account-dl dt {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  margin-bottom: 0.2rem;
+}
+
+.account-dl dd {
+  margin: 0;
+  font-size: 1rem;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.account-links {
+  margin-top: 1rem;
+}
+
+.account-links a {
+  color: #0d9488;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.account-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.account-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.account-field span {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.account-field input {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 1rem;
+}
+
+.account-submit {
+  margin-top: 0.25rem;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 10px;
+  background: #0d9488;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.account-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.account-error {
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
