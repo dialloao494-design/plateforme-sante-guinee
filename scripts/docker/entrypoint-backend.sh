@@ -7,6 +7,8 @@ import os, sys, time
 from sqlalchemy import create_engine, text
 
 url = os.environ.get("DATABASE_URL", "")
+if url.startswith("postgres://"):
+    url = url.replace("postgres://", "postgresql://", 1)
 if not url.startswith("postgresql"):
     sys.exit(0)
 
@@ -68,6 +70,12 @@ if [ "${ENABLE_PILOT_SEED:-false}" = "true" ]; then
   echo "[entrypoint] Seeding pilot accounts..."
   python -c "from services.pilot_seed import seed_pilot_accounts; seed_pilot_accounts()" \
     || echo "[entrypoint] WARNING: pilot seed skipped (non-fatal)"
+fi
+
+if [ "${ENABLE_STAGING_E2E_SEED:-false}" = "true" ]; then
+  echo "[entrypoint] Seeding staging E2E multi-tenant accounts..."
+  python scripts/deploy/staging_e2e_seed.py \
+    || echo "[entrypoint] WARNING: staging E2E seed skipped (non-fatal)"
 fi
 
 exec "$@"
