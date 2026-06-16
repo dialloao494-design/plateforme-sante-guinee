@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["python312", "postgresql", "curl"]
+
+[phases.install]
+cmds = ["pip install -r requirements-prod.txt"]
+
+[start]
+cmd = "/bin/sh scripts/docker/entrypoint-backend.sh /bin/sh scripts/docker/start-uvicorn.sh"
