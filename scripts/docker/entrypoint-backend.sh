@@ -56,6 +56,8 @@ from database_migrations import (
 Base.metadata.create_all(bind=engine)
 ensure_alembic_version_column(engine)
 
+ensure_alembic_version_column(engine)
+
 try:
     from alembic.config import Config
     from alembic import command
@@ -64,7 +66,17 @@ try:
     command.upgrade(cfg, "head")
     print("[entrypoint] Alembic upgrade head OK.")
 except Exception as exc:
-    print(f"[entrypoint] Alembic warning (fallback migrations): {exc}")
+    print(f"[entrypoint] Alembic warning (retry after widen): {exc}")
+    ensure_alembic_version_column(engine)
+    try:
+        from alembic.config import Config
+        from alembic import command
+
+        cfg = Config("alembic.ini")
+        command.upgrade(cfg, "head")
+        print("[entrypoint] Alembic upgrade head OK (retry).")
+    except Exception as exc2:
+        print(f"[entrypoint] Alembic warning (fallback migrations): {exc2}")
 
 ensure_doctor_geolocation_columns(engine)
 ensure_patient_dossier_schema(engine)
