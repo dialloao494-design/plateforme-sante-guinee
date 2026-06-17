@@ -49,6 +49,7 @@ const RECEPTION_ROLES = ["receptionist", "cashier"];
 const BILLING_ROLES = ["receptionist", "cashier", "admin", "clinic_admin"];
 const NUTRITION_ROLES = ["nutritionist", "midwife", "doctor", "admin", "clinic_admin", "platform_admin"];
 const MIDWIFE_ROLES = ["midwife", "admin", "clinic_admin"];
+const IMMUNIZATION_ROLES = [
   "midwife",
   "receptionist",
   "doctor",
