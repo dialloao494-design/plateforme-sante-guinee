@@ -24,6 +24,13 @@ const clinicalApi = {
   immunizationStatus: (patientId) => httpClient.get(`/clinical/immunization/patients/${patientId}/status`),
   recordImmunization: (data) => httpClient.post('/clinical/immunization/records', data),
 
+  // Visit workflow queues
+  startVisit: (data) => httpClient.post('/clinical/workflow/visits', data),
+  workflowQueue: (department) => httpClient.get(`/clinical/workflow/queue/${department}`),
+  completeWorkflowStep: (workflowId, department) =>
+    httpClient.post(`/clinical/workflow/visits/${workflowId}/complete/${department}`),
+  getWorkflowVisit: (workflowId) => httpClient.get(`/clinical/workflow/visits/${workflowId}`),
+
   // Reception
   intakePatient: (data) => httpClient.post('/clinical/reception/patients', data),
   searchPatients: (q) => httpClient.get('/clinical/reception/patients', { params: { q } }),

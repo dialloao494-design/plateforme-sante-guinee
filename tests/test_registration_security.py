@@ -36,8 +36,10 @@ class TestPublicRegistrationEndpoint:
             },
         )
         assert response.status_code == 201
-        assert response.json()["role"] == "doctor"
-        assert response.json().get("doctor_id") is not None
+        body = response.json()
+        assert body["role"] == "doctor"
+        assert body.get("doctor_id") is not None
+        assert body.get("access_token")
 
     def test_register_weak_password_rejected(self, client):
         response = client.post(

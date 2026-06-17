@@ -14,6 +14,7 @@ from schemas.user import (
     UserLogin,
     UserResponse,
     Token,
+    RegisterResponse,
     ChangePasswordRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
@@ -42,19 +43,12 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 logger = logging.getLogger(__name__)
 
 
-@router.post("/register", response_model=UserResponse, status_code=201)
+@router.post("/register", response_model=RegisterResponse, status_code=201)
 @limiter.limit(register_rate_limit())
 def register(request: Request, user: PublicRegistration, db: Session = Depends(get_db)):
     """
     Public self-service registration (patient or doctor only).
-
-    Administrator accounts cannot be created through this endpoint.
-    Use ``POST /users/admins`` with an authenticated admin session, or ops bootstrap
-    (``ENABLE_ADMIN_BOOTSTRAP``) for the first admin on a new environment.
-
-    Raises:
-    - 409: Email already registered
-    - 422: Validation error (invalid email, password, role, or unknown fields)
+    Returns a session token so the user can log in immediately after signup.
     """
     try:
         provisioned = register_public_user(
@@ -80,11 +74,25 @@ def register(request: Request, user: PublicRegistration, db: Session = Depends(g
         ) from exc
 
     new_user = provisioned.user
-    return UserResponse(
+    db.refresh(new_user)
+
+    if not verify_password(user.password, new_user.hashed_password):
+        logger.error("Register integrity failure: password hash mismatch for user id=%s", new_user.id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur lors de la création du compte. Réessayez ou contactez le support.",
+        )
+
+    token_data = create_token_response(new_user)
+    return RegisterResponse(
         id=new_user.id,
         email=new_user.email,
         role=new_user.role,
         doctor_id=provisioned.doctor_id,
+        access_token=token_data["access_token"],
+        token_type=token_data["token_type"],
+        user_id=token_data["user_id"],
+        user_role=token_data["user_role"],
     )
 
 

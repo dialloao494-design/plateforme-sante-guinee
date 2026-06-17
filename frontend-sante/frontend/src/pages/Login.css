@@ -138,6 +138,12 @@
   font-size: 0.9rem;
 }
 
+.login-stat-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-muted, #64748b);
+}
+
 .login-forgot {
   margin: -0.25rem 0 0.5rem;
   text-align: right;

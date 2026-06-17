@@ -29,12 +29,15 @@ const ROLE_HOME = {
   lab_technician: '/clinical/lab',
   pharmacist: '/clinical/pharmacy',
   nutritionist: '/clinical/nutrition',
-  midwife: '/clinical/immunization',
+  midwife: '/clinical/midwife',
   patient: '/dashboard',
 };
 
-export function getRoleHomePath(role) {
+export function getRoleHomePath(role, clinicId) {
   const r = String(role || '').toLowerCase();
+  if (r === 'doctor' && !clinicId) {
+    return '/doctor/dashboard';
+  }
   return ROLE_HOME[r] || '/dashboard';
 }
 

@@ -44,6 +44,7 @@ class Patient(Base):
     documents = relationship("PatientDocument", back_populates="patient")
     admissions = relationship("Admission", back_populates="patient")
     clinical_visits = relationship("ClinicalVisit", back_populates="patient")
+    visit_workflows = relationship("PatientVisitWorkflow", back_populates="patient")
     invoices = relationship("Invoice", back_populates="patient")
     discharge_summaries = relationship("DischargeSummary", back_populates="patient")
     imaging_orders = relationship("ImagingOrder", back_populates="patient")

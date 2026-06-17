@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
+import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
 
 import './clinical.css';
 
@@ -408,7 +409,7 @@ export default function DoctorClinicalDashboard() {
 
       <ClinicalStatGrid stats={stats} />
 
-
+      <DepartmentQueuePanel department="doctor" title="File de visite — Médecin" />
 
       <nav className="clinical-section-nav" aria-label="Sections médecin">
 

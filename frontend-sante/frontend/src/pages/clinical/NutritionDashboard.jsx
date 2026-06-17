@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
+import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
 import './clinical.css';
 
 const STATUS_LABELS = {
@@ -102,6 +103,12 @@ export default function NutritionDashboard() {
       {message && <p className="clinical-success">{message}</p>}
 
       <ClinicalStatGrid stats={stats} />
+
+      <DepartmentQueuePanel
+        department="nutrition"
+        title="File de visite — Nutrition"
+        onSelectPatient={(item) => setSelectedPatient({ id: item.patient_id, first_name: item.patient_name?.split(' ')[0], last_name: item.patient_name?.split(' ').slice(1).join(' ') })}
+      />
 
       <section className="clinical-card">
         <h2>Rechercher un patient</h2>

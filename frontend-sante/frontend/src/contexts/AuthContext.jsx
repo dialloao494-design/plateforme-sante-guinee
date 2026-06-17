@@ -157,7 +157,7 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     try {
       const normalizedUser = await applyLoginToken(loginPayload);
-      return { success: true, role: normalizedUser?.role };
+      return { success: true, role: normalizedUser?.role, clinic_id: normalizedUser?.clinic_id };
     } catch (err) {
       clearClientAuth();
       setUser(null);
@@ -180,7 +180,7 @@ export const AuthProvider = ({ children }) => {
       devLog('[AUTH] Login successful, storing token');
       const normalizedUser = await applyLoginToken(loginPayload);
       devLog('[AUTH] Login completed with role:', normalizedUser?.role, 'doctor_id:', normalizedUser?.doctor_id);
-      return { success: true, role: normalizedUser?.role };
+      return { success: true, role: normalizedUser?.role, clinic_id: normalizedUser?.clinic_id };
     } catch (err) {
       if (import.meta.env.DEV) {
         console.error('[AUTH] Login failed:', err?.response?.status, err?.message);

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
+import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
 import './clinical.css';
 
 const METHOD_LABELS = {
@@ -44,6 +45,7 @@ export default function ReceptionDashboard() {
   });
   const [patientSearch, setPatientSearch] = useState('');
   const [patientMatches, setPatientMatches] = useState([]);
+  const [visitForm, setVisitForm] = useState({ patient_id: '', workflow_type: '' });
 
   const load = useCallback(async () => {
     try {
@@ -81,6 +83,7 @@ export default function ReceptionDashboard() {
       });
       setMessage(`Patient enregistré : ${data.first_name} ${data.last_name} (#${data.id})`);
       setApptForm((prev) => ({ ...prev, patient_id: String(data.id) }));
+      setVisitForm((prev) => ({ ...prev, patient_id: String(data.id) }));
       setPatientForm({
         first_name: '',
         last_name: '',
@@ -152,6 +155,29 @@ export default function ReceptionDashboard() {
   const waitingCount = queue.filter((i) => i.clinical_status === 'waiting' || i.clinical_status === 'checked_in').length;
   const scheduledCount = queue.filter((i) => i.clinical_status === 'scheduled').length;
 
+  const startVisit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setMessage('');
+    if (!visitForm.patient_id) {
+      setError('Sélectionnez ou enregistrez un patient avant de démarrer la visite.');
+      return;
+    }
+    try {
+      const payload = {
+        patient_id: Number(visitForm.patient_id),
+        workflow_type: visitForm.workflow_type || undefined,
+      };
+      const { data } = await clinicalApi.startVisit(payload);
+      setMessage(
+        `Visite démarrée pour le patient #${data.patient_id} — parcours ${data.workflow_type} (étape : ${data.current_department})`
+      );
+      load();
+    } catch (err) {
+      setError(err?.response?.data?.detail || 'Impossible de démarrer la visite');
+    }
+  };
+
   const stats = [
     { label: "File d'attente", value: waitingCount, hint: `${scheduledCount} à enregistrer`, variant: 'accent' },
     { label: 'Factures en attente', value: pendingCharges.length, hint: 'À encaisser', variant: 'warning' },
@@ -175,7 +201,10 @@ export default function ReceptionDashboard() {
 
       <ClinicalStatGrid stats={stats} />
 
+      <DepartmentQueuePanel department="reception" title="File de visite — Réception" />
+
       <nav className="clinical-section-nav" aria-label="Sections réception">
+        <a href="#reception-visit">Démarrer visite</a>
         <a href="#reception-patient">Enregistrement</a>
         <a href="#reception-rdv">Rendez-vous</a>
         <a href="#reception-caisse">Encaissement</a>
@@ -184,6 +213,38 @@ export default function ReceptionDashboard() {
       </nav>
 
       <div className="clinical-grid">
+        <section id="reception-visit" className="clinical-card">
+          <h2>Démarrer une visite</h2>
+          <p className="clinical-stat-hint">
+            Enfant (&lt;18 ans) : Réception → Nutrition → PEV → Médecin. Adulte : choisissez le parcours.
+          </p>
+          <form onSubmit={startVisit}>
+            <div className="clinical-field">
+              <label>ID patient</label>
+              <input
+                value={visitForm.patient_id}
+                onChange={(e) => setVisitForm({ ...visitForm, patient_id: e.target.value })}
+                placeholder="ID ou via enregistrement ci-dessous"
+                required
+              />
+            </div>
+            <div className="clinical-field">
+              <label>Parcours (laisser vide = auto selon l&apos;âge)</label>
+              <select
+                value={visitForm.workflow_type}
+                onChange={(e) => setVisitForm({ ...visitForm, workflow_type: e.target.value })}
+              >
+                <option value="">Auto (enfant si &lt;18 ans)</option>
+                <option value="child">Enfant — Nutrition + PEV + Médecin</option>
+                <option value="adult_doctor">Adulte — Médecin</option>
+                <option value="adult_lab">Adulte — Laboratoire</option>
+                <option value="adult_midwife">Adulte — Sage-femme</option>
+              </select>
+            </div>
+            <button type="submit" className="clinical-btn">Démarrer la visite</button>
+          </form>
+        </section>
+
         <section id="reception-patient" className="clinical-card">
           <h2>Enregistrement patient</h2>
           <form onSubmit={registerPatient}>

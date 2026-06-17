@@ -39,6 +39,7 @@ import ForgotPassword from "../pages/ForgotPassword.jsx";
 import ResetPassword from "../pages/ResetPassword.jsx";
 import NutritionDashboard from "../pages/clinical/NutritionDashboard.jsx";
 import ImmunizationDashboard from "../pages/clinical/ImmunizationDashboard.jsx";
+import MidwifeDashboard from "../pages/clinical/MidwifeDashboard.jsx";
 import ProtectedRoute from "./ProtectedRoute";
 
 const STAFF_ADMIN_ROLES = ["admin", "clinic_admin", "platform_admin"];
@@ -47,7 +48,7 @@ const CLINIC_ADMIN_ROLES = ["admin", "clinic_admin"];
 const RECEPTION_ROLES = ["receptionist", "cashier"];
 const BILLING_ROLES = ["receptionist", "cashier", "admin", "clinic_admin"];
 const NUTRITION_ROLES = ["nutritionist", "midwife", "doctor", "admin", "clinic_admin", "platform_admin"];
-const IMMUNIZATION_ROLES = [
+const MIDWIFE_ROLES = ["midwife", "admin", "clinic_admin"];
   "midwife",
   "receptionist",
   "doctor",
@@ -333,6 +334,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={IMMUNIZATION_ROLES}>
             <ImmunizationDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/clinical/midwife"
+        element={
+          <ProtectedRoute allowedRoles={["midwife", "admin", "clinic_admin"]}>
+            <MidwifeDashboard />
           </ProtectedRoute>
         }
       />

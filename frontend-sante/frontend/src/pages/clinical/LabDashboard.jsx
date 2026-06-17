@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
+import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
 import './clinical.css';
 
 const VALIDATED_KEY = 'clinical_lab_validated_results';
@@ -103,6 +104,8 @@ export default function LabDashboard() {
       {message && <p className="clinical-success">{message}</p>}
 
       <ClinicalStatGrid stats={stats} />
+
+      <DepartmentQueuePanel department="lab" title="File de visite — Laboratoire" />
 
       <div className="clinical-tabs" role="tablist">
         <button type="button" className={`clinical-tab${tab === 'pending' ? ' active' : ''}`} onClick={() => setTab('pending')}>

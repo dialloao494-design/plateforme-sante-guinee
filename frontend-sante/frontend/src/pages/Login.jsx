@@ -25,7 +25,7 @@ const Login = () => {
 
   useEffect(() => {
     if (!authLoading && user) {
-      navigate(getRoleHomePath(user.role), { replace: true });
+      navigate(getRoleHomePath(user.role, user.clinic_id), { replace: true });
       return;
     }
     if (authLoading || user) {
@@ -61,7 +61,7 @@ const Login = () => {
     try {
       const result = await login(email, password);
       if (result.success) {
-        navigate(getRoleHomePath(result.role), { replace: true });
+        navigate(getRoleHomePath(result.role, result.clinic_id), { replace: true });
       } else {
         setSubmitError(result.error || 'Une erreur est survenue, veuillez réessayer');
       }

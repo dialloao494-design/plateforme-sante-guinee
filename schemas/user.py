@@ -148,6 +148,21 @@ class Token(BaseModel):
     email: str
 
 
+class RegisterResponse(BaseModel):
+    """Registration success — includes session token for immediate login."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    role: str
+    doctor_id: Optional[int] = None
+    access_token: str
+    token_type: str
+    user_id: int
+    user_role: str
+
+
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

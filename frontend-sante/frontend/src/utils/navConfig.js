@@ -68,8 +68,9 @@ const ROLE_NAV = {
   pharmacist: [{ path: '/clinical/pharmacy', label: 'Pharmacie', icon: 'steth' }],
   nutritionist: [{ path: '/clinical/nutrition', label: 'Nutrition', icon: 'board' }],
   midwife: [
-    { path: '/clinical/nutrition', label: 'Nutrition', icon: 'board' },
+    { path: '/clinical/midwife', label: 'Sage-femme', icon: 'board' },
     { path: '/clinical/immunization', label: 'PEV / Vaccination', icon: 'calendar' },
+    { path: '/clinical/nutrition', label: 'Nutrition', icon: 'board' },
   ],
 };
 
