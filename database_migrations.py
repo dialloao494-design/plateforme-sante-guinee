@@ -713,6 +713,29 @@ def ensure_reminders_schema(engine: Engine) -> None:
             logger.warning("reminder_events migration failed: %s", exc)
 
 
+def ensure_user_roles_check_constraint(engine: Engine) -> None:
+    """Ensure users.role allows nutritionist and midwife (idempotent on Postgres)."""
+    insp = inspect(engine)
+    if "users" not in insp.get_table_names():
+        return
+    dialect = engine.dialect.name
+    roles = (
+        "'patient', 'doctor', 'platform_owner', 'platform_admin', 'clinic_admin', 'admin', "
+        "'receptionist', 'cashier', 'lab_technician', 'pharmacist', 'nutritionist', 'midwife'"
+    )
+    check_sql = f"role IN ({roles})"
+    try:
+        with engine.begin() as conn:
+            if dialect == "postgresql":
+                conn.execute(text("ALTER TABLE users DROP CONSTRAINT IF EXISTS ck_users_role_allowed"))
+                conn.execute(
+                    text(f"ALTER TABLE users ADD CONSTRAINT ck_users_role_allowed CHECK ({check_sql})")
+                )
+        logger.info("Ensured users role check constraint includes nutritionist/midwife")
+    except Exception as exc:
+        logger.warning("users role constraint migration skipped: %s", exc)
+
+
 def ensure_alembic_version_column(engine: Engine) -> None:
     """Widen alembic_version.version_num — Railway Postgres defaults to VARCHAR(32)."""
     insp = inspect(engine)

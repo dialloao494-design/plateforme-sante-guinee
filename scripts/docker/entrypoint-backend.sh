@@ -54,6 +54,7 @@ from database_migrations import (
     ensure_alembic_version_column,
     ensure_doctor_geolocation_columns,
     ensure_patient_dossier_schema,
+    ensure_user_roles_check_constraint,
 )
 
 Base.metadata.create_all(bind=engine)
@@ -81,6 +82,7 @@ except Exception as exc:
 
 ensure_doctor_geolocation_columns(engine)
 ensure_patient_dossier_schema(engine)
+ensure_user_roles_check_constraint(engine)
 print("[entrypoint] Schema ready.")
 PY
 

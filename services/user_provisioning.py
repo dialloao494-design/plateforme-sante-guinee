@@ -314,7 +314,12 @@ def create_staff_user(
         )
     except IntegrityError as exc:
         db.rollback()
-        if "email" in str(exc).lower() or "unique" in str(exc).lower():
+        err = str(exc).lower()
+        if "ck_users_role_allowed" in err or "check constraint" in err:
+            raise UserProvisioningError(
+                f"Role '{role}' is not allowed by the database schema. Run migrations on the server."
+            ) from exc
+        if "email" in err or "unique" in err:
             raise EmailAlreadyRegisteredError("Email already registered") from exc
         raise UserProvisioningError("Error creating staff user.") from exc
 
