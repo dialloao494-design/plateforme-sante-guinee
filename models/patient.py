@@ -48,3 +48,5 @@ class Patient(Base):
     discharge_summaries = relationship("DischargeSummary", back_populates="patient")
     imaging_orders = relationship("ImagingOrder", back_populates="patient")
     appointment_reminders = relationship("AppointmentReminder", back_populates="patient")
+    nutrition_assessments = relationship("NutritionAssessment", back_populates="patient")
+    immunization_records = relationship("ImmunizationRecord", back_populates="patient")

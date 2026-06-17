@@ -33,6 +33,12 @@ __all__ = [
     "create_admin_user",
     "create_staff_user",
     "bootstrap_initial_admin",
+    "bootstrap_platform_owner",
+    "create_clinic_admin_user",
+    "create_platform_owner_user",
+    "platform_owner_exists",
+    "setup_first_platform_owner",
+    "PlatformOwnerSetupClosedError",
     "provision_cli_user",
     "ProvisionedUser",
 ]
@@ -54,6 +60,13 @@ class UserProvisioningError(Exception):
 
 class EmailAlreadyRegisteredError(UserProvisioningError):
     pass
+
+
+class PlatformOwnerSetupClosedError(UserProvisioningError):
+    """Raised when first-time owner setup is no longer available."""
+
+
+PLATFORM_OWNER_CHANNELS = frozenset({"platform_owner_bootstrap", "platform_owner_setup"})
 
 
 def _email_taken(db: Session, email: str) -> bool:
@@ -131,7 +144,12 @@ def _persist_user(
     normalized_email = email.lower().strip()
     normalized_role = assert_known_role(role)
 
-    if is_privileged_role(normalized_role) and channel not in {
+    if normalized_role == "platform_owner":
+        if channel not in PLATFORM_OWNER_CHANNELS:
+            raise PrivilegedRoleAssignmentError(
+                "Platform owner accounts can only be created via secure bootstrap or setup."
+            )
+    elif is_privileged_role(normalized_role) and channel not in {
         "admin_api",
         "admin_bootstrap",
         "admin_cli",
@@ -220,7 +238,7 @@ def create_admin_user(
     from core.provisioning_context import AUTHORIZED_PRIVILEGED_CHANNELS
 
     validate_password(password)
-    admin_role = "platform_admin"
+    admin_role = "clinic_admin"
     if admin_role not in PRIVILEGED_ROLES:
         raise UserProvisioningError("Admin role is not configured.")
     if channel not in AUTHORIZED_PRIVILEGED_CHANNELS:
@@ -276,6 +294,10 @@ def create_staff_user(
     normalized = assert_known_role(role)
     if normalized not in CLINICAL_STAFF_ROLES | CLINIC_ADMIN_ROLES | {"platform_admin"}:
         raise UserProvisioningError(f"Role '{role}' is not a staff role.")
+    if normalized in {"platform_owner", "platform_admin"}:
+        raise PrivilegedRoleAssignmentError(
+            "Platform roles cannot be assigned via staff provisioning."
+        )
 
     try:
         validate_password(password)
@@ -320,6 +342,142 @@ def create_staff_user(
         actor_user_id,
     )
     return ProvisionedUser(user=user, doctor_id=doctor_id)
+
+
+def create_clinic_admin_user(
+    db: Session,
+    *,
+    email: str,
+    password: str,
+    clinic_id: int,
+    channel: str = "admin_api",
+    actor_user_id: int | None = None,
+) -> ProvisionedUser:
+    """Platform owner provisions a clinic administrator."""
+    validate_password(password)
+    try:
+        user = _persist_user(
+            db,
+            email=email,
+            password=password,
+            role="clinic_admin",
+            channel=channel,
+        )
+    except IntegrityError as exc:
+        db.rollback()
+        if "email" in str(exc).lower() or "unique" in str(exc).lower():
+            raise EmailAlreadyRegisteredError("Email already registered") from exc
+        raise UserProvisioningError("Error creating clinic administrator.") from exc
+
+    user.clinic_id = clinic_id
+    db.add(models.ClinicStaff(clinic_id=clinic_id, user_id=user.id, is_active=True))
+    db.commit()
+    db.refresh(user)
+    logger.info(
+        "Clinic admin provisioned id=%s clinic_id=%s actor=%s",
+        user.id,
+        clinic_id,
+        actor_user_id,
+    )
+    return ProvisionedUser(user=user, doctor_id=None)
+
+
+def create_platform_owner_user(
+    db: Session,
+    *,
+    email: str,
+    password: str,
+    channel: str = "platform_owner_bootstrap",
+) -> ProvisionedUser:
+    """Create the platform owner — bootstrap channel only."""
+    validate_password(password)
+    if db.query(User).filter(User.role == "platform_owner").first():
+        raise UserProvisioningError("Platform owner already exists.")
+    try:
+        user = _persist_user(
+            db,
+            email=email,
+            password=password,
+            role="platform_owner",
+            channel=channel,
+        )
+    except IntegrityError as exc:
+        db.rollback()
+        if "email" in str(exc).lower() or "unique" in str(exc).lower():
+            raise EmailAlreadyRegisteredError("Email already registered") from exc
+        raise UserProvisioningError("Error creating platform owner.") from exc
+    logger.info("Platform owner provisioned id=%s email=%s", user.id, user.email)
+    return ProvisionedUser(user=user, doctor_id=None)
+
+
+def platform_owner_exists(db: Session) -> bool:
+    return db.query(User).filter(User.role == "platform_owner").first() is not None
+
+
+def setup_first_platform_owner(
+    db: Session,
+    *,
+    email: str,
+    password: str,
+) -> ProvisionedUser:
+    """Create the first platform owner via the public setup page (one-time)."""
+    if platform_owner_exists(db):
+        raise PlatformOwnerSetupClosedError(
+            "Platform owner setup is disabled. Sign in with your owner account."
+        )
+    return create_platform_owner_user(
+        db,
+        email=email,
+        password=password,
+        channel="platform_owner_setup",
+    )
+
+
+def bootstrap_platform_owner(db: Session) -> User | None:
+    """One-time Platform Owner bootstrap from env vars (production only)."""
+    if os.getenv("ENABLE_PLATFORM_OWNER_BOOTSTRAP", "").strip().lower() not in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
+        return None
+
+    email = (os.getenv("PLATFORM_OWNER_EMAIL") or "").strip().lower()
+    password = os.getenv("PLATFORM_OWNER_PASSWORD") or ""
+    if not email or not password:
+        logger.warning(
+            "ENABLE_PLATFORM_OWNER_BOOTSTRAP set but PLATFORM_OWNER_EMAIL/PASSWORD missing."
+        )
+        return None
+
+    if db.query(User).filter(User.role == "platform_owner").first():
+        logger.info("Platform owner bootstrap skipped: owner already exists.")
+        return None
+
+    if _email_taken(db, email):
+        user = db.query(User).filter(func.lower(User.email) == email).first()
+        if user and user.role != "platform_owner":
+            logger.error(
+                "Platform owner bootstrap blocked: %s exists with role=%s",
+                email,
+                user.role,
+            )
+        return None
+
+    try:
+        provisioned = create_platform_owner_user(
+            db,
+            email=email,
+            password=password,
+            channel="platform_owner_bootstrap",
+        )
+    except UserProvisioningError as exc:
+        logger.error("Platform owner bootstrap failed: %s", exc)
+        return None
+
+    logger.info("Bootstrapped platform owner: %s", provisioned.user.email)
+    return provisioned.user
 
 
 def bootstrap_initial_admin(db: Session) -> User | None:

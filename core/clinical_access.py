@@ -36,6 +36,8 @@ CLINIC_OPS_ROLES = (
     "doctor",
     "lab_technician",
     "pharmacist",
+    "nutritionist",
+    "midwife",
 )
 
 __all__ = [

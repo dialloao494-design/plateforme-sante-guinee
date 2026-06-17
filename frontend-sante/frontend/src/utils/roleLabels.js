@@ -5,6 +5,7 @@ const ROLE_LABELS = {
   doctor: 'Médecin',
   admin: 'Admin clinique',
   clinic_admin: 'Admin clinique',
+  platform_owner: 'Propriétaire plateforme',
   platform_admin: 'Admin plateforme',
   receptionist: 'Réception',
   cashier: 'Caisse',

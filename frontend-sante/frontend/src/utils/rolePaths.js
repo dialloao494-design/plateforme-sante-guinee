@@ -3,12 +3,15 @@
 export const CLINIC_PORTAL_ROLES = [
   'admin',
   'clinic_admin',
+  'platform_owner',
   'platform_admin',
   'receptionist',
   'cashier',
   'doctor',
   'lab_technician',
   'pharmacist',
+  'nutritionist',
+  'midwife',
 ];
 
 export function isClinicStaffRole(role) {
@@ -18,12 +21,15 @@ export function isClinicStaffRole(role) {
 const ROLE_HOME = {
   admin: '/clinical',
   clinic_admin: '/clinical',
+  platform_owner: '/platform',
   platform_admin: '/users',
   receptionist: '/clinical/reception',
   cashier: '/clinical/reception',
   doctor: '/clinical/doctor',
   lab_technician: '/clinical/lab',
   pharmacist: '/clinical/pharmacy',
+  nutritionist: '/clinical/nutrition',
+  midwife: '/clinical/immunization',
   patient: '/dashboard',
 };
 

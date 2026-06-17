@@ -7,6 +7,22 @@ const clinicalApi = {
   createClinic: (data) => httpClient.post('/clinical/clinics', data),
   listClinics: () => httpClient.get('/clinical/clinics'),
   createStaff: (data) => httpClient.post('/clinical/staff', data),
+  listStaff: (clinicId, role) =>
+    httpClient.get('/clinical/staff', {
+      params: { clinic_id: clinicId, ...(role ? { role } : {}) },
+    }),
+  deactivateStaff: (userId, clinicId) =>
+    httpClient.patch(`/clinical/staff/${userId}/deactivate`, null, { params: { clinic_id: clinicId } }),
+
+  // Nutrition
+  nutritionHistory: (patientId) => httpClient.get(`/clinical/nutrition/patients/${patientId}/history`),
+  recordNutritionAssessment: (data) => httpClient.post('/clinical/nutrition/assessments', data),
+
+  // Immunization (PEV)
+  immunizationSchedule: () => httpClient.get('/clinical/immunization/schedule'),
+  immunizationHistory: (patientId) => httpClient.get(`/clinical/immunization/patients/${patientId}/history`),
+  immunizationStatus: (patientId) => httpClient.get(`/clinical/immunization/patients/${patientId}/status`),
+  recordImmunization: (data) => httpClient.post('/clinical/immunization/records', data),
 
   // Reception
   intakePatient: (data) => httpClient.post('/clinical/reception/patients', data),

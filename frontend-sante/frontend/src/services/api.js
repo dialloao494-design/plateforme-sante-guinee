@@ -38,6 +38,10 @@ export const authAPI = {
       current_password: currentPassword,
       new_password: newPassword,
     }),
+  forgotPassword: (email) =>
+    httpClient.post('/auth/forgot-password', { email: String(email || '').trim().toLowerCase() }),
+  resetPassword: (token, newPassword) =>
+    httpClient.post('/auth/reset-password', { token, new_password: newPassword }),
 };
 
 export const patientsAPI = {
@@ -126,6 +130,17 @@ export const messagesAPI = {
   sendToAppointment: (appointmentId, formData) => httpClient.post(`/messages/${appointmentId}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+};
+
+export const platformSetupAPI = {
+  getStatus: async () => {
+    const { data } = await httpClient.get('/platform/setup/status');
+    return data;
+  },
+  completeSetup: async (payload) => {
+    const { data } = await httpClient.post('/platform/setup', payload);
+    return data;
+  },
 };
 
 export default api;

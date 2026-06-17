@@ -31,8 +31,8 @@ from services.hospitalization_service import HospitalizationService
 
 router = APIRouter(prefix="/clinical/hospitalization", tags=["Hospitalization"])
 
-ADMISSION_ROLES = ("platform_admin", "clinic_admin", "admin", "doctor", "receptionist")
-BED_ADMIN_ROLES = ("platform_admin", "clinic_admin", "admin", "receptionist")
+ADMISSION_ROLES = ("platform_owner", "platform_admin", "clinic_admin", "admin", "doctor", "receptionist")
+BED_ADMIN_ROLES = ("platform_owner", "platform_admin", "clinic_admin", "admin", "receptionist")
 
 
 def _require_role(user: User, allowed: tuple[str, ...]) -> None:

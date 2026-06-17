@@ -3,7 +3,7 @@ from typing import List
 from sqlalchemy.orm import Session
 import schemas
 from database import get_db
-from security import get_current_admin
+from security import get_current_platform_owner
 from services.user_service import UserService
 from schemas.user import AdminUserCreate, UserResponse
 from services.user_provisioning import (
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
 @router.get("/", response_model=List[schemas.UserResponse])
 def list_users(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
+    current_user=Depends(get_current_platform_owner),
 ):
     """List all registered users (admin only)."""
     return UserService.list_users(db)
@@ -27,7 +27,7 @@ def list_users(
 def provision_administrator(
     body: AdminUserCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_admin),
+    current_user=Depends(get_current_platform_owner),
 ):
     """
     Create a new administrator account.

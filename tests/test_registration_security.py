@@ -172,7 +172,7 @@ class TestAdminProvisioningEndpoint:
             headers=admin_headers,
         )
         assert response.status_code == 201
-        assert response.json()["role"] == "platform_admin"
+        assert response.json()["role"] == "clinic_admin"
 
     def test_admin_create_weak_password_rejected(self, client, admin_headers):
         response = client.post(

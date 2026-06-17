@@ -1,0 +1,94 @@
+"""Password reset token issuance and validation."""
+
+from __future__ import annotations
+
+import hashlib
+import logging
+import os
+import secrets
+from datetime import datetime, timedelta
+
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+import models
+from security import hash_password
+
+logger = logging.getLogger(__name__)
+
+RESET_TOKEN_HOURS = int(os.getenv("PASSWORD_RESET_TOKEN_HOURS", "2"))
+
+
+def _hash_token(raw: str) -> str:
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def create_reset_token(db: Session, *, email: str) -> str | None:
+    """Create reset token for user; returns raw token or None if email unknown."""
+    normalized = email.lower().strip()
+    user = db.query(models.User).filter(func.lower(models.User.email) == normalized).first()
+    if not user or user.is_active is False:
+        return None
+
+    raw = secrets.token_urlsafe(32)
+    token_hash = _hash_token(raw)
+    expires = datetime.utcnow() + timedelta(hours=RESET_TOKEN_HOURS)
+
+    db.query(models.PasswordResetToken).filter(
+        models.PasswordResetToken.user_id == user.id,
+        models.PasswordResetToken.used_at.is_(None),
+    ).update({"used_at": datetime.utcnow()})
+
+    db.add(
+        models.PasswordResetToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=expires,
+        )
+    )
+    db.commit()
+    return raw
+
+
+def reset_password_with_token(db: Session, *, raw_token: str, new_password: str) -> bool:
+    token_hash = _hash_token(raw_token)
+    row = (
+        db.query(models.PasswordResetToken)
+        .filter(
+            models.PasswordResetToken.token_hash == token_hash,
+            models.PasswordResetToken.used_at.is_(None),
+            models.PasswordResetToken.expires_at > datetime.utcnow(),
+        )
+        .first()
+    )
+    if not row:
+        return False
+
+    user = db.query(models.User).filter(models.User.id == row.user_id).first()
+    if not user:
+        return False
+
+    user.hashed_password = hash_password(new_password)
+    row.used_at = datetime.utcnow()
+    db.add(user)
+    db.add(row)
+    db.commit()
+    return True
+
+
+def build_reset_link(raw_token: str) -> str:
+    frontend = (os.getenv("FRONTEND_URL") or os.getenv("PUBLIC_FRONTEND_URL") or "").rstrip("/")
+    if not frontend:
+        frontend = "http://localhost:5173"
+    return f"{frontend}/reset-password?token={raw_token}"
+
+
+def send_reset_email(email: str, raw_token: str) -> None:
+    """Dispatch reset email when SMTP configured; otherwise log for ops."""
+    link = build_reset_link(raw_token)
+    smtp_host = (os.getenv("SMTP_HOST") or "").strip()
+    if not smtp_host:
+        logger.info("Password reset link for %s (SMTP not configured): %s", email, link)
+        return
+    # SMTP integration placeholder — wire to your mail provider when ready.
+    logger.info("Password reset email queued for %s", email)

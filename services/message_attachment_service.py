@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 import models
 from models.attachment_access_log import AttachmentAccessLog
 from models.user import User
+from core.tenant import is_platform_admin
 from services.secure_attachment_storage import SecureAttachmentStorage
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ def _get_doctor_for_user(db: Session, user_id: int) -> Optional[models.Doctor]:
 
 
 def assert_appointment_access(db: Session, appointment: models.RendezVous, current_user: User) -> None:
-    if current_user.role == "platform_admin":
+    if is_platform_admin(current_user):
         return
 
     if current_user.role in ("clinic_admin", "admin"):

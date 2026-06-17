@@ -44,6 +44,7 @@ class StaffResponse(BaseModel):
     email: str
     role: str
     clinic_id: Optional[int]
+    is_active: bool = True
 
     class Config:
         from_attributes = True

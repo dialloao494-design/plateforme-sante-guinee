@@ -17,8 +17,13 @@ def user_clinic_id(user: User) -> int | None:
     return None
 
 
+def is_platform_owner(user: User) -> bool:
+    return user.role == "platform_owner"
+
+
 def is_platform_admin(user: User) -> bool:
-    return user.role == "platform_admin"
+    """Cross-clinic support scope (legacy platform_admin or owner)."""
+    return user.role in ("platform_owner", "platform_admin")
 
 
 def is_clinic_admin(user: User) -> bool:
@@ -30,7 +35,7 @@ def is_any_admin(user: User) -> bool:
 
 
 def resolve_actor_clinic_id(user: User) -> int | None:
-    """Clinic scope for staff; platform admins may have optional clinic_id."""
+    """Clinic scope for staff; platform roles may have optional clinic_id."""
     if is_platform_admin(user):
         return user.clinic_id
     return user_clinic_id(user)

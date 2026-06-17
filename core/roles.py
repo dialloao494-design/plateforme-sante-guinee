@@ -2,7 +2,7 @@
 Canonical role definitions for the modular clinical information system.
 
 Staff roles require authorized provisioning — never public registration.
-Every staff account must be assigned to a clinic (clinic_id), except platform_admin.
+Every staff account must be assigned to a clinic (clinic_id), except platform_owner and platform_admin.
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ from __future__ import annotations
 PUBLIC_REGISTRATION_ROLES: frozenset[str] = frozenset({"patient", "doctor"})
 STAFF_ROLES: frozenset[str] = frozenset(
     {
+        "platform_owner",
         "platform_admin",
         "clinic_admin",
         "admin",  # legacy alias → clinic_admin behaviour
@@ -17,18 +18,31 @@ STAFF_ROLES: frozenset[str] = frozenset(
         "cashier",
         "lab_technician",
         "pharmacist",
+        "nutritionist",
+        "midwife",
     }
 )
 PRIVILEGED_ROLES: frozenset[str] = STAFF_ROLES
+PLATFORM_OWNER_ROLES: frozenset[str] = frozenset({"platform_owner"})
 PLATFORM_ADMIN_ROLES: frozenset[str] = frozenset({"platform_admin"})
+PLATFORM_SCOPE_ROLES: frozenset[str] = frozenset({"platform_owner", "platform_admin"})
 CLINIC_ADMIN_ROLES: frozenset[str] = frozenset({"clinic_admin", "admin"})
 CLINICAL_STAFF_ROLES: frozenset[str] = frozenset(
-    {"receptionist", "cashier", "doctor", "lab_technician", "pharmacist"}
+    {
+        "receptionist",
+        "cashier",
+        "doctor",
+        "lab_technician",
+        "pharmacist",
+        "nutritionist",
+        "midwife",
+    }
 )
 CLINIC_PORTAL_ROLES: frozenset[str] = STAFF_ROLES | frozenset({"doctor"})
 ALL_ROLES: frozenset[str] = PUBLIC_REGISTRATION_ROLES | STAFF_ROLES
 
 ROLE_LABELS: dict[str, str] = {
+    "platform_owner": "PLATFORM_OWNER",
     "platform_admin": "PLATFORM_ADMIN",
     "clinic_admin": "CLINIC_ADMIN",
     "admin": "CLINIC_ADMIN",
@@ -37,6 +51,8 @@ ROLE_LABELS: dict[str, str] = {
     "doctor": "DOCTOR",
     "lab_technician": "LAB_TECHNICIAN",
     "pharmacist": "PHARMACIST",
+    "nutritionist": "NUTRITIONIST",
+    "midwife": "MIDWIFE",
     "patient": "PATIENT",
 }
 
@@ -94,11 +110,15 @@ def is_clinic_portal_role(role: str) -> bool:
 
 
 def requires_clinic_assignment(role: str) -> bool:
-    """Staff and clinic-affiliated doctors must have clinic_id (not platform_admin)."""
+    """Staff and clinic-affiliated doctors must have clinic_id (not platform-level roles)."""
     r = assert_known_role(role)
-    if r == "platform_admin":
+    if r in PLATFORM_SCOPE_ROLES:
         return False
     return r in STAFF_ROLES or r == "doctor"
+
+
+def is_platform_owner_role(role: str) -> bool:
+    return assert_known_role(role) in PLATFORM_OWNER_ROLES
 
 
 def effective_admin_role(role: str) -> str:

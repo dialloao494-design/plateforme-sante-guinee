@@ -33,5 +33,8 @@ from .discharge import DischargeSummary
 from .imaging import ImagingOrder, ImagingResult
 from .appointment_reminder import AppointmentReminder, ReminderEvent
 from .pharmacy_inventory import PharmacyInventoryItem
+from .nutrition import NutritionAssessment
+from .immunization import VaccineScheduleItem, ImmunizationRecord
+from .password_reset_token import PasswordResetToken
 
 from . import user_hooks as _user_hooks  # noqa: F401

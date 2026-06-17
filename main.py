@@ -10,7 +10,8 @@ from database import SessionLocal
 import models
 from routers import patient, patient_record, rendezvous, doctor, auth, teleconsultation, notifications, messages
 from routers import users, appointments, doctor_dashboard, ws, clinical, medical_history, hospitalization
-from routers import unified_billing, discharge, radiology, reminders, clinical_reports
+from routers import unified_billing, discharge, radiology, reminders, clinical_reports, platform, platform_setup
+from routers import nutrition, immunization
 from security import hash_password, verify_password
 from services.user_provisioning import register_public_user
 import os
@@ -235,6 +236,8 @@ app.include_router(rendezvous.router)
 app.include_router(doctor.router)
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(platform_setup.router)
+app.include_router(platform.router)
 app.include_router(appointments.router)
 app.include_router(teleconsultation.router)
 app.include_router(notifications.router)
@@ -246,6 +249,8 @@ app.include_router(hospitalization.router)
 app.include_router(unified_billing.router)
 app.include_router(discharge.router)
 app.include_router(radiology.router)
+app.include_router(nutrition.router)
+app.include_router(immunization.router)
 app.include_router(reminders.router)
 app.include_router(clinical_reports.router)
 app.include_router(ws.router)
@@ -371,10 +376,11 @@ async def startup_event():
         ensure_patient_user_id_unique(engine)
 
         from database import SessionLocal
-        from services.user_provisioning import bootstrap_initial_admin
+        from services.user_provisioning import bootstrap_initial_admin, bootstrap_platform_owner
 
         bootstrap_db = SessionLocal()
         try:
+            bootstrap_platform_owner(bootstrap_db)
             bootstrap_initial_admin(bootstrap_db)
         finally:
             bootstrap_db.close()

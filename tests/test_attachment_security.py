@@ -23,7 +23,7 @@ from models.rendezvous import RendezVous
 from security import create_access_token
 from services.secure_attachment_storage import SecureAttachmentStorage
 from tests.clinic_fixtures import bind_clinic_booking
-from services.user_provisioning import create_admin_user, register_public_user
+from services.user_provisioning import register_public_user
 
 
 @pytest.fixture()
@@ -64,7 +64,7 @@ def _auth_headers(user) -> dict[str, str]:
 
 
 @pytest.fixture()
-def messaging_context(db_session, secure_attachment_root, client):
+def messaging_context(db_session, secure_attachment_root, client, admin_user):
     suffix = uuid.uuid4().hex[:8]
     patient_user = _ensure_user(db_session, f"patient.msg.{suffix}@test.gn", "patient")
     patient = db_session.query(Patient).filter(Patient.user_id == patient_user.id).first()
@@ -75,12 +75,7 @@ def messaging_context(db_session, secure_attachment_root, client):
     other_patient_user = _ensure_user(db_session, f"other.msg.{suffix}@test.gn", "patient")
     db_session.query(Patient).filter(Patient.user_id == other_patient_user.id).first()
 
-    admin_user = create_admin_user(
-        db_session,
-        email=f"admin.msg.{suffix}@test.gn",
-        password="AdminPass1",
-        channel="test_fixture",
-    ).user
+    admin_user = admin_user
 
     clinic = bind_clinic_booking(db_session, doctor=doctor, patient=patient)
 
@@ -222,7 +217,7 @@ class TestAttachmentDownloadAuth:
             .all()
         )
         assert len(logs) == 1
-        assert logs[0].user_role == "platform_admin"
+        assert logs[0].user_role == "platform_owner"
         assert logs[0].storage_kind == "secure"
 
 

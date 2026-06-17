@@ -11,7 +11,7 @@ os.environ["DATABASE_URL"] = "sqlite://"
 os.environ.pop("ENABLE_ADMIN_BOOTSTRAP", None)
 os.environ["ENABLE_PILOT_SEED"] = "false"
 os.environ["ENABLE_STARTUP_TEST_USER"] = "false"
-os.environ["ENABLE_STARTUP_SEED"] = "false"
+os.environ.setdefault("RATE_LIMIT_PLATFORM_SETUP", "10000/minute")
 
 import pytest
 from fastapi.testclient import TestClient
@@ -61,6 +61,9 @@ import models.discharge  # noqa: F401
 import models.imaging  # noqa: F401
 import models.appointment_reminder  # noqa: F401
 import models.pharmacy_inventory  # noqa: F401
+import models.nutrition  # noqa: F401
+import models.immunization  # noqa: F401
+import models.password_reset_token  # noqa: F401
 
 from main import app
 from security import hash_password
@@ -106,7 +109,7 @@ def admin_user(db_session: Session) -> User:
         user = User(
             email=email,
             hashed_password=hash_password("AdminPass1"),
-            role="platform_admin",
+            role="platform_owner",
         )
         db_session.add(user)
         db_session.commit()

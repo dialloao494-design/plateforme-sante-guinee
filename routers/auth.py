@@ -9,7 +9,15 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.user import User
 import models
-from schemas.user import PublicRegistration, UserLogin, UserResponse, Token, ChangePasswordRequest
+from schemas.user import (
+    PublicRegistration,
+    UserLogin,
+    UserResponse,
+    Token,
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+)
 from security import (
     get_current_user,
     hash_password,
@@ -22,6 +30,11 @@ from services.user_provisioning import (
     PrivilegedRoleAssignmentError,
     UserProvisioningError,
     register_public_user,
+)
+from services.password_reset_service import (
+    create_reset_token,
+    reset_password_with_token,
+    send_reset_email,
 )
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -100,6 +113,10 @@ def authenticate_user(email: str, password: str, db: Session, attempt_limit: int
 
     if not password_ok:
         logger.warning("Login failed for %s: invalid password", email)
+        return None
+
+    if hasattr(db_user, "is_active") and db_user.is_active is False:
+        logger.warning("Login failed for %s: account disabled", email)
         return None
 
     logger.info("Login success for %s", email)
@@ -239,7 +256,7 @@ def build_user_response(db: Session, user: User) -> dict:
         clinic = db.query(models.Clinic).filter(models.Clinic.id == clinic_id).first()
         if clinic:
             clinic_name = clinic.name
-    elif user.role == "platform_admin":
+    elif user.role in ("platform_admin", "platform_owner"):
         clinic_name = "Plateforme nationale"
 
     return {
@@ -288,3 +305,36 @@ def change_password(
     db.commit()
     logger.info("Password changed for user id=%s", current_user.id)
     return {"message": "Mot de passe mis à jour"}
+
+
+@router.post("/forgot-password")
+@limiter.limit(register_rate_limit())
+def forgot_password(
+    request: Request,
+    body: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Request a password reset link. Always returns success to avoid email enumeration.
+    """
+    raw = create_reset_token(db, email=body.email)
+    if raw:
+        send_reset_email(body.email, raw)
+    return {"message": "Si cet email est enregistré, un lien de réinitialisation a été envoyé."}
+
+
+@router.post("/reset-password")
+@limiter.limit(register_rate_limit())
+def reset_password(
+    request: Request,
+    body: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    """Set a new password using a valid reset token."""
+    ok = reset_password_with_token(db, raw_token=body.token, new_password=body.new_password)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Lien invalide ou expiré. Demandez une nouvelle réinitialisation.",
+        )
+    return {"message": "Mot de passe réinitialisé. Vous pouvez vous connecter."}

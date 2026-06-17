@@ -5,6 +5,7 @@ export const PATIENT_PORTAL_ROLES = ['patient'];
 export const CLINIC_PORTAL_ROLES = [
   'admin',
   'clinic_admin',
+  'platform_owner',
   'platform_admin',
   'receptionist',
   'cashier',
@@ -28,6 +29,7 @@ export function isPatientPortalRole(role) {
 const PORTAL_LABELS = {
   admin: 'Pilotage clinique',
   clinic_admin: 'Pilotage clinique',
+  platform_owner: 'Propriétaire plateforme',
   platform_admin: 'Admin plateforme',
   receptionist: 'Réception',
   cashier: 'Caisse',
@@ -45,6 +47,7 @@ export function portalLabel(role) {
 export function portalSubtitle(role) {
   const r = normalizeRole(role);
   if (r === 'patient') return 'Guinée · Soins & rendez-vous';
+  if (r === 'platform_owner') return 'Guinée · Propriété plateforme';
   if (r === 'platform_admin') return 'Guinée · Administration nationale';
   if (r === 'admin' || r === 'clinic_admin') return 'Guinée · Opérations';
   return 'Guinée · Parcours patient';

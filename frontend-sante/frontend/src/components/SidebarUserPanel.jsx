@@ -34,7 +34,7 @@ export default function SidebarUserPanel({ role, onNavigate }) {
     navigate('/login', { replace: true });
   };
 
-  const clinicLabel = user.clinic_name || (role === 'platform_admin' ? 'Plateforme nationale' : '—');
+  const clinicLabel = user.clinic_name || (role === 'platform_admin' || role === 'platform_owner' ? 'Plateforme nationale' : '—');
 
   return (
     <div className="sidebar-user-panel" aria-label="Compte utilisateur">

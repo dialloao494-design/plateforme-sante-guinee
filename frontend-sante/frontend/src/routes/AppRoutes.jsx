@@ -33,12 +33,29 @@ import AdminClinicalDashboard from "../pages/clinical/AdminClinicalDashboard.jsx
 import ClinicOperationsDashboard from "../pages/clinical/ClinicOperationsDashboard.jsx";
 import AccountProfile from "../pages/AccountProfile.jsx";
 import ChangePassword from "../pages/ChangePassword.jsx";
+import PlatformOwnerDashboard from "../pages/platform/PlatformOwnerDashboard.jsx";
+import PlatformOwnerSetup from "../pages/platform/PlatformOwnerSetup.jsx";
+import ForgotPassword from "../pages/ForgotPassword.jsx";
+import ResetPassword from "../pages/ResetPassword.jsx";
+import NutritionDashboard from "../pages/clinical/NutritionDashboard.jsx";
+import ImmunizationDashboard from "../pages/clinical/ImmunizationDashboard.jsx";
 import ProtectedRoute from "./ProtectedRoute";
 
 const STAFF_ADMIN_ROLES = ["admin", "clinic_admin", "platform_admin"];
+const PLATFORM_OWNER_ROLES = ["platform_owner"];
 const CLINIC_ADMIN_ROLES = ["admin", "clinic_admin"];
 const RECEPTION_ROLES = ["receptionist", "cashier"];
 const BILLING_ROLES = ["receptionist", "cashier", "admin", "clinic_admin"];
+const NUTRITION_ROLES = ["nutritionist", "midwife", "doctor", "admin", "clinic_admin", "platform_admin"];
+const IMMUNIZATION_ROLES = [
+  "midwife",
+  "receptionist",
+  "doctor",
+  "admin",
+  "clinic_admin",
+  "platform_admin",
+  "nutritionist",
+];
 const HOSPITALIZATION_ROLES = ["admin", "clinic_admin", "platform_admin", "receptionist", "doctor"];
 
 const AppRoutes = () => {
@@ -46,6 +63,9 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/platform/setup" element={<PlatformOwnerSetup />} />
       <Route path="/signup" element={<Signup />} />
 
       <Route
@@ -61,6 +81,31 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <ChangePassword />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/platform"
+        element={
+          <ProtectedRoute allowedRoles={PLATFORM_OWNER_ROLES}>
+            <PlatformOwnerDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/platform/settings"
+        element={
+          <ProtectedRoute allowedRoles={PLATFORM_OWNER_ROLES}>
+            <PlatformOwnerDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/platform/system"
+        element={
+          <ProtectedRoute allowedRoles={PLATFORM_OWNER_ROLES}>
+            <PlatformOwnerDashboard />
           </ProtectedRoute>
         }
       />
@@ -177,7 +222,7 @@ const AppRoutes = () => {
       <Route
         path="/clinical"
         element={
-          <ProtectedRoute allowedRoles={CLINIC_ADMIN_ROLES.concat(['platform_admin'])}>
+          <ProtectedRoute allowedRoles={CLINIC_ADMIN_ROLES.concat(['platform_admin', 'platform_owner'])}>
             <ClinicOperationsDashboard />
           </ProtectedRoute>
         }
@@ -185,7 +230,7 @@ const AppRoutes = () => {
       <Route
         path="/clinical/admin"
         element={
-          <ProtectedRoute allowedRoles={STAFF_ADMIN_ROLES}>
+          <ProtectedRoute allowedRoles={STAFF_ADMIN_ROLES.concat(PLATFORM_OWNER_ROLES)}>
             <AdminClinicalDashboard />
           </ProtectedRoute>
         }
@@ -275,6 +320,24 @@ const AppRoutes = () => {
       />
 
       <Route
+        path="/clinical/nutrition"
+        element={
+          <ProtectedRoute allowedRoles={NUTRITION_ROLES}>
+            <NutritionDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/clinical/immunization"
+        element={
+          <ProtectedRoute allowedRoles={IMMUNIZATION_ROLES}>
+            <ImmunizationDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/clinical/reports"
         element={
           <ProtectedRoute allowedRoles={["admin", "clinic_admin", "receptionist", "doctor", "cashier", "platform_admin"]}>
@@ -286,7 +349,7 @@ const AppRoutes = () => {
       <Route
         path="/users"
         element={
-          <ProtectedRoute allowedRoles={['admin', 'clinic_admin', 'platform_admin']}>
+          <ProtectedRoute allowedRoles={PLATFORM_OWNER_ROLES}>
             <Users />
           </ProtectedRoute>
         }

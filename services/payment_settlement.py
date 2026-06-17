@@ -31,7 +31,7 @@ class PaymentSettlementError(Exception):
 
 def _assert_actor_is_admin(db: Session, actor_user_id: int) -> User:
     user = db.query(User).filter(User.id == actor_user_id).first()
-    if not user or user.role not in ("platform_admin", "clinic_admin", "admin"):
+    if not user or user.role not in ("platform_owner", "platform_admin", "clinic_admin", "admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Administrator privileges required for manual payment settlement",

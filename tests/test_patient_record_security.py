@@ -16,7 +16,7 @@ from models.patient import Patient
 from models.rendezvous import RendezVous
 from security import create_access_token
 from tests.clinic_fixtures import bind_clinic_booking
-from services.user_provisioning import create_admin_user, register_public_user
+from services.user_provisioning import register_public_user
 
 
 def _auth_headers(user) -> dict[str, str]:
@@ -25,7 +25,7 @@ def _auth_headers(user) -> dict[str, str]:
 
 
 @pytest.fixture()
-def dossier_context(db_session):
+def dossier_context(db_session, admin_user):
     suffix = uuid.uuid4().hex[:8]
 
     patient_user = register_public_user(
@@ -37,12 +37,7 @@ def dossier_context(db_session):
     doctor_b_user = register_public_user(
         db_session, email=f"dr.b.dossier.{suffix}@test.gn", password="Secret12", role="doctor"
     ).user
-    admin = create_admin_user(
-        db_session,
-        email=f"admin.dossier.{suffix}@test.gn",
-        password="AdminPass1",
-        channel="test_fixture",
-    ).user
+    admin = admin_user
 
     patient = db_session.query(Patient).filter(Patient.user_id == patient_user.id).first()
     doctor_a = db_session.query(Doctor).filter(Doctor.user_id == doctor_a_user.id).first()

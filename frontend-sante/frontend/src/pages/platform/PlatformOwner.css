@@ -1,0 +1,53 @@
+.platform-owner-page {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.platform-owner-header h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.6rem;
+  color: #0f172a;
+}
+
+.platform-owner-header p {
+  margin: 0 0 1.5rem;
+  color: #64748b;
+}
+
+.platform-owner-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.platform-owner-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.25rem;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+}
+
+.platform-owner-card h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+  color: #0f172a;
+}
+
+.platform-owner-card p {
+  margin: 0 0 1rem;
+  color: #475569;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.platform-owner-link {
+  display: inline-block;
+  font-weight: 700;
+  color: #0d9488;
+  text-decoration: none;
+}
+
+.platform-owner-link:hover {
+  text-decoration: underline;
+}

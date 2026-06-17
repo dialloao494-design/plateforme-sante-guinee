@@ -1,10 +1,10 @@
-from sqlalchemy import CheckConstraint, Column, Integer, String
+from sqlalchemy import Boolean, CheckConstraint, Column, Integer, String
 from sqlalchemy.orm import relationship
 from database import Base
 
 _CLINICAL_ROLES = (
-    "'patient', 'doctor', 'platform_admin', 'clinic_admin', 'admin', "
-    "'receptionist', 'cashier', 'lab_technician', 'pharmacist'"
+    "'patient', 'doctor', 'platform_owner', 'platform_admin', 'clinic_admin', 'admin', "
+    "'receptionist', 'cashier', 'lab_technician', 'pharmacist', 'nutritionist', 'midwife'"
 )
 
 
@@ -22,6 +22,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False)
     clinic_id = Column(Integer, nullable=True, index=True)  # staff home clinic
+    is_active = Column(Boolean, nullable=False, default=True)
 
     patient_profile = relationship("Patient", back_populates="user", uselist=False)
     doctor_profile = relationship("Doctor", back_populates="user", uselist=False)

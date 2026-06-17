@@ -179,7 +179,7 @@ def create_clinic(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assert_role(current_user, ("platform_admin",))
+    assert_role(current_user, ("platform_owner",))
     clinic = models.Clinic(
         name=body.name.strip(),
         address=body.address,
@@ -199,7 +199,7 @@ def list_clinics(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role == "platform_admin":
+    if current_user.role in ("platform_owner", "platform_admin"):
         return db.query(models.Clinic).filter(models.Clinic.is_active.is_(True)).all()
     cid = user_clinic_id(current_user)
     if not cid:
@@ -214,7 +214,7 @@ def provision_staff(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assert_role(current_user, ("platform_admin", "clinic_admin", "admin"))
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
     assert_clinic_access(current_user, body.clinic_id)
     clinic = db.query(models.Clinic).filter(models.Clinic.id == body.clinic_id).first()
     if not clinic:
@@ -232,7 +232,63 @@ def provision_staff(
     except EmailAlreadyRegisteredError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     user = provisioned.user
-    return StaffResponse(id=user.id, email=user.email, role=user.role, clinic_id=user.clinic_id)
+    return StaffResponse(id=user.id, email=user.email, role=user.role, clinic_id=user.clinic_id, is_active=user.is_active)
+
+
+@router.get("/staff", response_model=List[StaffResponse])
+def list_staff(
+    clinic_id: int = Query(...),
+    role: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List clinic staff — supports multiple users per role."""
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    assert_clinic_access(current_user, clinic_id)
+    q = db.query(models.User).filter(models.User.clinic_id == clinic_id)
+    if role:
+        q = q.filter(models.User.role == role.strip().lower())
+    staff_roles = (
+        "receptionist",
+        "cashier",
+        "doctor",
+        "lab_technician",
+        "pharmacist",
+        "nutritionist",
+        "midwife",
+        "clinic_admin",
+        "admin",
+    )
+    rows = q.filter(models.User.role.in_(staff_roles)).order_by(models.User.role, models.User.email).all()
+    return [
+        StaffResponse(id=u.id, email=u.email, role=u.role, clinic_id=u.clinic_id, is_active=u.is_active)
+        for u in rows
+    ]
+
+
+@router.patch("/staff/{user_id}/deactivate", response_model=StaffResponse)
+def deactivate_staff(
+    user_id: int,
+    clinic_id: int = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    assert_clinic_access(current_user, clinic_id)
+    user = (
+        db.query(models.User)
+        .filter(models.User.id == user_id, models.User.clinic_id == clinic_id)
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
+    user.is_active = False
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return StaffResponse(id=user.id, email=user.email, role=user.role, clinic_id=user.clinic_id, is_active=user.is_active)
 
 
 # --- Clinic operations (unified dashboard) ---
@@ -908,7 +964,7 @@ def assign_doctor_to_clinic(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assert_role(current_user, ("platform_admin", "clinic_admin", "admin"))
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
     doctor = db.query(models.Doctor).filter(models.Doctor.id == doctor_id).first()
     clinic = db.query(models.Clinic).filter(models.Clinic.id == clinic_id).first()
     if not doctor or not clinic:

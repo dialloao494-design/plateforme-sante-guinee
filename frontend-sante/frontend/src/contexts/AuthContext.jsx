@@ -129,14 +129,8 @@ export const AuthProvider = ({ children }) => {
       .finally(() => setAuthLoading(false));
   }, [normalizeAndStoreUser]);
 
-  const login = async (email, password) => {
-    setActionLoading(true);
-    setError(null);
-
-    try {
-      const trimmedEmail = String(email || '').trim();
-      devLog('[AUTH] Logging in:', trimmedEmail);
-      const loginPayload = await authAPI.login(trimmedEmail, password);
+  const applyLoginToken = useCallback(
+    async (loginPayload) => {
       const access_token =
         loginPayload?.access_token ||
         loginPayload?.accessToken ||
@@ -147,13 +141,44 @@ export const AuthProvider = ({ children }) => {
       }
 
       clearPasswordResetFlags();
-      devLog('[AUTH] Login successful, storing token');
       localStorage.setItem('token', access_token);
       localStorage.setItem('access_token', access_token);
 
       const meResponse = await authAPI.me();
       const normalizedUser = normalizeAndStoreUser(meResponse);
       setUser(normalizedUser);
+      return normalizedUser;
+    },
+    [normalizeAndStoreUser],
+  );
+
+  const loginWithToken = async (loginPayload) => {
+    setActionLoading(true);
+    setError(null);
+    try {
+      const normalizedUser = await applyLoginToken(loginPayload);
+      return { success: true, role: normalizedUser?.role };
+    } catch (err) {
+      clearClientAuth();
+      setUser(null);
+      const message = toUserFriendlyLoginMessage(err);
+      setError(message);
+      return { success: false, error: message };
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const login = async (email, password) => {
+    setActionLoading(true);
+    setError(null);
+
+    try {
+      const trimmedEmail = String(email || '').trim();
+      devLog('[AUTH] Logging in:', trimmedEmail);
+      const loginPayload = await authAPI.login(trimmedEmail, password);
+      devLog('[AUTH] Login successful, storing token');
+      const normalizedUser = await applyLoginToken(loginPayload);
       devLog('[AUTH] Login completed with role:', normalizedUser?.role, 'doctor_id:', normalizedUser?.doctor_id);
       return { success: true, role: normalizedUser?.role };
     } catch (err) {
@@ -193,6 +218,7 @@ export const AuthProvider = ({ children }) => {
     authLoading,
     error,
     login,
+    loginWithToken,
     logout,
     refreshUser,
     changePassword,

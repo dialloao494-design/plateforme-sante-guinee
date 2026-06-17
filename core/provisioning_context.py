@@ -14,10 +14,12 @@ from typing import Iterator
 # Channels allowed to persist role=admin via the ORM layer.
 AUTHORIZED_PRIVILEGED_CHANNELS: frozenset[str] = frozenset(
     {
-        "admin_api",  # POST /users/admins (authenticated admin)
-        "admin_bootstrap",  # startup bootstrap_initial_admin
-        "admin_cli",  # create_test_user.py with ALLOW_ADMIN_CLI
-        "test_fixture",  # pytest fixtures only
+        "admin_api",
+        "admin_bootstrap",
+        "admin_cli",
+        "test_fixture",
+        "platform_owner_bootstrap",
+        "platform_owner_setup",
     }
 )
 

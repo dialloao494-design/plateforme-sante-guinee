@@ -81,6 +81,64 @@ class ChangePasswordRequest(BaseModel):
         return v
 
 
+class ForgotPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        email = v.strip().lower()
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            raise ValueError("Invalid email address")
+        return email
+
+
+class ResetPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v: str) -> str:
+        validate_password(v)
+        return v
+
+
+class PlatformOwnerSetupRequest(BaseModel):
+    """First-time platform owner setup (only when no owner exists)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: str
+    password: str
+    password_confirm: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        email = v.strip().lower()
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            raise ValueError("Invalid email address")
+        return email
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_field(cls, v: str) -> str:
+        validate_password(v)
+        return v
+
+    @field_validator("password_confirm")
+    @classmethod
+    def passwords_match(cls, v: str, info) -> str:
+        if "password" in info.data and v != info.data["password"]:
+            raise ValueError("Passwords do not match")
+        return v
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str

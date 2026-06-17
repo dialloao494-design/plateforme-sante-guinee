@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { getRoleHomePath } from '../utils/rolePaths.js';
+import { platformSetupAPI } from '../services/api.js';
 import './Login.css';
 
 const PILOT_DEMO_ACCOUNTS = import.meta.env.DEV
@@ -25,7 +26,25 @@ const Login = () => {
   useEffect(() => {
     if (!authLoading && user) {
       navigate(getRoleHomePath(user.role), { replace: true });
+      return;
     }
+    if (authLoading || user) {
+      return;
+    }
+
+    let cancelled = false;
+    platformSetupAPI
+      .getStatus()
+      .then((data) => {
+        if (!cancelled && data?.setup_required) {
+          navigate('/platform/setup', { replace: true });
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
   }, [authLoading, user, navigate]);
 
   const fillDemoAccount = (account) => {
@@ -100,6 +119,9 @@ const Login = () => {
               autoComplete="current-password"
             />
           </div>
+          <p className="login-forgot">
+            <Link to="/forgot-password">Mot de passe oublié ?</Link>
+          </p>
 
           {submitError && (
             <p className="login-error" role="alert">

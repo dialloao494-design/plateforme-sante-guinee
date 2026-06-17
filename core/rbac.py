@@ -33,6 +33,13 @@ class Permission(str, Enum):
     ADMISSION_BEDS = "admission.beds"
     PATIENT_JOURNEY = "patient.journey"
     CLINIC_OPERATIONS = "clinic.operations"
+    PLATFORM_SYSTEM = "platform.system"
+    PLATFORM_SETTINGS = "platform.settings"
+    PLATFORM_SUBSCRIPTIONS = "platform.subscriptions"
+    NUTRITION_ASSESS = "nutrition.assess"
+    NUTRITION_READ = "nutrition.read"
+    IMMUNIZATION_ADMINISTER = "immunization.administer"
+    IMMUNIZATION_READ = "immunization.read"
 
 
 ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
@@ -47,6 +54,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.CLINIC_OPERATIONS,
             Permission.ADMISSION_MANAGE,
             Permission.ADMISSION_BEDS,
+            Permission.IMMUNIZATION_READ,
         }
     ),
     "cashier": frozenset(
@@ -68,6 +76,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.PATIENT_JOURNEY,
             Permission.CLINIC_OPERATIONS,
             Permission.ADMISSION_MANAGE,
+            Permission.IMMUNIZATION_READ,
+            Permission.NUTRITION_READ,
         }
     ),
     "lab_technician": frozenset(
@@ -84,6 +94,25 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.CLINIC_OPERATIONS,
         }
     ),
+    "nutritionist": frozenset(
+        {
+            Permission.NUTRITION_ASSESS,
+            Permission.NUTRITION_READ,
+            Permission.PATIENT_JOURNEY,
+            Permission.CLINIC_OPERATIONS,
+        }
+    ),
+    "midwife": frozenset(
+        {
+            Permission.NUTRITION_ASSESS,
+            Permission.NUTRITION_READ,
+            Permission.IMMUNIZATION_ADMINISTER,
+            Permission.IMMUNIZATION_READ,
+            Permission.PATIENT_JOURNEY,
+            Permission.CLINIC_OPERATIONS,
+            Permission.RECEPTION_INTAKE,
+        }
+    ),
     "admin": frozenset(
         {
             Permission.ADMIN_CLINIC,
@@ -94,6 +123,10 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.CLINIC_OPERATIONS,
             Permission.ADMISSION_MANAGE,
             Permission.ADMISSION_BEDS,
+            Permission.NUTRITION_ASSESS,
+            Permission.NUTRITION_READ,
+            Permission.IMMUNIZATION_ADMINISTER,
+            Permission.IMMUNIZATION_READ,
         }
     ),
     "clinic_admin": frozenset(
@@ -106,6 +139,35 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.CLINIC_OPERATIONS,
             Permission.ADMISSION_MANAGE,
             Permission.ADMISSION_BEDS,
+            Permission.NUTRITION_ASSESS,
+            Permission.NUTRITION_READ,
+            Permission.IMMUNIZATION_ADMINISTER,
+            Permission.IMMUNIZATION_READ,
+        }
+    ),
+    "platform_owner": frozenset(
+        {
+            Permission.ADMIN_CLINIC,
+            Permission.ADMIN_STAFF,
+            Permission.ADMIN_AUDIT,
+            Permission.ADMIN_BACKUP,
+            Permission.BILLING_REVENUE,
+            Permission.CLINIC_OPERATIONS,
+            Permission.ADMISSION_MANAGE,
+            Permission.ADMISSION_BEDS,
+            Permission.PLATFORM_SYSTEM,
+            Permission.PLATFORM_SETTINGS,
+            Permission.PLATFORM_SUBSCRIPTIONS,
+            Permission.RECEPTION_QUEUE,
+            Permission.RECEPTION_INTAKE,
+            Permission.RECEPTION_APPOINTMENTS,
+            Permission.DOCTOR_QUEUE,
+            Permission.DOCTOR_CONSULTATION,
+            Permission.LAB_ORDERS,
+            Permission.PHARMACY_ORDERS,
+            Permission.BILLING_READ,
+            Permission.BILLING_PAY,
+            Permission.PATIENT_JOURNEY,
         }
     ),
     "platform_admin": frozenset(
@@ -127,10 +189,16 @@ CASHIER_ROLES = ("cashier",)
 DOCTOR_ROLES = ("doctor",)
 LAB_ROLES = ("lab_technician",)
 PHARMACY_ROLES = ("pharmacist",)
+NUTRITION_ROLES = ("nutritionist",)
+MIDWIFE_ROLES = ("midwife",)
 CLINIC_ADMIN_ROLES = ("clinic_admin", "admin")
+PLATFORM_OWNER_ROLES = ("platform_owner",)
 PLATFORM_ADMIN_ROLES = ("platform_admin",)
+PLATFORM_SCOPE_ROLES = ("platform_owner", "platform_admin")
+CLINIC_ADMIN_ROLES = ("clinic_admin", "admin")
 ADMIN_ROLES = CLINIC_ADMIN_ROLES
 CLINIC_OPS_ROLES = (
+    "platform_owner",
     "platform_admin",
     "clinic_admin",
     "admin",
@@ -139,11 +207,13 @@ CLINIC_OPS_ROLES = (
     "doctor",
     "lab_technician",
     "pharmacist",
+    "nutritionist",
+    "midwife",
 )
 
-BILLING_READ_ROLES = ("receptionist", "cashier", "clinic_admin", "admin", "platform_admin")
+BILLING_READ_ROLES = ("receptionist", "cashier", "clinic_admin", "admin", "platform_admin", "platform_owner")
 BILLING_PAY_ROLES = ("receptionist", "cashier")
-BILLING_REVENUE_ROLES = ("clinic_admin", "admin", "platform_admin", "receptionist", "cashier")
+BILLING_REVENUE_ROLES = ("clinic_admin", "admin", "platform_admin", "platform_owner", "receptionist", "cashier")
 LAB_QUEUE_ROLES = LAB_ROLES + CLINIC_ADMIN_ROLES
 PHARMACY_QUEUE_ROLES = PHARMACY_ROLES + CLINIC_ADMIN_ROLES
 

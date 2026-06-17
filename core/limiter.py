@@ -23,3 +23,14 @@ def login_rate_limit() -> str:
 
 def register_rate_limit() -> str:
     return os.getenv("RATE_LIMIT_REGISTER", "5/minute")
+
+
+def setup_rate_limit() -> str:
+    """First-time platform owner setup — strict in production."""
+    explicit = (os.getenv("RATE_LIMIT_PLATFORM_SETUP") or "").strip()
+    if explicit:
+        return explicit
+    env = (os.getenv("ENVIRONMENT") or "development").lower().strip()
+    if env == "production":
+        return "3/hour"
+    return "20/hour"

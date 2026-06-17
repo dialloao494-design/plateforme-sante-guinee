@@ -28,6 +28,8 @@ export default function AdminClinicalDashboard() {
 
   const [users, setUsers] = useState([]);
 
+  const [clinicStaff, setClinicStaff] = useState([]);
+
   const [clinicForm, setClinicForm] = useState({ name: '', city: 'Conakry', phone: '', address: '' });
 
   const [staffForm, setStaffForm] = useState({
@@ -41,6 +43,26 @@ export default function AdminClinicalDashboard() {
     clinic_id: '',
 
   });
+
+
+
+  const loadClinicStaff = async (clinicId) => {
+
+    if (!clinicId) return;
+
+    try {
+
+      const { data } = await clinicalApi.listStaff(Number(clinicId));
+
+      setClinicStaff(data || []);
+
+    } catch {
+
+      setClinicStaff([]);
+
+    }
+
+  };
 
 
 
@@ -110,6 +132,18 @@ export default function AdminClinicalDashboard() {
 
 
 
+  useEffect(() => {
+
+    if (staffForm.clinic_id) {
+
+      loadClinicStaff(staffForm.clinic_id);
+
+    }
+
+  }, [staffForm.clinic_id]);
+
+
+
   const createClinic = async (e) => {
 
     e.preventDefault();
@@ -163,6 +197,8 @@ export default function AdminClinicalDashboard() {
       setStaffForm((prev) => ({ ...prev, password: '' }));
 
       loadCompliance();
+
+      loadClinicStaff(staffForm.clinic_id);
 
     } catch (err) {
 
@@ -518,6 +554,10 @@ export default function AdminClinicalDashboard() {
 
                 <option value="pharmacist">Pharmacien</option>
 
+                <option value="nutritionist">Nutritionniste</option>
+
+                <option value="midwife">Sage-femme</option>
+
                 <option value="admin">Admin</option>
 
               </select>
@@ -527,6 +567,52 @@ export default function AdminClinicalDashboard() {
             <button type="submit" className="clinical-btn">Créer le compte</button>
 
           </form>
+
+          {clinicStaff.length > 0 && (
+
+            <div className="clinical-users-mini" style={{ marginTop: '1rem' }}>
+
+              <h3>Personnel de la clinique ({clinicStaff.length})</h3>
+
+              <table className="clinical-stock-table">
+
+                <thead>
+
+                  <tr>
+
+                    <th>Email</th>
+
+                    <th>Rôle</th>
+
+                    <th>Actif</th>
+
+                  </tr>
+
+                </thead>
+
+                <tbody>
+
+                  {clinicStaff.map((u) => (
+
+                    <tr key={u.id}>
+
+                      <td>{u.email}</td>
+
+                      <td><span className="clinical-badge">{u.role}</span></td>
+
+                      <td>{u.is_active ? 'Oui' : 'Non'}</td>
+
+                    </tr>
+
+                  ))}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          )}
 
         </section>
 

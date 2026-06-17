@@ -45,6 +45,9 @@ import models.lab_order  # noqa: F401
 import models.lab_result  # noqa: F401
 import models.prescription  # noqa: F401
 import models.pharmacy_order  # noqa: F401
+import models.nutrition  # noqa: F401
+import models.immunization  # noqa: F401
+import models.password_reset_token  # noqa: F401
 
 from database import engine, Base
 from database_migrations import (
