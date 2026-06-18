@@ -361,7 +361,7 @@ async def startup_event():
         from database import engine, Base
         # Import all model modules so their tables are registered on Base
         import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message, models.notification_event, models.attachment_access_log, models.clinical_note, models.consultation_summary, models.patient_document, models.clinical_audit_log
-        import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.medical_history, models.hospitalization, models.clinical_visit, models.invoice, models.discharge, models.imaging, models.appointment_reminder, models.pharmacy_inventory  # noqa: F401
+        import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.medical_history, models.hospitalization, models.clinical_visit, models.invoice, models.discharge, models.imaging, models.appointment_reminder, models.pharmacy_inventory, models.password_reset_token, models.email_verification_token, models.visit_workflow, models.nutrition, models.immunization  # noqa: F401
 
         # Always create tables if they don't exist (safe / idempotent)
         Base.metadata.create_all(bind=engine)
@@ -382,7 +382,12 @@ async def startup_event():
             ensure_patient_user_id_unique,
             ensure_message_attachment_columns,
             ensure_patient_dossier_schema,
+            ensure_user_roles_check_constraint,
+            ensure_email_verification_schema,
+            run_alembic_upgrade_head,
         )
+
+        run_alembic_upgrade_head()
 
         ensure_doctor_geolocation_columns(engine)
         ensure_message_attachment_columns(engine)
@@ -398,6 +403,8 @@ async def startup_event():
         ensure_reminders_schema(engine)
         ensure_pharmacy_inventory_schema(engine)
         ensure_patient_user_id_unique(engine)
+        ensure_user_roles_check_constraint(engine)
+        ensure_email_verification_schema(engine)
 
         from database import SessionLocal
         from services.user_provisioning import bootstrap_initial_admin, bootstrap_platform_owner
