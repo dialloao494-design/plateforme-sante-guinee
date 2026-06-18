@@ -113,14 +113,11 @@ export const API_BASE_URL = (() => {
 
   if (!url) {
     if (import.meta.env.PROD) {
-      if (typeof window !== 'undefined') {
-        return window.location.origin;
-      }
       const fallback = (import.meta.env.VITE_PUBLIC_API_FALLBACK || '').trim();
       url = fallback || 'https://web-production-ad6a36.up.railway.app';
-      if (!explicitUrl) {
+      if (!explicitUrl && typeof window !== 'undefined') {
         console.warn(
-          '[API] VITE_API_URL non défini : utilisation de l’API publique par défaut. Définissez VITE_API_URL (et optionnellement VITE_PUBLIC_API_FALLBACK) sur Vercel / votre hébergeur.'
+          '[API] VITE_API_URL non défini : utilisation du backend Railway par défaut. Définissez VITE_API_URL sur Vercel.'
         );
       }
     } else {

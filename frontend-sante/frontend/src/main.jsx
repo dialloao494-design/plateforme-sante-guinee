@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import './lowBandwidth.css'
 import App from './App.jsx'
+import RouteErrorBoundary from './components/RouteErrorBoundary.jsx'
 import { PatientProvider } from './contexts/PatientContext.jsx'
 import { AppointmentProvider } from './contexts/AppointmentContext.jsx'
 import { AuthProvider } from './contexts/AuthContext.jsx'
@@ -15,7 +16,9 @@ createRoot(document.getElementById('root')).render(
       <AuthProvider>
         <PatientProvider>
           <AppointmentProvider>
-            <App />
+            <RouteErrorBoundary fallbackPath="/login">
+              <App />
+            </RouteErrorBoundary>
           </AppointmentProvider>
         </PatientProvider>
       </AuthProvider>

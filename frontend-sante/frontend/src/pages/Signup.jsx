@@ -47,7 +47,7 @@ const Signup = () => {
 
       const result = await loginWithToken(data);
       if (result.success) {
-        navigate(getRoleHomePath(data.role, data.clinic_id), { replace: true });
+        navigate(getRoleHomePath(result.role, result.clinic_id), { replace: true });
         return;
       }
       setError(result.error || 'Compte créé. Connectez-vous avec votre email et mot de passe.');
