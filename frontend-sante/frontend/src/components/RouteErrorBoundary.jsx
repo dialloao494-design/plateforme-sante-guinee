@@ -33,9 +33,14 @@ export default class RouteErrorBoundary extends React.Component {
           <p className="login-lead">
             La page n&apos;a pas pu se charger. Votre session peut être valide — réessayez ou reconnectez-vous.
           </p>
-          {import.meta.env.DEV && (
+          {error?.message && (
             <pre className="login-error" style={{ whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>
-              {String(error?.message || error)}
+              {String(error.message)}
+            </pre>
+          )}
+          {import.meta.env.DEV && error?.stack && (
+            <pre className="login-error" style={{ whiteSpace: 'pre-wrap', fontSize: '0.75rem' }}>
+              {error.stack}
             </pre>
           )}
           <button type="button" className="btn btn-primary login-submit" onClick={this.handleRetry}>

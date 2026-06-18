@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { useAuth } from '../../contexts/AuthContext.jsx';
 import clinicalApi from '../../services/clinicalApi';
+import { formatApiError } from '../../utils/apiError.js';
+import { userCanManageHospitalBeds } from '../../utils/clinicAccess.js';
 
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 
@@ -16,6 +19,8 @@ const STATUS_LABELS = {
 };
 
 export default function HospitalizationDashboard() {
+  const { user } = useAuth();
+  const canManageBeds = userCanManageHospitalBeds(user?.role || user?.user_role);
   const [occupancy, setOccupancy] = useState(null);
   const [admissions, setAdmissions] = useState([]);
   const [beds, setBeds] = useState([]);
@@ -42,7 +47,7 @@ export default function HospitalizationDashboard() {
       setRooms(roomRes.data || []);
       setError('');
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Hospitalisation indisponible');
+      setError(formatApiError(err, 'Hospitalisation indisponible'));
     }
   }, []);
 
@@ -72,7 +77,7 @@ export default function HospitalizationDashboard() {
       setSelectedAdmission(null);
       load();
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Assignation impossible');
+      setError(formatApiError(err, 'Assignation impossible'));
     }
   };
 
@@ -82,7 +87,7 @@ export default function HospitalizationDashboard() {
       setMessage(`Statut mis à jour : ${STATUS_LABELS[status]}`);
       load();
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Mise à jour impossible');
+      setError(formatApiError(err, 'Mise à jour impossible'));
     }
   };
 
@@ -94,7 +99,7 @@ export default function HospitalizationDashboard() {
       setRoomForm({ ...roomForm, room_number: '' });
       load();
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Création chambre impossible');
+      setError(formatApiError(err, 'Création chambre impossible'));
     }
   };
 
@@ -107,7 +112,7 @@ export default function HospitalizationDashboard() {
       setBedForm({ ...bedForm, bed_number: '' });
       load();
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Ajout lit impossible');
+      setError(formatApiError(err, 'Ajout lit impossible'));
     }
   };
 
@@ -120,7 +125,7 @@ export default function HospitalizationDashboard() {
         <p>Admissions, lits et occupation — pilotage du service.</p>
       </header>
 
-      {error && <div className="clinical-alert clinical-alert--error">{error}</div>}
+      {error && <div className="clinical-alert clinical-alert--error">{String(error)}</div>}
       {message && <div className="clinical-alert clinical-alert--success">{message}</div>}
 
       <ClinicalStatGrid stats={stats} />
@@ -208,6 +213,7 @@ export default function HospitalizationDashboard() {
         </div>
       </section>
 
+      {canManageBeds && (
       <div className="clinical-grid clinical-grid--2">
         <section className="clinical-panel">
           <h2>Nouvelle chambre (admin)</h2>
@@ -250,6 +256,11 @@ export default function HospitalizationDashboard() {
                   </option>
                 ))}
               </select>
+              {rooms.length === 0 && (
+                <span className="clinical-stat-hint">
+                  Aucune chambre configurée — créez d&apos;abord une chambre ci-contre.
+                </span>
+              )}
             </label>
             <label>
               Numéro lit
@@ -259,6 +270,7 @@ export default function HospitalizationDashboard() {
           </form>
         </section>
       </div>
+      )}
     </div>
   );
 }

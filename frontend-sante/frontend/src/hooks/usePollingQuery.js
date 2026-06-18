@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { formatApiError } from '../utils/apiError.js';
 import { useVisibilityAwareInterval } from './useVisibilityAwareInterval.js';
 
 /**
@@ -24,7 +25,7 @@ export function usePollingQuery(fetcher, { pollMs = 0, enabled = true, initialDa
         }
       } catch (err) {
         if (mounted.current) {
-          setError(err?.response?.data?.detail || err?.message || 'Chargement impossible');
+          setError(formatApiError(err, 'Chargement impossible'));
         }
       } finally {
         if (mounted.current) {

@@ -31,7 +31,7 @@ export default function StaffNotificationCenter() {
         <h1>Centre de notifications</h1>
         <p>Confirmations, annulations et demandes de report (WhatsApp RDV).</p>
       </header>
-      {error && <div className="clinical-alert clinical-alert--error">{error}</div>}
+      {error && <div className="clinical-alert clinical-alert--error">{String(error)}</div>}
       <section className="clinical-panel">
         <ul className="clinical-queue">
           {rows.length === 0 && <li>Aucune notification récente.</li>}

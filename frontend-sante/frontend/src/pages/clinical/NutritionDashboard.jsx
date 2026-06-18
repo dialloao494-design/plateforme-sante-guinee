@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext.jsx';
 import clinicalApi from '../../services/clinicalApi';
+import { formatApiError } from '../../utils/apiError.js';
+import { userCanWriteNutrition } from '../../utils/clinicAccess.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
 import './clinical.css';
@@ -11,6 +14,8 @@ const STATUS_LABELS = {
 };
 
 export default function NutritionDashboard() {
+  const { user } = useAuth();
+  const canWrite = userCanWriteNutrition(user?.role || user?.user_role);
   const [patientSearch, setPatientSearch] = useState('');
   const [patientMatches, setPatientMatches] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
@@ -30,7 +35,7 @@ export default function NutritionDashboard() {
       const { data } = await clinicalApi.nutritionHistory(patientId);
       setHistory(data || []);
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Historique nutrition indisponible');
+      setError(formatApiError(err, 'Historique nutrition indisponible'));
     }
   }, []);
 
@@ -46,7 +51,7 @@ export default function NutritionDashboard() {
       const { data } = await clinicalApi.searchPatients(patientSearch.trim());
       setPatientMatches(data || []);
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Recherche impossible');
+      setError(formatApiError(err, 'Recherche impossible'));
     }
   };
 
@@ -73,7 +78,7 @@ export default function NutritionDashboard() {
       setForm({ weight_kg: '', height_cm: '', muac_cm: '', age_months: '', notes: '' });
       loadHistory(selectedPatient.id);
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Enregistrement impossible');
+      setError(formatApiError(err, 'Enregistrement impossible'));
     }
   };
 
@@ -143,6 +148,12 @@ export default function NutritionDashboard() {
 
       {selectedPatient && (
         <>
+          {!canWrite && (
+            <p className="clinical-stat-hint" role="status">
+              Consultation seule — l&apos;enregistrement des mesures est réservé au personnel nutrition.
+            </p>
+          )}
+          {canWrite && (
           <section className="clinical-card">
             <h2>Nouvelle mesure</h2>
             <form className="clinical-form-grid" onSubmit={submitAssessment}>
@@ -198,6 +209,7 @@ export default function NutritionDashboard() {
               </button>
             </form>
           </section>
+          )}
 
           <section className="clinical-card">
             <h2>Historique nutrition</h2>

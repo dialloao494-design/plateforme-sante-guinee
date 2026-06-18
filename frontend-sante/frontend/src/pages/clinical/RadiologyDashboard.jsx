@@ -81,7 +81,7 @@ export default function RadiologyDashboard() {
         <h1>Radiologie</h1>
         <p>RX, échographie, scanner — prescription à validation médecin.</p>
       </header>
-      {error && <div className="clinical-alert clinical-alert--error">{error}</div>}
+      {error && <div className="clinical-alert clinical-alert--error">{String(error)}</div>}
       {message && <div className="clinical-alert clinical-alert--success">{message}</div>}
       <ClinicalStatGrid stats={stats} />
 

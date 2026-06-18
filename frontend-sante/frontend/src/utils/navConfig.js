@@ -1,5 +1,7 @@
 /** Navigation — each role sees only its own workflow. */
 
+import { isClinicOptionalRole } from './clinicAccess.js';
+
 export const PATIENT_NAV_ITEMS = [
   { path: '/dashboard', label: 'Tableau de bord', icon: 'dash' },
   { path: '/my-records', label: 'Dossier médical', icon: 'board' },
@@ -74,10 +76,45 @@ const ROLE_NAV = {
   ],
 };
 
-export function getNavItemsForRole(role) {
+const DOCTOR_STANDALONE_NAV = [
+  { path: '/doctor/dashboard', label: 'Tableau de bord', icon: 'dash' },
+  { path: '/doctor/appointments', label: 'Mes rendez-vous', icon: 'calendar' },
+  { path: '/doctor/messages', label: 'Messages', icon: 'chat' },
+  { path: '/teleconsultation', label: 'Téléconsultation', icon: 'video' },
+  { path: '/notifications', label: 'Notifications', icon: 'bell' },
+];
+
+/** CIS-only modules — hidden when staff has no clinic_id. */
+const CLINIC_ONLY_PATHS = new Set([
+  '/clinical/hospitalization',
+  '/clinical/discharge',
+  '/clinical/radiology',
+  '/clinical/nutrition',
+  '/clinical/immunization',
+  '/clinical/billing',
+  '/clinical/reports',
+  '/clinical/notifications',
+  '/clinical/lab',
+  '/clinical/pharmacy',
+  '/clinical/reception',
+  '/clinical/admin',
+  '/clinical',
+]);
+
+function filterNavByClinic(items, clinicId, role) {
+  if (clinicId != null || isClinicOptionalRole(role)) {
+    return items;
+  }
+  return items.filter((item) => !CLINIC_ONLY_PATHS.has(item.path));
+}
+
+export function getNavItemsForRole(role, clinicId = null) {
   const r = String(role || '').toLowerCase();
   if (r === 'patient') return PATIENT_NAV_ITEMS;
-  return ROLE_NAV[r] || [];
+  if (r === 'doctor' && clinicId == null) {
+    return DOCTOR_STANDALONE_NAV;
+  }
+  return filterNavByClinic(ROLE_NAV[r] || [], clinicId, r);
 }
 
 export function getNavSectionTitle(role) {

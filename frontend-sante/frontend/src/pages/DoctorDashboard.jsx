@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { appointmentsAPI, messagesAPI } from '../services/api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import AppointmentActions from '../components/AppointmentActions.jsx';
@@ -14,6 +14,7 @@ import EmptyState from '../components/ui/EmptyState.jsx';
 
 const DoctorDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -148,6 +149,13 @@ const DoctorDashboard = () => {
           Bonjour{user?.email ? ` — ${user.email}` : ''}. Anticipez les confirmations, la téléconsultation et la
           messagerie sécurisée depuis un seul écran.
         </p>
+
+        {location.state?.clinicRequired && (
+          <p className="error" role="alert">
+            Votre compte n&apos;est pas rattaché à une clinique CIS. Les modules hospitaliers sont réservés au personnel
+            de clinique — contactez l&apos;administrateur pour une affectation.
+          </p>
+        )}
 
         {loading && <PageSkeleton lines={4} />}
         {error && <p className="error">{error}</p>}

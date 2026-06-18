@@ -82,7 +82,7 @@ export default function DischargeDashboard() {
         <h1>Sortie patient</h1>
         <p>Validation facture, bon de sortie et archivage dossier médical.</p>
       </header>
-      {error && <div className="clinical-alert clinical-alert--error">{error}</div>}
+      {error && <div className="clinical-alert clinical-alert--error">{String(error)}</div>}
       {message && <div className="clinical-alert clinical-alert--success">{message}</div>}
       <ClinicalStatGrid stats={stats} />
 

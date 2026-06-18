@@ -71,10 +71,10 @@ def assert_role(user: User, allowed: tuple[str, ...]) -> None:
         )
 
 
-def assert_clinic_access(user: User, clinic_id: int) -> None:
+def assert_clinic_access(user: User, clinic_id: int, db: Session | None = None) -> None:
     if is_platform_admin(user):
         return
-    user_cid = user_clinic_id(user)
+    user_cid = user_clinic_id(user, db)
     if user_cid != clinic_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -83,7 +83,7 @@ def assert_clinic_access(user: User, clinic_id: int) -> None:
 
 
 def resolve_clinic_for_user(db: Session, user: User) -> models.Clinic:
-    cid = user_clinic_id(user)
+    cid = user_clinic_id(user, db)
     if cid is None:
         if is_platform_admin(user):
             raise HTTPException(

@@ -124,7 +124,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const { user, authLoading } = useAuth();
   const role = String(user?.role || user?.user_role || '').toLowerCase();
 
-  const navItems = authLoading ? [] : getNavItemsForRole(role);
+  const navItems = authLoading ? [] : getNavItemsForRole(role, user?.clinic_id);
 
   const closeIfMobile = () => {
     if (typeof onClose === 'function') {

@@ -1,7 +1,8 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { getRoleHomePath } from '../utils/rolePaths.js';
 import { userHasRole } from '../utils/roleAccess.js';
+import { userNeedsClinicAssignment } from '../utils/clinicAccess.js';
 
 function SessionGate({ label = 'Vérification de la session…' }) {
   return (
@@ -16,6 +17,7 @@ function SessionGate({ label = 'Vérification de la session…' }) {
 
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { authLoading, user } = useAuth();
+  const location = useLocation();
   const token = localStorage.getItem('token') || localStorage.getItem('access_token');
 
   if (authLoading) {
@@ -29,6 +31,16 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   // After login the JWT is stored before React commits user profile state.
   if (!user) {
     return <SessionGate label="Chargement du profil…" />;
+  }
+
+  if (userNeedsClinicAssignment(user, location.pathname)) {
+    return (
+      <Navigate
+        to={getRoleHomePath(user.role, user.clinic_id)}
+        replace
+        state={{ clinicRequired: true }}
+      />
+    );
   }
 
   const role = user?.role || user?.user_role;

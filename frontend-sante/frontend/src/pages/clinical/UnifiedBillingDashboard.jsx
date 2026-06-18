@@ -78,7 +78,7 @@ export default function UnifiedBillingDashboard() {
         <h1>Facturation unifiée</h1>
         <p>Agrégation consultation, labo, radio, pharmacie et hospitalisation.</p>
       </header>
-      {error && <div className="clinical-alert clinical-alert--error">{error}</div>}
+      {error && <div className="clinical-alert clinical-alert--error">{String(error)}</div>}
       {message && <div className="clinical-alert clinical-alert--success">{message}</div>}
       <ClinicalStatGrid stats={stats} />
 

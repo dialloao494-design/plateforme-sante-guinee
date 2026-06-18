@@ -9,11 +9,17 @@ import models
 from models.user import User
 
 
-def user_clinic_id(user: User) -> int | None:
+def user_clinic_id(user: User, db: Session | None = None) -> int | None:
     if user.clinic_id:
         return user.clinic_id
-    if user.role == "doctor" and user.doctor_profile and user.doctor_profile.clinic_id:
-        return user.doctor_profile.clinic_id
+    if user.role == "doctor":
+        profile = getattr(user, "doctor_profile", None)
+        if profile is not None and profile.clinic_id:
+            return profile.clinic_id
+        if db is not None:
+            doc = db.query(models.Doctor).filter(models.Doctor.user_id == user.id).first()
+            if doc and doc.clinic_id:
+                return doc.clinic_id
     return None
 
 
