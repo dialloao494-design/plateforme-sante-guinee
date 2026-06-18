@@ -14,6 +14,7 @@ export const PATIENT_NAV_ITEMS = [
 const CLINIC_ADMIN_NAV = [
   { path: '/clinical', label: 'Opérations', icon: 'dash' },
   { path: '/clinical/admin', label: 'Administration', icon: 'shield' },
+  { path: '/clinical/admin#create-user', label: 'Utilisateurs', icon: 'people' },
   { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'board' },
   { path: '/clinical/billing', label: 'Facturation', icon: 'calendar' },
   { path: '/clinical/discharge', label: 'Sortie patient', icon: 'queue' },
@@ -31,7 +32,12 @@ const ROLE_NAV = {
     { path: '/platform', label: 'Console plateforme', icon: 'shield' },
     { path: '/users', label: 'Utilisateurs', icon: 'people' },
     { path: '/clinical/admin', label: 'Administration', icon: 'shield' },
+    { path: '/clinical/admin#create-user', label: 'Créer un utilisateur', icon: 'people' },
     { path: '/clinical', label: 'Opérations', icon: 'dash' },
+    { path: '/clinical/reception', label: 'Réception', icon: 'calendar' },
+    { path: '/clinical/doctor', label: 'Médecin', icon: 'board' },
+    { path: '/clinical/lab', label: 'Laboratoire', icon: 'queue' },
+    { path: '/clinical/pharmacy', label: 'Pharmacie', icon: 'steth' },
     { path: '/clinical/reports', label: 'Rapports', icon: 'calendar' },
   ],
   platform_admin: [

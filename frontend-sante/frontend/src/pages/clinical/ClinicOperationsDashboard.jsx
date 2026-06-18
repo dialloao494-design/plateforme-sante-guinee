@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import clinicalApi from '../../services/clinicalApi';
+import { humanizeApiError } from '../../utils/apiError.js';
 import { usePollingQuery } from '../../hooks/usePollingQuery.js';
 import { writeClinicProfile } from '../../utils/clinicConfig.js';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
@@ -106,7 +107,7 @@ export default function ClinicOperationsDashboard() {
           ? `${data.clinic_name} — pilotage du parcours patient`
           : 'Tableau de bord manager — vue opérationnelle'}
       </p>
-      {error && <p className="clinical-error">{String(error)}</p>}
+      {error && <p className="clinical-error">{humanizeApiError(String(error))}</p>}
 
       <section className="clinical-ops-banner">
         <div className="clinical-ops-banner-stat">

@@ -28,6 +28,7 @@ from core.tenant import is_platform_admin, user_clinic_id
 from models.user import User
 
 CLINIC_OPS_ROLES = (
+    "platform_owner",
     "platform_admin",
     "clinic_admin",
     "admin",
@@ -84,12 +85,20 @@ def assert_clinic_access(user: User, clinic_id: int, db: Session | None = None) 
 
 def resolve_clinic_for_user(db: Session, user: User) -> models.Clinic:
     cid = user_clinic_id(user, db)
+    if cid is None and is_platform_admin(user):
+        clinic = (
+            db.query(models.Clinic)
+            .filter(models.Clinic.is_active.is_(True))
+            .order_by(models.Clinic.id.asc())
+            .first()
+        )
+        if clinic:
+            return clinic
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Aucune clinique active. Créez une clinique depuis l'administration.",
+        )
     if cid is None:
-        if is_platform_admin(user):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Platform admin must specify clinic context or assign clinic_id",
-            )
         if requires_clinic_assignment(user.role):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

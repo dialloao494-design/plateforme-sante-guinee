@@ -65,8 +65,20 @@ const Signup = () => {
         <p className="login-eyebrow">Plateforme Santé · Guinée</p>
         <h1 className="login-title">Créer un compte</h1>
         <p className="login-lead">
-          Rejoignez la plateforme pour prendre rendez-vous, échanger avec votre médecin ou gérer votre cabinet.
+          Inscription publique : patient ou médecin indépendant. Les comptes réception, laboratoire,
+          pharmacie, caisse et administration clinique sont créés par l’administrateur de votre clinique.
         </p>
+        <div className="login-demo-hint" role="note">
+          <p className="login-demo-title">Qui peut s’inscrire ici ?</p>
+          <ul className="login-staff-list">
+            <li><strong>Patient</strong> — prendre rendez-vous et accéder à son dossier</li>
+            <li><strong>Médecin</strong> — cabinet ou téléconsultation (rattachement clinique par l’admin)</li>
+          </ul>
+          <p className="login-stat-hint">
+            Personnel de clinique (réception, labo, pharmacie, etc.) : demandez à votre administrateur
+            de créer votre compte depuis le tableau de bord Administration.
+          </p>
+        </div>
         <form onSubmit={handleSubmit} className="login-form">
           <div className="login-field">
             <label htmlFor="signup-email">Email</label>
@@ -101,7 +113,7 @@ const Signup = () => {
             <label htmlFor="signup-role">Profil</label>
             <select id="signup-role" name="role" value={formData.role} onChange={handleChange} disabled={loading}>
               <option value="patient">Patient</option>
-              <option value="doctor">Médecin / professionnel de santé</option>
+              <option value="doctor">Médecin (inscription publique)</option>
             </select>
           </div>
           {error && (

@@ -248,6 +248,14 @@
   color: var(--color-text, #334155);
 }
 
+.login-staff-list {
+  margin: 0.5rem 0 0.75rem;
+  padding-left: 1.15rem;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
 /* Legacy class names kept for any older markup */
 .login {
   min-height: 100vh;

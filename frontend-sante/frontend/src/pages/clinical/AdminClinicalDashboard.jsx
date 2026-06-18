@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 
 import { Link } from 'react-router-dom';
 
+import { useAuth } from '../../contexts/AuthContext.jsx';
 import clinicalApi from '../../services/clinicalApi';
 
 import httpClient from '../../services/httpClient';
 
+import { formatApiError } from '../../utils/apiError.js';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
 
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
@@ -15,6 +17,8 @@ import './clinical.css';
 
 
 export default function AdminClinicalDashboard() {
+
+  const { user } = useAuth();
 
   const [message, setMessage] = useState('');
 
@@ -70,6 +74,11 @@ export default function AdminClinicalDashboard() {
 
     try {
 
+      const usersPromise =
+        user?.role === 'platform_owner'
+          ? httpClient.get('/platform/users').catch(() => ({ data: [] }))
+          : Promise.resolve({ data: [] });
+
       const [logs, backup, reception, doctor, lab, pharmacy, charges, revenue, usersRes] = await Promise.all([
 
         clinicalApi.auditLogs({ limit: 30 }),
@@ -88,7 +97,7 @@ export default function AdminClinicalDashboard() {
 
         clinicalApi.dailyRevenue().catch(() => ({ data: null })),
 
-        httpClient.get('/users').catch(() => ({ data: [] })),
+        usersPromise,
 
       ]);
 
@@ -125,10 +134,12 @@ export default function AdminClinicalDashboard() {
 
 
   useEffect(() => {
-
     loadCompliance();
-
-  }, []);
+    if (user?.clinic_id && !staffForm.clinic_id) {
+      setStaffForm((prev) => ({ ...prev, clinic_id: String(user.clinic_id) }));
+      loadClinicStaff(user.clinic_id);
+    }
+  }, [user?.clinic_id, user?.role]);
 
 
 
@@ -162,7 +173,7 @@ export default function AdminClinicalDashboard() {
 
     } catch (err) {
 
-      setError(err?.response?.data?.detail || 'Création clinique impossible');
+      setError(formatApiError(err, 'Création clinique impossible'));
 
     }
 
@@ -202,7 +213,7 @@ export default function AdminClinicalDashboard() {
 
     } catch (err) {
 
-      setError(err?.response?.data?.detail || 'Création compte impossible');
+      setError(formatApiError(err, 'Création compte impossible'));
 
     }
 
@@ -508,9 +519,16 @@ export default function AdminClinicalDashboard() {
 
 
 
-        <section className="clinical-card">
+        <section className="clinical-card" id="create-user">
 
-          <h2>Créer un compte personnel</h2>
+          <h2>Utilisateurs</h2>
+
+          <p className="clinical-lead">
+            Création interne des comptes personnel : réception, laboratoire, pharmacie, caisse, nutrition, sage-femme
+            et administration clinique. L&apos;inscription publique reste réservée aux patients et médecins.
+          </p>
+
+          <h3>Créer un utilisateur</h3>
 
           <form onSubmit={createStaff}>
 
@@ -550,7 +568,7 @@ export default function AdminClinicalDashboard() {
 
                 <option value="doctor">Médecin</option>
 
-                <option value="lab_technician">Laboratoire</option>
+                <option value="lab_technician">Laborantin</option>
 
                 <option value="pharmacist">Pharmacien</option>
 
@@ -558,7 +576,9 @@ export default function AdminClinicalDashboard() {
 
                 <option value="midwife">Sage-femme</option>
 
-                <option value="admin">Admin</option>
+                <option value="clinic_admin">Administrateur clinique</option>
+
+                <option value="admin">Admin (alias clinique)</option>
 
               </select>
 

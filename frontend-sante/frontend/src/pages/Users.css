@@ -66,6 +66,21 @@
   padding: 0.35rem 0.75rem;
 }
 
+.users-refresh-btn {
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.users-refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .users-feedback {
   padding: 0.75rem 1rem;
   border-radius: var(--radius-md);

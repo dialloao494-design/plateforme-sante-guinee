@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import axiosInstance from '../api/axiosInstance.js';
+import httpClient from '../services/httpClient.js';
+import { formatApiError } from '../utils/apiError.js';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import './Users.css';
 
@@ -13,10 +14,11 @@ const Users = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axiosInstance.get('/users');
-      setUsers(response.data);
+      // Use /platform/users — no trailing-slash redirect (avoids http downgrade → Network Error).
+      const response = await httpClient.get('/platform/users');
+      setUsers(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || 'Impossible de charger les utilisateurs.');
+      setError(formatApiError(err, 'Impossible de charger les utilisateurs.'));
     } finally {
       setLoading(false);
     }
@@ -44,7 +46,9 @@ const Users = () => {
       <div className="users-page-inner">
         <h1>Utilisateurs</h1>
         <p className="users-lead">
-          Vue d’ensemble des comptes enregistrés sur la plateforme. Recherche par e-mail ou par rôle.
+          Vue d’ensemble des comptes enregistrés sur la plateforme. La création du personnel de clinique
+          (réception, laboratoire, pharmacie, etc.) se fait depuis{' '}
+          <strong>Administration clinique → Utilisateurs</strong>.
         </p>
 
         {error && (
@@ -61,6 +65,9 @@ const Users = () => {
             onChange={(e) => setSearch(e.target.value)}
             aria-label="Filtrer les utilisateurs"
           />
+          <button type="button" className="users-refresh-btn" onClick={fetchUsers} disabled={loading}>
+            Actualiser
+          </button>
           <span className="users-count-pill">{filteredUsers.length} affiché(s) · {users.length} au total</span>
         </div>
 

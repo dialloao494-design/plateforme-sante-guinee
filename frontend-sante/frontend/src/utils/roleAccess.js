@@ -26,5 +26,13 @@ export function userHasRole(userRole, allowedRoles = []) {
     return true;
   }
   const r = normalizeRole(userRole);
-  return expandAllowedRoles(allowedRoles).has(r);
+  const expanded = expandAllowedRoles(allowedRoles);
+  if (expanded.has(r)) {
+    return true;
+  }
+  // Platform owner inherits platform_admin route access.
+  if (r === 'platform_owner' && expanded.has('platform_admin')) {
+    return true;
+  }
+  return false;
 }
