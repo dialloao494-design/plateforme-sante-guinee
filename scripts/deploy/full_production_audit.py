@@ -192,6 +192,12 @@ def audit_roles(report: AuditReport) -> None:
             report.add("Roles", "FAIL", f"Login {role_key}", err)
 
     admin = report.tokens.get("clinic_admin")
+    if admin:
+        me = api(report.backend, "GET", "/auth/me", admin)
+        if me.status_code == 200:
+            report.journey["admin_clinic_id"] = me.json().get("clinic_id")
+
+    admin = report.tokens.get("clinic_admin")
     recv = report.tokens.get("reception_a")
     if not admin or not recv:
         report.add("Clinical", "BLOCKER", "Cannot run clinical smoke — missing admin/reception login")
@@ -202,7 +208,10 @@ def audit_roles(report: AuditReport) -> None:
         if not tok:
             report.add("Dashboards", "WARN", f"Skip {path} — no token for {role_key}")
             continue
-        r = api(report.backend, method, path, tok)
+        params = None
+        if path == "/clinical/staff" and report.journey.get("admin_clinic_id"):
+            params = {"clinic_id": report.journey["admin_clinic_id"]}
+        r = api(report.backend, method, path, tok, params=params)
         ok = r.status_code in expected
         report.add("Dashboards", "PASS" if ok else "FAIL", f"{role_key} {method} {path}", str(r.status_code))
 
@@ -254,22 +263,17 @@ def audit_full_journey(report: AuditReport) -> None:
     if not admin:
         return
 
-    suffix = uuid.uuid4().hex[:8]
-    journey: dict = {"suffix": suffix}
-
-    r = api(
-        report.backend,
-        "POST",
-        "/clinical/clinics",
-        admin,
-        json={"name": f"Audit Clinic {suffix}", "city": "Conakry"},
-    )
-    if r.status_code != 201:
-        report.add("Smoke journey", "FAIL", "Create clinic", r.text[:120])
+    clinic_id = report.journey.get("admin_clinic_id")
+    if not clinic_id:
+        me = api(report.backend, "GET", "/auth/me", admin)
+        clinic_id = me.json().get("clinic_id") if me.status_code == 200 else None
+    if not clinic_id:
+        report.add("Smoke journey", "FAIL", "Clinic admin has no clinic_id — cannot provision staff")
         return
-    clinic_id = r.json()["id"]
-    journey["clinic_id"] = clinic_id
-    report.add("Smoke journey", "PASS", "Create clinic", f"id={clinic_id}")
+
+    suffix = uuid.uuid4().hex[:8]
+    journey: dict = {"suffix": suffix, "clinic_id": clinic_id}
+    report.add("Smoke journey", "PASS", "Using existing clinic", f"id={clinic_id}")
 
     staff_specs = [
         ("receptionist", f"audit.recv.{suffix}@sante-gn.test", "AuditRecv1!"),
@@ -376,6 +380,7 @@ def audit_full_journey(report: AuditReport) -> None:
         r = api(report.backend, "GET", "/clinical/immunization/schedule", midwife)
         schedule = r.json() if r.status_code == 200 else []
         if schedule:
+            item = schedule[0]
             r2 = api(
                 report.backend,
                 "POST",
@@ -383,8 +388,9 @@ def audit_full_journey(report: AuditReport) -> None:
                 midwife,
                 json={
                     "patient_id": patient_id,
-                    "vaccine_code": schedule[0].get("vaccine_code") or schedule[0].get("code"),
-                    "dose_number": 1,
+                    "vaccine_code": item.get("vaccine_code") or item.get("code"),
+                    "vaccine_name": item.get("vaccine_name") or item.get("name") or "BCG",
+                    "dose_label": item.get("dose_label") or "D1",
                     "administered_at": datetime.utcnow().date().isoformat(),
                     "notes": "Audit PEV",
                 },

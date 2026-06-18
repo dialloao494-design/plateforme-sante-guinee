@@ -1,0 +1,297 @@
+{
+  "backend": "https://web-production-ad6a36.up.railway.app",
+  "frontend": "https://frontend-seven-rust-94.vercel.app",
+  "counts": {
+    "PASS": 44,
+    "BLOCKER": 1,
+    "WARN": 1
+  },
+  "findings": [
+    {
+      "area": "Infrastructure",
+      "status": "PASS",
+      "message": "GET /health -> 200",
+      "detail": "{\"status\":\"ok\",\"version\":\"1.0.0\",\"debug\":false,\"database\":\"***\"}"
+    },
+    {
+      "area": "Infrastructure",
+      "status": "PASS",
+      "message": "GET /health/ready -> 200",
+      "detail": "{\"status\":\"ready\",\"database\":\"ok\"}"
+    },
+    {
+      "area": "Email",
+      "status": "BLOCKER",
+      "message": "SMTP/Resend not configured on Railway",
+      "detail": "{\"status\":\"not_configured\",\"configured\":false,\"provider\":\"none\",\"sender_set\":false,\"frontend_url_set\":true}"
+    },
+    {
+      "area": "Infrastructure",
+      "status": "PASS",
+      "message": "GET /auth/email-status -> 200",
+      "detail": "{\"configured\":false,\"provider\":\"none\",\"sender_set\":false,\"frontend_url_set\":true}"
+    },
+    {
+      "area": "Infrastructure",
+      "status": "PASS",
+      "message": "Frontend home",
+      "detail": "200"
+    },
+    {
+      "area": "Frontend routes",
+      "status": "PASS",
+      "message": "/",
+      "detail": "200"
+    },
+    {
+      "area": "Frontend routes",
+      "status": "PASS",
+      "message": "/login",
+      "detail": "200"
+    },
+    {
+      "area": "Frontend routes",
+      "status": "PASS",
+      "message": "/signup",
+      "detail": "200"
+    },
+    {
+      "area": "Frontend routes",
+      "status": "PASS",
+      "message": "/forgot-password",
+      "detail": "200"
+    },
+    {
+      "area": "Frontend routes",
+      "status": "PASS",
+      "message": "/reset-password",
+      "detail": "200"
+    },
+    {
+      "area": "Frontend routes",
+      "status": "PASS",
+      "message": "/verify-email",
+      "detail": "200"
+    },
+    {
+      "area": "Auth",
+      "status": "PASS",
+      "message": "Doctor register + token",
+      "detail": ""
+    },
+    {
+      "area": "Auth",
+      "status": "PASS",
+      "message": "Login after register",
+      "detail": ""
+    },
+    {
+      "area": "Auth",
+      "status": "PASS",
+      "message": "Duplicate email rejected",
+      "detail": "409"
+    },
+    {
+      "area": "Auth",
+      "status": "PASS",
+      "message": "Weak password rejected",
+      "detail": "422"
+    },
+    {
+      "area": "Auth",
+      "status": "PASS",
+      "message": "Forgot password endpoint",
+      "detail": "200"
+    },
+    {
+      "area": "Auth",
+      "status": "PASS",
+      "message": "Invalid reset token rejected",
+      "detail": "400"
+    },
+    {
+      "area": "Auth",
+      "status": "PASS",
+      "message": "Change password",
+      "detail": "{\"message\":\"Mot de passe mis \u00e0 jour\"}"
+    },
+    {
+      "area": "Auth",
+      "status": "PASS",
+      "message": "Login with new password",
+      "detail": ""
+    },
+    {
+      "area": "Roles",
+      "status": "PASS",
+      "message": "Login clinic_admin",
+      "detail": "clinic.admin.a@sante-gn.test"
+    },
+    {
+      "area": "Roles",
+      "status": "PASS",
+      "message": "Login reception_a",
+      "detail": "reception.demo@sante-gn.test"
+    },
+    {
+      "area": "Roles",
+      "status": "PASS",
+      "message": "Login reception_b",
+      "detail": "reception.beta@sante-gn.test"
+    },
+    {
+      "area": "Roles",
+      "status": "PASS",
+      "message": "Login doctor",
+      "detail": "doctor.demo@sante-gn.test"
+    },
+    {
+      "area": "Dashboards",
+      "status": "PASS",
+      "message": "reception_a GET /clinical/reception/queue",
+      "detail": "200"
+    },
+    {
+      "area": "Dashboards",
+      "status": "PASS",
+      "message": "reception_a GET /clinical/workflow/queue/reception",
+      "detail": "200"
+    },
+    {
+      "area": "Dashboards",
+      "status": "PASS",
+      "message": "doctor GET /clinical/doctor/queue",
+      "detail": "200"
+    },
+    {
+      "area": "Dashboards",
+      "status": "PASS",
+      "message": "doctor GET /clinical/workflow/queue/doctor",
+      "detail": "200"
+    },
+    {
+      "area": "Dashboards",
+      "status": "PASS",
+      "message": "clinic_admin GET /clinical/operations/summary",
+      "detail": "200"
+    },
+    {
+      "area": "Dashboards",
+      "status": "PASS",
+      "message": "clinic_admin GET /clinical/staff",
+      "detail": "200"
+    },
+    {
+      "area": "Dashboards",
+      "status": "PASS",
+      "message": "reception_a GET /clinical/nutrition/patients/1/history",
+      "detail": "200"
+    },
+    {
+      "area": "Dashboards",
+      "status": "PASS",
+      "message": "reception_a GET /clinical/immunization/schedule",
+      "detail": "200"
+    },
+    {
+      "area": "Dashboards",
+      "status": "PASS",
+      "message": "reception_a GET /clinical/lab/orders",
+      "detail": "403"
+    },
+    {
+      "area": "Dashboards",
+      "status": "PASS",
+      "message": "reception_a GET /clinical/pharmacy/orders",
+      "detail": "403"
+    },
+    {
+      "area": "Security RBAC",
+      "status": "PASS",
+      "message": "reception_a denied /clinical/doctor/queue",
+      "detail": "403"
+    },
+    {
+      "area": "Security RBAC",
+      "status": "PASS",
+      "message": "reception_a denied /clinical/admin/backup-status",
+      "detail": "403"
+    },
+    {
+      "area": "Isolation",
+      "status": "PASS",
+      "message": "Clinic B cannot see clinic A patient",
+      "detail": "patient_id=18 visible_in_b=False"
+    },
+    {
+      "area": "Smoke journey",
+      "status": "PASS",
+      "message": "Using existing clinic",
+      "detail": "id=1"
+    },
+    {
+      "area": "Smoke journey",
+      "status": "PASS",
+      "message": "Staff receptionist login",
+      "detail": "audit.recv.71d8a626@sante-gn.test"
+    },
+    {
+      "area": "Smoke journey",
+      "status": "PASS",
+      "message": "Staff nutritionist login",
+      "detail": "audit.nutri.71d8a626@sante-gn.test"
+    },
+    {
+      "area": "Smoke journey",
+      "status": "PASS",
+      "message": "Staff midwife login",
+      "detail": "audit.midwife.71d8a626@sante-gn.test"
+    },
+    {
+      "area": "Smoke journey",
+      "status": "PASS",
+      "message": "Staff doctor login",
+      "detail": "audit.doc.71d8a626@sante-gn.test"
+    },
+    {
+      "area": "Smoke journey",
+      "status": "PASS",
+      "message": "Staff lab_technician login",
+      "detail": "audit.lab.71d8a626@sante-gn.test"
+    },
+    {
+      "area": "Smoke journey",
+      "status": "PASS",
+      "message": "Staff pharmacist login",
+      "detail": "audit.pharma.71d8a626@sante-gn.test"
+    },
+    {
+      "area": "Smoke journey",
+      "status": "PASS",
+      "message": "Nutrition assessment",
+      "detail": "201"
+    },
+    {
+      "area": "Smoke journey",
+      "status": "WARN",
+      "message": "PEV record",
+      "detail": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"vaccine_name\"],\"msg\":\"Field required\",\"input\":{\"patient_"
+    },
+    {
+      "area": "Smoke journey",
+      "status": "PASS",
+      "message": "Full child workflow completed",
+      "detail": "{\"suffix\": \"71d8a626\", \"clinic_id\": 1, \"patient_id\": 19, \"workflow_id\": 2, \"after_reception\": \"nutrition\", \"after_nutrition\": \"pev\", \"after_pev\": \"doctor\", \"after_doctor\": \"doctor\"}"
+    }
+  ],
+  "journey": {
+    "suffix": "71d8a626",
+    "clinic_id": 1,
+    "patient_id": 19,
+    "workflow_id": 2,
+    "after_reception": "nutrition",
+    "after_nutrition": "pev",
+    "after_pev": "doctor",
+    "after_doctor": "doctor"
+  }
+}
