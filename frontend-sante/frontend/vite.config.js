@@ -18,6 +18,7 @@ const API_PROXY_PREFIXES = [
   '/docs',
   '/redoc',
   '/openapi.json',
+  '/clinical',
 ]
 
 function buildApiProxy(target) {
@@ -28,7 +29,6 @@ function buildApiProxy(target) {
   return proxy
 }
 
-// Hostnames used by temporary public tunnels (Cloudflare, localtunnel, ngrok).
 const TUNNEL_ALLOWED_HOSTS = [
   '.trycloudflare.com',
   '.loca.lt',
@@ -36,7 +36,6 @@ const TUNNEL_ALLOWED_HOSTS = [
   '.ngrok.io',
 ]
 
-// https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const useRelativeApi = env.VITE_USE_RELATIVE_API === 'true'
@@ -45,11 +44,39 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    build: {
+      target: 'es2020',
+      cssCodeSplit: true,
+      sourcemap: false,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('react-router') || id.includes('react-dom') || id.includes('/react/')) {
+                return 'vendor-react'
+              }
+              if (id.includes('axios')) {
+                return 'vendor-http'
+              }
+              if (id.includes('@jitsi')) {
+                return 'vendor-jitsi'
+              }
+              if (id.includes('react-toastify')) {
+                return 'vendor-toast'
+              }
+              return 'vendor-misc'
+            }
+            if (id.includes('/pages/clinical/')) {
+              return 'clinical-pages'
+            }
+          },
+        },
+      },
+    },
     server: {
       host: '0.0.0.0',
       port: Number(env.VITE_DEV_PORT || 5173),
       strictPort: true,
-      // Vite 6+ blocks unknown Host headers — required for Cloudflare quick tunnels.
       allowedHosts: isTunnelMode ? TUNNEL_ALLOWED_HOSTS : undefined,
       proxy: useRelativeApi ? buildApiProxy(backendTarget) : undefined,
     },

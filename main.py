@@ -97,6 +97,20 @@ if cors_origin_regex:
     _cors_kwargs["allow_origin_regex"] = cors_origin_regex
 app.add_middleware(CORSMiddleware, **_cors_kwargs)
 
+
+@app.middleware("http")
+async def low_bandwidth_cache_headers(request, call_next):
+    """Short private cache for semi-static GET endpoints (clinic LAN / 3G)."""
+    response = await call_next(request)
+    if request.method != "GET":
+        return response
+    path = request.url.path.rstrip("/") or "/"
+    if path.endswith("/clinical/immunization/schedule") or path.endswith("/clinical/workflow/departments"):
+        response.headers.setdefault("Cache-Control", "private, max-age=3600")
+    elif path == "/health":
+        response.headers.setdefault("Cache-Control", "public, max-age=60")
+    return response
+
 # Rate limiting
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded

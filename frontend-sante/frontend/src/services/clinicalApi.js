@@ -1,11 +1,25 @@
 import httpClient from './httpClient';
+import { CACHE_TTL } from '../utils/apiCache.js';
+import { cachedGet, invalidateApiCache } from '../utils/cachedHttp.js';
 
 const clinicalApi = {
-  operationsSummary: () => httpClient.get('/clinical/operations/summary'),
+  operationsSummary: (opts = {}) =>
+    cachedGet('/clinical/operations/summary', {
+      cacheTtlMs: CACHE_TTL.operationsSummary,
+      forceRefresh: opts.forceRefresh,
+    }),
 
   // Admin
-  createClinic: (data) => httpClient.post('/clinical/clinics', data),
-  listClinics: () => httpClient.get('/clinical/clinics'),
+  createClinic: (data) => {
+    invalidateApiCache('/clinical/clinics');
+    return httpClient.post('/clinical/clinics', data);
+  },
+  listClinics: (opts = {}) =>
+    cachedGet('/clinical/clinics', {
+      cacheTtlMs: CACHE_TTL.clinicConfig,
+      cachePersist: true,
+      forceRefresh: opts.forceRefresh,
+    }),
   createStaff: (data) => httpClient.post('/clinical/staff', data),
   listStaff: (clinicId, role) =>
     httpClient.get('/clinical/staff', {
@@ -19,26 +33,50 @@ const clinicalApi = {
   recordNutritionAssessment: (data) => httpClient.post('/clinical/nutrition/assessments', data),
 
   // Immunization (PEV)
-  immunizationSchedule: () => httpClient.get('/clinical/immunization/schedule'),
+  immunizationSchedule: (opts = {}) =>
+    cachedGet('/clinical/immunization/schedule', {
+      cacheTtlMs: CACHE_TTL.immunizationSchedule,
+      cachePersist: true,
+      forceRefresh: opts.forceRefresh,
+    }),
   immunizationHistory: (patientId) => httpClient.get(`/clinical/immunization/patients/${patientId}/history`),
   immunizationStatus: (patientId) => httpClient.get(`/clinical/immunization/patients/${patientId}/status`),
   recordImmunization: (data) => httpClient.post('/clinical/immunization/records', data),
 
   // Visit workflow queues
-  startVisit: (data) => httpClient.post('/clinical/workflow/visits', data),
-  workflowQueue: (department) => httpClient.get(`/clinical/workflow/queue/${department}`),
-  completeWorkflowStep: (workflowId, department) =>
-    httpClient.post(`/clinical/workflow/visits/${workflowId}/complete/${department}`),
+  startVisit: (data) => {
+    invalidateApiCache('/clinical/workflow/');
+    return httpClient.post('/clinical/workflow/visits', data);
+  },
+  workflowQueue: (department, opts = {}) =>
+    cachedGet(`/clinical/workflow/queue/${department}`, {
+      cacheTtlMs: CACHE_TTL.workflowQueue,
+      forceRefresh: opts.forceRefresh,
+    }),
+  completeWorkflowStep: (workflowId, department) => {
+    invalidateApiCache('/clinical/workflow/');
+    return httpClient.post(`/clinical/workflow/visits/${workflowId}/complete/${department}`);
+  },
   getWorkflowVisit: (workflowId) => httpClient.get(`/clinical/workflow/visits/${workflowId}`),
 
   // Reception
-  intakePatient: (data) => httpClient.post('/clinical/reception/patients', data),
+  intakePatient: (data) => {
+    invalidateApiCache('/clinical/reception/');
+    invalidateApiCache('/clinical/workflow/');
+    return httpClient.post('/clinical/reception/patients', data);
+  },
   searchPatients: (q) => httpClient.get('/clinical/reception/patients', { params: { q } }),
   createAppointment: (data) => httpClient.post('/clinical/reception/appointments', data),
   receptionQueue: () => httpClient.get('/clinical/reception/queue'),
-  checkIn: (appointmentId) =>
-    httpClient.post(`/clinical/reception/appointments/${appointmentId}/check-in`),
-  clinicDoctors: () => httpClient.get('/clinical/reception/doctors'),
+  checkIn: (appointmentId) => {
+    invalidateApiCache('/clinical/reception/');
+    return httpClient.post(`/clinical/reception/appointments/${appointmentId}/check-in`);
+  },
+  clinicDoctors: (opts = {}) =>
+    cachedGet('/clinical/reception/doctors', {
+      cacheTtlMs: CACHE_TTL.clinicDoctors,
+      forceRefresh: opts.forceRefresh,
+    }),
 
   // Doctor
   doctorQueue: () => httpClient.get('/clinical/doctor/queue'),

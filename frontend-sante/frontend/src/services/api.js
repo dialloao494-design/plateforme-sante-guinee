@@ -1,4 +1,6 @@
 import httpClient, { API_BASE_URL } from './httpClient.js';
+import { CACHE_TTL } from '../utils/apiCache.js';
+import { cachedGet } from '../utils/cachedHttp.js';
 
 // Legacy compatibility shim — used by AuthContext and other contexts
 const api = {
@@ -24,14 +26,18 @@ export const login = async (email, password) => {
   }
 };
 
-export const getAuthenticatedUser = async () => {
-  const { data } = await httpClient.get('/auth/me');
+export const getAuthenticatedUser = async (opts = {}) => {
+  const { data } = await cachedGet('/auth/me', {
+    cacheTtlMs: CACHE_TTL.authProfile,
+    cachePersist: true,
+    forceRefresh: opts.forceRefresh,
+  });
   return data;
 };
 
 export const authAPI = {
   login,
-  me: getAuthenticatedUser,
+  me: (opts) => getAuthenticatedUser(opts),
   signup: (userData) => httpClient.post('/auth/register', userData),
   changePassword: (currentPassword, newPassword) =>
     httpClient.post('/auth/change-password', {

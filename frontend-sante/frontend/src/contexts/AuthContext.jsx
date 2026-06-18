@@ -3,8 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api.js';
 import { clearClientAuth } from '../services/httpClient.js';
 import { touchSessionActivity } from '../utils/authStorage.js';
+import { CACHE_TTL, getCached, setCached } from '../utils/apiCache.js';
 import { useSessionTimeout } from '../hooks/useSessionTimeout.js';
 import SessionTimeoutModal from '../components/SessionTimeoutModal.jsx';
+
+const AUTH_PROFILE_KEY = 'get:/auth/me';
+
+function readCachedProfile() {
+  return getCached(AUTH_PROFILE_KEY, { persist: true });
+}
+
+function cacheProfile(user) {
+  if (user) {
+    setCached(AUTH_PROFILE_KEY, user, CACHE_TTL.authProfile, { persist: true });
+  }
+}
 
 const devLog = (...args) => {
   if (import.meta.env.DEV) {
@@ -81,6 +94,8 @@ export const AuthProvider = ({ children }) => {
     }
     touchSessionActivity();
 
+    cacheProfile(normalizedUser);
+
     return normalizedUser;
   }, []);
 
@@ -92,7 +107,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const refreshUser = useCallback(async () => {
-    const data = await authAPI.me();
+    const data = await authAPI.me({ forceRefresh: true });
     const normalizedUser = normalizeAndStoreUser(data);
     setUser(normalizedUser);
     return normalizedUser;
@@ -106,6 +121,12 @@ export const AuthProvider = ({ children }) => {
       devLog('[AUTH] No token in localStorage on app load');
       setAuthLoading(false);
       return;
+    }
+
+    const cachedProfile = readCachedProfile();
+    if (cachedProfile) {
+      setUser(cachedProfile);
+      setAuthLoading(false);
     }
 
     devLog('[AUTH] Found token in localStorage, verifying with backend');

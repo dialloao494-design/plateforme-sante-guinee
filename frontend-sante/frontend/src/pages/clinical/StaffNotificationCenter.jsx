@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 
 import clinicalApi from '../../services/clinicalApi';
+import { usePollingQuery } from '../../hooks/usePollingQuery.js';
 
 import './clinical.css';
 
@@ -12,23 +13,17 @@ const EVENT_LABELS = {
 };
 
 export default function StaffNotificationCenter() {
-  const [items, setItems] = useState([]);
-  const [error, setError] = useState('');
+  const fetchNotifications = useCallback(
+    () => clinicalApi.reminderNotifications().then((res) => ({ data: res.data || [] })),
+    []
+  );
 
-  const load = useCallback(async () => {
-    try {
-      const { data } = await clinicalApi.reminderNotifications();
-      setItems(data || []);
-    } catch (err) {
-      setError(err?.response?.data?.detail || 'Notifications indisponibles');
-    }
-  }, []);
+  const { data: items, error } = usePollingQuery(fetchNotifications, {
+    pollMs: 120_000,
+    initialData: [],
+  });
 
-  useEffect(() => {
-    load();
-    const t = setInterval(load, 60000);
-    return () => clearInterval(t);
-  }, [load]);
+  const rows = Array.isArray(items) ? items : [];
 
   return (
     <div className="clinical-page">
@@ -39,8 +34,8 @@ export default function StaffNotificationCenter() {
       {error && <div className="clinical-alert clinical-alert--error">{error}</div>}
       <section className="clinical-panel">
         <ul className="clinical-queue">
-          {items.length === 0 && <li>Aucune notification récente.</li>}
-          {items.map((n) => (
+          {rows.length === 0 && <li>Aucune notification récente.</li>}
+          {rows.map((n) => (
             <li key={n.id}>
               <span className="clinical-badge">{EVENT_LABELS[n.event_type] || n.event_type}</span>
               <div>RDV #{n.appointment_id} · Patient #{n.patient_id}</div>

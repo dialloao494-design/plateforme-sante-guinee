@@ -5,6 +5,33 @@ import { useAuth } from './AuthContext.jsx';
 
 const PatientContext = createContext(null);
 
+const CLINIC_STAFF_ROLES = new Set([
+  'receptionist',
+  'cashier',
+  'lab_technician',
+  'pharmacist',
+  'nutritionist',
+  'midwife',
+  'clinic_admin',
+  'admin',
+  'platform_admin',
+  'platform_owner',
+]);
+
+function shouldLoadTelehealthPatients(user) {
+  if (!user?.role) {
+    return false;
+  }
+  const role = String(user.role).toLowerCase();
+  if (CLINIC_STAFF_ROLES.has(role)) {
+    return false;
+  }
+  if (role === 'doctor' && user.clinic_id) {
+    return false;
+  }
+  return role === 'doctor' || role === 'admin';
+}
+
 const normalizePatient = (patient) => ({
   ...patient,
   id: patient.id,
@@ -37,7 +64,7 @@ export const PatientProvider = ({ children }) => {
     if (authLoading) {
       return;
     }
-    if (user && ['doctor', 'admin'].includes(user.role)) {
+    if (shouldLoadTelehealthPatients(user)) {
       fetchPatients();
     }
   }, [user, authLoading]);

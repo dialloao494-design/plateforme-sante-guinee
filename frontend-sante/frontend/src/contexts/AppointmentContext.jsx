@@ -5,6 +5,22 @@ import { useAuth } from './AuthContext.jsx';
 
 const AppointmentContext = createContext(null);
 
+const TELEHEALTH_APPOINTMENT_ROLES = new Set(['patient', 'doctor']);
+
+function shouldLoadAppointments(user) {
+  if (!user?.role) {
+    return false;
+  }
+  const role = String(user.role).toLowerCase();
+  if (!TELEHEALTH_APPOINTMENT_ROLES.has(role)) {
+    return false;
+  }
+  if (role === 'doctor' && user.clinic_id) {
+    return false;
+  }
+  return true;
+}
+
 const normalizeAppointment = (appointment) => ({
   ...appointment,
   id: appointment.id,
@@ -36,7 +52,7 @@ export const AppointmentProvider = ({ children }) => {
     if (authLoading) {
       return;
     }
-    if (!user) {
+    if (!shouldLoadAppointments(user)) {
       setAppointments([]);
       setLoading(false);
       setError(null);

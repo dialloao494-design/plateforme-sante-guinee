@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import clinicalApi from '../../services/clinicalApi';
+import { usePollingQuery } from '../../hooks/usePollingQuery.js';
+import { writeClinicProfile } from '../../utils/clinicConfig.js';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
 import './clinical.css';
 
@@ -76,24 +78,17 @@ function stageMetrics(id, data) {
 }
 
 export default function ClinicOperationsDashboard() {
-  const [data, setData] = useState(null);
-  const [error, setError] = useState('');
-
-  const load = useCallback(async () => {
-    setError('');
-    try {
-      const { data: summary } = await clinicalApi.operationsSummary();
-      setData(summary || null);
-    } catch (err) {
-      setError(err?.response?.data?.detail || 'Impossible de charger les opérations clinique');
-    }
+  const fetchSummary = useCallback(({ forceRefresh }) => {
+    return clinicalApi.operationsSummary({ forceRefresh }).then((res) => {
+      const summary = res.data || null;
+      if (summary?.clinic_name) {
+        writeClinicProfile({ clinic_id: summary.clinic_id, clinic_name: summary.clinic_name });
+      }
+      return { data: summary };
+    });
   }, []);
 
-  useEffect(() => {
-    load();
-    const timer = setInterval(load, 30000);
-    return () => clearInterval(timer);
-  }, [load]);
+  const { data, error } = usePollingQuery(fetchSummary, { pollMs: 90_000, initialData: null });
 
   const totalPatients =
     data == null

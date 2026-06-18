@@ -1,0 +1,46 @@
+/* Low-bandwidth / mobile-first performance helpers */
+
+@media (max-width: 768px) {
+  .clinical-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .clinical-btn,
+  .clinical-btn-sm,
+  .app-menu-toggle {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .clinical-card {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 280px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (prefers-reduced-data: reduce) {
+  .app-shell {
+    background-image: none;
+  }
+
+  .app-topbar {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+.app-view {
+  content-visibility: auto;
+}

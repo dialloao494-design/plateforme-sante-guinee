@@ -88,6 +88,7 @@ const ensureNginxApiPath = (url = '') => {
 };
 
 import { clearAllClientStorage } from '../utils/authStorage.js';
+import { invalidateCache } from '../utils/apiCache.js';
 
 // Resolve API base URL from environment variable
 export const API_BASE_URL = (() => {
@@ -162,6 +163,7 @@ export function clearClientAuth() {
   if (typeof window === 'undefined') {
     return;
   }
+  invalidateCache('/auth/me');
   clearAllClientStorage();
   syncAuthHeader();
 }

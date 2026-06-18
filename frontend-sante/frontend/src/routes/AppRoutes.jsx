@@ -1,46 +1,48 @@
+import { lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import Home from "../pages/Home";
 import Login from "../pages/Login";
 import Signup from "../pages/Signup";
-import Dashboard from "../pages/Dashboard";
-import Doctors from "../pages/Doctors";
-import DoctorProfile from "../pages/DoctorProfile.jsx";
-import Appointments from "../pages/Appointments";
-import DoctorDashboard from "../pages/DoctorDashboard";
-import DoctorAppointments from "../pages/DoctorAppointments";
-import DoctorMessages from "../pages/DoctorMessages";
-import PatientDetails from "../pages/PatientDetails";
-import Messages from "../pages/Messages";
-import Patients from "../pages/Patients";
-import Users from "../pages/Users";
-import TeleconsultationHub from "../pages/TeleconsultationHub.jsx";
-import ConsultationRoom from "../pages/ConsultationRoom.jsx";
-import NotificationsPage from "../pages/NotificationsPage.jsx";
-import PatientMedicalHistory from "../pages/PatientMedicalHistory.jsx";
-import NotFound from "../pages/NotFound.jsx";
-import ReceptionDashboard from "../pages/clinical/ReceptionDashboard.jsx";
-import DoctorClinicalDashboard from "../pages/clinical/DoctorClinicalDashboard.jsx";
-import LabDashboard from "../pages/clinical/LabDashboard.jsx";
-import PharmacyDashboard from "../pages/clinical/PharmacyDashboard.jsx";
-import HospitalizationDashboard from "../pages/clinical/HospitalizationDashboard.jsx";
-import UnifiedBillingDashboard from "../pages/clinical/UnifiedBillingDashboard.jsx";
-import DischargeDashboard from "../pages/clinical/DischargeDashboard.jsx";
-import RadiologyDashboard from "../pages/clinical/RadiologyDashboard.jsx";
-import StaffNotificationCenter from "../pages/clinical/StaffNotificationCenter.jsx";
-import ClinicalReportsDashboard from "../pages/clinical/ClinicalReportsDashboard.jsx";
-import AdminClinicalDashboard from "../pages/clinical/AdminClinicalDashboard.jsx";
-import ClinicOperationsDashboard from "../pages/clinical/ClinicOperationsDashboard.jsx";
-import AccountProfile from "../pages/AccountProfile.jsx";
-import ChangePassword from "../pages/ChangePassword.jsx";
-import PlatformOwnerDashboard from "../pages/platform/PlatformOwnerDashboard.jsx";
-import PlatformOwnerSetup from "../pages/platform/PlatformOwnerSetup.jsx";
 import ForgotPassword from "../pages/ForgotPassword.jsx";
 import ResetPassword from "../pages/ResetPassword.jsx";
-import NutritionDashboard from "../pages/clinical/NutritionDashboard.jsx";
-import ImmunizationDashboard from "../pages/clinical/ImmunizationDashboard.jsx";
-import MidwifeDashboard from "../pages/clinical/MidwifeDashboard.jsx";
+import NotFound from "../pages/NotFound.jsx";
 import ProtectedRoute from "./ProtectedRoute";
+
+const Dashboard = lazy(() => import("../pages/Dashboard"));
+const Doctors = lazy(() => import("../pages/Doctors"));
+const DoctorProfile = lazy(() => import("../pages/DoctorProfile.jsx"));
+const Appointments = lazy(() => import("../pages/Appointments"));
+const DoctorDashboard = lazy(() => import("../pages/DoctorDashboard"));
+const DoctorAppointments = lazy(() => import("../pages/DoctorAppointments"));
+const DoctorMessages = lazy(() => import("../pages/DoctorMessages"));
+const PatientDetails = lazy(() => import("../pages/PatientDetails"));
+const Messages = lazy(() => import("../pages/Messages"));
+const Patients = lazy(() => import("../pages/Patients"));
+const Users = lazy(() => import("../pages/Users"));
+const TeleconsultationHub = lazy(() => import("../pages/TeleconsultationHub.jsx"));
+const ConsultationRoom = lazy(() => import("../pages/ConsultationRoom.jsx"));
+const NotificationsPage = lazy(() => import("../pages/NotificationsPage.jsx"));
+const PatientMedicalHistory = lazy(() => import("../pages/PatientMedicalHistory.jsx"));
+const ReceptionDashboard = lazy(() => import("../pages/clinical/ReceptionDashboard.jsx"));
+const DoctorClinicalDashboard = lazy(() => import("../pages/clinical/DoctorClinicalDashboard.jsx"));
+const LabDashboard = lazy(() => import("../pages/clinical/LabDashboard.jsx"));
+const PharmacyDashboard = lazy(() => import("../pages/clinical/PharmacyDashboard.jsx"));
+const HospitalizationDashboard = lazy(() => import("../pages/clinical/HospitalizationDashboard.jsx"));
+const UnifiedBillingDashboard = lazy(() => import("../pages/clinical/UnifiedBillingDashboard.jsx"));
+const DischargeDashboard = lazy(() => import("../pages/clinical/DischargeDashboard.jsx"));
+const RadiologyDashboard = lazy(() => import("../pages/clinical/RadiologyDashboard.jsx"));
+const StaffNotificationCenter = lazy(() => import("../pages/clinical/StaffNotificationCenter.jsx"));
+const ClinicalReportsDashboard = lazy(() => import("../pages/clinical/ClinicalReportsDashboard.jsx"));
+const AdminClinicalDashboard = lazy(() => import("../pages/clinical/AdminClinicalDashboard.jsx"));
+const ClinicOperationsDashboard = lazy(() => import("../pages/clinical/ClinicOperationsDashboard.jsx"));
+const AccountProfile = lazy(() => import("../pages/AccountProfile.jsx"));
+const ChangePassword = lazy(() => import("../pages/ChangePassword.jsx"));
+const PlatformOwnerDashboard = lazy(() => import("../pages/platform/PlatformOwnerDashboard.jsx"));
+const PlatformOwnerSetup = lazy(() => import("../pages/platform/PlatformOwnerSetup.jsx"));
+const NutritionDashboard = lazy(() => import("../pages/clinical/NutritionDashboard.jsx"));
+const ImmunizationDashboard = lazy(() => import("../pages/clinical/ImmunizationDashboard.jsx"));
+const MidwifeDashboard = lazy(() => import("../pages/clinical/MidwifeDashboard.jsx"));
 
 const STAFF_ADMIN_ROLES = ["admin", "clinic_admin", "platform_admin"];
 const PLATFORM_OWNER_ROLES = ["platform_owner"];
@@ -112,7 +114,6 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Patient portal */}
       <Route
         path="/dashboard"
         element={
@@ -186,7 +187,6 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Legacy telehealth doctor routes */}
       <Route
         path="/doctor/dashboard"
         element={
@@ -220,7 +220,6 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Manager — operations dashboard only */}
       <Route
         path="/clinical"
         element={
@@ -238,7 +237,6 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Reception (merged with cashier) */}
       <Route
         path="/clinical/reception"
         element={
@@ -249,7 +247,6 @@ const AppRoutes = () => {
       />
       <Route path="/clinical/cashier" element={<Navigate to="/clinical/reception" replace />} />
 
-      {/* Role workstations */}
       <Route
         path="/clinical/doctor"
         element={

@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import AppRoutes from './routes/AppRoutes.jsx';
 import Sidebar from './components/Sidebar.jsx';
+import PageLoader from './components/PageLoader.jsx';
 import { useAuth } from './contexts/AuthContext.jsx';
 import { ToastContainer } from 'react-toastify';
 import { getShellContext } from './utils/appShellMeta.js';
@@ -40,7 +41,9 @@ function App() {
     return (
       <>
         <div className="app-public-root">
-          <AppRoutes />
+          <Suspense fallback={<PageLoader label="Chargement de la page…" />}>
+            <AppRoutes />
+          </Suspense>
         </div>
         <ToastContainer
           position="top-right"
@@ -103,7 +106,9 @@ function App() {
           </nav>
         </header>
         <section className="app-view">
-          <AppRoutes />
+          <Suspense fallback={<PageLoader label="Chargement du poste…" />}>
+            <AppRoutes />
+          </Suspense>
         </section>
       </main>
       <ToastContainer
