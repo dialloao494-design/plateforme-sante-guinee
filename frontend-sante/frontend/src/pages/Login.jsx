@@ -20,12 +20,14 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitError, setSubmitError] = useState('');
-  const { login, loading, user, authLoading } = useAuth();
+  const { login, loading, user, authLoading, error: authError } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!authLoading && user) {
-      navigate(getRoleHomePath(user.role, user.clinic_id), { replace: true });
+      const target = getRoleHomePath(user.role, user.clinic_id);
+      console.info('[AUTH-DEBUG] Login redirect (session user)', { role: user.role, target });
+      navigate(target, { replace: true });
       return;
     }
     if (authLoading || user) {
@@ -61,11 +63,14 @@ const Login = () => {
     try {
       const result = await login(email, password);
       if (result.success) {
-        navigate(getRoleHomePath(result.role, result.clinic_id), { replace: true });
+        const target = getRoleHomePath(result.role, result.clinic_id);
+        console.info('[AUTH-DEBUG] Login redirect (submit)', { role: result.role, target });
+        navigate(target, { replace: true });
       } else {
         setSubmitError(result.error || 'Une erreur est survenue, veuillez réessayer');
       }
-    } catch {
+    } catch (err) {
+      console.info('[AUTH-DEBUG] Login submit exception', err?.message);
       setSubmitError('Une erreur est survenue, veuillez réessayer');
     }
   };
@@ -123,9 +128,9 @@ const Login = () => {
             <Link to="/forgot-password">Mot de passe oublié ?</Link>
           </p>
 
-          {submitError && (
+          {(submitError || authError) && (
             <p className="login-error" role="alert">
-              {submitError}
+              {submitError || authError}
             </p>
           )}
 

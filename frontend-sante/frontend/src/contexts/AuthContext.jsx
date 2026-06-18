@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api.js';
 import { clearClientAuth } from '../services/httpClient.js';
+import { invalidateCache } from '../utils/apiCache.js';
 import { touchSessionActivity } from '../utils/authStorage.js';
 import { CACHE_TTL, getCached, setCached } from '../utils/apiCache.js';
 import { useSessionTimeout } from '../hooks/useSessionTimeout.js';
@@ -18,6 +19,10 @@ function cacheProfile(user) {
     setCached(AUTH_PROFILE_KEY, user, CACHE_TTL.authProfile, { persist: true });
   }
 }
+
+const authDebug = (...args) => {
+  console.info('[AUTH-DEBUG]', ...args);
+};
 
 const devLog = (...args) => {
   if (import.meta.env.DEV) {
@@ -154,22 +159,28 @@ export const AuthProvider = ({ children }) => {
 
   const applyLoginToken = useCallback(
     async (loginPayload) => {
+      authDebug('applyLoginToken: start');
       const access_token =
         loginPayload?.access_token ||
         loginPayload?.accessToken ||
         loginPayload?.token;
 
       if (!access_token) {
+        authDebug('applyLoginToken: missing access_token in payload', loginPayload);
         throw new Error('Login response missing access_token');
       }
 
       clearPasswordResetFlags();
+      invalidateCache('/auth/me');
       localStorage.setItem('token', access_token);
       localStorage.setItem('access_token', access_token);
+      authDebug('applyLoginToken: token stored', Boolean(access_token));
 
-      const meResponse = await authAPI.me();
+      const meResponse = await authAPI.me({ forceRefresh: true });
+      authDebug('applyLoginToken: /auth/me ok', meResponse?.email, meResponse?.role);
       const normalizedUser = normalizeAndStoreUser(meResponse);
       setUser(normalizedUser);
+      authDebug('applyLoginToken: user state set', normalizedUser?.role);
       return normalizedUser;
     },
     [normalizeAndStoreUser],
@@ -197,17 +208,16 @@ export const AuthProvider = ({ children }) => {
     setError(null);
 
     try {
-      const trimmedEmail = String(email || '').trim();
-      devLog('[AUTH] Logging in:', trimmedEmail);
+      const trimmedEmail = String(email || '').trim().toLowerCase();
+      authDebug('login: request start', trimmedEmail);
       const loginPayload = await authAPI.login(trimmedEmail, password);
-      devLog('[AUTH] Login successful, storing token');
+      authDebug('login: response ok', Boolean(loginPayload?.access_token), loginPayload?.role);
       const normalizedUser = await applyLoginToken(loginPayload);
-      devLog('[AUTH] Login completed with role:', normalizedUser?.role, 'doctor_id:', normalizedUser?.doctor_id);
-      return { success: true, role: normalizedUser?.role, clinic_id: normalizedUser?.clinic_id };
+      const home = normalizedUser?.role;
+      authDebug('login: complete', { role: normalizedUser?.role, clinic_id: normalizedUser?.clinic_id });
+      return { success: true, role: normalizedUser?.role, clinic_id: normalizedUser?.clinic_id, home };
     } catch (err) {
-      if (import.meta.env.DEV) {
-        console.error('[AUTH] Login failed:', err?.response?.status, err?.message);
-      }
+      authDebug('login: failed', err?.response?.status, err?.message);
       clearClientAuth();
       setUser(null);
       const message = toUserFriendlyLoginMessage(err);

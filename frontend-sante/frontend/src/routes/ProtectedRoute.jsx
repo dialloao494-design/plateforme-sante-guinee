@@ -3,28 +3,37 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { getRoleHomePath } from '../utils/rolePaths.js';
 import { userHasRole } from '../utils/roleAccess.js';
 
+function SessionGate({ label = 'Vérification de la session…' }) {
+  return (
+    <div className="app-loading" role="status" aria-live="polite">
+      <div className="app-loading-inner">
+        <span className="app-spinner" aria-hidden />
+        <span>{label}</span>
+      </div>
+    </div>
+  );
+}
+
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
-  const { authLoading, isAuthenticated, user } = useAuth();
+  const { authLoading, user } = useAuth();
+  const token = localStorage.getItem('token') || localStorage.getItem('access_token');
 
   if (authLoading) {
-    return (
-      <div className="app-loading" role="status" aria-live="polite">
-        <div className="app-loading-inner">
-          <span className="app-spinner" aria-hidden />
-          <span>Vérification de la session…</span>
-        </div>
-      </div>
-    );
+    return <SessionGate />;
   }
 
-  const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-  if (!isAuthenticated || !token) {
+  if (!token) {
     return <Navigate to="/login" replace />;
+  }
+
+  // After login the JWT is stored before React commits user profile state.
+  if (!user) {
+    return <SessionGate label="Chargement du profil…" />;
   }
 
   const role = user?.role || user?.user_role;
   if (allowedRoles.length > 0 && !userHasRole(role, allowedRoles)) {
-    return <Navigate to={getRoleHomePath(role)} replace />;
+    return <Navigate to={getRoleHomePath(role, user.clinic_id)} replace />;
   }
 
   return children;
