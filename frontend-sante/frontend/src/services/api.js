@@ -48,6 +48,9 @@ export const authAPI = {
     httpClient.post('/auth/forgot-password', { email: String(email || '').trim().toLowerCase() }),
   resetPassword: (token, newPassword) =>
     httpClient.post('/auth/reset-password', { token, new_password: newPassword }),
+  verifyEmail: (token) => httpClient.post('/auth/verify-email', { token }),
+  resendVerification: (email) =>
+    httpClient.post('/auth/resend-verification', { email: String(email || '').trim().toLowerCase() }),
 };
 
 export const patientsAPI = {

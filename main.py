@@ -310,6 +310,15 @@ def health_check():
     }
 
 
+@app.get("/health/email", tags=["Monitoring"])
+def health_email():
+    """Email channel readiness (SMTP or Resend) — no credentials exposed."""
+    from services.email_service import email_config_status
+
+    status_payload = email_config_status()
+    return {"status": "ok" if status_payload["configured"] else "not_configured", **status_payload}
+
+
 @app.get("/health/ready", tags=["Monitoring"])
 def health_ready():
     """Readiness: verifies database connectivity (for orchestrators / load balancers)."""

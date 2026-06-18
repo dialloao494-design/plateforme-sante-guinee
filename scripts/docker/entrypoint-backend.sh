@@ -48,6 +48,7 @@ import models.pharmacy_order  # noqa: F401
 import models.nutrition  # noqa: F401
 import models.immunization  # noqa: F401
 import models.password_reset_token  # noqa: F401
+import models.email_verification_token  # noqa: F401
 import models.visit_workflow  # noqa: F401
 
 from database import engine, Base

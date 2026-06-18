@@ -3,7 +3,7 @@ import logging
 import os
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from core.limiter import limiter, login_rate_limit, register_rate_limit
+from core.limiter import limiter, login_rate_limit, register_rate_limit, forgot_password_rate_limit
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from database import get_db
@@ -18,6 +18,8 @@ from schemas.user import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
+    VerifyEmailRequest,
+    ResendVerificationRequest,
 )
 from security import (
     get_current_user,
@@ -37,6 +39,8 @@ from services.password_reset_service import (
     reset_password_with_token,
     send_reset_email,
 )
+from services.email_verification_service import verify_email_with_token, resend_verification
+from services.email_service import email_config_status
 from fastapi.security import OAuth2PasswordRequestForm
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -125,6 +129,11 @@ def authenticate_user(email: str, password: str, db: Session, attempt_limit: int
 
     if hasattr(db_user, "is_active") and db_user.is_active is False:
         logger.warning("Login failed for %s: account disabled", email)
+        return None
+
+    require_verify = os.getenv("REQUIRE_EMAIL_VERIFICATION", "").lower() in ("1", "true", "yes")
+    if require_verify and not getattr(db_user, "email_verified_at", None):
+        logger.warning("Login failed for %s: email not verified", email)
         return None
 
     logger.info("Login success for %s", email)
@@ -275,6 +284,7 @@ def build_user_response(db: Session, user: User) -> dict:
         "full_name": full_name,
         "clinic_id": clinic_id,
         "clinic_name": clinic_name,
+        "email_verified": bool(getattr(user, "email_verified_at", None)),
     }
 
 
@@ -316,7 +326,7 @@ def change_password(
 
 
 @router.post("/forgot-password")
-@limiter.limit(register_rate_limit())
+@limiter.limit(forgot_password_rate_limit())
 def forgot_password(
     request: Request,
     body: ForgotPasswordRequest,
@@ -346,3 +356,36 @@ def reset_password(
             detail="Lien invalide ou expiré. Demandez une nouvelle réinitialisation.",
         )
     return {"message": "Mot de passe réinitialisé. Vous pouvez vous connecter."}
+
+
+@router.get("/email-status")
+def email_delivery_status():
+    """Ops: whether transactional email is configured (no secrets)."""
+    return email_config_status()
+
+
+@router.post("/verify-email")
+@limiter.limit(register_rate_limit())
+def verify_email(
+    request: Request,
+    body: VerifyEmailRequest,
+    db: Session = Depends(get_db),
+):
+    ok = verify_email_with_token(db, raw_token=body.token)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Lien de vérification invalide ou expiré.",
+        )
+    return {"message": "Adresse email confirmée. Vous pouvez vous connecter."}
+
+
+@router.post("/resend-verification")
+@limiter.limit(forgot_password_rate_limit())
+def resend_verification_email(
+    request: Request,
+    body: ResendVerificationRequest,
+    db: Session = Depends(get_db),
+):
+    resend_verification(db, email=body.email)
+    return {"message": "Si cet email est enregistré et non vérifié, un nouveau lien a été envoyé."}

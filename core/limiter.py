@@ -21,6 +21,10 @@ def login_rate_limit() -> str:
     return "120/minute"
 
 
+def forgot_password_rate_limit() -> str:
+    return os.getenv("RATE_LIMIT_FORGOT_PASSWORD", "10/hour")
+
+
 def register_rate_limit() -> str:
     return os.getenv("RATE_LIMIT_REGISTER", "5/minute")
 

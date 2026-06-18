@@ -84,11 +84,10 @@ def build_reset_link(raw_token: str) -> str:
 
 
 def send_reset_email(email: str, raw_token: str) -> None:
-    """Dispatch reset email when SMTP configured; otherwise log for ops."""
+    """Send password reset email via SMTP/Resend; log link when email is not configured."""
+    from services.email_service import send_password_reset_email
+
     link = build_reset_link(raw_token)
-    smtp_host = (os.getenv("SMTP_HOST") or "").strip()
-    if not smtp_host:
-        logger.info("Password reset link for %s (SMTP not configured): %s", email, link)
-        return
-    # SMTP integration placeholder — wire to your mail provider when ready.
-    logger.info("Password reset email queued for %s", email)
+    sent = send_password_reset_email(email, link)
+    if not sent:
+        logger.info("Password reset link for %s (email not configured): %s", email, link)

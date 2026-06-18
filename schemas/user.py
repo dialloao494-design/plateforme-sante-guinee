@@ -163,6 +163,26 @@ class RegisterResponse(BaseModel):
     user_role: str
 
 
+class VerifyEmailRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: str
+
+
+class ResendVerificationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        email = value.strip().lower()
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            raise ValueError("Invalid email address")
+        return email
+
+
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -173,3 +193,4 @@ class UserResponse(BaseModel):
     full_name: Optional[str] = None
     clinic_id: Optional[int] = None
     clinic_name: Optional[str] = None
+    email_verified: bool = False

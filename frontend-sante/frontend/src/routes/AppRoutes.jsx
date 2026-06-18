@@ -6,6 +6,7 @@ import Login from "../pages/Login";
 import Signup from "../pages/Signup";
 import ForgotPassword from "../pages/ForgotPassword.jsx";
 import ResetPassword from "../pages/ResetPassword.jsx";
+import VerifyEmail from "../pages/VerifyEmail.jsx";
 import NotFound from "../pages/NotFound.jsx";
 import ProtectedRoute from "./ProtectedRoute";
 
@@ -69,6 +70,7 @@ const AppRoutes = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/platform/setup" element={<PlatformOwnerSetup />} />
       <Route path="/signup" element={<Signup />} />
 

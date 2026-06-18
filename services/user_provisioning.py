@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
+from datetime import datetime
 
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -162,11 +163,21 @@ def _persist_user(
     if _email_taken(db, normalized_email):
         raise EmailAlreadyRegisteredError(f"Email '{email}' is already registered.")
 
+    auto_verify = channel in {
+        "admin_api",
+        "admin_bootstrap",
+        "admin_cli",
+        "test_fixture",
+        "platform_owner_bootstrap",
+        "platform_owner_setup",
+    }
+
     with authorized_channel(channel):
         user = User(
             email=normalized_email,
             hashed_password=hash_password(password),
             role=normalized_role,
+            email_verified_at=datetime.utcnow() if auto_verify else None,
         )
         db.add(user)
         db.commit()
@@ -218,6 +229,14 @@ def register_public_user(db: Session, *, email: str, password: str, role: str) -
         doc = db.query(models.Doctor).filter(models.Doctor.user_id == user.id).first()
         if doc:
             doctor_id = doc.id
+
+    try:
+        from services.email_verification_service import send_verification_email
+
+        send_verification_email(db, user=user)
+    except Exception:
+        logger.exception("Could not queue verification email for user id=%s", user.id)
+
     return ProvisionedUser(user=user, doctor_id=doctor_id)
 
 

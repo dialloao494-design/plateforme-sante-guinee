@@ -36,6 +36,7 @@ from .pharmacy_inventory import PharmacyInventoryItem
 from .nutrition import NutritionAssessment
 from .immunization import VaccineScheduleItem, ImmunizationRecord
 from .password_reset_token import PasswordResetToken
+from .email_verification_token import EmailVerificationToken
 from .visit_workflow import PatientVisitWorkflow, PatientVisitWorkflowStep
 
 from . import user_hooks as _user_hooks  # noqa: F401

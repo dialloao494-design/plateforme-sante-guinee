@@ -1,4 +1,6 @@
-from sqlalchemy import Boolean, CheckConstraint, Column, Integer, String
+from datetime import datetime
+
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Integer, String
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -23,6 +25,7 @@ class User(Base):
     role = Column(String, nullable=False)
     clinic_id = Column(Integer, nullable=True, index=True)  # staff home clinic
     is_active = Column(Boolean, nullable=False, default=True)
+    email_verified_at = Column(DateTime, nullable=True)
 
     patient_profile = relationship("Patient", back_populates="user", uselist=False)
     doctor_profile = relationship("Doctor", back_populates="user", uselist=False)
