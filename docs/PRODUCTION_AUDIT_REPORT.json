@@ -2,9 +2,8 @@
   "backend": "https://web-production-ad6a36.up.railway.app",
   "frontend": "https://frontend-seven-rust-94.vercel.app",
   "counts": {
-    "PASS": 44,
-    "BLOCKER": 1,
-    "WARN": 1
+    "PASS": 56,
+    "BLOCKER": 1
   },
   "findings": [
     {
@@ -71,6 +70,48 @@
       "area": "Frontend routes",
       "status": "PASS",
       "message": "/verify-email",
+      "detail": "200"
+    },
+    {
+      "area": "Frontend routes",
+      "status": "PASS",
+      "message": "/clinical/reception",
+      "detail": "200"
+    },
+    {
+      "area": "Frontend routes",
+      "status": "PASS",
+      "message": "/clinical/nutrition",
+      "detail": "200"
+    },
+    {
+      "area": "Frontend routes",
+      "status": "PASS",
+      "message": "/clinical/immunization",
+      "detail": "200"
+    },
+    {
+      "area": "Frontend routes",
+      "status": "PASS",
+      "message": "/clinical/doctor",
+      "detail": "200"
+    },
+    {
+      "area": "Frontend routes",
+      "status": "PASS",
+      "message": "/clinical/lab",
+      "detail": "200"
+    },
+    {
+      "area": "Frontend routes",
+      "status": "PASS",
+      "message": "/clinical/pharmacy",
+      "detail": "200"
+    },
+    {
+      "area": "Frontend routes",
+      "status": "PASS",
+      "message": "/clinical/midwife",
       "detail": "200"
     },
     {
@@ -221,7 +262,7 @@
       "area": "Isolation",
       "status": "PASS",
       "message": "Clinic B cannot see clinic A patient",
-      "detail": "patient_id=18 visible_in_b=False"
+      "detail": "patient_id=22 visible_in_b=False"
     },
     {
       "area": "Smoke journey",
@@ -233,37 +274,37 @@
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff receptionist login",
-      "detail": "audit.recv.71d8a626@sante-gn.test"
+      "detail": "audit.recv.8b2ad02c@sante-gn.test"
     },
     {
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff nutritionist login",
-      "detail": "audit.nutri.71d8a626@sante-gn.test"
+      "detail": "audit.nutri.8b2ad02c@sante-gn.test"
     },
     {
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff midwife login",
-      "detail": "audit.midwife.71d8a626@sante-gn.test"
+      "detail": "audit.midwife.8b2ad02c@sante-gn.test"
     },
     {
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff doctor login",
-      "detail": "audit.doc.71d8a626@sante-gn.test"
+      "detail": "audit.doc.8b2ad02c@sante-gn.test"
     },
     {
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff lab_technician login",
-      "detail": "audit.lab.71d8a626@sante-gn.test"
+      "detail": "audit.lab.8b2ad02c@sante-gn.test"
     },
     {
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff pharmacist login",
-      "detail": "audit.pharma.71d8a626@sante-gn.test"
+      "detail": "audit.pharma.8b2ad02c@sante-gn.test"
     },
     {
       "area": "Smoke journey",
@@ -273,22 +314,46 @@
     },
     {
       "area": "Smoke journey",
-      "status": "WARN",
+      "status": "PASS",
+      "message": "Midwife /clinical/workflow/queue/pev",
+      "detail": "200"
+    },
+    {
+      "area": "Smoke journey",
+      "status": "PASS",
+      "message": "Midwife /clinical/workflow/queue/midwife",
+      "detail": "200"
+    },
+    {
+      "area": "Smoke journey",
+      "status": "PASS",
       "message": "PEV record",
-      "detail": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"vaccine_name\"],\"msg\":\"Field required\",\"input\":{\"patient_"
+      "detail": "{\"id\":4,\"clinic_id\":1,\"patient_id\":23,\"vaccine_code\":\"BCG\",\"vaccine_name\":\"BCG\",\"dose_label\":\"Naissa"
+    },
+    {
+      "area": "Smoke journey",
+      "status": "PASS",
+      "message": "Laboratory queue",
+      "detail": "200"
+    },
+    {
+      "area": "Smoke journey",
+      "status": "PASS",
+      "message": "Pharmacy queue",
+      "detail": "200"
     },
     {
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Full child workflow completed",
-      "detail": "{\"suffix\": \"71d8a626\", \"clinic_id\": 1, \"patient_id\": 19, \"workflow_id\": 2, \"after_reception\": \"nutrition\", \"after_nutrition\": \"pev\", \"after_pev\": \"doctor\", \"after_doctor\": \"doctor\"}"
+      "detail": "{\"suffix\": \"8b2ad02c\", \"clinic_id\": 1, \"patient_id\": 23, \"workflow_id\": 4, \"after_reception\": \"nutrition\", \"after_nutrition\": \"pev\", \"after_pev\": \"doctor\", \"after_doctor\": \"doctor\"}"
     }
   ],
   "journey": {
-    "suffix": "71d8a626",
+    "suffix": "8b2ad02c",
     "clinic_id": 1,
-    "patient_id": 19,
-    "workflow_id": 2,
+    "patient_id": 23,
+    "workflow_id": 4,
     "after_reception": "nutrition",
     "after_nutrition": "pev",
     "after_pev": "doctor",

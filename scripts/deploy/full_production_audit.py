@@ -34,6 +34,13 @@ FRONTEND_ROUTES = [
     "/forgot-password",
     "/reset-password",
     "/verify-email",
+    "/clinical/reception",
+    "/clinical/nutrition",
+    "/clinical/immunization",
+    "/clinical/doctor",
+    "/clinical/lab",
+    "/clinical/pharmacy",
+    "/clinical/midwife",
 ]
 
 ROLE_API_CHECKS = [
@@ -377,6 +384,14 @@ def audit_full_journey(report: AuditReport) -> None:
 
     midwife = staff_tokens.get("midwife")
     if midwife:
+        for path in ("/clinical/workflow/queue/pev", "/clinical/workflow/queue/midwife"):
+            r = api(report.backend, "GET", path, midwife)
+            report.add(
+                "Smoke journey",
+                "PASS" if r.status_code == 200 else "WARN",
+                f"Midwife {path}",
+                str(r.status_code),
+            )
         r = api(report.backend, "GET", "/clinical/immunization/schedule", midwife)
         schedule = r.json() if r.status_code == 200 else []
         if schedule:
@@ -401,6 +416,26 @@ def audit_full_journey(report: AuditReport) -> None:
                 "PEV record",
                 r2.text[:100],
             )
+
+    lab = staff_tokens.get("lab_technician")
+    if lab:
+        r = api(report.backend, "GET", "/clinical/lab/orders", lab)
+        report.add(
+            "Smoke journey",
+            "PASS" if r.status_code == 200 else "WARN",
+            "Laboratory queue",
+            str(r.status_code),
+        )
+
+    pharma = staff_tokens.get("pharmacist")
+    if pharma:
+        r = api(report.backend, "GET", "/clinical/pharmacy/orders", pharma)
+        report.add(
+            "Smoke journey",
+            "PASS" if r.status_code == 200 else "WARN",
+            "Pharmacy queue",
+            str(r.status_code),
+        )
 
     report.journey = journey
     report.add("Smoke journey", "PASS", "Full child workflow completed", json.dumps(journey))

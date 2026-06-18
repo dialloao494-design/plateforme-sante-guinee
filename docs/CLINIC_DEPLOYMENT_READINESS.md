@@ -1,69 +1,99 @@
-# Clinic deployment readiness — final audit summary
+# Clinic deployment readiness — final audit report
 
 **Date:** 2026-06-18  
 **Backend:** https://web-production-ad6a36.up.railway.app  
 **Frontend:** https://frontend-seven-rust-94.vercel.app  
 
-Automated audit: `python scripts/deploy/full_production_audit.py`  
-Latest result: **44 PASS · 0 FAIL · 1 BLOCKER** (see `PRODUCTION_AUDIT_REPORT.md`)
+**Automated audit:** `python scripts/deploy/full_production_audit.py`  
+**Latest result:** **56 PASS · 0 FAIL · 0 WARN · 1 BLOCKER**  
+**Security regression:** **33 unit tests PASS** (auth, isolation, workflow, nutrition/PEV, password reset)
+
+Full machine-readable output: `docs/PRODUCTION_AUDIT_REPORT.md` and `docs/PRODUCTION_AUDIT_REPORT.json`
+
+---
+
+## Executive verdict
+
+The platform is **ready for a single-clinic pilot tomorrow** using pre-provisioned demo accounts and in-app password changes. **Transactional email (password reset + verification) is the only deployment blocker** for self-service account recovery. All other audited clinical workflows pass in production.
 
 ---
 
 ## 1. Working features (verified in production)
 
+### Infrastructure
+- `GET /health` → 200 (`debug: false`)
+- `GET /health/ready` → database OK
+- Frontend SPA routes: `/`, `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/verify-email`
+- Clinical dashboards: `/clinical/reception`, `/nutrition`, `/immunization`, `/doctor`, `/lab`, `/pharmacy`, `/midwife`
+
 ### Authentication & accounts
 - Register (patient/doctor) with token + immediate login
 - Login / logout / change password
-- Forgot password + reset password (token validation)
-- Email verification API + `/verify-email` frontend route
+- Forgot password endpoint (200) + invalid reset token rejected (400)
+- Email verification API + `/verify-email` frontend route (delivery pending SMTP)
 - Weak password and duplicate email rejection
-- Rate limiting on login, register, forgot-password
+- Rate limiting: login 30/min, register 5/min, forgot-password 10/hour (production defaults)
 
-### Clinical CIS
-- Reception queue, patient intake, workflow queues
-- Child path: Reception → Nutrition → PEV → Doctor (automated smoke PASS)
-- Staff creation (reception, nutrition, midwife, doctor, lab, pharmacist)
-- Nutrition assessments
-- PEV schedule API
-- Doctor / reception dashboards
-- Multi-clinic patient isolation (clinic B cannot see clinic A patients)
+### Roles & dashboards
+- Login verified: `clinic_admin`, `reception` (clinic A & B), `doctor`
+- Reception queue + workflow queue
+- Doctor queue + workflow queue
+- Clinic admin operations summary + staff list
+- Nutrition patient history + PEV schedule
+- Lab/pharmacy orders correctly denied for reception (403)
 
-### Infrastructure
-- `/health`, `/health/ready`, frontend SPA routes
-- Alembic + startup schema ensure on Railway (post hotfix `78d83dd`)
-- Low-bandwidth optimizations (cached GETs, lazy routes, asset caching)
+### Security (production + unit tests)
+- RBAC: reception denied doctor queue and admin backup (403)
+- Multi-clinic isolation: clinic B cannot see clinic A patients
+- Password reset: hashed tokens, expiry, single-use
+- Public registration role guard (no admin escalation)
+- Privileged role ORM guard
 
-### Security (sample)
-- RBAC: reception denied doctor queue and admin backup
-- Lab/pharmacy queues denied for reception role
-- JWT role integrity (covered by unit tests)
+### Production smoke journey (automated)
+- Staff created and logged in: receptionist, nutritionist, midwife, doctor, lab_technician, pharmacist
+- Patient intake + child workflow: Reception → Nutrition → PEV → Doctor
+- Nutrition assessment (201), PEV record (201), midwife queues (200)
+- Laboratory queue (200), pharmacy queue (200)
+- Full workflow artifact: patient_id 23, workflow_id 4, stages verified
 
 ---
 
-## 2. Blocking issue for tomorrow's clinic
+## 2. Blocking issue for clinic deployment tomorrow
 
-### SMTP / transactional email not configured on Railway
+### SMTP / Resend not configured on Railway
 
-**Impact:** Password reset and verification emails are **not delivered to inboxes** — links are only logged server-side.
+**Impact:** Password reset and email verification links are generated server-side but **not delivered to inboxes**. Users cannot self-recover via forgot-password until this is fixed.
 
-**Fix (required before real doctors use forgot-password):** Set on Railway backend service:
+**Required Railway variables** (backend service → Variables):
 
-| Variable | Value |
-|----------|--------|
-| `SMTP_HOST` | e.g. `smtp.gmail.com` or your provider |
+| Variable | Example |
+|----------|---------|
+| `SMTP_HOST` | `smtp.gmail.com` |
 | `SMTP_PORT` | `587` |
 | `SMTP_USERNAME` | sender account |
 | `SMTP_PASSWORD` | app password |
-| `SENDER_EMAIL` | verified sender address |
+| `SENDER_EMAIL` | verified sender |
 | `FRONTEND_URL` | `https://frontend-seven-rust-94.vercel.app` |
 
-Alternative: `RESEND_API_KEY` + verified `SENDER_EMAIL`.
+**Alternative:** `RESEND_API_KEY` + verified `SENDER_EMAIL`.
 
-Verify: `GET /health/email` → `"configured": true`
+**Verify after setting:**
+```bash
+curl https://web-production-ad6a36.up.railway.app/health/email
+# → "configured": true
+```
+
+**Inbox E2E test (manual, after SMTP):**
+1. POST `/auth/forgot-password` with a real inbox email
+2. Register a new account — check inbox for `/verify-email?token=...`
+3. Re-run: `python scripts/deploy/full_production_audit.py`
 
 Full guide: [RAILWAY_SMTP.md](./RAILWAY_SMTP.md)
 
-**Workaround for clinic day:** Use demo accounts below; use change-password from profile for existing users; clinic admin resets staff passwords via admin panel.
+**Workaround for clinic day:**
+- Use demo accounts below
+- Change password from profile for existing users
+- Clinic admin resets staff passwords via admin panel
 
 ---
 
@@ -71,11 +101,12 @@ Full guide: [RAILWAY_SMTP.md](./RAILWAY_SMTP.md)
 
 | Item | Severity | Notes |
 |------|----------|--------|
-| SMTP not configured | **Blocker** | See above |
-| PEV record in audit script | Low | Fixed in audit script; API works when `vaccine_name` provided |
-| New clinic creation | By design | Only `platform_owner` can `POST /clinical/clinics`; use platform owner for onboarding new clinics |
-| Lab/pharmacy smoke in audit | Info | Not in default journey; APIs exist, RBAC verified |
-| `REQUIRE_EMAIL_VERIFICATION` | Optional | Env flag to block login until verified; **off** by default so clinic accounts work immediately |
+| SMTP not configured | **Blocker** | See §2 — requires Railway credentials (not in repo) |
+| New clinic creation | By design | `POST /clinical/clinics` requires `platform_owner`; use `scripts/deploy/provision_platform_owner.py` for multi-clinic onboarding |
+| Inbox E2E email test | Pending | Blocked on SMTP configuration |
+| `REQUIRE_EMAIL_VERIFICATION` | Optional | Off by default; enable only after SMTP is stable |
+| JWT in localStorage | Medium | Documented architectural risk; mitigated by CSP/XSS hygiene; not a clinic-day blocker |
+| Rate limit in-memory | Medium | Single Railway worker OK for pilot; Redis needed for multi-instance scale |
 
 ---
 
@@ -92,33 +123,39 @@ Full guide: [RAILWAY_SMTP.md](./RAILWAY_SMTP.md)
 
 ## 5. Recommended before onboarding multiple clinics
 
-1. **Configure SMTP/Resend** on Railway and run inbox test (forgot-password + signup verification).
+1. **Configure SMTP/Resend** on Railway and complete inbox E2E test.
 2. **Provision platform owner** for new clinic creation (`POST /clinical/clinics`).
-3. **Set `FRONTEND_URL`** on Railway to production Vercel URL (already set).
-4. **Run audit after SMTP:** `python scripts/deploy/full_production_audit.py`
-5. **Optional:** Enable `REQUIRE_EMAIL_VERIFICATION=true` after SMTP is stable.
-6. **Train staff** on password rule: 8+ chars, 1 uppercase, 1 digit.
+3. **Run audit after SMTP:** `python scripts/deploy/full_production_audit.py` → expect 57 PASS, 0 BLOCKER.
+4. **Optional:** Set `REQUIRE_EMAIL_VERIFICATION=true` after SMTP is stable.
+5. **Train staff** on password rule: 8+ chars, 1 uppercase, 1 digit.
+6. **Document clinic-specific admin** for staff provisioning and password resets.
 
 ---
 
-## 6. Commits deployed this audit cycle
-
-- `cd0cca4` — SMTP delivery, email verification, audit tooling
-- `78d83dd` — Railway Alembic startup + email schema ensure
-- `585b7c9` — Low-bandwidth optimizations
-
----
-
-## 7. Security audit summary
+## 6. Security audit summary
 
 | Area | Status |
 |------|--------|
-| Public registration role guard | PASS (unit tests) |
+| Public registration role guard | PASS |
 | Privileged role ORM guard | PASS |
 | Login rate limit (30/min prod) | Configured |
 | Forgot-password rate limit (10/hour) | Configured |
 | Password reset token hashing + expiry | PASS |
 | Multi-clinic isolation | PASS (production + unit tests) |
 | Password policy (8+, upper, digit) | Enforced |
+| RBAC on clinical endpoints | PASS (production audit) |
 
-No new critical/high code review issues were left unaddressed in this pass. Full regression: **33 unit tests PASS** locally (auth, isolation, workflow, nutrition/PEV).
+Historical critical/high items from earlier code reviews (admin registration, payment bypass, public uploads) were remediated in prior commits. No new critical/high issues found in this audit pass.
+
+---
+
+## 7. Commits in this audit cycle
+
+| Commit | Description |
+|--------|-------------|
+| `cd0cca4` | SMTP delivery, email verification, audit tooling |
+| `78d83dd` | Railway Alembic startup + email schema ensure |
+| `585b7c9` | Low-bandwidth optimizations |
+| `b38e560` | Production audit report + clinic deployment readiness |
+
+Uncommitted local improvements: extended audit script (lab/pharmacy/midwife queues + clinical frontend routes) — see `scripts/deploy/full_production_audit.py`.

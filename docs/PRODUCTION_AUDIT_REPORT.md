@@ -2,14 +2,13 @@
 
 - **Backend:** https://web-production-ad6a36.up.railway.app
 - **Frontend:** https://frontend-seven-rust-94.vercel.app
-- **Started:** 2026-06-18T02:22:31.681960Z
+- **Started:** 2026-06-18T13:32:16.690137Z
 
 ## Summary
 
 | Status | Count |
 |--------|-------|
-| PASS | 44 |
-| WARN | 1 |
+| PASS | 56 |
 | BLOCKER | 1 |
 
 ## Blocking issues (clinic deployment)
@@ -29,6 +28,13 @@
 - [PASS] **Frontend routes** — /forgot-password (200)
 - [PASS] **Frontend routes** — /reset-password (200)
 - [PASS] **Frontend routes** — /verify-email (200)
+- [PASS] **Frontend routes** — /clinical/reception (200)
+- [PASS] **Frontend routes** — /clinical/nutrition (200)
+- [PASS] **Frontend routes** — /clinical/immunization (200)
+- [PASS] **Frontend routes** — /clinical/doctor (200)
+- [PASS] **Frontend routes** — /clinical/lab (200)
+- [PASS] **Frontend routes** — /clinical/pharmacy (200)
+- [PASS] **Frontend routes** — /clinical/midwife (200)
 - [PASS] **Auth** — Doctor register + token
 - [PASS] **Auth** — Login after register
 - [PASS] **Auth** — Duplicate email rejected (409)
@@ -53,26 +59,30 @@
 - [PASS] **Dashboards** — reception_a GET /clinical/pharmacy/orders (403)
 - [PASS] **Security RBAC** — reception_a denied /clinical/doctor/queue (403)
 - [PASS] **Security RBAC** — reception_a denied /clinical/admin/backup-status (403)
-- [PASS] **Isolation** — Clinic B cannot see clinic A patient (patient_id=18 visible_in_b=False)
+- [PASS] **Isolation** — Clinic B cannot see clinic A patient (patient_id=22 visible_in_b=False)
 - [PASS] **Smoke journey** — Using existing clinic (id=1)
-- [PASS] **Smoke journey** — Staff receptionist login (audit.recv.71d8a626@sante-gn.test)
-- [PASS] **Smoke journey** — Staff nutritionist login (audit.nutri.71d8a626@sante-gn.test)
-- [PASS] **Smoke journey** — Staff midwife login (audit.midwife.71d8a626@sante-gn.test)
-- [PASS] **Smoke journey** — Staff doctor login (audit.doc.71d8a626@sante-gn.test)
-- [PASS] **Smoke journey** — Staff lab_technician login (audit.lab.71d8a626@sante-gn.test)
-- [PASS] **Smoke journey** — Staff pharmacist login (audit.pharma.71d8a626@sante-gn.test)
+- [PASS] **Smoke journey** — Staff receptionist login (audit.recv.8b2ad02c@sante-gn.test)
+- [PASS] **Smoke journey** — Staff nutritionist login (audit.nutri.8b2ad02c@sante-gn.test)
+- [PASS] **Smoke journey** — Staff midwife login (audit.midwife.8b2ad02c@sante-gn.test)
+- [PASS] **Smoke journey** — Staff doctor login (audit.doc.8b2ad02c@sante-gn.test)
+- [PASS] **Smoke journey** — Staff lab_technician login (audit.lab.8b2ad02c@sante-gn.test)
+- [PASS] **Smoke journey** — Staff pharmacist login (audit.pharma.8b2ad02c@sante-gn.test)
 - [PASS] **Smoke journey** — Nutrition assessment (201)
-- [WARN] **Smoke journey** — PEV record ({"detail":[{"type":"missing","loc":["body","vaccine_name"],"msg":"Field required","input":{"patient_)
-- [PASS] **Smoke journey** — Full child workflow completed ({"suffix": "71d8a626", "clinic_id": 1, "patient_id": 19, "workflow_id": 2, "after_reception": "nutrition", "after_nutrition": "pev", "after_pev": "doctor", "after_doctor": "doctor"})
+- [PASS] **Smoke journey** — Midwife /clinical/workflow/queue/pev (200)
+- [PASS] **Smoke journey** — Midwife /clinical/workflow/queue/midwife (200)
+- [PASS] **Smoke journey** — PEV record ({"id":4,"clinic_id":1,"patient_id":23,"vaccine_code":"BCG","vaccine_name":"BCG","dose_label":"Naissa)
+- [PASS] **Smoke journey** — Laboratory queue (200)
+- [PASS] **Smoke journey** — Pharmacy queue (200)
+- [PASS] **Smoke journey** — Full child workflow completed ({"suffix": "8b2ad02c", "clinic_id": 1, "patient_id": 23, "workflow_id": 4, "after_reception": "nutrition", "after_nutrition": "pev", "after_pev": "doctor", "after_doctor": "doctor"})
 
 ## Smoke journey artifact
 
 ```json
 {
-  "suffix": "71d8a626",
+  "suffix": "8b2ad02c",
   "clinic_id": 1,
-  "patient_id": 19,
-  "workflow_id": 2,
+  "patient_id": 23,
+  "workflow_id": 4,
   "after_reception": "nutrition",
   "after_nutrition": "pev",
   "after_pev": "doctor",
