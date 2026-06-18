@@ -262,7 +262,7 @@
       "area": "Isolation",
       "status": "PASS",
       "message": "Clinic B cannot see clinic A patient",
-      "detail": "patient_id=22 visible_in_b=False"
+      "detail": "patient_id=25 visible_in_b=False"
     },
     {
       "area": "Smoke journey",
@@ -274,37 +274,37 @@
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff receptionist login",
-      "detail": "audit.recv.8b2ad02c@sante-gn.test"
+      "detail": "audit.recv.b91f51df@sante-gn.test"
     },
     {
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff nutritionist login",
-      "detail": "audit.nutri.8b2ad02c@sante-gn.test"
+      "detail": "audit.nutri.b91f51df@sante-gn.test"
     },
     {
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff midwife login",
-      "detail": "audit.midwife.8b2ad02c@sante-gn.test"
+      "detail": "audit.midwife.b91f51df@sante-gn.test"
     },
     {
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff doctor login",
-      "detail": "audit.doc.8b2ad02c@sante-gn.test"
+      "detail": "audit.doc.b91f51df@sante-gn.test"
     },
     {
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff lab_technician login",
-      "detail": "audit.lab.8b2ad02c@sante-gn.test"
+      "detail": "audit.lab.b91f51df@sante-gn.test"
     },
     {
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff pharmacist login",
-      "detail": "audit.pharma.8b2ad02c@sante-gn.test"
+      "detail": "audit.pharma.b91f51df@sante-gn.test"
     },
     {
       "area": "Smoke journey",
@@ -328,7 +328,7 @@
       "area": "Smoke journey",
       "status": "PASS",
       "message": "PEV record",
-      "detail": "{\"id\":4,\"clinic_id\":1,\"patient_id\":23,\"vaccine_code\":\"BCG\",\"vaccine_name\":\"BCG\",\"dose_label\":\"Naissa"
+      "detail": "{\"id\":5,\"clinic_id\":1,\"patient_id\":26,\"vaccine_code\":\"BCG\",\"vaccine_name\":\"BCG\",\"dose_label\":\"Naissa"
     },
     {
       "area": "Smoke journey",
@@ -346,14 +346,14 @@
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Full child workflow completed",
-      "detail": "{\"suffix\": \"8b2ad02c\", \"clinic_id\": 1, \"patient_id\": 23, \"workflow_id\": 4, \"after_reception\": \"nutrition\", \"after_nutrition\": \"pev\", \"after_pev\": \"doctor\", \"after_doctor\": \"doctor\"}"
+      "detail": "{\"suffix\": \"b91f51df\", \"clinic_id\": 1, \"patient_id\": 26, \"workflow_id\": 5, \"after_reception\": \"nutrition\", \"after_nutrition\": \"pev\", \"after_pev\": \"doctor\", \"after_doctor\": \"doctor\"}"
     }
   ],
   "journey": {
-    "suffix": "8b2ad02c",
+    "suffix": "b91f51df",
     "clinic_id": 1,
-    "patient_id": 23,
-    "workflow_id": 4,
+    "patient_id": 26,
+    "workflow_id": 5,
     "after_reception": "nutrition",
     "after_nutrition": "pev",
     "after_pev": "doctor",

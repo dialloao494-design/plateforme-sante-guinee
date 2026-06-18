@@ -2,7 +2,7 @@
 
 - **Backend:** https://web-production-ad6a36.up.railway.app
 - **Frontend:** https://frontend-seven-rust-94.vercel.app
-- **Started:** 2026-06-18T13:32:16.690137Z
+- **Started:** 2026-06-18T14:34:25.836957Z
 
 ## Summary
 
@@ -59,30 +59,30 @@
 - [PASS] **Dashboards** — reception_a GET /clinical/pharmacy/orders (403)
 - [PASS] **Security RBAC** — reception_a denied /clinical/doctor/queue (403)
 - [PASS] **Security RBAC** — reception_a denied /clinical/admin/backup-status (403)
-- [PASS] **Isolation** — Clinic B cannot see clinic A patient (patient_id=22 visible_in_b=False)
+- [PASS] **Isolation** — Clinic B cannot see clinic A patient (patient_id=25 visible_in_b=False)
 - [PASS] **Smoke journey** — Using existing clinic (id=1)
-- [PASS] **Smoke journey** — Staff receptionist login (audit.recv.8b2ad02c@sante-gn.test)
-- [PASS] **Smoke journey** — Staff nutritionist login (audit.nutri.8b2ad02c@sante-gn.test)
-- [PASS] **Smoke journey** — Staff midwife login (audit.midwife.8b2ad02c@sante-gn.test)
-- [PASS] **Smoke journey** — Staff doctor login (audit.doc.8b2ad02c@sante-gn.test)
-- [PASS] **Smoke journey** — Staff lab_technician login (audit.lab.8b2ad02c@sante-gn.test)
-- [PASS] **Smoke journey** — Staff pharmacist login (audit.pharma.8b2ad02c@sante-gn.test)
+- [PASS] **Smoke journey** — Staff receptionist login (audit.recv.b91f51df@sante-gn.test)
+- [PASS] **Smoke journey** — Staff nutritionist login (audit.nutri.b91f51df@sante-gn.test)
+- [PASS] **Smoke journey** — Staff midwife login (audit.midwife.b91f51df@sante-gn.test)
+- [PASS] **Smoke journey** — Staff doctor login (audit.doc.b91f51df@sante-gn.test)
+- [PASS] **Smoke journey** — Staff lab_technician login (audit.lab.b91f51df@sante-gn.test)
+- [PASS] **Smoke journey** — Staff pharmacist login (audit.pharma.b91f51df@sante-gn.test)
 - [PASS] **Smoke journey** — Nutrition assessment (201)
 - [PASS] **Smoke journey** — Midwife /clinical/workflow/queue/pev (200)
 - [PASS] **Smoke journey** — Midwife /clinical/workflow/queue/midwife (200)
-- [PASS] **Smoke journey** — PEV record ({"id":4,"clinic_id":1,"patient_id":23,"vaccine_code":"BCG","vaccine_name":"BCG","dose_label":"Naissa)
+- [PASS] **Smoke journey** — PEV record ({"id":5,"clinic_id":1,"patient_id":26,"vaccine_code":"BCG","vaccine_name":"BCG","dose_label":"Naissa)
 - [PASS] **Smoke journey** — Laboratory queue (200)
 - [PASS] **Smoke journey** — Pharmacy queue (200)
-- [PASS] **Smoke journey** — Full child workflow completed ({"suffix": "8b2ad02c", "clinic_id": 1, "patient_id": 23, "workflow_id": 4, "after_reception": "nutrition", "after_nutrition": "pev", "after_pev": "doctor", "after_doctor": "doctor"})
+- [PASS] **Smoke journey** — Full child workflow completed ({"suffix": "b91f51df", "clinic_id": 1, "patient_id": 26, "workflow_id": 5, "after_reception": "nutrition", "after_nutrition": "pev", "after_pev": "doctor", "after_doctor": "doctor"})
 
 ## Smoke journey artifact
 
 ```json
 {
-  "suffix": "8b2ad02c",
+  "suffix": "b91f51df",
   "clinic_id": 1,
-  "patient_id": 23,
-  "workflow_id": 4,
+  "patient_id": 26,
+  "workflow_id": 5,
   "after_reception": "nutrition",
   "after_nutrition": "pev",
   "after_pev": "doctor",
