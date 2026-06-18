@@ -2,8 +2,7 @@
   "backend": "https://web-production-ad6a36.up.railway.app",
   "frontend": "https://frontend-seven-rust-94.vercel.app",
   "counts": {
-    "PASS": 56,
-    "BLOCKER": 1
+    "PASS": 57
   },
   "findings": [
     {
@@ -20,15 +19,15 @@
     },
     {
       "area": "Email",
-      "status": "BLOCKER",
-      "message": "SMTP/Resend not configured on Railway",
-      "detail": "{\"status\":\"not_configured\",\"configured\":false,\"provider\":\"none\",\"sender_set\":false,\"frontend_url_set\":true}"
+      "status": "PASS",
+      "message": "Email provider: resend",
+      "detail": "{\"status\":\"ok\",\"configured\":true,\"provider\":\"resend\",\"sender_set\":true,\"frontend_url_set\":true}"
     },
     {
       "area": "Infrastructure",
       "status": "PASS",
       "message": "GET /auth/email-status -> 200",
-      "detail": "{\"configured\":false,\"provider\":\"none\",\"sender_set\":false,\"frontend_url_set\":true}"
+      "detail": "{\"configured\":true,\"provider\":\"resend\",\"sender_set\":true,\"frontend_url_set\":true}"
     },
     {
       "area": "Infrastructure",
@@ -262,7 +261,7 @@
       "area": "Isolation",
       "status": "PASS",
       "message": "Clinic B cannot see clinic A patient",
-      "detail": "patient_id=25 visible_in_b=False"
+      "detail": "patient_id=28 visible_in_b=False"
     },
     {
       "area": "Smoke journey",
@@ -274,37 +273,37 @@
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff receptionist login",
-      "detail": "audit.recv.b91f51df@sante-gn.test"
+      "detail": "audit.recv.9a4b5d83@sante-gn.test"
     },
     {
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff nutritionist login",
-      "detail": "audit.nutri.b91f51df@sante-gn.test"
+      "detail": "audit.nutri.9a4b5d83@sante-gn.test"
     },
     {
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff midwife login",
-      "detail": "audit.midwife.b91f51df@sante-gn.test"
+      "detail": "audit.midwife.9a4b5d83@sante-gn.test"
     },
     {
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff doctor login",
-      "detail": "audit.doc.b91f51df@sante-gn.test"
+      "detail": "audit.doc.9a4b5d83@sante-gn.test"
     },
     {
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff lab_technician login",
-      "detail": "audit.lab.b91f51df@sante-gn.test"
+      "detail": "audit.lab.9a4b5d83@sante-gn.test"
     },
     {
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Staff pharmacist login",
-      "detail": "audit.pharma.b91f51df@sante-gn.test"
+      "detail": "audit.pharma.9a4b5d83@sante-gn.test"
     },
     {
       "area": "Smoke journey",
@@ -328,7 +327,7 @@
       "area": "Smoke journey",
       "status": "PASS",
       "message": "PEV record",
-      "detail": "{\"id\":5,\"clinic_id\":1,\"patient_id\":26,\"vaccine_code\":\"BCG\",\"vaccine_name\":\"BCG\",\"dose_label\":\"Naissa"
+      "detail": "{\"id\":6,\"clinic_id\":1,\"patient_id\":29,\"vaccine_code\":\"BCG\",\"vaccine_name\":\"BCG\",\"dose_label\":\"Naissa"
     },
     {
       "area": "Smoke journey",
@@ -346,14 +345,14 @@
       "area": "Smoke journey",
       "status": "PASS",
       "message": "Full child workflow completed",
-      "detail": "{\"suffix\": \"b91f51df\", \"clinic_id\": 1, \"patient_id\": 26, \"workflow_id\": 5, \"after_reception\": \"nutrition\", \"after_nutrition\": \"pev\", \"after_pev\": \"doctor\", \"after_doctor\": \"doctor\"}"
+      "detail": "{\"suffix\": \"9a4b5d83\", \"clinic_id\": 1, \"patient_id\": 29, \"workflow_id\": 6, \"after_reception\": \"nutrition\", \"after_nutrition\": \"pev\", \"after_pev\": \"doctor\", \"after_doctor\": \"doctor\"}"
     }
   ],
   "journey": {
-    "suffix": "b91f51df",
+    "suffix": "9a4b5d83",
     "clinic_id": 1,
-    "patient_id": 26,
-    "workflow_id": 5,
+    "patient_id": 29,
+    "workflow_id": 6,
     "after_reception": "nutrition",
     "after_nutrition": "pev",
     "after_pev": "doctor",
