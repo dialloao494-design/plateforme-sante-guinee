@@ -77,7 +77,12 @@ def reset_password_with_token(db: Session, *, raw_token: str, new_password: str)
 
 
 def build_reset_link(raw_token: str) -> str:
-    frontend = (os.getenv("FRONTEND_URL") or os.getenv("PUBLIC_FRONTEND_URL") or "").rstrip("/")
+    frontend = (
+        os.getenv("FRONTEND_URL")
+        or os.getenv("FRONTEND_PRODUCTION_URL")
+        or os.getenv("PUBLIC_FRONTEND_URL")
+        or ""
+    ).rstrip("/")
     if not frontend:
         frontend = "http://localhost:5173"
     return f"{frontend}/reset-password?token={raw_token}"
