@@ -49,6 +49,7 @@ const MidwifeDashboard = lazy(() => import("../pages/clinical/MidwifeDashboard.j
 
 const STAFF_ADMIN_ROLES = ["admin", "clinic_admin", "platform_admin"];
 const PLATFORM_OWNER_ROLES = ["platform_owner"];
+const PLATFORM_CLINIC_PROVISION_ROLES = ["platform_owner", "platform_admin"];
 const CLINIC_ADMIN_ROLES = ["admin", "clinic_admin"];
 const RECEPTION_ROLES = ["receptionist", "cashier"];
 const BILLING_ROLES = ["receptionist", "cashier", "admin", "clinic_admin"];
@@ -243,7 +244,7 @@ const AppRoutes = () => {
       <Route
         path="/platform/clinics"
         element={
-          <ProtectedRoute allowedRoles={PLATFORM_OWNER_ROLES}>
+          <ProtectedRoute allowedRoles={PLATFORM_CLINIC_PROVISION_ROLES}>
             <PlatformOwnerAdminDashboard />
           </ProtectedRoute>
         }

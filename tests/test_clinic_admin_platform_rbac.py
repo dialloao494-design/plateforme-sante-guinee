@@ -82,3 +82,23 @@ def test_clinic_admin_cannot_provision_staff_for_other_clinic(client, db_session
     )
     assert response.status_code == 201, response.text
     assert response.json()["name"] == "Owner Created Clinic"
+
+
+def test_platform_admin_can_create_clinic(client, db_session):
+    with provisioning_channel("test_fixture"):
+        admin = models.User(
+            email="rbac.platform.admin@test.gn",
+            hashed_password=hash_password("Secret12"),
+            role="platform_admin",
+        )
+        db_session.add(admin)
+        db_session.commit()
+        db_session.refresh(admin)
+
+    response = client.post(
+        "/clinical/clinics",
+        json={"name": "Platform Admin Clinic", "city": "Conakry"},
+        headers=_auth(admin),
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["name"] == "Platform Admin Clinic"

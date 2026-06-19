@@ -180,7 +180,7 @@ def create_clinic(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assert_role(current_user, ("platform_owner",))
+    assert_role(current_user, ("platform_owner", "platform_admin"))
     clinic = models.Clinic(
         name=body.name.strip(),
         address=body.address,

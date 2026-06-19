@@ -41,6 +41,8 @@ const ROLE_NAV = {
     { path: '/clinical/reports', label: 'Rapports', icon: 'calendar' },
   ],
   platform_admin: [
+    { path: '/platform/clinics', label: 'Cliniques', icon: 'shield' },
+    { path: '/platform/clinics#platform-staff', label: 'Créer admin clinique', icon: 'people' },
     { path: '/users', label: 'Utilisateurs', icon: 'people' },
     { path: '/clinical', label: 'Opérations', icon: 'dash' },
     { path: '/clinical/reports', label: 'Rapports', icon: 'calendar' },

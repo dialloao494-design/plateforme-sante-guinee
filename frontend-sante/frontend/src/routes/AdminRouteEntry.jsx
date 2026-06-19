@@ -20,7 +20,7 @@ export default function AdminRouteEntry() {
   }
 
   if (role === 'platform_admin') {
-    return <Navigate to="/users" replace />;
+    return <Navigate to="/platform/clinics" replace />;
   }
 
   return <Navigate to="/clinical" replace />;
