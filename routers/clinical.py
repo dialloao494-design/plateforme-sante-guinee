@@ -383,7 +383,9 @@ def reception_queue(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assert_role(current_user, CLINIC_OPS_ROLES)
+    from core.rbac import CASHIER_ROLES, CLINIC_ADMIN_ROLES
+
+    assert_role(current_user, RECEPTION_ROLES + CASHIER_ROLES + CLINIC_ADMIN_ROLES)
     clinic = resolve_clinic_for_user(db, current_user)
     items = ClinicalWorkflowService.reception_queue(db, clinic_id=clinic.id)
     for item in items:
