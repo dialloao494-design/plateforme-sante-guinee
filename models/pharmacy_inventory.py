@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -18,6 +18,9 @@ class PharmacyInventoryItem(Base):
     quantity = Column(Integer, nullable=False, default=0)
     reorder_level = Column(Integer, nullable=False, default=10)
     unit_price_gnf = Column(Integer, nullable=False, default=25_000)
+    batch_number = Column(String(64), nullable=True)
+    expiry_date = Column(Date, nullable=True)
+    supplier = Column(String(128), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

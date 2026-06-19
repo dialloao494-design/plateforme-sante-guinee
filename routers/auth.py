@@ -27,6 +27,7 @@ from security import (
     verify_password,
     create_access_token,
 )
+from core.roles import effective_role
 from services.user_provisioning import (
     EmailAlreadyRegisteredError,
     PublicRegistrationRoleError,
@@ -151,13 +152,21 @@ def create_token_response(user: User):
     - role: User's role (patient, doctor, admin)
     - email: User's email address
     """
-    access_token = create_access_token(data={"sub": user.email, "user_id": user.id, "user_role": user.role, "role": user.role})
+    canonical_role = effective_role(user.role)
+    access_token = create_access_token(
+        data={
+            "sub": user.email,
+            "user_id": user.id,
+            "user_role": canonical_role,
+            "role": canonical_role,
+        }
+    )
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "user_id": user.id,
-        "user_role": user.role,
-        "role": user.role,
+        "user_role": canonical_role,
+        "role": canonical_role,
         "email": user.email,
     }
 
@@ -251,14 +260,16 @@ def build_user_response(db: Session, user: User) -> dict:
     clinic_id = user.clinic_id
     clinic_name = None
 
-    if user.role == "doctor":
+    canonical_role = effective_role(user.role)
+
+    if canonical_role == "doctor":
         doc = db.query(models.Doctor).filter(models.Doctor.user_id == user.id).first()
         if doc:
             doctor_id = doc.id
             full_name = doc.full_name
             if clinic_id is None:
                 clinic_id = doc.clinic_id
-    elif user.role == "patient":
+    elif canonical_role == "patient":
         pat = db.query(models.Patient).filter(models.Patient.user_id == user.id).first()
         if pat and pat.first_name:
             full_name = f"{pat.first_name} {pat.last_name}".strip()
@@ -273,13 +284,13 @@ def build_user_response(db: Session, user: User) -> dict:
         clinic = db.query(models.Clinic).filter(models.Clinic.id == clinic_id).first()
         if clinic:
             clinic_name = clinic.name
-    elif user.role in ("platform_admin", "platform_owner"):
+    elif canonical_role in ("platform_admin", "platform_owner"):
         clinic_name = "Plateforme nationale"
 
     return {
         "id": user.id,
         "email": user.email,
-        "role": user.role,
+        "role": canonical_role,
         "doctor_id": doctor_id,
         "full_name": full_name,
         "clinic_id": clinic_id,

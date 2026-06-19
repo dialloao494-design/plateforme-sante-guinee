@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import date
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -14,6 +17,10 @@ class PharmacyInventoryItemResponse(BaseModel):
     reorder_level: int
     unit_price_gnf: int
     low_stock: bool = False
+    out_of_stock: bool = False
+    batch_number: Optional[str] = None
+    expiry_date: Optional[date] = None
+    supplier: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -25,6 +32,9 @@ class PharmacyInventoryUpsert(BaseModel):
     quantity: int = Field(..., ge=0)
     reorder_level: int = Field(10, ge=0)
     unit_price_gnf: int = Field(25_000, ge=0)
+    batch_number: Optional[str] = Field(None, max_length=64)
+    expiry_date: Optional[date] = None
+    supplier: Optional[str] = Field(None, max_length=128)
 
 
 class PharmacyInventoryAdjust(BaseModel):

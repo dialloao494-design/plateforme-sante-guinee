@@ -81,7 +81,11 @@ export function getShellContext(pathname, role) {
     return { crumbs: [{ label: 'Tableau de bord', to: null }] };
   }
   if (pathname === '/platform' || pathname.startsWith('/platform/')) {
-    return { crumbs: [c('/platform', 'Plateforme'), { label: 'Console', to: null }] };
+    const label =
+      pathname === '/platform/clinics' || pathname.startsWith('/platform/clinics')
+        ? 'Cliniques'
+        : 'Console';
+    return { crumbs: [c('/platform', 'Plateforme'), { label, to: null }] };
   }
 
   return { crumbs: [{ label: 'Plateforme Santé', to: null }] };

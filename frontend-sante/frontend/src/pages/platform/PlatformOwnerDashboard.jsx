@@ -9,8 +9,8 @@ export default function PlatformOwnerDashboard() {
     {
       title: 'Cliniques',
       description: 'Créer, activer ou désactiver toutes les cliniques de la plateforme.',
-      to: '/clinical/admin',
-      cta: 'Administration clinique',
+      to: '/platform/clinics',
+      cta: 'Créer / gérer cliniques',
     },
     {
       title: 'Utilisateurs',

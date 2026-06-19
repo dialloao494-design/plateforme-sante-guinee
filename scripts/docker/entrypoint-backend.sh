@@ -57,6 +57,7 @@ from database_migrations import (
     ensure_doctor_geolocation_columns,
     ensure_patient_dossier_schema,
     ensure_user_roles_check_constraint,
+    normalize_legacy_user_roles,
 )
 
 Base.metadata.create_all(bind=engine)
@@ -85,6 +86,7 @@ except Exception as exc:
 ensure_doctor_geolocation_columns(engine)
 ensure_patient_dossier_schema(engine)
 ensure_user_roles_check_constraint(engine)
+normalize_legacy_user_roles(engine)
 print("[entrypoint] Schema ready.")
 PY
 

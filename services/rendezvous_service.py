@@ -16,6 +16,7 @@ from fastapi import HTTPException, status
 import os
 
 import models
+from core.roles import effective_role
 from schemas import rendezvous as rendezvous_schemas
 
 
@@ -174,7 +175,9 @@ class RendezVousService:
         """Return appointments scoped according to user role."""
         RendezVousService.ensure_schema(db)
 
-        if current_user.role == "patient":
+        role = effective_role(current_user.role)
+
+        if role == "patient":
             patient = db.query(models.Patient).filter(
                 models.Patient.user_id == current_user.id
             ).first()
@@ -184,7 +187,7 @@ class RendezVousService:
                 models.RendezVous.patient_id == patient.id
             ).all()
 
-        if current_user.role == "doctor":
+        if role == "doctor":
             doctor = db.query(models.Doctor).filter(
                 models.Doctor.user_id == current_user.id
             ).first()
@@ -194,10 +197,10 @@ class RendezVousService:
                 models.RendezVous.doctor_id == doctor.id
             ).all()
 
-        if current_user.role == "platform_admin":
+        if role == "platform_admin":
             return db.query(models.RendezVous).all()
 
-        if current_user.role in ("clinic_admin", "admin"):
+        if role in ("clinic_admin", "admin"):
             cid = current_user.clinic_id
             if cid is None:
                 return []

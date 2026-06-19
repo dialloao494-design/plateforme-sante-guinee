@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 import models
 from models.attachment_access_log import AttachmentAccessLog
 from models.user import User
-from core.tenant import is_platform_admin
+from core.roles import effective_role, user_has_any_role
 from services.secure_attachment_storage import SecureAttachmentStorage
 
 logger = logging.getLogger(__name__)
@@ -28,19 +28,21 @@ def _get_doctor_for_user(db: Session, user_id: int) -> Optional[models.Doctor]:
 
 
 def assert_appointment_access(db: Session, appointment: models.RendezVous, current_user: User) -> None:
-    if is_platform_admin(current_user):
+    role = effective_role(current_user.role)
+
+    if user_has_any_role(role, ["platform_admin", "platform_owner"]):
         return
 
-    if current_user.role in ("clinic_admin", "admin"):
+    if role in ("clinic_admin", "admin"):
         return
 
-    if current_user.role == "patient":
+    if role == "patient":
         patient = _get_patient_for_user(db, current_user.id)
         if not patient or appointment.patient_id != patient.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         return
 
-    if current_user.role == "doctor":
+    if role == "doctor":
         doctor = _get_doctor_for_user(db, current_user.id)
         if not doctor or appointment.doctor_id != doctor.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")

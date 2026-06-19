@@ -237,6 +237,15 @@ class PrescriptionResponse(BaseModel):
 # --- Pharmacy ---
 
 
+class PrescriptionItemBrief(BaseModel):
+    medication_name: str
+    dosage: str
+    frequency: str
+    quantity: Optional[int] = None
+    duration_days: Optional[int] = None
+    instructions: Optional[str] = None
+
+
 class PharmacyOrderResponse(BaseModel):
     id: int
     clinic_id: int
@@ -245,6 +254,12 @@ class PharmacyOrderResponse(BaseModel):
     status: str
     patient_name: Optional[str] = None
     medications: Optional[str] = None
+    doctor_name: Optional[str] = None
+    created_at: Optional[datetime] = None
+    dispensed_at: Optional[datetime] = None
+    prepared_by: Optional[str] = None
+    notes: Optional[str] = None
+    items: list[PrescriptionItemBrief] = []
 
     class Config:
         from_attributes = True

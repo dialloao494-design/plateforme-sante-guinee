@@ -57,8 +57,9 @@ ROLE_API_CHECKS = [
 ]
 
 RBAC_DENY = [
-    ("reception_a", "GET", "/clinical/doctor/queue", [403]),
-    ("reception_a", "GET", "/clinical/admin/backup-status", [403]),
+    ("reception_a", "GET", "/clinical/doctor/queue", [403], None),
+    ("reception_a", "GET", "/clinical/admin/backup-status", [403], None),
+    ("clinic_admin", "POST", "/clinical/clinics", [403], {"name": "RBAC Deny Clinic", "city": "Conakry"}),
 ]
 
 
@@ -222,11 +223,12 @@ def audit_roles(report: AuditReport) -> None:
         ok = r.status_code in expected
         report.add("Dashboards", "PASS" if ok else "FAIL", f"{role_key} {method} {path}", str(r.status_code))
 
-    for role_key, method, path, expected in RBAC_DENY:
+    for role_key, method, path, expected, body in RBAC_DENY:
         tok = report.tokens.get(role_key)
         if not tok:
             continue
-        r = api(report.backend, method, path, tok)
+        kwargs = {"json": body} if body else {}
+        r = api(report.backend, method, path, tok, **kwargs)
         ok = r.status_code in expected
         report.add("Security RBAC", "PASS" if ok else "FAIL", f"{role_key} denied {path}", str(r.status_code))
 

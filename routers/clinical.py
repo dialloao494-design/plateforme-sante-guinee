@@ -53,6 +53,7 @@ from schemas.clinical import (
     PharmacyOrderResponse,
     PharmacyStatusUpdate,
     PrescriptionCreate,
+    PrescriptionItemBrief,
     PrescriptionResponse,
     StaffCreate,
     StaffResponse,
@@ -215,8 +216,28 @@ def provision_staff(
     current_user: User = Depends(get_current_user),
 ):
     assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
-    assert_clinic_access(current_user, body.clinic_id)
-    clinic = db.query(models.Clinic).filter(models.Clinic.id == body.clinic_id).first()
+    normalized_role = str(body.role or "").strip().lower()
+    clinic_id = body.clinic_id
+    if current_user.role in ("clinic_admin", "admin"):
+        if normalized_role in ("clinic_admin", "admin", "platform_admin", "platform_owner"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Clinic administrators cannot assign platform or clinic-admin roles",
+            )
+        own_clinic = user_clinic_id(current_user, db)
+        if own_clinic is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User is not assigned to a clinic",
+            )
+        if clinic_id != own_clinic:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Clinic administrators can only create staff for their own clinic",
+            )
+        clinic_id = own_clinic
+    assert_clinic_access(current_user, clinic_id)
+    clinic = db.query(models.Clinic).filter(models.Clinic.id == clinic_id).first()
     if not clinic:
         raise HTTPException(status_code=404, detail="Clinic not found")
     try:
@@ -225,7 +246,7 @@ def provision_staff(
             email=body.email,
             password=body.password,
             role=body.role,
-            clinic_id=body.clinic_id,
+            clinic_id=clinic_id,
             channel="admin_api",
             actor_user_id=current_user.id,
         )
@@ -811,34 +832,80 @@ def lab_result_pdf_download(
 # --- Pharmacy ---
 
 
+def _inventory_response(item: models.PharmacyInventoryItem) -> PharmacyInventoryItemResponse:
+    return PharmacyInventoryItemResponse(
+        id=item.id,
+        clinic_id=item.clinic_id,
+        sku=item.sku,
+        medication_name=item.medication_name,
+        quantity=item.quantity,
+        reorder_level=item.reorder_level,
+        unit_price_gnf=item.unit_price_gnf,
+        low_stock=item.quantity <= item.reorder_level,
+        out_of_stock=item.quantity <= 0,
+        batch_number=item.batch_number,
+        expiry_date=item.expiry_date,
+        supplier=item.supplier,
+    )
+
+
+def _serialize_pharmacy_order(order: models.PharmacyOrder, db: Session) -> PharmacyOrderResponse:
+    db.refresh(order, ["patient", "prescription"])
+    meds = ""
+    items: list[PrescriptionItemBrief] = []
+    doctor_name = None
+    if order.prescription:
+        db.refresh(order.prescription, ["items", "prescriber"])
+        if order.prescription.items:
+            meds = ", ".join(i.medication_name for i in order.prescription.items)
+            items = [
+                PrescriptionItemBrief(
+                    medication_name=i.medication_name,
+                    dosage=i.dosage,
+                    frequency=i.frequency,
+                    quantity=i.quantity,
+                    duration_days=i.duration_days,
+                    instructions=i.instructions,
+                )
+                for i in order.prescription.items
+            ]
+        if order.prescription.prescriber:
+            doctor_name = order.prescription.prescriber.name
+    prepared_by = None
+    if order.prepared_by_user_id:
+        user = db.query(models.User).filter(models.User.id == order.prepared_by_user_id).first()
+        if user:
+            prepared_by = user.email.split("@")[0].replace(".", " ").title()
+    return PharmacyOrderResponse(
+        id=order.id,
+        clinic_id=order.clinic_id,
+        prescription_id=order.prescription_id,
+        patient_id=order.patient_id,
+        status=order.status,
+        patient_name=f"{order.patient.first_name} {order.patient.last_name}" if order.patient else None,
+        medications=meds,
+        doctor_name=doctor_name,
+        created_at=order.created_at,
+        dispensed_at=order.dispensed_at,
+        prepared_by=prepared_by,
+        notes=order.notes,
+        items=items,
+    )
+
+
 @router.get("/pharmacy/orders", response_model=List[PharmacyOrderResponse])
 def pharmacy_queue(
+    scope: str = Query("active", pattern="^(active|all|history|dispensed_today)$"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     assert_role(current_user, PHARMACY_QUEUE_ROLES)
     clinic = resolve_clinic_for_user(db, current_user)
-    orders = ClinicalWorkflowService.pharmacy_queue(db, clinic_id=clinic.id)
-    out = []
-    for order in orders:
-        db.refresh(order, ["patient", "prescription"])
-        meds = ""
-        if order.prescription and order.prescription.items:
-            meds = ", ".join(i.medication_name for i in order.prescription.items)
-        out.append(
-            PharmacyOrderResponse(
-                id=order.id,
-                clinic_id=order.clinic_id,
-                prescription_id=order.prescription_id,
-                patient_id=order.patient_id,
-                status=order.status,
-                patient_name=f"{order.patient.first_name} {order.patient.last_name}"
-                if order.patient
-                else None,
-                medications=meds,
-            )
-        )
-    return out
+    if scope == "all":
+        orders = ClinicalWorkflowService.list_pharmacy_orders(db, clinic_id=clinic.id, scope="all")
+    else:
+        orders = ClinicalWorkflowService.list_pharmacy_orders(db, clinic_id=clinic.id, scope=scope)
+    return [_serialize_pharmacy_order(order, db) for order in orders]
 
 
 @router.patch("/pharmacy/orders/{order_id}", response_model=PharmacyOrderResponse)
@@ -859,19 +926,7 @@ def update_pharmacy_order(
         payload=body,
         client_ip=client_ip(request),
     )
-    db.refresh(order, ["patient", "prescription"])
-    meds = ""
-    if order.prescription and order.prescription.items:
-        meds = ", ".join(i.medication_name for i in order.prescription.items)
-    return PharmacyOrderResponse(
-        id=order.id,
-        clinic_id=order.clinic_id,
-        prescription_id=order.prescription_id,
-        patient_id=order.patient_id,
-        status=order.status,
-        patient_name=f"{order.patient.first_name} {order.patient.last_name}" if order.patient else None,
-        medications=meds,
-    )
+    return _serialize_pharmacy_order(order, db)
 
 
 @router.get("/pharmacy/inventory", response_model=List[PharmacyInventoryItemResponse])
@@ -885,19 +940,7 @@ def pharmacy_inventory_list(
 
     PharmacyInventoryService.ensure_default_stock(db, clinic_id=clinic.id)
     items = PharmacyInventoryService.list_items(db, clinic_id=clinic.id)
-    return [
-        PharmacyInventoryItemResponse(
-            id=i.id,
-            clinic_id=i.clinic_id,
-            sku=i.sku,
-            medication_name=i.medication_name,
-            quantity=i.quantity,
-            reorder_level=i.reorder_level,
-            unit_price_gnf=i.unit_price_gnf,
-            low_stock=i.quantity <= i.reorder_level,
-        )
-        for i in items
-    ]
+    return [_inventory_response(i) for i in items]
 
 
 @router.post("/pharmacy/inventory", response_model=PharmacyInventoryItemResponse, status_code=201)
@@ -918,17 +961,11 @@ def pharmacy_inventory_upsert(
         quantity=body.quantity,
         reorder_level=body.reorder_level,
         unit_price_gnf=body.unit_price_gnf,
+        batch_number=body.batch_number,
+        expiry_date=body.expiry_date,
+        supplier=body.supplier,
     )
-    return PharmacyInventoryItemResponse(
-        id=item.id,
-        clinic_id=item.clinic_id,
-        sku=item.sku,
-        medication_name=item.medication_name,
-        quantity=item.quantity,
-        reorder_level=item.reorder_level,
-        unit_price_gnf=item.unit_price_gnf,
-        low_stock=item.quantity <= item.reorder_level,
-    )
+    return _inventory_response(item)
 
 
 @router.patch("/pharmacy/inventory/{item_id}", response_model=PharmacyInventoryItemResponse)
@@ -945,16 +982,7 @@ def pharmacy_inventory_adjust(
     item = PharmacyInventoryService.adjust_quantity(
         db, clinic_id=clinic.id, item_id=item_id, delta=body.delta
     )
-    return PharmacyInventoryItemResponse(
-        id=item.id,
-        clinic_id=item.clinic_id,
-        sku=item.sku,
-        medication_name=item.medication_name,
-        quantity=item.quantity,
-        reorder_level=item.reorder_level,
-        unit_price_gnf=item.unit_price_gnf,
-        low_stock=item.quantity <= item.reorder_level,
-    )
+    return _inventory_response(item)
 
 
 @router.patch("/doctors/{doctor_id}/clinic/{clinic_id}", status_code=status.HTTP_204_NO_CONTENT)

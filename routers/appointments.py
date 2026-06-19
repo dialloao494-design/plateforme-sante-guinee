@@ -7,6 +7,7 @@ import models
 from database import get_db
 from security import get_current_user, get_current_patient
 from schemas import rendezvous as rendezvous_schemas
+from core.roles import effective_role, user_has_any_role
 from services.rendezvous_service import RendezVousService
 
 logger = logging.getLogger(__name__)
@@ -22,22 +23,24 @@ def _get_doctor_for_user(db: Session, user_id: int) -> models.Doctor | None:
 
 
 def _assert_can_access_appointment(db: Session, appointment: models.RendezVous, current_user) -> None:
-    if current_user.role == "platform_admin":
+    role = effective_role(current_user.role)
+
+    if user_has_any_role(role, ["platform_admin", "platform_owner"]):
         return
 
-    if current_user.role in ("clinic_admin", "admin"):
+    if role in ("clinic_admin", "admin"):
         cid = current_user.clinic_id
         if cid is not None and appointment.clinic_id != cid:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
         return
 
-    if current_user.role == "patient":
+    if role == "patient":
         patient = _get_patient_for_user(db, current_user.id)
         if not patient or appointment.patient_id != patient.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
         return
 
-    if current_user.role == "doctor":
+    if role == "doctor":
         doctor = _get_doctor_for_user(db, current_user.id)
         if not doctor or appointment.doctor_id != doctor.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
@@ -151,7 +154,7 @@ def update_appointment(
     _assert_can_access_appointment(db, appointment, current_user)
 
     # Patients can only cancel their own appointments.
-    if current_user.role == "patient" and update.status != "cancelled":
+    if effective_role(current_user.role) == "patient" and update.status != "cancelled":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized"

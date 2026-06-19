@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from models.user import User
 import models
+from core.roles import effective_role, roles_equivalent, user_has_any_role
 from fastapi.security import OAuth2PasswordBearer
 from dotenv import load_dotenv
 import os
@@ -109,19 +110,15 @@ def get_current_user(
             detail="Account is disabled",
         )
 
-    if token_role and token_role != user.role:
+    if token_role and not roles_equivalent(token_role, user.role):
         raise credentials_exception
 
     return user
 
 
 def require_roles(required_roles: list[str]):
-    expanded = set(required_roles)
-    if "platform_admin" in expanded:
-        expanded.add("platform_owner")
-
     def role_dependency(current_user: User = Depends(get_current_user)):
-        if current_user.role not in expanded:
+        if not user_has_any_role(current_user.role, required_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Operation requires one of roles: {required_roles}",
@@ -132,7 +129,7 @@ def require_roles(required_roles: list[str]):
 
 
 def get_current_platform_owner(current_user: User = Depends(get_current_user)):
-    if current_user.role != "platform_owner":
+    if not user_has_any_role(current_user.role, ["platform_owner"]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Platform owner privileges required",
@@ -141,7 +138,7 @@ def get_current_platform_owner(current_user: User = Depends(get_current_user)):
 
 
 def get_current_platform_admin(current_user: User = Depends(get_current_user)):
-    if current_user.role not in ("platform_owner", "platform_admin"):
+    if not user_has_any_role(current_user.role, ["platform_owner", "platform_admin"]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Platform administrator privileges required",
@@ -150,7 +147,9 @@ def get_current_platform_admin(current_user: User = Depends(get_current_user)):
 
 
 def get_current_clinic_admin(current_user: User = Depends(get_current_user)):
-    if current_user.role not in ("clinic_admin", "admin", "platform_admin", "platform_owner"):
+    if not user_has_any_role(
+        current_user.role, ["clinic_admin", "admin", "platform_admin", "platform_owner"]
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Clinic administrator privileges required",
@@ -160,7 +159,9 @@ def get_current_clinic_admin(current_user: User = Depends(get_current_user)):
 
 def get_current_admin(current_user: User = Depends(get_current_user)):
     """Clinic or platform admin (not platform owner portal — use get_current_platform_owner)."""
-    if current_user.role not in ("platform_owner", "platform_admin", "clinic_admin", "admin"):
+    if not user_has_any_role(
+        current_user.role, ["platform_owner", "platform_admin", "clinic_admin", "admin"]
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required",
@@ -169,7 +170,7 @@ def get_current_admin(current_user: User = Depends(get_current_user)):
 
 
 def get_current_doctor(current_user: User = Depends(get_current_user)):
-    if current_user.role != "doctor":
+    if not user_has_any_role(current_user.role, ["doctor"]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Doctor privileges required",
@@ -181,7 +182,7 @@ def get_current_patient(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if current_user.role != "patient":
+    if not user_has_any_role(current_user.role, ["patient"]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Patient privileges required",
@@ -206,7 +207,7 @@ def get_current_patient(
 
 
 def require_patient(current_user: User = Depends(get_current_user)):
-    if current_user.role != "patient":
+    if not user_has_any_role(current_user.role, ["patient"]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Patient privileges required",
@@ -215,7 +216,7 @@ def require_patient(current_user: User = Depends(get_current_user)):
 
 
 def require_doctor(current_user: User = Depends(get_current_user)):
-    if current_user.role != "doctor":
+    if not user_has_any_role(current_user.role, ["doctor"]):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Doctor privileges required",
@@ -224,7 +225,9 @@ def require_doctor(current_user: User = Depends(get_current_user)):
 
 
 def require_admin(current_user: User = Depends(get_current_user)):
-    if current_user.role not in ("platform_owner", "platform_admin", "clinic_admin", "admin"):
+    if not user_has_any_role(
+        current_user.role, ["platform_owner", "platform_admin", "clinic_admin", "admin"]
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required",

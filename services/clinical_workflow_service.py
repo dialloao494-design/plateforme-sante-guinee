@@ -721,16 +721,41 @@ class ClinicalWorkflowService:
         return rx
 
     @staticmethod
-    def pharmacy_queue(db: Session, *, clinic_id: int) -> list[models.PharmacyOrder]:
-        return (
-            db.query(models.PharmacyOrder)
-            .filter(
-                models.PharmacyOrder.clinic_id == clinic_id,
-                models.PharmacyOrder.status.in_(("pending", "preparing", "ready")),
+    def list_pharmacy_orders(
+        db: Session, *, clinic_id: int, scope: str = "active"
+    ) -> list[models.PharmacyOrder]:
+        q = db.query(models.PharmacyOrder).filter(models.PharmacyOrder.clinic_id == clinic_id)
+        if scope == "active":
+            q = q.filter(
+                models.PharmacyOrder.status.in_(
+                    ("pending", "preparing", "ready", "partially_dispensed")
+                )
             )
-            .order_by(models.PharmacyOrder.created_at.asc())
-            .all()
-        )
+        elif scope == "dispensed_today":
+            from datetime import datetime, timedelta
+
+            start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+            end = start + timedelta(days=1)
+            q = q.filter(
+                models.PharmacyOrder.status == "dispensed",
+                models.PharmacyOrder.dispensed_at >= start,
+                models.PharmacyOrder.dispensed_at < end,
+            )
+        elif scope == "history":
+            q = q.filter(
+                models.PharmacyOrder.status.in_(
+                    ("dispensed", "partially_dispensed", "cancelled")
+                )
+            )
+        elif scope != "all":
+            raise HTTPException(status_code=400, detail=f"Unknown scope: {scope}")
+        if scope == "active":
+            return q.order_by(models.PharmacyOrder.created_at.asc()).all()
+        return q.order_by(models.PharmacyOrder.created_at.desc()).all()
+
+    @staticmethod
+    def pharmacy_queue(db: Session, *, clinic_id: int) -> list[models.PharmacyOrder]:
+        return ClinicalWorkflowService.list_pharmacy_orders(db, clinic_id=clinic_id, scope="active")
 
     @staticmethod
     def update_pharmacy_order(
@@ -742,7 +767,7 @@ class ClinicalWorkflowService:
         payload: PharmacyStatusUpdate,
         client_ip: str | None = None,
     ) -> models.PharmacyOrder:
-        allowed = {"pending", "preparing", "ready", "dispensed", "cancelled"}
+        allowed = {"pending", "preparing", "ready", "partially_dispensed", "dispensed", "cancelled"}
         if payload.status not in allowed:
             raise HTTPException(status_code=400, detail=f"Invalid status. Allowed: {sorted(allowed)}")
 

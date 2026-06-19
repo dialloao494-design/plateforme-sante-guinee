@@ -28,6 +28,9 @@ class PharmacyInventoryService:
         quantity: int,
         reorder_level: int = 10,
         unit_price_gnf: int = 25_000,
+        batch_number: str | None = None,
+        expiry_date=None,
+        supplier: str | None = None,
     ) -> models.PharmacyInventoryItem:
         item = (
             db.query(models.PharmacyInventoryItem)
@@ -42,6 +45,12 @@ class PharmacyInventoryService:
             item.quantity = quantity
             item.reorder_level = reorder_level
             item.unit_price_gnf = unit_price_gnf
+            if batch_number is not None:
+                item.batch_number = batch_number
+            if expiry_date is not None:
+                item.expiry_date = expiry_date
+            if supplier is not None:
+                item.supplier = supplier
         else:
             item = models.PharmacyInventoryItem(
                 clinic_id=clinic_id,
@@ -50,6 +59,9 @@ class PharmacyInventoryService:
                 quantity=quantity,
                 reorder_level=reorder_level,
                 unit_price_gnf=unit_price_gnf,
+                batch_number=batch_number,
+                expiry_date=expiry_date,
+                supplier=supplier,
             )
             db.add(item)
         db.commit()

@@ -94,8 +94,12 @@ const clinicalApi = {
   validateLabResult: (resultId) => httpClient.post(`/clinical/lab/results/${resultId}/validate`),
 
   // Pharmacy
-  pharmacyQueue: () => httpClient.get('/clinical/pharmacy/orders'),
-  updatePharmacyOrder: (id, data) => httpClient.patch(`/clinical/pharmacy/orders/${id}`, data),
+  pharmacyQueue: (opts = {}) =>
+    httpClient.get('/clinical/pharmacy/orders', { params: opts.scope ? { scope: opts.scope } : {} }),
+  updatePharmacyOrder: (id, data) => {
+    invalidateApiCache('/clinical/pharmacy/');
+    return httpClient.patch(`/clinical/pharmacy/orders/${id}`, data);
+  },
 
   receptionFollowUps: () => httpClient.get('/clinical/reception/follow-ups'),
   recordVitals: (consultationId, data) =>
@@ -179,7 +183,10 @@ const clinicalApi = {
 
   // Pharmacy inventory
   pharmacyInventory: () => httpClient.get('/clinical/pharmacy/inventory'),
-  upsertPharmacyInventory: (data) => httpClient.post('/clinical/pharmacy/inventory', data),
+  upsertPharmacyInventory: (data) => {
+    invalidateApiCache('/clinical/pharmacy/inventory');
+    return httpClient.post('/clinical/pharmacy/inventory', data);
+  },
   adjustPharmacyInventory: (id, data) => httpClient.patch(`/clinical/pharmacy/inventory/${id}`, data),
 
   // Bed / room management

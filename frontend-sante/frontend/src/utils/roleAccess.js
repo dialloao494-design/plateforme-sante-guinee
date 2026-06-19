@@ -3,6 +3,12 @@
 const ALIASES = {
   admin: ['clinic_admin'],
   clinic_admin: ['admin'],
+  doctor: ['medecin', 'médecin', 'physician', 'professional', 'praticien'],
+  medecin: ['doctor'],
+  médecin: ['doctor'],
+  physician: ['doctor'],
+  professional: ['doctor'],
+  praticien: ['doctor'],
 };
 
 export function normalizeRole(role) {

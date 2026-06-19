@@ -41,6 +41,15 @@ CLINICAL_STAFF_ROLES: frozenset[str] = frozenset(
 CLINIC_PORTAL_ROLES: frozenset[str] = STAFF_ROLES | frozenset({"doctor"})
 ALL_ROLES: frozenset[str] = PUBLIC_REGISTRATION_ROLES | STAFF_ROLES
 
+# Legacy / UI aliases → canonical role (DB cleanup + RBAC normalization).
+ROLE_LEGACY_ALIASES: dict[str, str] = {
+    "medecin": "doctor",
+    "médecin": "doctor",
+    "physician": "doctor",
+    "professional": "doctor",
+    "praticien": "doctor",
+}
+
 ROLE_LABELS: dict[str, str] = {
     "platform_owner": "PLATFORM_OWNER",
     "platform_admin": "PLATFORM_ADMIN",
@@ -127,3 +136,40 @@ def effective_admin_role(role: str) -> str:
     if r == "admin":
         return "clinic_admin"
     return r
+
+
+def effective_role(role: str | None) -> str:
+    """Normalize stored or token role strings for RBAC (case, whitespace, legacy aliases)."""
+    if role is None:
+        return ""
+    normalized = str(role).strip().lower()
+    if not normalized:
+        return ""
+    return ROLE_LEGACY_ALIASES.get(normalized, normalized)
+
+
+def expand_role_set(required_roles: list[str] | set[str] | tuple[str, ...]) -> set[str]:
+    """Expand allowed roles with platform_owner and admin/clinic_admin aliases."""
+    expanded: set[str] = set()
+    for role in required_roles:
+        r = effective_role(role)
+        if not r:
+            continue
+        expanded.add(r)
+        if r == "platform_admin":
+            expanded.add("platform_owner")
+        if r in ("admin", "clinic_admin"):
+            expanded.add("admin")
+            expanded.add("clinic_admin")
+    return expanded
+
+
+def user_has_any_role(user_role: str | None, allowed_roles: list[str] | set[str] | tuple[str, ...]) -> bool:
+    effective = effective_role(user_role)
+    if not effective:
+        return False
+    return effective in expand_role_set(allowed_roles)
+
+
+def roles_equivalent(role_a: str | None, role_b: str | None) -> bool:
+    return effective_role(role_a) == effective_role(role_b)

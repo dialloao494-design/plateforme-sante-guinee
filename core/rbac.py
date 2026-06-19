@@ -11,6 +11,7 @@ from enum import Enum
 
 from fastapi import HTTPException, status
 
+from core.roles import effective_role
 from models.user import User
 
 
@@ -219,7 +220,7 @@ PHARMACY_QUEUE_ROLES = PHARMACY_ROLES + CLINIC_ADMIN_ROLES
 
 
 def permissions_for_role(role: str) -> frozenset[Permission]:
-    return ROLE_PERMISSIONS.get(role, frozenset())
+    return ROLE_PERMISSIONS.get(effective_role(role), frozenset())
 
 
 def has_permission(user: User, permission: Permission) -> bool:

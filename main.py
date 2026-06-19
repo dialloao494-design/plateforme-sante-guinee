@@ -383,6 +383,7 @@ async def startup_event():
             ensure_message_attachment_columns,
             ensure_patient_dossier_schema,
             ensure_user_roles_check_constraint,
+            normalize_legacy_user_roles,
             ensure_email_verification_schema,
             run_alembic_upgrade_head,
         )
@@ -404,6 +405,7 @@ async def startup_event():
         ensure_pharmacy_inventory_schema(engine)
         ensure_patient_user_id_unique(engine)
         ensure_user_roles_check_constraint(engine)
+        normalize_legacy_user_roles(engine)
         ensure_email_verification_schema(engine)
 
         from database import SessionLocal

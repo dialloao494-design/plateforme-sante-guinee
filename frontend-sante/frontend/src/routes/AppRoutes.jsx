@@ -9,6 +9,7 @@ import ResetPassword from "../pages/ResetPassword.jsx";
 import VerifyEmail from "../pages/VerifyEmail.jsx";
 import NotFound from "../pages/NotFound.jsx";
 import ProtectedRoute from "./ProtectedRoute";
+import AdminRouteEntry from "./AdminRouteEntry.jsx";
 
 const Dashboard = lazy(() => import("../pages/Dashboard"));
 const Doctors = lazy(() => import("../pages/Doctors"));
@@ -35,7 +36,8 @@ const DischargeDashboard = lazy(() => import("../pages/clinical/DischargeDashboa
 const RadiologyDashboard = lazy(() => import("../pages/clinical/RadiologyDashboard.jsx"));
 const StaffNotificationCenter = lazy(() => import("../pages/clinical/StaffNotificationCenter.jsx"));
 const ClinicalReportsDashboard = lazy(() => import("../pages/clinical/ClinicalReportsDashboard.jsx"));
-const AdminClinicalDashboard = lazy(() => import("../pages/clinical/AdminClinicalDashboard.jsx"));
+const ClinicAdminDashboard = lazy(() => import("../pages/clinical/ClinicAdminDashboard.jsx"));
+const PlatformOwnerAdminDashboard = lazy(() => import("../pages/platform/PlatformOwnerAdminDashboard.jsx"));
 const ClinicOperationsDashboard = lazy(() => import("../pages/clinical/ClinicOperationsDashboard.jsx"));
 const AccountProfile = lazy(() => import("../pages/AccountProfile.jsx"));
 const ChangePassword = lazy(() => import("../pages/ChangePassword.jsx"));
@@ -233,8 +235,16 @@ const AppRoutes = () => {
       <Route
         path="/clinical/admin"
         element={
-          <ProtectedRoute allowedRoles={STAFF_ADMIN_ROLES.concat(PLATFORM_OWNER_ROLES)}>
-            <AdminClinicalDashboard />
+          <ProtectedRoute allowedRoles={CLINIC_ADMIN_ROLES}>
+            <AdminRouteEntry />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/platform/clinics"
+        element={
+          <ProtectedRoute allowedRoles={PLATFORM_OWNER_ROLES}>
+            <PlatformOwnerAdminDashboard />
           </ProtectedRoute>
         }
       />

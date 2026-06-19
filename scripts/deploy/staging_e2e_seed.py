@@ -64,6 +64,24 @@ ACCOUNTS = {
         "role": "receptionist",
         "clinic_name": "Clinique Alpha Conakry",
     },
+    "cashier": {
+        "email": "cashier.demo@sante-gn.test",
+        "password": "CashierDemo1!",
+        "role": "cashier",
+        "clinic_name": "Clinique Alpha Conakry",
+    },
+    "lab_technician": {
+        "email": "lab.demo@sante-gn.test",
+        "password": "LabDemo1!",
+        "role": "lab_technician",
+        "clinic_name": "Clinique Alpha Conakry",
+    },
+    "pharmacist": {
+        "email": "pharmacy.demo@sante-gn.test",
+        "password": "PharmaDemo1!",
+        "role": "pharmacist",
+        "clinic_name": "Clinique Alpha Conakry",
+    },
     "receptionist_b": {
         "email": "reception.beta@sante-gn.test",
         "password": "ReceptionBeta1!",
@@ -190,6 +208,9 @@ def main() -> int:
         _ensure_clinic_staff(db, "clinic_admin_b", clinics)
         _ensure_clinic_staff(db, "doctor", clinics)
         _ensure_clinic_staff(db, "receptionist", clinics)
+        _ensure_clinic_staff(db, "cashier", clinics)
+        _ensure_clinic_staff(db, "lab_technician", clinics)
+        _ensure_clinic_staff(db, "pharmacist", clinics)
         _ensure_clinic_staff(db, "receptionist_b", clinics)
 
         print("=== Staging E2E accounts ready ===")
