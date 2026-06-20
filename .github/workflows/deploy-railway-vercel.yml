@@ -9,24 +9,29 @@ concurrency:
   group: deploy-railway-vercel
   cancel-in-progress: false
 
+env:
+  DEFAULT_BACKEND_URL: https://web-production-ad6a36.up.railway.app
+  DEFAULT_FRONTEND_URL: https://frontend-seven-rust-94.vercel.app
+
 jobs:
   deploy-backend:
     name: Railway backend
     runs-on: ubuntu-latest
     env:
-      BACKEND_URL: ${{ secrets.RAILWAY_BACKEND_URL }}
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       SVC_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate backend URL secret
+      - name: Resolve backend URL
         shell: bash
         run: |
-          if [ -z "${BACKEND_URL:-}" ]; then
-            echo "::error title=Missing RAILWAY_BACKEND_URL::Add RAILWAY_BACKEND_URL to GitHub repo Settings → Secrets → Actions."
-            exit 1
+          url="${{ secrets.RAILWAY_BACKEND_URL }}"
+          if [ -z "${url:-}" ]; then
+            url="${DEFAULT_BACKEND_URL}"
+            echo "::warning title=Using default backend URL::Set RAILWAY_BACKEND_URL in GitHub Actions secrets to override."
           fi
+          echo "BACKEND_URL=${url}" >> "$GITHUB_ENV"
 
       - name: Install Railway CLI
         if: env.RAILWAY_TOKEN != '' && env.SVC_ID != ''
@@ -71,35 +76,50 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate Vercel secrets
+      - name: Resolve frontend URL and API URL
         shell: bash
         run: |
-          set -euo pipefail
-          missing=0
-          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID VITE_API_URL; do
-            if [ -z "${!name:-}" ]; then
-              echo "::error title=Missing ${name}::Add ${name} to GitHub repo Settings → Secrets → Actions."
-              missing=1
-            fi
-          done
-          [ "$missing" -eq 0 ] || exit 1
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend-sante/frontend/package-lock.json
-
-      - name: Install Vercel CLI
-        run: npm install -g vercel@41.4.4
+          frontend="${{ secrets.VERCEL_FRONTEND_URL }}"
+          api="${{ secrets.VITE_API_URL }}"
+          if [ -z "${frontend:-}" ]; then
+            frontend="${DEFAULT_FRONTEND_URL}"
+            echo "::warning title=Using default frontend URL::Set VERCEL_FRONTEND_URL in GitHub Actions secrets to override."
+          fi
+          if [ -z "${api:-}" ]; then
+            api="${{ secrets.RAILWAY_BACKEND_URL }}"
+          fi
+          if [ -z "${api:-}" ]; then
+            api="${DEFAULT_BACKEND_URL}"
+          fi
+          echo "FRONTEND_URL=${frontend}" >> "$GITHUB_ENV"
+          echo "RESOLVED_VITE_API_URL=${api}" >> "$GITHUB_ENV"
 
       - name: Deploy to Vercel production
+        if: env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != ''
         env:
           VITE_TELECONSULT_PROVIDER: jitsi
         run: |
+          npm install -g vercel@41.4.4
+          export VITE_API_URL="${RESOLVED_VITE_API_URL}"
           vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
           vercel build --prod --token="$VERCEL_TOKEN"
           vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+      - name: Note — Vercel CLI secrets not configured
+        if: env.VERCEL_TOKEN == '' || env.VERCEL_ORG_ID == '' || env.VERCEL_PROJECT_ID == ''
+        shell: bash
+        run: |
+          echo "::warning title=Vercel CLI deploy skipped::VERCEL_TOKEN, VERCEL_ORG_ID, and/or VERCEL_PROJECT_ID not set. Waiting for Vercel GitHub auto-deploy instead."
+          echo "Add secrets per docs/GITHUB_DEPLOY_SECRETS.md to enable CLI deploy from Actions."
+
+      - uses: actions/setup-python@v5
+        if: always()
+        with:
+          python-version: "3.12"
+
+      - name: Wait for frontend ready
+        if: always()
+        run: pip install httpx && python scripts/deploy/wait_for_frontend.py --url "$FRONTEND_URL" --timeout 600
 
   verify:
     name: Post-deploy smoke test
@@ -110,17 +130,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Resolve smoke-test URLs
+        shell: bash
+        run: |
+          backend="${{ secrets.RAILWAY_BACKEND_URL }}"
+          frontend="${{ secrets.VERCEL_FRONTEND_URL }}"
+          if [ -z "${backend:-}" ]; then backend="${DEFAULT_BACKEND_URL}"; fi
+          if [ -z "${frontend:-}" ]; then frontend="${DEFAULT_FRONTEND_URL}"; fi
+          echo "BACKEND_URL=${backend}" >> "$GITHUB_ENV"
+          echo "FRONTEND_URL=${frontend}" >> "$GITHUB_ENV"
       - run: pip install httpx
       - name: Smoke test production
-        env:
-          BACKEND_URL: ${{ secrets.RAILWAY_BACKEND_URL }}
-          FRONTEND_URL: ${{ secrets.VERCEL_FRONTEND_URL }}
         run: |
-          set -euo pipefail
-          if [ -z "${FRONTEND_URL:-}" ]; then
-            echo "::error title=Missing VERCEL_FRONTEND_URL::Add VERCEL_FRONTEND_URL to GitHub Actions secrets."
-            exit 1
-          fi
           python scripts/deploy/post_deploy_verify.py \
             --backend "$BACKEND_URL" \
             --frontend "$FRONTEND_URL"
