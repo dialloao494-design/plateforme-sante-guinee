@@ -119,6 +119,7 @@ jobs:
 
       - name: Wait for frontend ready
         if: always()
+        working-directory: .
         run: pip install httpx && python scripts/deploy/wait_for_frontend.py --url "$FRONTEND_URL" --timeout 600
 
   verify:
