@@ -84,11 +84,23 @@ class Report:
         return sum(1 for c in self.checks if c.status == "FAIL")
 
 
-def login(email: str, password: str) -> tuple[str, dict]:
-    r = httpx.post(f"{BASE}/auth/login-json", json={"email": email, "password": password}, timeout=120)
-    r.raise_for_status()
-    data = r.json()
-    return data["access_token"], data
+def login(email: str, password: str, retries: int = 4) -> tuple[str, dict]:
+    last: Exception | None = None
+    for attempt in range(retries):
+        try:
+            r = httpx.post(f"{BASE}/auth/login-json", json={"email": email, "password": password}, timeout=120)
+            if r.status_code >= 500:
+                raise httpx.HTTPStatusError("server error", request=r.request, response=r)
+            r.raise_for_status()
+            data = r.json()
+            return data["access_token"], data
+        except Exception as exc:
+            last = exc
+            if attempt < retries - 1:
+                import time
+
+                time.sleep(5 * (attempt + 1))
+    raise last  # type: ignore[misc]
 
 
 def api(method: str, path: str, token: str, **kwargs) -> httpx.Response:
@@ -115,24 +127,34 @@ def register_patient(token: str, label: str, age: int = 30) -> dict:
 
 
 def book_checkin(token: str, patient_id: int, doctor_id: int, idx: int) -> dict:
-    slot = datetime.now() + timedelta(days=1, hours=2 + idx, minutes=idx * 17)
-    slot = slot.replace(second=0, microsecond=0)
-    r = api(
-        "POST",
-        "/clinical/reception/appointments",
-        token,
-        json={
-            "patient_id": patient_id,
-            "doctor_id": doctor_id,
-            "date": slot.isoformat(),
-            "duration_minutes": 30,
-        },
-    )
-    r.raise_for_status()
-    appt = r.json()
-    r2 = api("POST", f"/clinical/reception/appointments/{appt['id']}/check-in", token)
-    r2.raise_for_status()
-    return r2.json()
+    import random
+
+    last: httpx.Response | None = None
+    for attempt in range(5):
+        slot = datetime.now() + timedelta(days=1 + attempt, hours=2 + idx, minutes=idx * 17 + random.randint(0, 45))
+        slot = slot.replace(second=0, microsecond=0)
+        r = api(
+            "POST",
+            "/clinical/reception/appointments",
+            token,
+            json={
+                "patient_id": patient_id,
+                "doctor_id": doctor_id,
+                "date": slot.isoformat(),
+                "duration_minutes": 30,
+            },
+        )
+        last = r
+        if r.status_code == 409:
+            continue
+        r.raise_for_status()
+        appt = r.json()
+        r2 = api("POST", f"/clinical/reception/appointments/{appt['id']}/check-in", token)
+        r2.raise_for_status()
+        return r2.json()
+    if last is not None:
+        last.raise_for_status()
+    raise RuntimeError("book_checkin failed")
 
 
 def validate_accounts(report: Report) -> dict[str, str]:
@@ -187,7 +209,12 @@ def validate_admin_scope(report: Report, admin_token: str) -> None:
     all_koloma = all(s.get("clinic_id") == KOLOMA_CLINIC_ID for s in staff)
     report.add("Admin", "Staff list Koloma only", all_koloma, f"{len(staff)} staff at clinic {KOLOMA_CLINIC_ID}")
     other = api("GET", "/clinical/staff?clinic_id=1", admin_token)
-    report.add("Admin", "Can query staff API", other.status_code == 200, f"status={other.status_code}")
+    report.add(
+        "Admin",
+        "Blocked from other clinic staff",
+        other.status_code == 403,
+        f"status={other.status_code} (clinic admin must not list clinic 1)",
+    )
 
 
 def validate_frontend_routes(report: Report) -> None:
@@ -342,9 +369,19 @@ def pharmacy_stock(report: Report, token: str) -> None:
         "POST",
         "/clinical/pharmacy/inventory",
         token,
-        json={"medication_code": code, "medication_name": "Test Koloma", "quantity_on_hand": 50, "unit": "comprimé"},
+        json={
+            "sku": code,
+            "medication_name": "Test Koloma",
+            "quantity": 50,
+            "reorder_level": 10,
+            "unit_price_gnf": 25000,
+        },
     )
-    report.add("Pharmacy", "Update stock", r.status_code in (200, 201), f"{code} status={r.status_code}")
+    ok = r.status_code in (200, 201)
+    detail = f"{code} status={r.status_code}"
+    if not ok:
+        detail += f" body={r.text[:120]}"
+    report.add("Pharmacy", "Update stock", ok, detail)
 
 
 def write_report(report: Report) -> None:

@@ -13,34 +13,47 @@ jobs:
   deploy-backend:
     name: Railway backend
     runs-on: ubuntu-latest
-    container: ghcr.io/railwayapp/cli:latest
     env:
+      BACKEND_URL: ${{ secrets.RAILWAY_BACKEND_URL }}
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       SVC_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
     steps:
-      - name: Validate Railway secrets
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -z "${RAILWAY_TOKEN:-}" ]; then
-            echo "::error title=Missing RAILWAY_TOKEN::Create a Railway PROJECT token (not account API token): Railway dashboard → your project → Settings → Tokens → Create token. Add it to GitHub repo Settings → Secrets → Actions as RAILWAY_TOKEN."
-            exit 1
-          fi
-          if [ -z "${SVC_ID:-}" ]; then
-            echo "::error title=Missing RAILWAY_SERVICE_ID::Copy the backend service UUID from Railway → backend service → Settings (or from the service URL). Add it to GitHub repo Settings → Secrets → Actions as RAILWAY_SERVICE_ID."
-            exit 1
-          fi
-          echo "Railway CLI version: $(railway --version)"
-          echo "Deploy target service: ${SVC_ID}"
-
       - uses: actions/checkout@v4
 
-      - name: Deploy backend to Railway
+      - name: Validate backend URL secret
         shell: bash
-        run: railway up --service="$SVC_ID"
+        run: |
+          if [ -z "${BACKEND_URL:-}" ]; then
+            echo "::error title=Missing RAILWAY_BACKEND_URL::Add RAILWAY_BACKEND_URL to GitHub repo Settings → Secrets → Actions."
+            exit 1
+          fi
+
+      - name: Install Railway CLI
+        if: env.RAILWAY_TOKEN != '' && env.SVC_ID != ''
+        run: npm install -g @railway/cli@4.5.4
+
+      - name: Deploy via Railway CLI
+        if: env.RAILWAY_TOKEN != '' && env.SVC_ID != ''
+        run: |
+          echo "Deploying service ${SVC_ID}..."
+          railway up --service="$SVC_ID"
+
+      - name: Note — Railway CLI secrets not configured
+        if: env.RAILWAY_TOKEN == '' || env.SVC_ID == ''
+        shell: bash
+        run: |
+          echo "::warning title=Railway CLI deploy skipped::RAILWAY_TOKEN and/or RAILWAY_SERVICE_ID not set. Waiting for Railway GitHub auto-deploy instead."
+          echo "Add secrets per docs/GITHUB_DEPLOY_SECRETS.md to enable CLI deploy from Actions."
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Wait for backend ready
+        run: pip install httpx && python scripts/deploy/wait_for_backend.py --url "$BACKEND_URL" --timeout 600
 
       - name: Run staging E2E seed
-        shell: bash
+        if: env.RAILWAY_TOKEN != '' && env.SVC_ID != ''
         run: railway run --service="$SVC_ID" python scripts/deploy/staging_e2e_seed.py
 
   deploy-frontend:
@@ -50,6 +63,11 @@ jobs:
     defaults:
       run:
         working-directory: frontend-sante/frontend
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VITE_API_URL: ${{ secrets.VITE_API_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -65,11 +83,6 @@ jobs:
             fi
           done
           [ "$missing" -eq 0 ] || exit 1
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
       - uses: actions/setup-node@v4
         with:
@@ -82,10 +95,6 @@ jobs:
 
       - name: Deploy to Vercel production
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_TELECONSULT_PROVIDER: jitsi
         run: |
           vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
@@ -108,8 +117,8 @@ jobs:
           FRONTEND_URL: ${{ secrets.VERCEL_FRONTEND_URL }}
         run: |
           set -euo pipefail
-          if [ -z "${BACKEND_URL:-}" ] || [ -z "${FRONTEND_URL:-}" ]; then
-            echo "::error title=Missing smoke-test URLs::Set RAILWAY_BACKEND_URL and VERCEL_FRONTEND_URL in GitHub Actions secrets."
+          if [ -z "${FRONTEND_URL:-}" ]; then
+            echo "::error title=Missing VERCEL_FRONTEND_URL::Add VERCEL_FRONTEND_URL to GitHub Actions secrets."
             exit 1
           fi
           python scripts/deploy/post_deploy_verify.py \
