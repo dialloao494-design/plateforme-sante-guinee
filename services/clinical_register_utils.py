@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 import models
 
 
 def patient_snapshot(patient: models.Patient, on_date: date | None = None) -> dict:
     on_date = on_date or date.today()
+    if isinstance(on_date, datetime):
+        on_date = on_date.date()
     age_display = None
     if patient.date_of_birth:
         total_days = max(0, (on_date - patient.date_of_birth).days)
