@@ -951,6 +951,12 @@ def ensure_clinical_modules_schema(engine: Engine) -> None:
             "dose_number": "INTEGER",
             "next_appointment_date": date_type,
             "vaccinator_name": "VARCHAR(128)",
+            "vaccine_expiry_date": date_type,
+            "injection_site": "VARCHAR(64)",
+            "vaccination_strategy": "VARCHAR(32)",
+            "age_at_vaccination_months": "INTEGER",
+            "age_at_vaccination_days": "INTEGER",
+            "aefi_notes": "TEXT",
         }
         for col, col_type in additions.items():
             if col not in cols:

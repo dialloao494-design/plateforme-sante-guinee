@@ -133,10 +133,19 @@ def test_immunization_schedule_due_missed(client, db_session, admin_user):
             "vaccine_name": first["vaccine_name"],
             "dose_label": first["dose_label"],
             "administered_at": date.today().isoformat(),
+            "batch_number": "LOT-TEST-01",
+            "vaccine_expiry_date": (date.today() + timedelta(days=180)).isoformat(),
+            "injection_site": "deltoide_d",
+            "vaccination_strategy": "routine",
+            "vaccinator_name": "Agent PEV Test",
         },
         headers=_auth(midwife),
     )
     assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["batch_number"] == "LOT-TEST-01"
+    assert body["injection_site"] == "deltoide_d"
+    assert body["age_at_vaccination_months"] is not None
 
     r = client.get(
         f"/clinical/immunization/patients/{patient_id}/history",
@@ -144,6 +153,22 @@ def test_immunization_schedule_due_missed(client, db_session, admin_user):
     )
     assert r.status_code == 200
     assert len(r.json()) == 1
+
+    r = client.get(
+        "/clinical/immunization/register",
+        params={"year": date.today().year, "month": date.today().month},
+        headers=_auth(midwife),
+    )
+    assert r.status_code == 200
+    register = r.json()
+    assert len(register) >= 1
+    assert register[0]["patient"]["first_name"] == "Mamadou"
+    assert register[0]["line_number"] == 1
+
+    r = client.get(f"/clinical/patients/{patient_id}/journey", headers=_auth(reception))
+    assert r.status_code == 200
+    journey = r.json()
+    assert len(journey.get("immunizations", [])) == 1
 
 
 def test_list_clinic_staff(client, db_session, admin_user):

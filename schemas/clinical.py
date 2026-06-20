@@ -89,6 +89,10 @@ class PatientSearchResponse(BaseModel):
     last_name: str
     phone: Optional[str] = None
     age: int
+    gender: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    address: Optional[str] = None
+    emergency_contact: Optional[str] = None
 
     class Config:
         from_attributes = True

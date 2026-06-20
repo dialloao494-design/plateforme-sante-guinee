@@ -43,10 +43,13 @@ const clinicalApi = {
       cachePersist: true,
       forceRefresh: opts.forceRefresh,
     }),
+  immunizationFieldOptions: () => httpClient.get('/clinical/immunization/field-options'),
   immunizationHistory: (patientId) => httpClient.get(`/clinical/immunization/patients/${patientId}/history`),
   immunizationStatus: (patientId) => httpClient.get(`/clinical/immunization/patients/${patientId}/status`),
   recordImmunization: (data) => httpClient.post('/clinical/immunization/records', data),
   immunizationDashboard: () => httpClient.get('/clinical/immunization/dashboard'),
+  immunizationRegister: (year, month) =>
+    httpClient.get('/clinical/immunization/register', { params: { year, month } }),
   immunizationMonthlyReport: (year, month) =>
     httpClient.get('/clinical/immunization/reports/monthly', { params: { year, month } }),
 

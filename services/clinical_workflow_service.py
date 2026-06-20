@@ -831,6 +831,16 @@ class ClinicalWorkflowService:
             )
             .all()
         )
+        immunizations = (
+            db.query(models.ImmunizationRecord)
+            .filter(
+                models.ImmunizationRecord.clinic_id == clinic_id,
+                models.ImmunizationRecord.patient_id == patient_id,
+                models.ImmunizationRecord.deleted_at.is_(None),
+            )
+            .order_by(models.ImmunizationRecord.administered_at.desc())
+            .all()
+        )
         return {
             "patient_id": patient_id,
             "appointments": [
@@ -838,4 +848,14 @@ class ClinicalWorkflowService:
                 for a in appointments
             ],
             "consultations": [{"id": c.id, "status": c.status} for c in consultations],
+            "immunizations": [
+                {
+                    "id": r.id,
+                    "vaccine_name": r.vaccine_name,
+                    "dose_label": r.dose_label,
+                    "administered_at": r.administered_at.isoformat(),
+                    "vaccinator_name": r.vaccinator_name,
+                }
+                for r in immunizations
+            ],
         }

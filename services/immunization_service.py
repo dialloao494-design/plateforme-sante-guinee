@@ -1,8 +1,9 @@
-"""PEV immunization — schedule, history, due and missed vaccines."""
+"""PEV immunization — schedule, history, due and missed vaccines, paper register."""
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from calendar import monthrange
+from datetime import date, timedelta
 from typing import List, Optional
 
 from fastapi import HTTPException, status
@@ -10,6 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 
 import models
 from core.tenant import assert_patient_in_clinic
+from data.pev_register import STRATEGY_LABELS
 from data.pev_schedule import DEFAULT_PEV_SCHEDULE
 from models.user import User
 
@@ -24,10 +26,49 @@ def _patient_age_months(patient: models.Patient, on_date: date | None = None) ->
     return 0
 
 
+def _patient_age_days(patient: models.Patient, on_date: date | None = None) -> int:
+    on_date = on_date or date.today()
+    if patient.date_of_birth:
+        return max(0, (on_date - patient.date_of_birth).days)
+    if patient.age is not None:
+        return int(patient.age) * 365
+    return 0
+
+
+def _format_age_display(patient: models.Patient, on_date: date | None = None) -> str | None:
+    on_date = on_date or date.today()
+    if patient.date_of_birth:
+        total_days = max(0, (on_date - patient.date_of_birth).days)
+        months = total_days // 30
+        days = total_days % 30
+        if months < 24:
+            return f"{months} mois {days} j"
+        years = months // 12
+        rem_months = months % 12
+        return f"{years} an(s) {rem_months} mois"
+    if patient.age is not None:
+        return f"{patient.age} an(s)"
+    return None
+
+
 def _due_date_from_birth(patient: models.Patient, age_months: int) -> date:
     if patient.date_of_birth:
         return patient.date_of_birth + timedelta(days=age_months * 30)
     return date.today()
+
+
+def _patient_snapshot(patient: models.Patient, on_date: date | None = None) -> dict:
+    return {
+        "id": patient.id,
+        "first_name": patient.first_name,
+        "last_name": patient.last_name,
+        "gender": patient.gender,
+        "date_of_birth": patient.date_of_birth,
+        "age_display": _format_age_display(patient, on_date),
+        "mother_or_guardian": patient.emergency_contact,
+        "address": patient.address,
+        "phone": patient.phone,
+    }
 
 
 class ImmunizationService:
@@ -60,15 +101,18 @@ class ImmunizationService:
         )
 
     @staticmethod
+    def _base_query(db: Session, *, clinic_id: int):
+        return db.query(models.ImmunizationRecord).filter(
+            models.ImmunizationRecord.clinic_id == clinic_id,
+            models.ImmunizationRecord.deleted_at.is_(None),
+        )
+
+    @staticmethod
     def list_history(db: Session, *, clinic_id: int, patient_id: int) -> List[models.ImmunizationRecord]:
         assert_patient_in_clinic(db, patient_id=patient_id, clinic_id=clinic_id)
         return (
-            db.query(models.ImmunizationRecord)
-            .filter(
-                models.ImmunizationRecord.patient_id == patient_id,
-                models.ImmunizationRecord.clinic_id == clinic_id,
-                models.ImmunizationRecord.deleted_at.is_(None),
-            )
+            ImmunizationService._base_query(db, clinic_id=clinic_id)
+            .filter(models.ImmunizationRecord.patient_id == patient_id)
             .order_by(models.ImmunizationRecord.administered_at.desc())
             .all()
         )
@@ -86,12 +130,24 @@ class ImmunizationService:
         dose_label: Optional[str] = None,
         dose_number: Optional[int] = None,
         batch_number: Optional[str] = None,
+        vaccine_expiry_date: Optional[date] = None,
+        injection_site: Optional[str] = None,
+        vaccination_strategy: Optional[str] = "routine",
         next_appointment_date: Optional[date] = None,
         vaccinator_name: Optional[str] = None,
         notes: Optional[str] = None,
+        aefi_notes: Optional[str] = None,
     ) -> models.ImmunizationRecord:
         assert_patient_in_clinic(db, patient_id=patient_id, clinic_id=clinic_id)
+        patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+        if not patient:
+            raise HTTPException(status_code=404, detail="Patient not found")
+
         display_vaccinator = vaccinator_name or (actor.email if actor else None)
+        strategy = (vaccination_strategy or "routine").strip().lower()
+        if strategy not in STRATEGY_LABELS:
+            strategy = "routine"
+
         row = models.ImmunizationRecord(
             clinic_id=clinic_id,
             patient_id=patient_id,
@@ -100,11 +156,17 @@ class ImmunizationService:
             dose_label=dose_label,
             dose_number=dose_number,
             batch_number=batch_number,
+            vaccine_expiry_date=vaccine_expiry_date,
+            injection_site=injection_site,
+            vaccination_strategy=strategy,
+            age_at_vaccination_months=_patient_age_months(patient, administered_at),
+            age_at_vaccination_days=_patient_age_days(patient, administered_at),
             administered_at=administered_at,
             next_appointment_date=next_appointment_date,
             vaccinator_name=display_vaccinator,
             administered_by_user_id=actor.id,
             notes=notes,
+            aefi_notes=aefi_notes,
         )
         db.add(row)
         db.commit()
@@ -166,13 +228,57 @@ class ImmunizationService:
         return "5 ans et plus"
 
     @staticmethod
+    def _rows_for_period(
+        db: Session, *, clinic_id: int, start: date, end: date
+    ) -> List[models.ImmunizationRecord]:
+        return (
+            ImmunizationService._base_query(db, clinic_id=clinic_id)
+            .options(joinedload(models.ImmunizationRecord.patient))
+            .filter(
+                models.ImmunizationRecord.administered_at >= start,
+                models.ImmunizationRecord.administered_at <= end,
+            )
+            .order_by(models.ImmunizationRecord.administered_at, models.ImmunizationRecord.id)
+            .all()
+        )
+
+    @staticmethod
+    def build_register_rows(rows: List[models.ImmunizationRecord]) -> list[dict]:
+        register: list[dict] = []
+        for idx, row in enumerate(rows, start=1):
+            patient = row.patient
+            if not patient:
+                continue
+            register.append(
+                {
+                    "line_number": idx,
+                    "record": row,
+                    "patient": _patient_snapshot(patient, row.administered_at),
+                }
+            )
+        return register
+
+    @staticmethod
+    def list_register(
+        db: Session,
+        *,
+        clinic_id: int,
+        year: int | None = None,
+        month: int | None = None,
+    ) -> list[dict]:
+        today = date.today()
+        year = year or today.year
+        month = month or today.month
+        start = date(year, month, 1)
+        end = date(year, month, monthrange(year, month)[1])
+        rows = ImmunizationService._rows_for_period(db, clinic_id=clinic_id, start=start, end=end)
+        return ImmunizationService.build_register_rows(rows)
+
+    @staticmethod
     def dashboard_stats(db: Session, *, clinic_id: int) -> dict:
         today = date.today()
         month_start = today.replace(day=1)
-        base = db.query(models.ImmunizationRecord).filter(
-            models.ImmunizationRecord.clinic_id == clinic_id,
-            models.ImmunizationRecord.deleted_at.is_(None),
-        )
+        base = ImmunizationService._base_query(db, clinic_id=clinic_id)
         daily = base.filter(models.ImmunizationRecord.administered_at == today).count()
         monthly_rows = (
             base.filter(models.ImmunizationRecord.administered_at >= month_start)
@@ -181,51 +287,51 @@ class ImmunizationService:
         )
         by_vaccine: dict[str, int] = {}
         by_age: dict[str, int] = {}
+        by_strategy: dict[str, int] = {}
         for row in monthly_rows:
             by_vaccine[row.vaccine_name] = by_vaccine.get(row.vaccine_name, 0) + 1
             patient = row.patient
             if patient:
-                age_m = _patient_age_months(patient, row.administered_at)
+                age_m = row.age_at_vaccination_months
+                if age_m is None:
+                    age_m = _patient_age_months(patient, row.administered_at)
                 label = ImmunizationService._age_group_label(age_m)
                 by_age[label] = by_age.get(label, 0) + 1
+            strat = STRATEGY_LABELS.get(row.vaccination_strategy or "routine", "Routine")
+            by_strategy[strat] = by_strategy.get(strat, 0) + 1
         return {
             "daily_vaccinations": daily,
             "monthly_vaccinations": len(monthly_rows),
             "by_age_group": by_age,
             "by_vaccine_type": by_vaccine,
+            "by_strategy": by_strategy,
         }
 
     @staticmethod
     def monthly_report(db: Session, *, clinic_id: int, year: int, month: int) -> dict:
-        from calendar import monthrange
-
         start = date(year, month, 1)
         end = date(year, month, monthrange(year, month)[1])
-        rows = (
-            db.query(models.ImmunizationRecord)
-            .options(joinedload(models.ImmunizationRecord.patient))
-            .filter(
-                models.ImmunizationRecord.clinic_id == clinic_id,
-                models.ImmunizationRecord.deleted_at.is_(None),
-                models.ImmunizationRecord.administered_at >= start,
-                models.ImmunizationRecord.administered_at <= end,
-            )
-            .order_by(models.ImmunizationRecord.administered_at)
-            .all()
-        )
+        rows = ImmunizationService._rows_for_period(db, clinic_id=clinic_id, start=start, end=end)
         by_vaccine: dict[str, int] = {}
         by_age: dict[str, int] = {}
+        by_strategy: dict[str, int] = {}
         for row in rows:
             by_vaccine[row.vaccine_name] = by_vaccine.get(row.vaccine_name, 0) + 1
-            if row.patient:
+            age_m = row.age_at_vaccination_months
+            if age_m is None and row.patient:
                 age_m = _patient_age_months(row.patient, row.administered_at)
+            if age_m is not None:
                 label = ImmunizationService._age_group_label(age_m)
                 by_age[label] = by_age.get(label, 0) + 1
+            strat = STRATEGY_LABELS.get(row.vaccination_strategy or "routine", "Routine")
+            by_strategy[strat] = by_strategy.get(strat, 0) + 1
         return {
             "year": year,
             "month": month,
+            "clinic_id": clinic_id,
             "total_vaccinations": len(rows),
             "by_vaccine_type": by_vaccine,
             "by_age_group": by_age,
-            "records": rows,
+            "by_strategy": by_strategy,
+            "register_rows": ImmunizationService.build_register_rows(rows),
         }

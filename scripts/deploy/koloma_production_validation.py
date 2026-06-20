@@ -319,7 +319,12 @@ def workflow_c(report: Report, tokens: dict[str, str]) -> int | None:
             "vaccine_code": "BCG",
             "vaccine_name": "BCG",
             "dose_number": 1,
+            "dose_label": "Naissance",
             "administered_at": datetime.now().date().isoformat(),
+            "batch_number": f"LOT-{SUFFIX}",
+            "vaccine_expiry_date": (datetime.now().date() + timedelta(days=180)).isoformat(),
+            "injection_site": "deltoide_d",
+            "vaccination_strategy": "routine",
             "vaccinator_name": "Agent PEV Koloma",
         },
     ).raise_for_status()
@@ -352,6 +357,7 @@ def validate_central_history(report: Report, tokens: dict[str, str], patient_ids
         j = api("GET", f"/clinical/patients/{pid}/journey", recv)
         ok = j.status_code == 200
         keys = list(j.json().keys()) if ok else []
+        imm_count = len(j.json().get("immunizations", [])) if ok else 0
         imm = api("GET", f"/clinical/immunization/patients/{pid}/history", recv)
         nut = api("GET", f"/clinical/nutrition/patients/{pid}/history", recv)
         proc = api("GET", "/clinical/nursing-care/procedures", recv)
@@ -359,7 +365,7 @@ def validate_central_history(report: Report, tokens: dict[str, str], patient_ids
             "History",
             f"Central journey patient {pid}",
             ok,
-            f"journey_keys={keys[:5]} imm={imm.status_code} nut={nut.status_code} proc={proc.status_code}",
+            f"journey_keys={keys[:6]} imm_events={imm_count} imm={imm.status_code} nut={nut.status_code} proc={proc.status_code}",
         )
 
 
@@ -382,6 +388,39 @@ def pharmacy_stock(report: Report, token: str) -> None:
     if not ok:
         detail += f" body={r.text[:120]}"
     report.add("Pharmacy", "Update stock", ok, detail)
+
+
+def validate_pev_register(report: Report, token: str) -> None:
+    now = datetime.now()
+    r = api("GET", "/clinical/immunization/field-options", token)
+    report.add("PEV", "Field options API", r.status_code == 200, f"status={r.status_code}")
+    if r.status_code == 200:
+        body = r.json()
+        report.add(
+            "PEV",
+            "Injection sites configured",
+            len(body.get("injection_sites", [])) >= 5,
+            str(len(body.get("injection_sites", []))),
+        )
+    reg = api(
+        "GET",
+        "/clinical/immunization/register",
+        token,
+        params={"year": now.year, "month": now.month},
+    )
+    report.add("PEV", "Monthly register API", reg.status_code == 200, f"rows={len(reg.json()) if reg.status_code == 200 else 0}")
+    rep = api(
+        "GET",
+        "/clinical/immunization/reports/monthly",
+        token,
+        params={"year": now.year, "month": now.month},
+    )
+    if rep.status_code == 200:
+        data = rep.json()
+        has_rows = "register_rows" in data and isinstance(data["register_rows"], list)
+        report.add("PEV", "Monthly report register_rows", has_rows, f"total={data.get('total_vaccinations')}")
+    else:
+        report.add("PEV", "Monthly report register_rows", False, f"status={rep.status_code}")
 
 
 def write_report(report: Report) -> None:
@@ -447,6 +486,7 @@ def main() -> int:
             report.add("Accounts", "Cashier login", False, str(exc)[:120])
 
     validate_frontend_routes(report)
+    validate_pev_register(report, tokens["pev_agent"])
     pharmacy_stock(report, tokens["pharmacy"])
 
     me = api("GET", "/auth/me", tokens["doctor"]).json()
