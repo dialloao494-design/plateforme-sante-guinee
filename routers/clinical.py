@@ -343,9 +343,12 @@ def update_staff_role(
     )
     if not user:
         raise HTTPException(status_code=404, detail="Staff member not found")
+    from core.provisioning_context import provisioning_channel
+
     user.role = normalized
     db.add(user)
-    db.commit()
+    with provisioning_channel("admin_api"):
+        db.commit()
     db.refresh(user)
     return StaffResponse(id=user.id, email=user.email, role=user.role, clinic_id=user.clinic_id, is_active=user.is_active)
 

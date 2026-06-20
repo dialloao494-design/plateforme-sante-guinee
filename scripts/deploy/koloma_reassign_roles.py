@@ -24,7 +24,7 @@ REASSIGNMENTS = [
 
 def main() -> int:
     with httpx.Client(base_url=BASE, timeout=60.0) as client:
-        login = client.post("/auth/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD})
+        login = client.post("/auth/login-json", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD})
         if login.status_code != 200:
             print(f"LOGIN FAIL: {login.status_code} {login.text}")
             return 1
