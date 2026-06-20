@@ -55,8 +55,11 @@ class Admission(Base):
     # pending | admitted | in_care | transferred | discharged | cancelled
     reason = Column(Text, nullable=True)
     diagnosis_summary = Column(Text, nullable=True)
+    outcome = Column(String(64), nullable=True)
+    # cured | improved | unchanged | transferred | deceased | left_against_advice
     notes = Column(Text, nullable=True)
     admitted_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    attending_clinician_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     admitted_at = Column(DateTime, nullable=True)
     discharged_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

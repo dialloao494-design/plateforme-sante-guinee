@@ -6,7 +6,8 @@ from database import Base
 
 _CLINICAL_ROLES = (
     "'patient', 'doctor', 'platform_owner', 'platform_admin', 'clinic_admin', 'admin', "
-    "'receptionist', 'cashier', 'lab_technician', 'pharmacist', 'nutritionist', 'midwife'"
+    "'receptionist', 'cashier', 'lab_technician', 'pharmacist', 'nutritionist', 'midwife', "
+    "'pev_agent', 'nurse'"
 )
 
 

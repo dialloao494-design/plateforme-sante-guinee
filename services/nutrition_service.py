@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import List, Optional
 
 from fastapi import HTTPException, status
@@ -51,6 +51,9 @@ class NutritionService:
         age_months: Optional[int] = None,
         consultation_id: Optional[int] = None,
         notes: Optional[str] = None,
+        nutritional_diagnosis: Optional[str] = None,
+        is_follow_up: bool = False,
+        follow_up_date: Optional[date] = None,
     ) -> models.NutritionAssessment:
         assert_patient_in_clinic(db, patient_id=patient_id, clinic_id=clinic_id)
         status_label = _classify_muac(muac_cm)
@@ -63,6 +66,9 @@ class NutritionService:
             height_cm=height_cm,
             muac_cm=muac_cm,
             nutritional_status=status_label,
+            nutritional_diagnosis=nutritional_diagnosis,
+            is_follow_up=is_follow_up,
+            follow_up_date=follow_up_date,
             notes=notes,
             recorded_by_user_id=actor.id,
             recorded_at=datetime.utcnow(),
@@ -88,3 +94,62 @@ class NutritionService:
         if not row:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assessment not found")
         return row
+
+    @staticmethod
+    def dashboard_stats(db: Session, *, clinic_id: int) -> dict:
+        today = date.today()
+        month_start = today.replace(day=1)
+        base = db.query(models.NutritionAssessment).filter(
+            models.NutritionAssessment.clinic_id == clinic_id,
+            models.NutritionAssessment.deleted_at.is_(None),
+        )
+        all_rows = base.all()
+        patient_ids = {r.patient_id for r in all_rows}
+        malnutrition = sum(
+            1
+            for r in all_rows
+            if r.nutritional_status in ("moderate_malnutrition", "severe_malnutrition")
+        )
+        follow_ups = base.filter(models.NutritionAssessment.is_follow_up.is_(True)).count()
+        month_count = base.filter(models.NutritionAssessment.recorded_at >= datetime.combine(month_start, datetime.min.time())).count()
+        return {
+            "children_followed": len(patient_ids),
+            "malnutrition_cases": malnutrition,
+            "follow_up_visits": follow_ups,
+            "consultations_this_month": month_count,
+        }
+
+    @staticmethod
+    def monthly_report(db: Session, *, clinic_id: int, year: int, month: int) -> dict:
+        from calendar import monthrange
+
+        start = datetime(year, month, 1)
+        end = datetime(year, month, monthrange(year, month)[1], 23, 59, 59)
+        rows = (
+            db.query(models.NutritionAssessment)
+            .filter(
+                models.NutritionAssessment.clinic_id == clinic_id,
+                models.NutritionAssessment.deleted_at.is_(None),
+                models.NutritionAssessment.recorded_at >= start,
+                models.NutritionAssessment.recorded_at <= end,
+            )
+            .all()
+        )
+        by_status: dict[str, int] = {}
+        for row in rows:
+            key = row.nutritional_status or "unknown"
+            by_status[key] = by_status.get(key, 0) + 1
+        malnutrition = sum(
+            1
+            for r in rows
+            if r.nutritional_status in ("moderate_malnutrition", "severe_malnutrition")
+        )
+        follow_ups = sum(1 for r in rows if r.is_follow_up)
+        return {
+            "year": year,
+            "month": month,
+            "total_consultations": len(rows),
+            "malnutrition_cases": malnutrition,
+            "follow_up_visits": follow_ups,
+            "by_status": by_status,
+        }

@@ -18,7 +18,9 @@ const STAFF_ROLE_OPTIONS = [
   { value: 'lab_technician', label: 'Laborantin' },
   { value: 'pharmacist', label: 'Pharmacien' },
   { value: 'nutritionist', label: 'Nutritionniste' },
-  { value: 'midwife', label: 'Sage-femme' },
+  { value: 'pev_agent', label: 'Agent PEV' },
+  { value: 'nurse', label: 'Infirmier(ère)' },
+  { value: 'midwife', label: 'Sage-femme (legacy)' },
 ];
 
 export default function ClinicAdminDashboard() {

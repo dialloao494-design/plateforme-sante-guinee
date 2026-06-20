@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta
 from typing import List, Optional
 
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 import models
 from core.tenant import assert_patient_in_clinic
@@ -84,18 +84,25 @@ class ImmunizationService:
         vaccine_name: str,
         administered_at: date,
         dose_label: Optional[str] = None,
+        dose_number: Optional[int] = None,
         batch_number: Optional[str] = None,
+        next_appointment_date: Optional[date] = None,
+        vaccinator_name: Optional[str] = None,
         notes: Optional[str] = None,
     ) -> models.ImmunizationRecord:
         assert_patient_in_clinic(db, patient_id=patient_id, clinic_id=clinic_id)
+        display_vaccinator = vaccinator_name or (actor.email if actor else None)
         row = models.ImmunizationRecord(
             clinic_id=clinic_id,
             patient_id=patient_id,
             vaccine_code=vaccine_code.strip().upper(),
             vaccine_name=vaccine_name.strip(),
             dose_label=dose_label,
+            dose_number=dose_number,
             batch_number=batch_number,
             administered_at=administered_at,
+            next_appointment_date=next_appointment_date,
+            vaccinator_name=display_vaccinator,
             administered_by_user_id=actor.id,
             notes=notes,
         )
@@ -147,3 +154,78 @@ class ImmunizationService:
                 upcoming.append(entry)
 
         return {"due": due, "missed": missed, "upcoming": upcoming}
+
+    @staticmethod
+    def _age_group_label(age_months: int) -> str:
+        if age_months < 12:
+            return "0-11 mois"
+        if age_months < 24:
+            return "12-23 mois"
+        if age_months < 60:
+            return "24-59 mois"
+        return "5 ans et plus"
+
+    @staticmethod
+    def dashboard_stats(db: Session, *, clinic_id: int) -> dict:
+        today = date.today()
+        month_start = today.replace(day=1)
+        base = db.query(models.ImmunizationRecord).filter(
+            models.ImmunizationRecord.clinic_id == clinic_id,
+            models.ImmunizationRecord.deleted_at.is_(None),
+        )
+        daily = base.filter(models.ImmunizationRecord.administered_at == today).count()
+        monthly_rows = (
+            base.filter(models.ImmunizationRecord.administered_at >= month_start)
+            .options(joinedload(models.ImmunizationRecord.patient))
+            .all()
+        )
+        by_vaccine: dict[str, int] = {}
+        by_age: dict[str, int] = {}
+        for row in monthly_rows:
+            by_vaccine[row.vaccine_name] = by_vaccine.get(row.vaccine_name, 0) + 1
+            patient = row.patient
+            if patient:
+                age_m = _patient_age_months(patient, row.administered_at)
+                label = ImmunizationService._age_group_label(age_m)
+                by_age[label] = by_age.get(label, 0) + 1
+        return {
+            "daily_vaccinations": daily,
+            "monthly_vaccinations": len(monthly_rows),
+            "by_age_group": by_age,
+            "by_vaccine_type": by_vaccine,
+        }
+
+    @staticmethod
+    def monthly_report(db: Session, *, clinic_id: int, year: int, month: int) -> dict:
+        from calendar import monthrange
+
+        start = date(year, month, 1)
+        end = date(year, month, monthrange(year, month)[1])
+        rows = (
+            db.query(models.ImmunizationRecord)
+            .options(joinedload(models.ImmunizationRecord.patient))
+            .filter(
+                models.ImmunizationRecord.clinic_id == clinic_id,
+                models.ImmunizationRecord.deleted_at.is_(None),
+                models.ImmunizationRecord.administered_at >= start,
+                models.ImmunizationRecord.administered_at <= end,
+            )
+            .order_by(models.ImmunizationRecord.administered_at)
+            .all()
+        )
+        by_vaccine: dict[str, int] = {}
+        by_age: dict[str, int] = {}
+        for row in rows:
+            by_vaccine[row.vaccine_name] = by_vaccine.get(row.vaccine_name, 0) + 1
+            if row.patient:
+                age_m = _patient_age_months(row.patient, row.administered_at)
+                label = ImmunizationService._age_group_label(age_m)
+                by_age[label] = by_age.get(label, 0) + 1
+        return {
+            "year": year,
+            "month": month,
+            "total_vaccinations": len(rows),
+            "by_vaccine_type": by_vaccine,
+            "by_age_group": by_age,
+            "records": rows,
+        }

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, date
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -114,6 +114,61 @@ class HospitalizationService:
         return bed
 
     @staticmethod
+    def admit_patient(
+        db: Session,
+        *,
+        clinic_id: int,
+        payload: AdmissionCreate,
+        actor: User,
+        client_ip: str | None = None,
+    ) -> models.Admission:
+        if payload.consultation_id:
+            return HospitalizationService.admit_from_consultation(
+                db, clinic_id=clinic_id, payload=payload, actor=actor, client_ip=client_ip
+            )
+        from core.tenant import assert_patient_in_clinic
+
+        assert payload.patient_id is not None
+        assert_patient_in_clinic(db, patient_id=payload.patient_id, clinic_id=clinic_id)
+        existing = (
+            db.query(models.Admission)
+            .filter(
+                models.Admission.patient_id == payload.patient_id,
+                models.Admission.clinic_id == clinic_id,
+                models.Admission.status.notin_(["discharged", "cancelled"]),
+            )
+            .first()
+        )
+        if existing:
+            raise HTTPException(status_code=409, detail="Patient already has an active admission")
+        admission = models.Admission(
+            clinic_id=clinic_id,
+            patient_id=payload.patient_id,
+            consultation_id=None,
+            admission_number=_next_admission_number(db, clinic_id),
+            status="pending",
+            reason=payload.reason,
+            diagnosis_summary=payload.diagnosis_summary,
+            attending_clinician_user_id=payload.attending_clinician_user_id,
+            notes=payload.notes,
+            admitted_by_user_id=actor.id,
+        )
+        db.add(admission)
+        db.commit()
+        db.refresh(admission)
+        log_cis(
+            db,
+            actor=actor,
+            clinic_id=clinic_id,
+            patient_id=payload.patient_id,
+            action="create",
+            resource_type="admission",
+            resource_id=admission.id,
+            client_ip=client_ip,
+        )
+        return admission
+
+    @staticmethod
     def admit_from_consultation(
         db: Session,
         *,
@@ -152,6 +207,7 @@ class HospitalizationService:
             status="pending",
             reason=payload.reason,
             diagnosis_summary=payload.diagnosis_summary or consultation.diagnosis,
+            attending_clinician_user_id=payload.attending_clinician_user_id,
             notes=payload.notes,
             admitted_by_user_id=actor.id,
         )
@@ -258,6 +314,8 @@ class HospitalizationService:
     ) -> models.Admission:
         admission = HospitalizationService._get_admission(db, clinic_id, admission_id)
         admission.status = payload.status
+        if payload.outcome:
+            admission.outcome = payload.outcome
         if payload.status == "discharged":
             admission.discharged_at = datetime.utcnow()
             current_stays = (
@@ -354,6 +412,48 @@ class HospitalizationService:
             "occupancy_rate": round(rate, 1),
             "active_admissions": active,
             "pending_admissions": pending,
+        }
+
+    @staticmethod
+    def dashboard_stats(db: Session, *, clinic_id: int) -> dict:
+        today = date.today()
+        month_start = datetime(today.year, today.month, 1)
+        active = (
+            db.query(models.Admission)
+            .filter(
+                models.Admission.clinic_id == clinic_id,
+                models.Admission.status.in_(["admitted", "in_care", "transferred"]),
+            )
+            .count()
+        )
+        admissions_month = (
+            db.query(models.Admission)
+            .filter(
+                models.Admission.clinic_id == clinic_id,
+                models.Admission.admitted_at >= month_start,
+            )
+            .count()
+        )
+        discharged_rows = (
+            db.query(models.Admission)
+            .filter(
+                models.Admission.clinic_id == clinic_id,
+                models.Admission.status == "discharged",
+                models.Admission.discharged_at >= month_start,
+            )
+            .all()
+        )
+        stays: list[float] = []
+        for adm in discharged_rows:
+            if adm.admitted_at and adm.discharged_at:
+                delta = adm.discharged_at - adm.admitted_at
+                stays.append(delta.total_seconds() / 86400)
+        avg_stay = round(sum(stays) / len(stays), 1) if stays else 0.0
+        return {
+            "current_hospitalized": active,
+            "admissions_this_month": admissions_month,
+            "discharges_this_month": len(discharged_rows),
+            "average_length_of_stay_days": avg_stay,
         }
 
     @staticmethod

@@ -22,6 +22,7 @@ export default function HospitalizationDashboard() {
   const { user } = useAuth();
   const canManageBeds = userCanManageHospitalBeds(user?.role || user?.user_role);
   const [occupancy, setOccupancy] = useState(null);
+  const [hospStats, setHospStats] = useState(null);
   const [admissions, setAdmissions] = useState([]);
   const [beds, setBeds] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -32,16 +33,22 @@ export default function HospitalizationDashboard() {
   const [bedForm, setBedForm] = useState({ room_id: '', bed_number: '' });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [patientSearch, setPatientSearch] = useState('');
+  const [patientMatches, setPatientMatches] = useState([]);
+  const [admitForm, setAdmitForm] = useState({ patient_id: '', diagnosis_summary: '', reason: '' });
+  const [dischargeOutcome, setDischargeOutcome] = useState('cured');
 
   const load = useCallback(async () => {
     try {
-      const [occRes, admRes, bedRes, roomRes] = await Promise.all([
+      const [occRes, admRes, bedRes, roomRes, dashRes] = await Promise.all([
         clinicalApi.hospitalOccupancy(),
         clinicalApi.hospitalAdmissions(),
         clinicalApi.hospitalBeds(),
         clinicalApi.hospitalRooms(),
+        clinicalApi.hospitalDashboard(),
       ]);
       setOccupancy(occRes.data);
+      setHospStats(dashRes.data);
       setAdmissions(admRes.data || []);
       setBeds(bedRes.data || []);
       setRooms(roomRes.data || []);
@@ -55,7 +62,14 @@ export default function HospitalizationDashboard() {
     load();
   }, [load]);
 
-  const stats = occupancy
+  const stats = hospStats
+    ? [
+        { label: 'Hospitalisés actuellement', value: hospStats.current_hospitalized, variant: 'warning' },
+        { label: 'Admissions ce mois', value: hospStats.admissions_this_month, variant: 'accent' },
+        { label: 'Sorties ce mois', value: hospStats.discharges_this_month },
+        { label: 'Durée moy. séjour (j)', value: hospStats.average_length_of_stay_days, variant: 'success' },
+      ]
+    : occupancy
     ? [
         { label: 'Lits totaux', value: occupancy.total_beds, hint: 'Capacité' },
         { label: 'Occupés', value: occupancy.occupied_beds, hint: `${occupancy.occupancy_rate}%`, variant: 'warning' },
@@ -83,11 +97,43 @@ export default function HospitalizationDashboard() {
 
   const updateStatus = async (admissionId, status) => {
     try {
-      await clinicalApi.updateAdmissionStatus(admissionId, { status });
+      const payload = { status };
+      if (status === 'discharged') {
+        payload.outcome = dischargeOutcome;
+      }
+      await clinicalApi.updateAdmissionStatus(admissionId, payload);
       setMessage(`Statut mis à jour : ${STATUS_LABELS[status]}`);
       load();
     } catch (err) {
       setError(formatApiError(err, 'Mise à jour impossible'));
+    }
+  };
+
+  const searchPatients = async () => {
+    if (patientSearch.trim().length < 2) return;
+    try {
+      const { data } = await clinicalApi.searchPatients(patientSearch.trim());
+      setPatientMatches(data || []);
+    } catch (err) {
+      setError(formatApiError(err, 'Recherche impossible'));
+    }
+  };
+
+  const admitPatient = async (e) => {
+    e.preventDefault();
+    if (!admitForm.patient_id) return;
+    try {
+      await clinicalApi.createAdmission({
+        patient_id: Number(admitForm.patient_id),
+        diagnosis_summary: admitForm.diagnosis_summary || null,
+        reason: admitForm.reason || null,
+      });
+      setMessage('Admission créée');
+      setAdmitForm({ patient_id: '', diagnosis_summary: '', reason: '' });
+      setPatientMatches([]);
+      load();
+    } catch (err) {
+      setError(formatApiError(err, 'Admission impossible'));
     }
   };
 
@@ -130,6 +176,54 @@ export default function HospitalizationDashboard() {
 
       <ClinicalStatGrid stats={stats} />
 
+      <section className="clinical-panel">
+        <h2>Admettre un patient</h2>
+        <form className="clinical-form-grid" onSubmit={admitPatient}>
+          <label className="clinical-span-2">
+            Rechercher patient
+            <div className="clinical-inline-form">
+              <input
+                type="search"
+                value={patientSearch}
+                onChange={(e) => setPatientSearch(e.target.value)}
+                placeholder="Nom ou téléphone"
+              />
+              <button type="button" className="clinical-btn clinical-btn--secondary" onClick={searchPatients}>
+                Rechercher
+              </button>
+            </div>
+          </label>
+          {patientMatches.length > 0 && (
+            <label className="clinical-span-2">
+              Patient
+              <select
+                value={admitForm.patient_id}
+                onChange={(e) => setAdmitForm({ ...admitForm, patient_id: e.target.value })}
+              >
+                <option value="">— Sélectionner —</option>
+                {patientMatches.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.first_name} {p.last_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label>
+            Diagnostic
+            <input
+              value={admitForm.diagnosis_summary}
+              onChange={(e) => setAdmitForm({ ...admitForm, diagnosis_summary: e.target.value })}
+            />
+          </label>
+          <label>
+            Motif admission
+            <input value={admitForm.reason} onChange={(e) => setAdmitForm({ ...admitForm, reason: e.target.value })} />
+          </label>
+          <button type="submit" className="clinical-btn">Créer admission</button>
+        </form>
+      </section>
+
       <div className="clinical-grid clinical-grid--2">
         <section className="clinical-panel">
           <h2>Admissions en cours</h2>
@@ -160,7 +254,12 @@ export default function HospitalizationDashboard() {
                         Soins
                       </button>
                     )}
+                    <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => updateStatus(a.id, 'discharged')}>
+                      Sortir
+                    </button>
                   </div>
+                  {a.diagnosis_summary && <small>Diagnostic : {a.diagnosis_summary}</small>}
+                  {a.length_of_stay_days != null && <small>Durée séjour : {a.length_of_stay_days} j</small>}
                 </li>
               ))}
           </ul>
@@ -168,6 +267,17 @@ export default function HospitalizationDashboard() {
 
         <section className="clinical-panel">
           <h2>Assignation / transfert de lit</h2>
+          <label>
+            Issue à la sortie
+            <select value={dischargeOutcome} onChange={(e) => setDischargeOutcome(e.target.value)}>
+              <option value="cured">Guéri</option>
+              <option value="improved">Amélioré</option>
+              <option value="unchanged">Inchangé</option>
+              <option value="transferred">Transféré</option>
+              <option value="deceased">Décédé</option>
+              <option value="left_against_advice">Sortie contre avis</option>
+            </select>
+          </label>
           {selectedAdmission ? (
             <>
               <p>

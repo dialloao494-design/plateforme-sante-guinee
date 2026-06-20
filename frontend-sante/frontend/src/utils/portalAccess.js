@@ -14,6 +14,8 @@ export const CLINIC_PORTAL_ROLES = [
   'pharmacist',
   'nutritionist',
   'midwife',
+  'pev_agent',
+  'nurse',
 ];
 
 export function normalizeRole(role) {
@@ -39,6 +41,8 @@ const PORTAL_LABELS = {
   lab_technician: 'Laboratoire',
   pharmacist: 'Pharmacie',
   nutritionist: 'Nutrition',
+  pev_agent: 'PEV / Vaccination',
+  nurse: 'Soins infirmiers',
   midwife: 'Sage-femme',
   patient: 'Portail Patient',
 };

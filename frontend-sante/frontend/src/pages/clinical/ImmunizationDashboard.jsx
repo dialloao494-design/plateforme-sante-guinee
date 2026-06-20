@@ -6,6 +6,8 @@ import './clinical.css';
 
 export default function ImmunizationDashboard() {
   const [schedule, setSchedule] = useState([]);
+  const [clinicStats, setClinicStats] = useState(null);
+  const [monthlyReport, setMonthlyReport] = useState(null);
   const [patientSearch, setPatientSearch] = useState('');
   const [patientMatches, setPatientMatches] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
@@ -18,15 +20,26 @@ export default function ImmunizationDashboard() {
     vaccine_code: '',
     vaccine_name: '',
     dose_label: '',
+    dose_number: '',
     administered_at: new Date().toISOString().slice(0, 10),
+    next_appointment_date: '',
+    vaccinator_name: '',
     batch_number: '',
     notes: '',
   });
 
   useEffect(() => {
-    clinicalApi
-      .immunizationSchedule()
-      .then(({ data }) => setSchedule(data || []))
+    const now = new Date();
+    Promise.all([
+      clinicalApi.immunizationSchedule(),
+      clinicalApi.immunizationDashboard(),
+      clinicalApi.immunizationMonthlyReport(now.getFullYear(), now.getMonth() + 1),
+    ])
+      .then(([schedRes, dashRes, reportRes]) => {
+        setSchedule(schedRes.data || []);
+        setClinicStats(dashRes.data);
+        setMonthlyReport(reportRes.data);
+      })
       .catch(() => {});
   }, []);
 
@@ -84,7 +97,10 @@ export default function ImmunizationDashboard() {
         vaccine_code: form.vaccine_code,
         vaccine_name: form.vaccine_name,
         dose_label: form.dose_label || null,
+        dose_number: form.dose_number ? Number(form.dose_number) : null,
         administered_at: form.administered_at,
+        next_appointment_date: form.next_appointment_date || null,
+        vaccinator_name: form.vaccinator_name || null,
         batch_number: form.batch_number || null,
         notes: form.notes || null,
       });
@@ -93,23 +109,34 @@ export default function ImmunizationDashboard() {
         vaccine_code: '',
         vaccine_name: '',
         dose_label: '',
+        dose_number: '',
         administered_at: new Date().toISOString().slice(0, 10),
+        next_appointment_date: '',
+        vaccinator_name: '',
         batch_number: '',
         notes: '',
       });
       loadPatientData(selectedPatient.id);
+      clinicalApi.immunizationDashboard().then(({ data }) => setClinicStats(data)).catch(() => {});
     } catch (err) {
       setError(err?.response?.data?.detail || 'Enregistrement impossible');
     }
   };
 
   const activeList = status[tab] || [];
-  const stats = [
-    { label: 'Vaccins manqués', value: status.missed?.length || 0, variant: 'warning' },
-    { label: 'À administrer', value: status.due?.length || 0, variant: 'accent' },
-    { label: 'À venir', value: status.upcoming?.length || 0 },
-    { label: 'Historique', value: history.length, variant: 'success' },
-  ];
+  const stats = clinicStats
+    ? [
+        { label: 'Vaccinations aujourd\'hui', value: clinicStats.daily_vaccinations, variant: 'accent' },
+        { label: 'Vaccinations ce mois', value: clinicStats.monthly_vaccinations },
+        { label: 'Vaccins manqués (patient)', value: status.missed?.length || 0, variant: 'warning' },
+        { label: 'Historique patient', value: history.length, variant: 'success' },
+      ]
+    : [
+        { label: 'Vaccins manqués', value: status.missed?.length || 0, variant: 'warning' },
+        { label: 'À administrer', value: status.due?.length || 0, variant: 'accent' },
+        { label: 'À venir', value: status.upcoming?.length || 0 },
+        { label: 'Historique', value: history.length, variant: 'success' },
+      ];
 
   return (
     <div className="clinical-page">
@@ -216,12 +243,38 @@ export default function ImmunizationDashboard() {
                 <input value={form.dose_label} onChange={(e) => setForm({ ...form, dose_label: e.target.value })} />
               </label>
               <label>
-                Date
+                N° dose
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={form.dose_number}
+                  onChange={(e) => setForm({ ...form, dose_number: e.target.value })}
+                />
+              </label>
+              <label>
+                Date vaccination
                 <input
                   type="date"
                   required
                   value={form.administered_at}
                   onChange={(e) => setForm({ ...form, administered_at: e.target.value })}
+                />
+              </label>
+              <label>
+                Prochain RDV
+                <input
+                  type="date"
+                  value={form.next_appointment_date}
+                  onChange={(e) => setForm({ ...form, next_appointment_date: e.target.value })}
+                />
+              </label>
+              <label>
+                Vaccinateur
+                <input
+                  value={form.vaccinator_name}
+                  onChange={(e) => setForm({ ...form, vaccinator_name: e.target.value })}
+                  placeholder="Nom du vaccinateur"
                 />
               </label>
               <label>
@@ -245,6 +298,8 @@ export default function ImmunizationDashboard() {
                     <th>Date</th>
                     <th>Vaccin</th>
                     <th>Dose</th>
+                    <th>Prochain RDV</th>
+                    <th>Vaccinateur</th>
                     <th>Lot</th>
                   </tr>
                 </thead>
@@ -253,7 +308,9 @@ export default function ImmunizationDashboard() {
                     <tr key={row.id}>
                       <td>{row.administered_at}</td>
                       <td>{row.vaccine_name}</td>
-                      <td>{row.dose_label || '—'}</td>
+                      <td>{row.dose_label || row.dose_number || '—'}</td>
+                      <td>{row.next_appointment_date || '—'}</td>
+                      <td>{row.vaccinator_name || '—'}</td>
                       <td>{row.batch_number || '—'}</td>
                     </tr>
                   ))}
@@ -268,6 +325,31 @@ export default function ImmunizationDashboard() {
         <h2>Calendrier PEV national ({schedule.length} entrées)</h2>
         <p className="clinical-stat-hint">Référence pour la planification vaccinale.</p>
       </section>
+
+      {clinicStats && (
+        <section className="clinical-card">
+          <h2>Répartition ce mois</h2>
+          <ClinicalStatGrid
+            stats={[
+              ...Object.entries(clinicStats.by_vaccine_type || {}).slice(0, 4).map(([label, value]) => ({
+                label,
+                value,
+              })),
+              ...Object.entries(clinicStats.by_age_group || {}).map(([label, value]) => ({
+                label: `Âge: ${label}`,
+                value,
+              })),
+            ]}
+          />
+        </section>
+      )}
+
+      {monthlyReport && (
+        <section className="clinical-card">
+          <h2>Rapport mensuel PEV — {monthlyReport.month}/{monthlyReport.year}</h2>
+          <p>Total vaccinations : <strong>{monthlyReport.total_vaccinations}</strong></p>
+        </section>
+      )}
     </div>
   );
 }

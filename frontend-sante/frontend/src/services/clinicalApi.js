@@ -25,12 +25,16 @@ const clinicalApi = {
     httpClient.get('/clinical/staff', {
       params: { clinic_id: clinicId, ...(role ? { role } : {}) },
     }),
+  updateStaffRole: (userId, data) => httpClient.patch(`/clinical/staff/${userId}/role`, data),
   deactivateStaff: (userId, clinicId) =>
     httpClient.patch(`/clinical/staff/${userId}/deactivate`, null, { params: { clinic_id: clinicId } }),
 
   // Nutrition
   nutritionHistory: (patientId) => httpClient.get(`/clinical/nutrition/patients/${patientId}/history`),
   recordNutritionAssessment: (data) => httpClient.post('/clinical/nutrition/assessments', data),
+  nutritionDashboard: () => httpClient.get('/clinical/nutrition/dashboard'),
+  nutritionMonthlyReport: (year, month) =>
+    httpClient.get('/clinical/nutrition/reports/monthly', { params: { year, month } }),
 
   // Immunization (PEV)
   immunizationSchedule: (opts = {}) =>
@@ -42,6 +46,19 @@ const clinicalApi = {
   immunizationHistory: (patientId) => httpClient.get(`/clinical/immunization/patients/${patientId}/history`),
   immunizationStatus: (patientId) => httpClient.get(`/clinical/immunization/patients/${patientId}/status`),
   recordImmunization: (data) => httpClient.post('/clinical/immunization/records', data),
+  immunizationDashboard: () => httpClient.get('/clinical/immunization/dashboard'),
+  immunizationMonthlyReport: (year, month) =>
+    httpClient.get('/clinical/immunization/reports/monthly', { params: { year, month } }),
+
+  // Nursing care (Soins)
+  nursingDashboard: () => httpClient.get('/clinical/nursing-care/dashboard'),
+  nursingMonthlyReport: (year, month) =>
+    httpClient.get('/clinical/nursing-care/reports/monthly', { params: { year, month } }),
+  nursingProcedures: (procedureDate) =>
+    httpClient.get('/clinical/nursing-care/procedures', {
+      params: procedureDate ? { procedure_date: procedureDate } : {},
+    }),
+  recordNursingProcedure: (data) => httpClient.post('/clinical/nursing-care/procedures', data),
 
   // Visit workflow queues
   startVisit: (data) => {
@@ -123,6 +140,7 @@ const clinicalApi = {
 
   // Hospitalization
   hospitalOccupancy: () => httpClient.get('/clinical/hospitalization/occupancy'),
+  hospitalDashboard: () => httpClient.get('/clinical/hospitalization/dashboard'),
   hospitalRooms: () => httpClient.get('/clinical/hospitalization/rooms'),
   createHospitalRoom: (data) => httpClient.post('/clinical/hospitalization/rooms', data),
   hospitalBeds: (roomId) =>

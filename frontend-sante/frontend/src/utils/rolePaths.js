@@ -12,6 +12,8 @@ export const CLINIC_PORTAL_ROLES = [
   'pharmacist',
   'nutritionist',
   'midwife',
+  'pev_agent',
+  'nurse',
 ];
 
 export function isClinicStaffRole(role) {
@@ -29,7 +31,9 @@ const ROLE_HOME = {
   lab_technician: '/clinical/lab',
   pharmacist: '/clinical/pharmacy',
   nutritionist: '/clinical/nutrition',
-  midwife: '/clinical/midwife',
+  pev_agent: '/clinical/pev',
+  nurse: '/clinical/nursing-care',
+  midwife: '/clinical/pev',
   patient: '/dashboard',
 };
 

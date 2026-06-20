@@ -12,6 +12,8 @@ const CLINIC_STAFF_ROLES = new Set([
   'pharmacist',
   'nutritionist',
   'midwife',
+  'pev_agent',
+  'nurse',
   'clinic_admin',
   'admin',
   'platform_admin',

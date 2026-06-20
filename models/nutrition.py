@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -22,6 +22,9 @@ class NutritionAssessment(Base):
     height_cm = Column(Float, nullable=True)
     muac_cm = Column(Float, nullable=True)  # mid-upper arm circumference
     nutritional_status = Column(String(32), nullable=True)  # normal | moderate_malnutrition | severe_malnutrition
+    nutritional_diagnosis = Column(Text, nullable=True)
+    is_follow_up = Column(Boolean, default=False, nullable=False)
+    follow_up_date = Column(Date, nullable=True)
     notes = Column(Text, nullable=True)
     recorded_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     recorded_at = Column(DateTime, default=datetime.utcnow, nullable=False)

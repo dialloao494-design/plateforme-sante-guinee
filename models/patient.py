@@ -51,3 +51,4 @@ class Patient(Base):
     appointment_reminders = relationship("AppointmentReminder", back_populates="patient")
     nutrition_assessments = relationship("NutritionAssessment", back_populates="patient")
     immunization_records = relationship("ImmunizationRecord", back_populates="patient")
+    nursing_procedures = relationship("NursingProcedure", back_populates="patient")

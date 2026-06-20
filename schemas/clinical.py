@@ -50,6 +50,11 @@ class StaffResponse(BaseModel):
         from_attributes = True
 
 
+class StaffRoleUpdate(BaseModel):
+    role: str
+    clinic_id: int
+
+
 # --- Patient (reception intake) ---
 
 

@@ -57,6 +57,7 @@ from schemas.clinical import (
     PrescriptionResponse,
     StaffCreate,
     StaffResponse,
+    StaffRoleUpdate,
 )
 from schemas.pharmacy_inventory import (
     PharmacyInventoryAdjust,
@@ -277,6 +278,8 @@ def list_staff(
         "pharmacist",
         "nutritionist",
         "midwife",
+        "pev_agent",
+        "nurse",
         "clinic_admin",
         "admin",
     )
@@ -306,6 +309,41 @@ def deactivate_staff(
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
     user.is_active = False
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return StaffResponse(id=user.id, email=user.email, role=user.role, clinic_id=user.clinic_id, is_active=user.is_active)
+
+
+@router.patch("/staff/{user_id}/role", response_model=StaffResponse)
+def update_staff_role(
+    user_id: int,
+    body: StaffRoleUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from core.roles import CLINICAL_STAFF_ROLES, assert_known_role
+
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    assert_clinic_access(current_user, body.clinic_id)
+    normalized = assert_known_role(body.role)
+    if normalized not in CLINICAL_STAFF_ROLES:
+        raise HTTPException(status_code=400, detail=f"Role '{body.role}' is not a clinical staff role")
+    if current_user.role in ("clinic_admin", "admin") and normalized in (
+        "clinic_admin",
+        "admin",
+        "platform_admin",
+        "platform_owner",
+    ):
+        raise HTTPException(status_code=403, detail="Cannot assign privileged roles")
+    user = (
+        db.query(models.User)
+        .filter(models.User.id == user_id, models.User.clinic_id == body.clinic_id)
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    user.role = normalized
     db.add(user)
     db.commit()
     db.refresh(user)

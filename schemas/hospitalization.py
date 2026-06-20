@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class HospitalRoomCreate(BaseModel):
@@ -59,14 +59,26 @@ class HospitalBedResponse(BaseModel):
 
 
 class AdmissionCreate(BaseModel):
-    consultation_id: int
+    consultation_id: Optional[int] = None
+    patient_id: Optional[int] = None
     reason: Optional[str] = None
     diagnosis_summary: Optional[str] = None
+    attending_clinician_user_id: Optional[int] = None
     notes: Optional[str] = None
+
+    @model_validator(mode="after")
+    def require_patient_or_consultation(self):
+        if self.consultation_id is None and self.patient_id is None:
+            raise ValueError("Either consultation_id or patient_id is required")
+        return self
 
 
 class AdmissionStatusUpdate(BaseModel):
     status: str = Field(..., pattern="^(pending|admitted|in_care|transferred|discharged|cancelled)$")
+    outcome: Optional[str] = Field(
+        None,
+        pattern="^(cured|improved|unchanged|transferred|deceased|left_against_advice)$",
+    )
 
 
 class BedAssignmentRequest(BaseModel):
@@ -99,6 +111,10 @@ class AdmissionResponse(BaseModel):
     status: str
     reason: Optional[str]
     diagnosis_summary: Optional[str]
+    outcome: Optional[str] = None
+    attending_clinician_user_id: Optional[int] = None
+    attending_clinician_name: Optional[str] = None
+    length_of_stay_days: Optional[float] = None
     notes: Optional[str]
     admitted_at: Optional[datetime]
     discharged_at: Optional[datetime]
@@ -118,3 +134,10 @@ class OccupancySummary(BaseModel):
     occupancy_rate: float
     active_admissions: int
     pending_admissions: int
+
+
+class HospitalizationDashboardStats(BaseModel):
+    current_hospitalized: int
+    admissions_this_month: int
+    discharges_this_month: int
+    average_length_of_stay_days: float

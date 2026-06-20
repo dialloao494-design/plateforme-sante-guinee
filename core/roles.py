@@ -20,6 +20,8 @@ STAFF_ROLES: frozenset[str] = frozenset(
         "pharmacist",
         "nutritionist",
         "midwife",
+        "pev_agent",
+        "nurse",
     }
 )
 PRIVILEGED_ROLES: frozenset[str] = STAFF_ROLES
@@ -36,6 +38,8 @@ CLINICAL_STAFF_ROLES: frozenset[str] = frozenset(
         "pharmacist",
         "nutritionist",
         "midwife",
+        "pev_agent",
+        "nurse",
     }
 )
 CLINIC_PORTAL_ROLES: frozenset[str] = STAFF_ROLES | frozenset({"doctor"})
@@ -62,6 +66,8 @@ ROLE_LABELS: dict[str, str] = {
     "pharmacist": "PHARMACIST",
     "nutritionist": "NUTRITIONIST",
     "midwife": "MIDWIFE",
+    "pev_agent": "PEV_AGENT",
+    "nurse": "NURSE",
     "patient": "PATIENT",
 }
 

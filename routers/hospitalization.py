@@ -20,6 +20,7 @@ from schemas.hospitalization import (
     HospitalBedCreate,
     HospitalBedResponse,
     HospitalBedUpdate,
+    HospitalizationDashboardStats,
     HospitalRoomCreate,
     HospitalRoomResponse,
     HospitalRoomUpdate,
@@ -31,7 +32,7 @@ from services.hospitalization_service import HospitalizationService
 
 router = APIRouter(prefix="/clinical/hospitalization", tags=["Hospitalization"])
 
-ADMISSION_ROLES = ("platform_owner", "platform_admin", "clinic_admin", "admin", "doctor", "receptionist")
+ADMISSION_ROLES = ("platform_owner", "platform_admin", "clinic_admin", "admin", "doctor", "receptionist", "nurse")
 BED_ADMIN_ROLES = ("platform_owner", "platform_admin", "clinic_admin", "admin", "receptionist")
 
 
@@ -61,6 +62,7 @@ def _admission_response(admission: models.Admission) -> AdmissionResponse:
     patient_name = None
     if admission.patient:
         patient_name = f"{admission.patient.first_name} {admission.patient.last_name}".strip()
+    attending_name = None
     current_bed = None
     stays_out: list[PatientStayResponse] = []
     for stay in admission.stays or []:
@@ -81,6 +83,13 @@ def _admission_response(admission: models.Admission) -> AdmissionResponse:
         stays_out.append(sr)
         if stay.is_current and bed:
             current_bed = _bed_response(bed)
+    length_of_stay = None
+    if admission.admitted_at and admission.discharged_at:
+        length_of_stay = round((admission.discharged_at - admission.admitted_at).total_seconds() / 86400, 1)
+    elif admission.admitted_at:
+        from datetime import datetime
+
+        length_of_stay = round((datetime.utcnow() - admission.admitted_at).total_seconds() / 86400, 1)
     return AdmissionResponse(
         id=admission.id,
         clinic_id=admission.clinic_id,
@@ -90,6 +99,10 @@ def _admission_response(admission: models.Admission) -> AdmissionResponse:
         status=admission.status,
         reason=admission.reason,
         diagnosis_summary=admission.diagnosis_summary,
+        outcome=getattr(admission, "outcome", None),
+        attending_clinician_user_id=getattr(admission, "attending_clinician_user_id", None),
+        attending_clinician_name=attending_name,
+        length_of_stay_days=length_of_stay,
         notes=admission.notes,
         admitted_at=admission.admitted_at,
         discharged_at=admission.discharged_at,
@@ -113,6 +126,16 @@ def _room_response(room: models.HospitalRoom) -> HospitalRoomResponse:
         bed_count=len(beds),
         occupied_beds=sum(1 for b in beds if b.status == "occupied"),
     )
+
+
+@router.get("/dashboard", response_model=HospitalizationDashboardStats)
+def hospitalization_dashboard(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, ADMISSION_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return HospitalizationService.dashboard_stats(db, clinic_id=clinic.id)
 
 
 @router.get("/occupancy", response_model=OccupancySummary)
@@ -244,7 +267,7 @@ def create_admission(
 ):
     _require_role(current_user, ADMISSION_ROLES)
     clinic = resolve_clinic_for_user(db, current_user)
-    admission = HospitalizationService.admit_from_consultation(
+    admission = HospitalizationService.admit_patient(
         db,
         clinic_id=clinic.id,
         payload=payload,

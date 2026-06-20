@@ -35,6 +35,7 @@ from .appointment_reminder import AppointmentReminder, ReminderEvent
 from .pharmacy_inventory import PharmacyInventoryItem
 from .nutrition import NutritionAssessment
 from .immunization import VaccineScheduleItem, ImmunizationRecord
+from .nursing_care import NursingProcedure
 from .password_reset_token import PasswordResetToken
 from .email_verification_token import EmailVerificationToken
 from .visit_workflow import PatientVisitWorkflow, PatientVisitWorkflowStep

@@ -45,7 +45,7 @@ const PlatformOwnerDashboard = lazy(() => import("../pages/platform/PlatformOwne
 const PlatformOwnerSetup = lazy(() => import("../pages/platform/PlatformOwnerSetup.jsx"));
 const NutritionDashboard = lazy(() => import("../pages/clinical/NutritionDashboard.jsx"));
 const ImmunizationDashboard = lazy(() => import("../pages/clinical/ImmunizationDashboard.jsx"));
-const MidwifeDashboard = lazy(() => import("../pages/clinical/MidwifeDashboard.jsx"));
+const NursingCareDashboard = lazy(() => import("../pages/clinical/NursingCareDashboard.jsx"));
 
 const STAFF_ADMIN_ROLES = ["admin", "clinic_admin", "platform_admin"];
 const PLATFORM_OWNER_ROLES = ["platform_owner"];
@@ -53,18 +53,11 @@ const PLATFORM_CLINIC_PROVISION_ROLES = ["platform_owner", "platform_admin"];
 const CLINIC_ADMIN_ROLES = ["admin", "clinic_admin"];
 const RECEPTION_ROLES = ["receptionist", "cashier"];
 const BILLING_ROLES = ["receptionist", "cashier", "admin", "clinic_admin"];
-const NUTRITION_ROLES = ["nutritionist", "midwife", "doctor", "admin", "clinic_admin", "platform_admin"];
-const MIDWIFE_ROLES = ["midwife", "admin", "clinic_admin"];
-const IMMUNIZATION_ROLES = [
-  "midwife",
-  "receptionist",
-  "doctor",
-  "admin",
-  "clinic_admin",
-  "platform_admin",
-  "nutritionist",
-];
-const HOSPITALIZATION_ROLES = ["admin", "clinic_admin", "platform_admin", "receptionist", "doctor"];
+const NUTRITION_ROLES = ["nutritionist", "midwife", "doctor", "admin", "clinic_admin", "platform_admin", "pev_agent", "nurse"];
+const PEV_ROLES = ["pev_agent", "midwife", "receptionist", "doctor", "admin", "clinic_admin", "platform_admin"];
+const NURSING_ROLES = ["nurse", "midwife", "admin", "clinic_admin", "receptionist", "doctor"];
+const IMMUNIZATION_ROLES = PEV_ROLES.concat(["nutritionist"]);
+const HOSPITALIZATION_ROLES = ["admin", "clinic_admin", "platform_admin", "receptionist", "doctor", "nurse"];
 
 const AppRoutes = () => {
   return (
@@ -341,21 +334,31 @@ const AppRoutes = () => {
       />
 
       <Route
-        path="/clinical/immunization"
+        path="/clinical/pev"
         element={
-          <ProtectedRoute allowedRoles={IMMUNIZATION_ROLES}>
+          <ProtectedRoute allowedRoles={PEV_ROLES}>
             <ImmunizationDashboard />
           </ProtectedRoute>
         }
       />
 
       <Route
-        path="/clinical/midwife"
+        path="/clinical/immunization"
+        element={<Navigate to="/clinical/pev" replace />}
+      />
+
+      <Route
+        path="/clinical/nursing-care"
         element={
-          <ProtectedRoute allowedRoles={["midwife", "admin", "clinic_admin"]}>
-            <MidwifeDashboard />
+          <ProtectedRoute allowedRoles={NURSING_ROLES}>
+            <NursingCareDashboard />
           </ProtectedRoute>
         }
+      />
+
+      <Route
+        path="/clinical/midwife"
+        element={<Navigate to="/clinical/pev" replace />}
       />
 
       <Route

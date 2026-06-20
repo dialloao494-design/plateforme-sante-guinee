@@ -15,12 +15,13 @@ const CLINIC_ADMIN_NAV = [
   { path: '/clinical', label: 'Opérations', icon: 'dash' },
   { path: '/clinical/admin', label: 'Administration', icon: 'shield' },
   { path: '/clinical/admin#create-user', label: 'Utilisateurs', icon: 'people' },
+  { path: '/clinical/pev', label: 'PEV / Vaccination', icon: 'calendar' },
+  { path: '/clinical/nursing-care', label: 'Soins infirmiers', icon: 'board' },
   { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'board' },
   { path: '/clinical/billing', label: 'Facturation', icon: 'calendar' },
   { path: '/clinical/discharge', label: 'Sortie patient', icon: 'queue' },
   { path: '/clinical/radiology', label: 'Radiologie', icon: 'steth' },
   { path: '/clinical/nutrition', label: 'Nutrition', icon: 'board' },
-  { path: '/clinical/immunization', label: 'PEV / Vaccination', icon: 'calendar' },
   { path: '/clinical/notifications', label: 'Notifications', icon: 'bell' },
   { path: '/clinical/reports', label: 'Rapports', icon: 'calendar' },
 ];
@@ -49,7 +50,7 @@ const ROLE_NAV = {
   ],
   receptionist: [
     { path: '/clinical/reception', label: 'Réception', icon: 'calendar' },
-    { path: '/clinical/immunization', label: 'PEV / Vaccination', icon: 'calendar' },
+    { path: '/clinical/pev', label: 'PEV / Vaccination', icon: 'calendar' },
     { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'board' },
     { path: '/clinical/billing', label: 'Facturation', icon: 'calendar' },
     { path: '/clinical/discharge', label: 'Sortie patient', icon: 'queue' },
@@ -67,7 +68,7 @@ const ROLE_NAV = {
     { path: '/clinical/discharge', label: 'Sortie patient', icon: 'calendar' },
     { path: '/clinical/radiology', label: 'Radiologie', icon: 'steth' },
     { path: '/clinical/nutrition', label: 'Nutrition', icon: 'board' },
-    { path: '/clinical/immunization', label: 'PEV / Vaccination', icon: 'calendar' },
+    { path: '/clinical/pev', label: 'PEV / Vaccination', icon: 'calendar' },
     { path: '/clinical/notifications', label: 'Notifications', icon: 'bell' },
   ],
   lab_technician: [
@@ -76,10 +77,14 @@ const ROLE_NAV = {
   ],
   pharmacist: [{ path: '/clinical/pharmacy', label: 'Pharmacie', icon: 'steth' }],
   nutritionist: [{ path: '/clinical/nutrition', label: 'Nutrition', icon: 'board' }],
+  pev_agent: [{ path: '/clinical/pev', label: 'PEV / Vaccination', icon: 'calendar' }],
+  nurse: [
+    { path: '/clinical/nursing-care', label: 'Soins infirmiers', icon: 'board' },
+    { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'queue' },
+  ],
   midwife: [
-    { path: '/clinical/midwife', label: 'Sage-femme', icon: 'board' },
-    { path: '/clinical/immunization', label: 'PEV / Vaccination', icon: 'calendar' },
-    { path: '/clinical/nutrition', label: 'Nutrition', icon: 'board' },
+    { path: '/clinical/pev', label: 'PEV / Vaccination', icon: 'calendar' },
+    { path: '/clinical/nursing-care', label: 'Soins infirmiers', icon: 'board' },
   ],
 };
 
@@ -97,7 +102,8 @@ const CLINIC_ONLY_PATHS = new Set([
   '/clinical/discharge',
   '/clinical/radiology',
   '/clinical/nutrition',
-  '/clinical/immunization',
+  '/clinical/pev',
+  '/clinical/nursing-care',
   '/clinical/billing',
   '/clinical/reports',
   '/clinical/notifications',

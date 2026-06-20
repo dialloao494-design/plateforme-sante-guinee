@@ -20,6 +20,8 @@ export default function NutritionDashboard() {
   const [patientMatches, setPatientMatches] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [history, setHistory] = useState([]);
+  const [clinicStats, setClinicStats] = useState(null);
+  const [monthlyReport, setMonthlyReport] = useState(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [form, setForm] = useState({
@@ -27,8 +29,24 @@ export default function NutritionDashboard() {
     height_cm: '',
     muac_cm: '',
     age_months: '',
+    nutritional_diagnosis: '',
+    is_follow_up: false,
+    follow_up_date: '',
     notes: '',
   });
+
+  useEffect(() => {
+    const now = new Date();
+    Promise.all([
+      clinicalApi.nutritionDashboard(),
+      clinicalApi.nutritionMonthlyReport(now.getFullYear(), now.getMonth() + 1),
+    ])
+      .then(([dashRes, reportRes]) => {
+        setClinicStats(dashRes.data);
+        setMonthlyReport(reportRes.data);
+      })
+      .catch(() => {});
+  }, []);
 
   const loadHistory = useCallback(async (patientId) => {
     try {
@@ -72,33 +90,53 @@ export default function NutritionDashboard() {
         height_cm: form.height_cm ? Number(form.height_cm) : null,
         muac_cm: form.muac_cm ? Number(form.muac_cm) : null,
         age_months: form.age_months ? Number(form.age_months) : null,
+        nutritional_diagnosis: form.nutritional_diagnosis || null,
+        is_follow_up: form.is_follow_up,
+        follow_up_date: form.follow_up_date || null,
         notes: form.notes || null,
       });
-      setMessage('Mesures enregistrées');
-      setForm({ weight_kg: '', height_cm: '', muac_cm: '', age_months: '', notes: '' });
+      setMessage('Consultation nutrition enregistrée');
+      setForm({
+        weight_kg: '',
+        height_cm: '',
+        muac_cm: '',
+        age_months: '',
+        nutritional_diagnosis: '',
+        is_follow_up: false,
+        follow_up_date: '',
+        notes: '',
+      });
       loadHistory(selectedPatient.id);
+      clinicalApi.nutritionDashboard().then(({ data }) => setClinicStats(data)).catch(() => {});
     } catch (err) {
       setError(formatApiError(err, 'Enregistrement impossible'));
     }
   };
 
   const latest = history[0];
-  const stats = [
-    { label: 'Mesures enregistrées', value: history.length, variant: 'accent' },
-    {
-      label: 'Dernier poids (kg)',
-      value: latest?.weight_kg ?? '—',
-    },
-    {
-      label: 'Dernière taille (cm)',
-      value: latest?.height_cm ?? '—',
-    },
-    {
-      label: 'Statut MUAC',
-      value: latest?.nutritional_status ? STATUS_LABELS[latest.nutritional_status] || latest.nutritional_status : '—',
-      variant: latest?.nutritional_status?.includes('malnutrition') ? 'warning' : 'success',
-    },
-  ];
+  const stats = clinicStats
+    ? [
+        { label: 'Enfants suivis', value: clinicStats.children_followed, variant: 'accent' },
+        { label: 'Cas malnutrition', value: clinicStats.malnutrition_cases, variant: 'warning' },
+        { label: 'Visites de suivi', value: clinicStats.follow_up_visits },
+        { label: 'Consultations ce mois', value: clinicStats.consultations_this_month, variant: 'success' },
+      ]
+    : [
+        { label: 'Mesures enregistrées', value: history.length, variant: 'accent' },
+        {
+          label: 'Dernier poids (kg)',
+          value: latest?.weight_kg ?? '—',
+        },
+        {
+          label: 'Dernière taille (cm)',
+          value: latest?.height_cm ?? '—',
+        },
+        {
+          label: 'Statut MUAC',
+          value: latest?.nutritional_status ? STATUS_LABELS[latest.nutritional_status] || latest.nutritional_status : '—',
+          variant: latest?.nutritional_status?.includes('malnutrition') ? 'warning' : 'success',
+        },
+      ];
 
   return (
     <div className="clinical-page">
@@ -197,6 +235,30 @@ export default function NutritionDashboard() {
                 />
               </label>
               <label className="clinical-span-2">
+                Diagnostic nutritionnel
+                <input
+                  value={form.nutritional_diagnosis}
+                  onChange={(e) => setForm({ ...form, nutritional_diagnosis: e.target.value })}
+                  placeholder="Diagnostic clinique"
+                />
+              </label>
+              <label>
+                Visite de suivi
+                <input
+                  type="checkbox"
+                  checked={form.is_follow_up}
+                  onChange={(e) => setForm({ ...form, is_follow_up: e.target.checked })}
+                />
+              </label>
+              <label>
+                Date prochain suivi
+                <input
+                  type="date"
+                  value={form.follow_up_date}
+                  onChange={(e) => setForm({ ...form, follow_up_date: e.target.value })}
+                />
+              </label>
+              <label className="clinical-span-2">
                 Notes
                 <textarea
                   rows={2}
@@ -241,6 +303,19 @@ export default function NutritionDashboard() {
             )}
           </section>
         </>
+      )}
+
+      {monthlyReport && (
+        <section className="clinical-card">
+          <h2>Rapport mensuel nutrition — {monthlyReport.month}/{monthlyReport.year}</h2>
+          <p>
+            Consultations : <strong>{monthlyReport.total_consultations}</strong>
+            {' · '}
+            Malnutrition : <strong>{monthlyReport.malnutrition_cases}</strong>
+            {' · '}
+            Suivis : <strong>{monthlyReport.follow_up_visits}</strong>
+          </p>
+        </section>
       )}
     </div>
   );
