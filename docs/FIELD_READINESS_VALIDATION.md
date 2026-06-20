@@ -1,11 +1,11 @@
 # Field Readiness Validation — Centre de Santé Koloma
 
-- **Run:** 20260620-1150-27eb61
-- **Overall:** **FAIL** (77 pass / 3 fail)
+- **Run:** 20260620-1209-7354c0
+- **Overall:** **PASS** (80 pass / 0 fail)
 - **Backend:** https://web-production-ad6a36.up.railway.app
 - **Frontend:** https://frontend-seven-rust-94.vercel.app
-- **Test patient:** 224
-- **Screenshots:** `docs\ui_e2e_screenshots\koloma-prod-20260620-1152-b7b8c8`
+- **Test patient:** 232
+- **Screenshots:** `docs\ui_e2e_screenshots\koloma-prod-20260620-1211-c3f085`
 
 ## Results by phase
 
@@ -31,26 +31,26 @@
 | 1 | RBAC | nutritionist /clinical/nutrition/dashboard | PASS | expected=200 got=200 |
 | 1 | RBAC | nurse /clinical/nursing-care/dashboard | PASS | expected=200 got=200 |
 | 1 | RBAC | clinic_admin /clinical/staff?clinic_id=13 | PASS | expected=200 got=200 |
-| 1 | E2E | Reception — register patient | PASS | patient_id=224 |
-| 1 | E2E | Reception — check-in | PASS | appointment=182 |
-| 1 | E2E | Doctor — start consultation | PASS | consultation_id=141 |
-| 1 | E2E | Laboratory — order + validate | PASS | order=56 |
+| 1 | E2E | Reception — register patient | PASS | patient_id=232 |
+| 1 | E2E | Reception — check-in | PASS | appointment=186 |
+| 1 | E2E | Doctor — start consultation | PASS | consultation_id=145 |
+| 1 | E2E | Laboratory — order + validate | PASS | order=59 |
 | 1 | E2E | Doctor — prescription | PASS |  |
-| 1 | E2E | Pharmacy — dispense | PASS | 136 |
+| 1 | E2E | Pharmacy — dispense | PASS | 140 |
 | 1 | E2E | Billing — cashier payment | PASS | paid=3 |
 | 1 | E2E | PEV — vaccination | PASS |  |
 | 1 | E2E | Nutrition — assessment | PASS |  |
 | 1 | E2E | Nursing — procedures | PASS | injection + dressing |
-| 1 | E2E | Hospitalization — admit + discharge | PASS | admission_id=16 |
-| 1 | E2E | Discharge — execute | PASS | visit=156 force=False status=201 |
+| 1 | E2E | Hospitalization — admit + discharge | PASS | admission_id=18 |
+| 1 | E2E | Discharge — execute | PASS | visit=160 force=False status=201 |
 | 1 | Timeline | Central patient timeline | PASS | modules=['reception', 'doctor', 'pev', 'nutrition', 'nursing', 'hospit |
 | 1 | Reports | Monthly reports | PASS | status=200 |
 | 1 | Reports | Monthly reports | PASS | status=200 |
 | 1 | Reports | Monthly reports | PASS | status=200 |
-| 1 | Reports | Monthly reports | FAIL | status=500 |
 | 1 | Reports | Monthly reports | PASS | status=200 |
 | 1 | Reports | Monthly reports | PASS | status=200 |
-| 1 | Reports | Monthly koloma | FAIL | status=500 |
+| 1 | Reports | Monthly reports | PASS | status=200 |
+| 1 | Reports | Monthly koloma | PASS | status=200 |
 | 1 | Dashboards | receptionist /clinical/reception/queue | PASS | status=200 |
 | 1 | Dashboards | doctor /clinical/doctor/queue | PASS | status=200 |
 | 1 | Dashboards | pev_agent /clinical/immunization/dashboard | PASS | status=200 |
@@ -84,10 +84,10 @@
 | 2 | Deploy | Vercel frontend reachable | PASS | https://frontend-seven-rust-94.vercel.app |
 | 2 | Deploy | GitHub Actions workflow present | PASS | deploy-railway-vercel.yml |
 | 2 | Deploy | DB migrations module present | PASS | ensure_clinical_modules_schema |
-| 4 | Multi-clinic | Create clinic | PASS | id=14 name=Clinique Pilote Field-27eb61 |
-| 4 | Multi-clinic | Create clinic admin | PASS | admin.field.27eb61@sante-gn.test status=201 |
-| 4 | Multi-clinic | Clinic admin login | FAIL | clinic_id=None |
-| 4 | Multi-clinic | Create receptionist | PASS | recv.field.27eb61@sante-gn.test |
-| 4 | Multi-clinic | Receptionist creates patient | PASS | patient=225 |
+| 4 | Multi-clinic | Create clinic | PASS | id=16 name=Clinique Pilote Field-7354c0 |
+| 4 | Multi-clinic | Create clinic admin | PASS | admin.field.7354c0@sante-gn.test status=201 clinic_id=16 |
+| 4 | Multi-clinic | Clinic admin staff access | PASS | me.clinic_id=None staff_api=200 |
+| 4 | Multi-clinic | Create receptionist | PASS | recv.field.7354c0@sante-gn.test |
+| 4 | Multi-clinic | Receptionist creates patient | PASS | patient=233 |
 | 4 | Multi-clinic | Koloma cannot see new clinic patient | PASS | leaked=False |
-| 1 | Screenshots | UI role dashboards captured | PASS | docs\ui_e2e_screenshots\koloma-prod-20260620-1152-b7b8c8 |
+| 1 | Screenshots | UI role dashboards captured | PASS | docs\ui_e2e_screenshots\koloma-prod-20260620-1211-c3f085 |

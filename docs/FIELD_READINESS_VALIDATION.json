@@ -1,13 +1,13 @@
 {
-  "run_id": "20260620-1150-27eb61",
-  "timestamp": "2026-06-20T11:53:48.014879+00:00",
+  "run_id": "20260620-1209-7354c0",
+  "timestamp": "2026-06-20T12:12:10.767057+00:00",
   "backend": "https://web-production-ad6a36.up.railway.app",
   "frontend": "https://frontend-seven-rust-94.vercel.app",
   "koloma_clinic_id": 13,
-  "overall": "FAIL",
-  "passed": 77,
-  "failed": 3,
-  "patient_id": 224,
+  "overall": "PASS",
+  "passed": 80,
+  "failed": 0,
+  "patient_id": 232,
   "timeline_modules": {
     "reception": 1,
     "doctor": 1,
@@ -18,8 +18,8 @@
     "lab": 2,
     "pharmacy": 1
   },
-  "new_clinic_id": 14,
-  "screenshot_dir": "docs\\ui_e2e_screenshots\\koloma-prod-20260620-1152-b7b8c8",
+  "new_clinic_id": 16,
+  "screenshot_dir": "docs\\ui_e2e_screenshots\\koloma-prod-20260620-1211-c3f085",
   "checks": [
     {
       "phase": "1",
@@ -166,28 +166,28 @@
       "category": "E2E",
       "name": "Reception — register patient",
       "status": "PASS",
-      "detail": "patient_id=224"
+      "detail": "patient_id=232"
     },
     {
       "phase": "1",
       "category": "E2E",
       "name": "Reception — check-in",
       "status": "PASS",
-      "detail": "appointment=182"
+      "detail": "appointment=186"
     },
     {
       "phase": "1",
       "category": "E2E",
       "name": "Doctor — start consultation",
       "status": "PASS",
-      "detail": "consultation_id=141"
+      "detail": "consultation_id=145"
     },
     {
       "phase": "1",
       "category": "E2E",
       "name": "Laboratory — order + validate",
       "status": "PASS",
-      "detail": "order=56"
+      "detail": "order=59"
     },
     {
       "phase": "1",
@@ -201,7 +201,7 @@
       "category": "E2E",
       "name": "Pharmacy — dispense",
       "status": "PASS",
-      "detail": "136"
+      "detail": "140"
     },
     {
       "phase": "1",
@@ -236,14 +236,14 @@
       "category": "E2E",
       "name": "Hospitalization — admit + discharge",
       "status": "PASS",
-      "detail": "admission_id=16"
+      "detail": "admission_id=18"
     },
     {
       "phase": "1",
       "category": "E2E",
       "name": "Discharge — execute",
       "status": "PASS",
-      "detail": "visit=156 force=False status=201"
+      "detail": "visit=160 force=False status=201"
     },
     {
       "phase": "1",
@@ -277,8 +277,8 @@
       "phase": "1",
       "category": "Reports",
       "name": "Monthly reports",
-      "status": "FAIL",
-      "detail": "status=500"
+      "status": "PASS",
+      "detail": "status=200"
     },
     {
       "phase": "1",
@@ -298,8 +298,8 @@
       "phase": "1",
       "category": "Reports",
       "name": "Monthly koloma",
-      "status": "FAIL",
-      "detail": "status=500"
+      "status": "PASS",
+      "detail": "status=200"
     },
     {
       "phase": "1",
@@ -537,35 +537,35 @@
       "category": "Multi-clinic",
       "name": "Create clinic",
       "status": "PASS",
-      "detail": "id=14 name=Clinique Pilote Field-27eb61"
+      "detail": "id=16 name=Clinique Pilote Field-7354c0"
     },
     {
       "phase": "4",
       "category": "Multi-clinic",
       "name": "Create clinic admin",
       "status": "PASS",
-      "detail": "admin.field.27eb61@sante-gn.test status=201"
+      "detail": "admin.field.7354c0@sante-gn.test status=201 clinic_id=16"
     },
     {
       "phase": "4",
       "category": "Multi-clinic",
-      "name": "Clinic admin login",
-      "status": "FAIL",
-      "detail": "clinic_id=None"
+      "name": "Clinic admin staff access",
+      "status": "PASS",
+      "detail": "me.clinic_id=None staff_api=200"
     },
     {
       "phase": "4",
       "category": "Multi-clinic",
       "name": "Create receptionist",
       "status": "PASS",
-      "detail": "recv.field.27eb61@sante-gn.test"
+      "detail": "recv.field.7354c0@sante-gn.test"
     },
     {
       "phase": "4",
       "category": "Multi-clinic",
       "name": "Receptionist creates patient",
       "status": "PASS",
-      "detail": "patient=225"
+      "detail": "patient=233"
     },
     {
       "phase": "4",
@@ -579,7 +579,7 @@
       "category": "Screenshots",
       "name": "UI role dashboards captured",
       "status": "PASS",
-      "detail": "docs\\ui_e2e_screenshots\\koloma-prod-20260620-1152-b7b8c8"
+      "detail": "docs\\ui_e2e_screenshots\\koloma-prod-20260620-1211-c3f085"
     }
   ]
 }

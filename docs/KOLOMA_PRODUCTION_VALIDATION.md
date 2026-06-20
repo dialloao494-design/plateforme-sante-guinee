@@ -1,6 +1,6 @@
 # Koloma Production Validation
 
-- **Run:** 20260620-0158-ba819d
+- **Run:** 20260620-1201-e50092
 - **Backend:** https://web-production-ad6a36.up.railway.app
 - **Frontend:** https://frontend-seven-rust-94.vercel.app
 - **Overall:** **PASS**
@@ -61,22 +61,22 @@
 | Frontend | Route /clinical/billing | PASS | http=200 bundle=yes |
 | PEV | Field options API | PASS | status=200 |
 | PEV | Injection sites configured | PASS | 7 |
-| PEV | Monthly register API | PASS | rows=5 |
-| PEV | Monthly report register_rows | PASS | total=5 |
-| Pharmacy | Update stock | PASS | KOL-ba819d status=201 |
+| PEV | Monthly register API | PASS | rows=8 |
+| PEV | Monthly report register_rows | PASS | total=8 |
+| Pharmacy | Update stock | PASS | KOL-e50092 status=201 |
 | Setup | Doctor ID for appointments | PASS | 35 |
-| Patient A | Pharmacy order queued | PASS | 132 |
+| Patient A | Pharmacy order queued | PASS | 137 |
 | Patient A | Cashier payment | PASS | 2 charge(s) paid |
-| Patient B | Lab validated | PASS | order=54 |
+| Patient B | Lab validated | PASS | order=57 |
 | Patient B | End-to-end lab→pharmacy→cashier | PASS | paid=3 |
-| Patient C | PEV vaccination | PASS | patient_id=219 |
+| Patient C | PEV vaccination | PASS | patient_id=229 |
 | Patient C | Nutrition follow-up | PASS |  |
 | Patient C | Nursing procedures x4 | PASS | injection, perfusion, dressing, suture |
-| History | Central journey + timeline patient 217 | PASS | journey=200 timeline=200 events=3 |
-| History | Central journey + timeline patient 218 | PASS | journey=200 timeline=200 events=5 |
-| History | Central journey + timeline patient 219 | PASS | journey=200 timeline=200 events=6 |
-| Phase2 | nurse /clinical/nursing-care/register | PASS | status=200 rows=24 |
-| Phase2 | nutritionist /clinical/nutrition/register | PASS | status=200 rows=6 |
+| History | Central journey + timeline patient 227 | PASS | journey=200 timeline=200 events=3 |
+| History | Central journey + timeline patient 228 | PASS | journey=200 timeline=200 events=5 |
+| History | Central journey + timeline patient 229 | PASS | journey=200 timeline=200 events=6 |
+| Phase2 | nurse /clinical/nursing-care/register | PASS | status=200 rows=34 |
+| Phase2 | nutritionist /clinical/nutrition/register | PASS | status=200 rows=9 |
 | Phase2 | receptionist /clinical/hospitalization/reports/monthly | PASS | status=200 |
 | Phase2 | lab /clinical/lab/dashboard | PASS | status=200 |
 | Phase2 | lab /clinical/lab/reports/monthly | PASS | status=200 |
@@ -84,6 +84,6 @@
 | Phase2 | pharmacy /clinical/pharmacy/dashboard | PASS | status=200 |
 | Phase2 | pharmacy /clinical/pharmacy/reports/monthly | PASS | status=200 |
 | Phase2 | clinic_admin /clinical/reports/koloma/monthly | PASS | status=200 modules=['year', 'month', 'clinic_id', 'pev', 'nursing', 'hospitaliza |
-| Phase2 | doctor patient timeline | PASS | patient=219 status=200 |
-| Phase2 | receptionist patient timeline | PASS | patient=219 status=200 |
-| Phase2 | nurse patient timeline | PASS | patient=219 status=200 |
+| Phase2 | doctor patient timeline | PASS | patient=229 status=200 |
+| Phase2 | receptionist patient timeline | PASS | patient=229 status=200 |
+| Phase2 | nurse patient timeline | PASS | patient=229 status=200 |

@@ -499,11 +499,25 @@ def phase4_multi_clinic(report: SuiteReport) -> None:
         prov_tok,
         json={"email": admin_email, "password": admin_pw, "role": "clinic_admin", "clinic_id": clinic_id},
     )
-    report.add("4", "Multi-clinic", "Create clinic admin", sr.status_code in (200, 201), f"{admin_email} status={sr.status_code}")
+    created_clinic_id = sr.json().get("clinic_id") if sr.status_code in (200, 201) else None
+    report.add(
+        "4",
+        "Multi-clinic",
+        "Create clinic admin",
+        sr.status_code in (200, 201) and created_clinic_id == clinic_id,
+        f"{admin_email} status={sr.status_code} clinic_id={created_clinic_id}",
+    )
 
     if sr.status_code in (200, 201):
         atok, ame = login(admin_email, admin_pw)
-        report.add("4", "Multi-clinic", "Clinic admin login", ame.get("clinic_id") == clinic_id, f"clinic_id={ame.get('clinic_id')}")
+        staff_list = api("GET", f"/clinical/staff?clinic_id={clinic_id}", atok)
+        report.add(
+            "4",
+            "Multi-clinic",
+            "Clinic admin staff access",
+            staff_list.status_code == 200,
+            f"me.clinic_id={ame.get('clinic_id')} staff_api={staff_list.status_code}",
+        )
         recv_email = f"recv.field.{SUFFIX}@sante-gn.test"
         rr = api(
             "POST",
