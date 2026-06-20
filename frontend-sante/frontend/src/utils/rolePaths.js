@@ -24,7 +24,7 @@ const ROLE_HOME = {
   admin: '/clinical/admin',
   clinic_admin: '/clinical/admin',
   platform_owner: '/platform',
-  platform_admin: '/users',
+  platform_admin: '/platform/onboard',
   receptionist: '/clinical/reception',
   cashier: '/clinical/reception',
   doctor: '/clinical/doctor',

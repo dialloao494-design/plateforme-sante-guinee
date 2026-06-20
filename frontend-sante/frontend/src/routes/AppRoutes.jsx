@@ -37,11 +37,14 @@ const RadiologyDashboard = lazy(() => import("../pages/clinical/RadiologyDashboa
 const StaffNotificationCenter = lazy(() => import("../pages/clinical/StaffNotificationCenter.jsx"));
 const ClinicalReportsDashboard = lazy(() => import("../pages/clinical/ClinicalReportsDashboard.jsx"));
 const ClinicAdminDashboard = lazy(() => import("../pages/clinical/ClinicAdminDashboard.jsx"));
-const PlatformOwnerAdminDashboard = lazy(() => import("../pages/platform/PlatformOwnerAdminDashboard.jsx"));
+const PlatformFieldOnboard = lazy(() => import("../pages/platform/PlatformFieldOnboard.jsx"));
+const PlatformClinicDirectory = lazy(() => import("../pages/platform/PlatformClinicDirectory.jsx"));
+const PlatformClinicDetail = lazy(() => import("../pages/platform/PlatformClinicDetail.jsx"));
 const ClinicOperationsDashboard = lazy(() => import("../pages/clinical/ClinicOperationsDashboard.jsx"));
 const AccountProfile = lazy(() => import("../pages/AccountProfile.jsx"));
 const ChangePassword = lazy(() => import("../pages/ChangePassword.jsx"));
 const PlatformOwnerDashboard = lazy(() => import("../pages/platform/PlatformOwnerDashboard.jsx"));
+const PlatformAccounts = lazy(() => import("../pages/platform/PlatformAccounts.jsx"));
 const PlatformOwnerSetup = lazy(() => import("../pages/platform/PlatformOwnerSetup.jsx"));
 const NutritionDashboard = lazy(() => import("../pages/clinical/NutritionDashboard.jsx"));
 const ImmunizationDashboard = lazy(() => import("../pages/clinical/ImmunizationDashboard.jsx"));
@@ -250,10 +253,38 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/platform/onboard"
+        element={
+          <ProtectedRoute allowedRoles={PLATFORM_CLINIC_PROVISION_ROLES}>
+            <PlatformFieldOnboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/platform/onboard/:clinicId"
+        element={
+          <ProtectedRoute allowedRoles={PLATFORM_CLINIC_PROVISION_ROLES}>
+            <PlatformFieldOnboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/platform/aasma"
+        element={<Navigate to="/platform/onboard/17" replace />}
+      />
+      <Route
         path="/platform/clinics"
         element={
           <ProtectedRoute allowedRoles={PLATFORM_CLINIC_PROVISION_ROLES}>
-            <PlatformOwnerAdminDashboard />
+            <PlatformClinicDirectory />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/platform/clinics/:clinicId"
+        element={
+          <ProtectedRoute allowedRoles={PLATFORM_CLINIC_PROVISION_ROLES}>
+            <PlatformClinicDetail />
           </ProtectedRoute>
         }
       />
@@ -390,6 +421,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={["admin", "clinic_admin", "receptionist", "doctor", "cashier", "platform_admin"]}>
             <ClinicalReportsDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/platform/accounts"
+        element={
+          <ProtectedRoute allowedRoles={PLATFORM_OWNER_ROLES}>
+            <PlatformAccounts />
           </ProtectedRoute>
         }
       />

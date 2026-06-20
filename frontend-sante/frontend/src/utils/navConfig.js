@@ -31,10 +31,9 @@ const ROLE_NAV = {
   admin: CLINIC_ADMIN_NAV,
   clinic_admin: CLINIC_ADMIN_NAV,
   platform_owner: [
+    { path: '/platform/onboard', label: 'Onboarding personnel', icon: 'shield' },
     { path: '/platform', label: 'Console plateforme', icon: 'shield' },
-    { path: '/users', label: 'Utilisateurs', icon: 'people' },
     { path: '/platform/clinics', label: 'Cliniques', icon: 'shield' },
-    { path: '/platform/clinics#platform-staff', label: 'Créer admin clinique', icon: 'people' },
     { path: '/clinical', label: 'Opérations', icon: 'dash' },
     { path: '/clinical/reception', label: 'Réception', icon: 'calendar' },
     { path: '/clinical/doctor', label: 'Médecin', icon: 'board' },
@@ -43,9 +42,8 @@ const ROLE_NAV = {
     { path: '/clinical/reports', label: 'Rapports', icon: 'calendar' },
   ],
   platform_admin: [
+    { path: '/platform/onboard', label: 'Onboarding personnel', icon: 'shield' },
     { path: '/platform/clinics', label: 'Cliniques', icon: 'shield' },
-    { path: '/platform/clinics#platform-staff', label: 'Créer admin clinique', icon: 'people' },
-    { path: '/users', label: 'Utilisateurs', icon: 'people' },
     { path: '/clinical', label: 'Opérations', icon: 'dash' },
     { path: '/clinical/reports', label: 'Rapports', icon: 'calendar' },
   ],
