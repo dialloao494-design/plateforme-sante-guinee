@@ -1,0 +1,585 @@
+{
+  "run_id": "20260620-1150-27eb61",
+  "timestamp": "2026-06-20T11:53:48.014879+00:00",
+  "backend": "https://web-production-ad6a36.up.railway.app",
+  "frontend": "https://frontend-seven-rust-94.vercel.app",
+  "koloma_clinic_id": 13,
+  "overall": "FAIL",
+  "passed": 77,
+  "failed": 3,
+  "patient_id": 224,
+  "timeline_modules": {
+    "reception": 1,
+    "doctor": 1,
+    "pev": 1,
+    "nutrition": 1,
+    "nursing": 2,
+    "hospitalization": 1,
+    "lab": 2,
+    "pharmacy": 1
+  },
+  "new_clinic_id": 14,
+  "screenshot_dir": "docs\\ui_e2e_screenshots\\koloma-prod-20260620-1152-b7b8c8",
+  "checks": [
+    {
+      "phase": "1",
+      "category": "Accounts",
+      "name": "Login clinic_admin",
+      "status": "PASS",
+      "detail": "centre.koloma.admin@sante-gn.test clinic=13 role=clinic_admin"
+    },
+    {
+      "phase": "1",
+      "category": "Accounts",
+      "name": "Login receptionist",
+      "status": "PASS",
+      "detail": "monemoumariejeanne94@gmail.com clinic=13 role=receptionist"
+    },
+    {
+      "phase": "1",
+      "category": "Accounts",
+      "name": "Login doctor",
+      "status": "PASS",
+      "detail": "saatollno69@gmail.com clinic=13 role=doctor"
+    },
+    {
+      "phase": "1",
+      "category": "Accounts",
+      "name": "Login pev_agent",
+      "status": "PASS",
+      "detail": "niepousalomonloua@gmail.com clinic=13 role=pev_agent"
+    },
+    {
+      "phase": "1",
+      "category": "Accounts",
+      "name": "Login nutritionist",
+      "status": "PASS",
+      "detail": "dialloaissatoutoupe013@gmail.com clinic=13 role=nutritionist"
+    },
+    {
+      "phase": "1",
+      "category": "Accounts",
+      "name": "Login nurse",
+      "status": "PASS",
+      "detail": "infirmsadjo01@gmail.com clinic=13 role=nurse"
+    },
+    {
+      "phase": "1",
+      "category": "Accounts",
+      "name": "Login lab_technician",
+      "status": "PASS",
+      "detail": "salifoudian719@gmail.com clinic=13 role=lab_technician"
+    },
+    {
+      "phase": "1",
+      "category": "Accounts",
+      "name": "Login pharmacist",
+      "status": "PASS",
+      "detail": "thioutobarry90@gmail.com clinic=13 role=pharmacist"
+    },
+    {
+      "phase": "1",
+      "category": "RBAC",
+      "name": "receptionist /clinical/reception/queue",
+      "status": "PASS",
+      "detail": "expected=200 got=200"
+    },
+    {
+      "phase": "1",
+      "category": "RBAC",
+      "name": "receptionist /clinical/lab/orders",
+      "status": "PASS",
+      "detail": "expected=403 got=403"
+    },
+    {
+      "phase": "1",
+      "category": "RBAC",
+      "name": "doctor /clinical/doctor/queue",
+      "status": "PASS",
+      "detail": "expected=200 got=200"
+    },
+    {
+      "phase": "1",
+      "category": "RBAC",
+      "name": "doctor /clinical/pharmacy/orders",
+      "status": "PASS",
+      "detail": "expected=403 got=403"
+    },
+    {
+      "phase": "1",
+      "category": "RBAC",
+      "name": "lab_technician /clinical/lab/orders",
+      "status": "PASS",
+      "detail": "expected=200 got=200"
+    },
+    {
+      "phase": "1",
+      "category": "RBAC",
+      "name": "lab_technician /clinical/reception/queue",
+      "status": "PASS",
+      "detail": "expected=403 got=403"
+    },
+    {
+      "phase": "1",
+      "category": "RBAC",
+      "name": "pharmacist /clinical/pharmacy/orders",
+      "status": "PASS",
+      "detail": "expected=200 got=200"
+    },
+    {
+      "phase": "1",
+      "category": "RBAC",
+      "name": "pharmacist /clinical/lab/orders",
+      "status": "PASS",
+      "detail": "expected=403 got=403"
+    },
+    {
+      "phase": "1",
+      "category": "RBAC",
+      "name": "pev_agent /clinical/immunization/dashboard",
+      "status": "PASS",
+      "detail": "expected=200 got=200"
+    },
+    {
+      "phase": "1",
+      "category": "RBAC",
+      "name": "nutritionist /clinical/nutrition/dashboard",
+      "status": "PASS",
+      "detail": "expected=200 got=200"
+    },
+    {
+      "phase": "1",
+      "category": "RBAC",
+      "name": "nurse /clinical/nursing-care/dashboard",
+      "status": "PASS",
+      "detail": "expected=200 got=200"
+    },
+    {
+      "phase": "1",
+      "category": "RBAC",
+      "name": "clinic_admin /clinical/staff?clinic_id=13",
+      "status": "PASS",
+      "detail": "expected=200 got=200"
+    },
+    {
+      "phase": "1",
+      "category": "E2E",
+      "name": "Reception — register patient",
+      "status": "PASS",
+      "detail": "patient_id=224"
+    },
+    {
+      "phase": "1",
+      "category": "E2E",
+      "name": "Reception — check-in",
+      "status": "PASS",
+      "detail": "appointment=182"
+    },
+    {
+      "phase": "1",
+      "category": "E2E",
+      "name": "Doctor — start consultation",
+      "status": "PASS",
+      "detail": "consultation_id=141"
+    },
+    {
+      "phase": "1",
+      "category": "E2E",
+      "name": "Laboratory — order + validate",
+      "status": "PASS",
+      "detail": "order=56"
+    },
+    {
+      "phase": "1",
+      "category": "E2E",
+      "name": "Doctor — prescription",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "1",
+      "category": "E2E",
+      "name": "Pharmacy — dispense",
+      "status": "PASS",
+      "detail": "136"
+    },
+    {
+      "phase": "1",
+      "category": "E2E",
+      "name": "Billing — cashier payment",
+      "status": "PASS",
+      "detail": "paid=3"
+    },
+    {
+      "phase": "1",
+      "category": "E2E",
+      "name": "PEV — vaccination",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "1",
+      "category": "E2E",
+      "name": "Nutrition — assessment",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "phase": "1",
+      "category": "E2E",
+      "name": "Nursing — procedures",
+      "status": "PASS",
+      "detail": "injection + dressing"
+    },
+    {
+      "phase": "1",
+      "category": "E2E",
+      "name": "Hospitalization — admit + discharge",
+      "status": "PASS",
+      "detail": "admission_id=16"
+    },
+    {
+      "phase": "1",
+      "category": "E2E",
+      "name": "Discharge — execute",
+      "status": "PASS",
+      "detail": "visit=156 force=False status=201"
+    },
+    {
+      "phase": "1",
+      "category": "Timeline",
+      "name": "Central patient timeline",
+      "status": "PASS",
+      "detail": "modules=['reception', 'doctor', 'pev', 'nutrition', 'nursing', 'hospitalization', 'lab', 'pharmacy'] total_events=10"
+    },
+    {
+      "phase": "1",
+      "category": "Reports",
+      "name": "Monthly reports",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "phase": "1",
+      "category": "Reports",
+      "name": "Monthly reports",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "phase": "1",
+      "category": "Reports",
+      "name": "Monthly reports",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "phase": "1",
+      "category": "Reports",
+      "name": "Monthly reports",
+      "status": "FAIL",
+      "detail": "status=500"
+    },
+    {
+      "phase": "1",
+      "category": "Reports",
+      "name": "Monthly reports",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "phase": "1",
+      "category": "Reports",
+      "name": "Monthly reports",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "phase": "1",
+      "category": "Reports",
+      "name": "Monthly koloma",
+      "status": "FAIL",
+      "detail": "status=500"
+    },
+    {
+      "phase": "1",
+      "category": "Dashboards",
+      "name": "receptionist /clinical/reception/queue",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "phase": "1",
+      "category": "Dashboards",
+      "name": "doctor /clinical/doctor/queue",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "phase": "1",
+      "category": "Dashboards",
+      "name": "pev_agent /clinical/immunization/dashboard",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "phase": "1",
+      "category": "Dashboards",
+      "name": "nutritionist /clinical/nutrition/dashboard",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "phase": "1",
+      "category": "Dashboards",
+      "name": "nurse /clinical/nursing-care/dashboard",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "phase": "1",
+      "category": "Dashboards",
+      "name": "lab_technician /clinical/lab/dashboard",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "phase": "1",
+      "category": "Dashboards",
+      "name": "pharmacist /clinical/pharmacy/dashboard",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "phase": "1",
+      "category": "Dashboards",
+      "name": "receptionist /clinical/hospitalization/dashboard",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "phase": "1",
+      "category": "DB",
+      "name": "Patient journey API",
+      "status": "PASS",
+      "detail": "keys=['patient_id', 'appointments', 'consultations', 'immunizations']"
+    },
+    {
+      "phase": "1",
+      "category": "DB",
+      "name": "PEV history linked to patient",
+      "status": "PASS",
+      "detail": "records=1"
+    },
+    {
+      "phase": "1",
+      "category": "DB",
+      "name": "Nutrition history linked",
+      "status": "PASS",
+      "detail": "records=1"
+    },
+    {
+      "phase": "1",
+      "category": "DB",
+      "name": "Nursing procedures linked",
+      "status": "PASS",
+      "detail": "count=2"
+    },
+    {
+      "phase": "1",
+      "category": "Routes",
+      "name": "/clinical/admin",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "phase": "1",
+      "category": "Routes",
+      "name": "/clinical/reception",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "phase": "1",
+      "category": "Routes",
+      "name": "/clinical/doctor",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "phase": "1",
+      "category": "Routes",
+      "name": "/clinical/pev",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "phase": "1",
+      "category": "Routes",
+      "name": "/clinical/nutrition",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "phase": "1",
+      "category": "Routes",
+      "name": "/clinical/nursing-care",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "phase": "1",
+      "category": "Routes",
+      "name": "/clinical/lab",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "phase": "1",
+      "category": "Routes",
+      "name": "/clinical/pharmacy",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "phase": "1",
+      "category": "Routes",
+      "name": "/clinical/patient-history",
+      "status": "PASS",
+      "detail": "http=200 bundle=spa"
+    },
+    {
+      "phase": "1",
+      "category": "Routes",
+      "name": "/clinical/reports",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "phase": "1",
+      "category": "Routes",
+      "name": "/clinical/billing",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "phase": "2",
+      "category": "Infra",
+      "name": "/health",
+      "status": "PASS",
+      "detail": "{\"status\":\"ok\",\"version\":\"1.0.0\",\"debug\":false,\"database\":\"***\"}"
+    },
+    {
+      "phase": "2",
+      "category": "Infra",
+      "name": "/health/ready",
+      "status": "PASS",
+      "detail": "{\"status\":\"ready\",\"database\":\"ok\"}"
+    },
+    {
+      "phase": "2",
+      "category": "Isolation",
+      "name": "Admin blocked from clinic 1 staff",
+      "status": "PASS",
+      "detail": "status=403"
+    },
+    {
+      "phase": "2",
+      "category": "Isolation",
+      "name": "Staff list clinic-scoped",
+      "status": "PASS",
+      "detail": "15 staff"
+    },
+    {
+      "phase": "2",
+      "category": "Auth",
+      "name": "Timeline requires auth",
+      "status": "PASS",
+      "detail": "authenticated OK"
+    },
+    {
+      "phase": "2",
+      "category": "Auth",
+      "name": "Timeline rejects anonymous",
+      "status": "PASS",
+      "detail": "status=401"
+    },
+    {
+      "phase": "2",
+      "category": "Deploy",
+      "name": "Railway backend reachable",
+      "status": "PASS",
+      "detail": "https://web-production-ad6a36.up.railway.app"
+    },
+    {
+      "phase": "2",
+      "category": "Deploy",
+      "name": "Vercel frontend reachable",
+      "status": "PASS",
+      "detail": "https://frontend-seven-rust-94.vercel.app"
+    },
+    {
+      "phase": "2",
+      "category": "Deploy",
+      "name": "GitHub Actions workflow present",
+      "status": "PASS",
+      "detail": "deploy-railway-vercel.yml"
+    },
+    {
+      "phase": "2",
+      "category": "Deploy",
+      "name": "DB migrations module present",
+      "status": "PASS",
+      "detail": "ensure_clinical_modules_schema"
+    },
+    {
+      "phase": "4",
+      "category": "Multi-clinic",
+      "name": "Create clinic",
+      "status": "PASS",
+      "detail": "id=14 name=Clinique Pilote Field-27eb61"
+    },
+    {
+      "phase": "4",
+      "category": "Multi-clinic",
+      "name": "Create clinic admin",
+      "status": "PASS",
+      "detail": "admin.field.27eb61@sante-gn.test status=201"
+    },
+    {
+      "phase": "4",
+      "category": "Multi-clinic",
+      "name": "Clinic admin login",
+      "status": "FAIL",
+      "detail": "clinic_id=None"
+    },
+    {
+      "phase": "4",
+      "category": "Multi-clinic",
+      "name": "Create receptionist",
+      "status": "PASS",
+      "detail": "recv.field.27eb61@sante-gn.test"
+    },
+    {
+      "phase": "4",
+      "category": "Multi-clinic",
+      "name": "Receptionist creates patient",
+      "status": "PASS",
+      "detail": "patient=225"
+    },
+    {
+      "phase": "4",
+      "category": "Multi-clinic",
+      "name": "Koloma cannot see new clinic patient",
+      "status": "PASS",
+      "detail": "leaked=False"
+    },
+    {
+      "phase": "1",
+      "category": "Screenshots",
+      "name": "UI role dashboards captured",
+      "status": "PASS",
+      "detail": "docs\\ui_e2e_screenshots\\koloma-prod-20260620-1152-b7b8c8"
+    }
+  ]
+}

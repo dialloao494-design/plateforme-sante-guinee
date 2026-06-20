@@ -20,6 +20,15 @@ def user_clinic_id(user: User, db: Session | None = None) -> int | None:
             doc = db.query(models.Doctor).filter(models.Doctor.user_id == user.id).first()
             if doc and doc.clinic_id:
                 return doc.clinic_id
+    if db is not None:
+        staff = (
+            db.query(models.ClinicStaff)
+            .filter(models.ClinicStaff.user_id == user.id, models.ClinicStaff.is_active.is_(True))
+            .order_by(models.ClinicStaff.id.desc())
+            .first()
+        )
+        if staff:
+            return staff.clinic_id
     return None
 
 

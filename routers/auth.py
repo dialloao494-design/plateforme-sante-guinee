@@ -286,6 +286,18 @@ def build_user_response(db: Session, user: User) -> dict:
             clinic_name = clinic.name
     elif canonical_role in ("platform_admin", "platform_owner"):
         clinic_name = "Plateforme nationale"
+    else:
+        staff_link = (
+            db.query(models.ClinicStaff)
+            .filter(models.ClinicStaff.user_id == user.id, models.ClinicStaff.is_active.is_(True))
+            .order_by(models.ClinicStaff.id.desc())
+            .first()
+        )
+        if staff_link:
+            clinic_id = staff_link.clinic_id
+            clinic = db.query(models.Clinic).filter(models.Clinic.id == clinic_id).first()
+            if clinic:
+                clinic_name = clinic.name
 
     return {
         "id": user.id,

@@ -22,12 +22,13 @@ def patient_snapshot(patient: models.Patient, on_date: date | None = None) -> di
             age_display = f"{years} an(s) {rem} mois"
     elif patient.age is not None:
         age_display = f"{patient.age} an(s)"
+    dob = patient.date_of_birth
     return {
         "id": patient.id,
         "first_name": patient.first_name,
         "last_name": patient.last_name,
         "gender": patient.gender,
-        "date_of_birth": patient.date_of_birth,
+        "date_of_birth": dob.isoformat() if dob else None,
         "age_display": age_display,
         "mother_or_guardian": patient.emergency_contact,
         "address": patient.address,

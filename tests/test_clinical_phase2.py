@@ -86,6 +86,49 @@ def test_nursing_register_and_timeline(client, db_session, admin_user):
     assert any(e["module"] == "nursing" for e in body["events"])
 
 
+def test_nutrition_register_json_serializable(client, db_session, admin_user):
+    clinic_id, nurse, reception = _setup(client, db_session, admin_user)
+    with provisioning_channel("test_fixture"):
+        nutritionist = models.User(
+            email=f"nutri2.{uuid.uuid4().hex[:8]}@test.com",
+            hashed_password=hash_password("StaffPass1!"),
+            role="nutritionist",
+            clinic_id=clinic_id,
+        )
+        db_session.add(nutritionist)
+        db_session.commit()
+        db_session.refresh(nutritionist)
+    r = client.post(
+        "/clinical/reception/patients",
+        json={
+            "first_name": "Child",
+            "last_name": "Nutri",
+            "age": 3,
+            "gender": "M",
+            "phone": "+224622333444",
+            "date_of_birth": (date.today() - timedelta(days=365 * 3)).isoformat(),
+        },
+        headers=_auth(reception),
+    )
+    patient_id = r.json()["id"]
+    client.post(
+        "/clinical/nutrition/assessments",
+        json={"patient_id": patient_id, "weight_kg": 14.0, "height_cm": 95, "muac_cm": 14.5, "recommendations": "Test"},
+        headers=_auth(nutritionist),
+    )
+    reg = client.get(
+        "/clinical/nutrition/register",
+        params={"year": date.today().year, "month": date.today().month},
+        headers=_auth(nutritionist),
+    )
+    assert reg.status_code == 200, reg.text
+    assert len(reg.json()) >= 1
+    row = reg.json()[0]
+    assert "patient" in row and "record" in row
+    if row["patient"].get("date_of_birth"):
+        assert isinstance(row["patient"]["date_of_birth"], str)
+
+
 def test_koloma_monthly_reports(client, db_session, admin_user):
     clinic_id, nurse, reception = _setup(client, db_session, admin_user)
     admin_user.clinic_id = clinic_id
