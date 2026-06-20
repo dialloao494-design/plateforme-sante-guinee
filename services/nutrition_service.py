@@ -6,11 +6,12 @@ from datetime import date, datetime
 from typing import List, Optional
 
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 import models
 from core.tenant import assert_patient_in_clinic
 from models.user import User
+from services.clinical_register_utils import patient_snapshot, serialize_row, wrap_register_rows
 
 
 def _classify_muac(muac_cm: Optional[float]) -> Optional[str]:
@@ -52,6 +53,7 @@ class NutritionService:
         consultation_id: Optional[int] = None,
         notes: Optional[str] = None,
         nutritional_diagnosis: Optional[str] = None,
+        recommendations: Optional[str] = None,
         is_follow_up: bool = False,
         follow_up_date: Optional[date] = None,
     ) -> models.NutritionAssessment:
@@ -67,6 +69,7 @@ class NutritionService:
             muac_cm=muac_cm,
             nutritional_status=status_label,
             nutritional_diagnosis=nutritional_diagnosis,
+            recommendations=recommendations,
             is_follow_up=is_follow_up,
             follow_up_date=follow_up_date,
             notes=notes,
@@ -111,12 +114,18 @@ class NutritionService:
             if r.nutritional_status in ("moderate_malnutrition", "severe_malnutrition")
         )
         follow_ups = base.filter(models.NutritionAssessment.is_follow_up.is_(True)).count()
+        due_follow_up = base.filter(
+            models.NutritionAssessment.follow_up_date.isnot(None),
+            models.NutritionAssessment.follow_up_date <= today,
+        ).count()
         month_count = base.filter(models.NutritionAssessment.recorded_at >= datetime.combine(month_start, datetime.min.time())).count()
         return {
             "children_followed": len(patient_ids),
             "malnutrition_cases": malnutrition,
             "follow_up_visits": follow_ups,
+            "follow_up_due": due_follow_up,
             "consultations_this_month": month_count,
+            "active_patients": len({r.patient_id for r in base.filter(models.NutritionAssessment.recorded_at >= datetime.combine(month_start, datetime.min.time())).all()}),
         }
 
     @staticmethod
@@ -127,12 +136,14 @@ class NutritionService:
         end = datetime(year, month, monthrange(year, month)[1], 23, 59, 59)
         rows = (
             db.query(models.NutritionAssessment)
+            .options(joinedload(models.NutritionAssessment.patient))
             .filter(
                 models.NutritionAssessment.clinic_id == clinic_id,
                 models.NutritionAssessment.deleted_at.is_(None),
                 models.NutritionAssessment.recorded_at >= start,
                 models.NutritionAssessment.recorded_at <= end,
             )
+            .order_by(models.NutritionAssessment.recorded_at)
             .all()
         )
         by_status: dict[str, int] = {}
@@ -148,8 +159,53 @@ class NutritionService:
         return {
             "year": year,
             "month": month,
+            "clinic_id": clinic_id,
             "total_consultations": len(rows),
             "malnutrition_cases": malnutrition,
             "follow_up_visits": follow_ups,
             "by_status": by_status,
+            "register_rows": NutritionService._register_rows(rows),
         }
+
+    @staticmethod
+    def list_register(db: Session, *, clinic_id: int, year: int, month: int) -> list[dict]:
+        from calendar import monthrange
+
+        start = datetime(year, month, 1)
+        end = datetime(year, month, monthrange(year, month)[1], 23, 59, 59)
+        rows = (
+            db.query(models.NutritionAssessment)
+            .options(joinedload(models.NutritionAssessment.patient))
+            .filter(
+                models.NutritionAssessment.clinic_id == clinic_id,
+                models.NutritionAssessment.deleted_at.is_(None),
+                models.NutritionAssessment.recorded_at >= start,
+                models.NutritionAssessment.recorded_at <= end,
+            )
+            .order_by(models.NutritionAssessment.recorded_at)
+            .all()
+        )
+        return NutritionService._register_rows(rows)
+
+    @staticmethod
+    def _register_rows(rows: list[models.NutritionAssessment]) -> list[dict]:
+        wrapped = wrap_register_rows(rows, on_date_attr="recorded_at")
+        return [
+            serialize_row(
+                entry,
+                [
+                    "id",
+                    "recorded_at",
+                    "weight_kg",
+                    "height_cm",
+                    "muac_cm",
+                    "nutritional_status",
+                    "nutritional_diagnosis",
+                    "recommendations",
+                    "is_follow_up",
+                    "follow_up_date",
+                    "notes",
+                ],
+            )
+            for entry in wrapped
+        ]

@@ -987,6 +987,7 @@ def ensure_clinical_modules_schema(engine: Engine) -> None:
             ("nutritional_diagnosis", "TEXT"),
             ("is_follow_up", f"{bool_type} DEFAULT FALSE"),
             ("follow_up_date", date_type),
+            ("recommendations", "TEXT"),
         ):
             if col not in cols:
                 try:
@@ -1004,6 +1005,7 @@ def ensure_clinical_modules_schema(engine: Engine) -> None:
                 patient_id INTEGER NOT NULL REFERENCES patients(id),
                 procedure_type VARCHAR(32) NOT NULL,
                 procedure_date {date_type} NOT NULL,
+                procedure_time VARCHAR(8),
                 nurse_user_id INTEGER REFERENCES users(id),
                 nurse_name VARCHAR(128),
                 notes TEXT,
@@ -1017,6 +1019,15 @@ def ensure_clinical_modules_schema(engine: Engine) -> None:
             logger.info("Created nursing_procedures table")
         except Exception as exc:
             logger.warning("nursing_procedures migration failed: %s", exc)
+    elif "nursing_procedures" in tables:
+        cols = {c["name"] for c in insp.get_columns("nursing_procedures")}
+        if "procedure_time" not in cols:
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE nursing_procedures ADD COLUMN procedure_time VARCHAR(8)"))
+                logger.info("Added nursing_procedures.procedure_time")
+            except Exception as exc:
+                logger.warning("nursing_procedures.procedure_time migration skipped: %s", exc)
 
 
 def run_alembic_upgrade_head() -> None:

@@ -50,6 +50,21 @@ def nutrition_dashboard(
     return NutritionService.dashboard_stats(db, clinic_id=clinic.id)
 
 
+@router.get("/register")
+def nutrition_register(
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None, ge=1, le=12),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, NUTRITION_READ_ROLES)
+    from datetime import date
+
+    today = date.today()
+    clinic = resolve_clinic_for_user(db, current_user)
+    return NutritionService.list_register(db, clinic_id=clinic.id, year=year or today.year, month=month or today.month)
+
+
 @router.get("/reports/monthly", response_model=NutritionMonthlyReport)
 def nutrition_monthly_report(
     year: Optional[int] = Query(None),
@@ -98,6 +113,7 @@ def record_assessment(
         consultation_id=body.consultation_id,
         notes=body.notes,
         nutritional_diagnosis=body.nutritional_diagnosis,
+        recommendations=body.recommendations,
         is_follow_up=body.is_follow_up,
         follow_up_date=body.follow_up_date,
     )

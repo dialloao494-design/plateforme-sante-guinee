@@ -31,11 +31,16 @@ export default function LabDashboard() {
   });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [labStats, setLabStats] = useState(null);
 
   const load = useCallback(async () => {
     try {
       const { data } = await clinicalApi.labQueue();
       setOrders(data || []);
+      const dash = await clinicalApi.labDashboardStats().catch(() => ({ data: null }));
+      if (dash.data) {
+        setLabStats(dash.data);
+      }
     } catch (err) {
       setError(err?.response?.data?.detail || 'File laboratoire indisponible');
     }
@@ -89,12 +94,19 @@ export default function LabDashboard() {
     }
   };
 
-  const stats = [
-    { label: 'Examens en cours', value: orders.length, variant: 'accent' },
-    { label: 'En prélèvement', value: orders.filter((o) => o.status === 'ordered').length },
-    { label: 'En analyse', value: orders.filter((o) => o.status === 'in_analysis' || o.status === 'sample_collected').length, variant: 'warning' },
-    { label: 'Résultats validés', value: validated.length, variant: 'success' },
-  ];
+  const stats = labStats
+    ? [
+        { label: 'En attente résultats', value: labStats.pending_results, variant: 'warning' },
+        { label: 'Examens aujourd\'hui', value: labStats.tests_today, variant: 'accent' },
+        { label: 'Examens ce mois', value: labStats.tests_this_month },
+        { label: 'Résultats validés', value: labStats.validated_total, variant: 'success' },
+      ]
+    : [
+        { label: 'Examens en cours', value: orders.length, variant: 'accent' },
+        { label: 'En prélèvement', value: orders.filter((o) => o.status === 'ordered').length },
+        { label: 'En analyse', value: orders.filter((o) => o.status === 'in_analysis' || o.status === 'sample_collected').length, variant: 'warning' },
+        { label: 'Résultats validés', value: validated.length, variant: 'success' },
+      ];
 
   return (
     <div className="clinical-page">

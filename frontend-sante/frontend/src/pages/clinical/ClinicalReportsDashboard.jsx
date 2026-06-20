@@ -23,6 +23,11 @@ function defaultRange() {
 export default function ClinicalReportsDashboard() {
   const [range, setRange] = useState(defaultRange);
   const [summary, setSummary] = useState(null);
+  const [kolomaMonthly, setKolomaMonthly] = useState(null);
+  const [reportMonth, setReportMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  });
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
@@ -35,9 +40,22 @@ export default function ClinicalReportsDashboard() {
     }
   }, [range.start, range.end]);
 
+  const loadKolomaMonthly = useCallback(async (year, month) => {
+    try {
+      const { data } = await clinicalApi.kolomaMonthlyReports(year, month);
+      setKolomaMonthly(data);
+    } catch {
+      setKolomaMonthly(null);
+    }
+  }, []);
+
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    loadKolomaMonthly(reportMonth.year, reportMonth.month);
+  }, [reportMonth, loadKolomaMonthly]);
 
   const exportCsv = async () => {
     try {
@@ -108,7 +126,33 @@ export default function ClinicalReportsDashboard() {
           </ul>
         )}
       </section>
+
+      <section className="clinical-panel">
+        <h2>Rapports mensuels Koloma (registres papier)</h2>
+        <p>Synthèse automatique PEV, soins, hospitalisation, nutrition, laboratoire et pharmacie.</p>
+        <label>
+          Mois
+          <input
+            type="month"
+            value={`${reportMonth.year}-${String(reportMonth.month).padStart(2, '0')}`}
+            onChange={(e) => {
+              const [y, m] = e.target.value.split('-').map(Number);
+              setReportMonth({ year: y, month: m });
+            }}
+          />
+        </label>
+        {kolomaMonthly && (
+          <ul className="clinical-list">
+            <li>PEV — vaccinations: {kolomaMonthly.pev?.total_vaccinations ?? '—'}</li>
+            <li>Soins infirmiers — procédures: {kolomaMonthly.nursing?.total_procedures ?? '—'}</li>
+            <li>Hospitalisation — admissions: {kolomaMonthly.hospitalization?.total_admissions ?? '—'}</li>
+            <li>Nutrition — consultations: {kolomaMonthly.nutrition?.total_consultations ?? '—'}</li>
+            <li>Laboratoire — examens: {kolomaMonthly.laboratory?.total_tests ?? '—'}</li>
+            <li>Pharmacie — délivrances: {kolomaMonthly.pharmacy?.total_dispensed ?? '—'}</li>
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
-
+

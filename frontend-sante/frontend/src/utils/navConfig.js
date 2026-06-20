@@ -17,6 +17,7 @@ const CLINIC_ADMIN_NAV = [
   { path: '/clinical/admin#create-user', label: 'Utilisateurs', icon: 'people' },
   { path: '/clinical/pev', label: 'PEV / Vaccination', icon: 'calendar' },
   { path: '/clinical/nursing-care', label: 'Soins infirmiers', icon: 'board' },
+  { path: '/clinical/patient-history', label: 'Dossier patient', icon: 'board' },
   { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'board' },
   { path: '/clinical/billing', label: 'Facturation', icon: 'calendar' },
   { path: '/clinical/discharge', label: 'Sortie patient', icon: 'queue' },
@@ -50,6 +51,7 @@ const ROLE_NAV = {
   ],
   receptionist: [
     { path: '/clinical/reception', label: 'Réception', icon: 'calendar' },
+    { path: '/clinical/patient-history', label: 'Dossier patient', icon: 'board' },
     { path: '/clinical/pev', label: 'PEV / Vaccination', icon: 'calendar' },
     { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'board' },
     { path: '/clinical/billing', label: 'Facturation', icon: 'calendar' },
@@ -64,6 +66,7 @@ const ROLE_NAV = {
   ],
   doctor: [
     { path: '/clinical/doctor', label: 'Médecin', icon: 'board' },
+    { path: '/clinical/patient-history', label: 'Dossier patient', icon: 'board' },
     { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'queue' },
     { path: '/clinical/discharge', label: 'Sortie patient', icon: 'calendar' },
     { path: '/clinical/radiology', label: 'Radiologie', icon: 'steth' },
@@ -80,6 +83,7 @@ const ROLE_NAV = {
   pev_agent: [{ path: '/clinical/pev', label: 'PEV / Vaccination', icon: 'calendar' }],
   nurse: [
     { path: '/clinical/nursing-care', label: 'Soins infirmiers', icon: 'board' },
+    { path: '/clinical/patient-history', label: 'Dossier patient', icon: 'board' },
     { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'queue' },
   ],
   midwife: [
@@ -104,6 +108,7 @@ const CLINIC_ONLY_PATHS = new Set([
   '/clinical/nutrition',
   '/clinical/pev',
   '/clinical/nursing-care',
+  '/clinical/patient-history',
   '/clinical/billing',
   '/clinical/reports',
   '/clinical/notifications',

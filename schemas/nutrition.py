@@ -18,6 +18,7 @@ class NutritionAssessmentCreate(BaseModel):
     age_months: Optional[int] = Field(None, ge=0, le=240)
     consultation_id: Optional[int] = None
     nutritional_diagnosis: Optional[str] = None
+    recommendations: Optional[str] = None
     is_follow_up: bool = False
     follow_up_date: Optional[date] = None
     notes: Optional[str] = None
@@ -36,6 +37,7 @@ class NutritionAssessmentResponse(BaseModel):
     muac_cm: Optional[float] = None
     nutritional_status: Optional[str] = None
     nutritional_diagnosis: Optional[str] = None
+    recommendations: Optional[str] = None
     is_follow_up: bool = False
     follow_up_date: Optional[date] = None
     notes: Optional[str] = None
@@ -46,13 +48,17 @@ class NutritionDashboardStats(BaseModel):
     children_followed: int
     malnutrition_cases: int
     follow_up_visits: int
+    follow_up_due: int = 0
     consultations_this_month: int
+    active_patients: int = 0
 
 
 class NutritionMonthlyReport(BaseModel):
     year: int
     month: int
+    clinic_id: Optional[int] = None
     total_consultations: int
     malnutrition_cases: int
     follow_up_visits: int
     by_status: Dict[str, int]
+    register_rows: List[dict] = Field(default_factory=list)

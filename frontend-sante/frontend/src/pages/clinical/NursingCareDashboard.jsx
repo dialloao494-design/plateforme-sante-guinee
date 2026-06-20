@@ -16,8 +16,14 @@ const PROCEDURE_TYPES = [
 const TYPE_LABELS = Object.fromEntries(PROCEDURE_TYPES.map((p) => [p.value, p.label]));
 
 export default function NursingCareDashboard() {
+  const [view, setView] = useState('record');
   const [dashboard, setDashboard] = useState(null);
   const [monthlyReport, setMonthlyReport] = useState(null);
+  const [registerRows, setRegisterRows] = useState([]);
+  const [reportMonth, setReportMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  });
   const [procedures, setProcedures] = useState([]);
   const [patientSearch, setPatientSearch] = useState('');
   const [patientMatches, setPatientMatches] = useState([]);
@@ -27,26 +33,39 @@ export default function NursingCareDashboard() {
   const [form, setForm] = useState({
     procedure_type: 'injection',
     procedure_date: new Date().toISOString().slice(0, 10),
+    procedure_time: new Date().toTimeString().slice(0, 5),
     nurse_name: '',
     notes: '',
   });
 
+  const loadMonthlyData = useCallback(async (year, month) => {
+    try {
+      const [reportRes, registerRes] = await Promise.all([
+        clinicalApi.nursingMonthlyReport(year, month),
+        clinicalApi.nursingRegister(year, month),
+      ]);
+      setMonthlyReport(reportRes.data);
+      setRegisterRows(registerRes.data || []);
+    } catch (err) {
+      setError(formatApiError(err, 'Registre mensuel indisponible'));
+    }
+  }, []);
+
   const load = useCallback(async () => {
     try {
       const now = new Date();
-      const [dashRes, reportRes, procRes] = await Promise.all([
+      const [dashRes, procRes] = await Promise.all([
         clinicalApi.nursingDashboard(),
-        clinicalApi.nursingMonthlyReport(now.getFullYear(), now.getMonth() + 1),
         clinicalApi.nursingProcedures(),
       ]);
       setDashboard(dashRes.data);
-      setMonthlyReport(reportRes.data);
       setProcedures(procRes.data || []);
       setError('');
+      await loadMonthlyData(now.getFullYear(), now.getMonth() + 1);
     } catch (err) {
       setError(formatApiError(err, 'Module Soins indisponible'));
     }
-  }, []);
+  }, [loadMonthlyData]);
 
   useEffect(() => {
     load();
@@ -77,6 +96,7 @@ export default function NursingCareDashboard() {
         patient_id: selectedPatient.id,
         procedure_type: form.procedure_type,
         procedure_date: form.procedure_date,
+        procedure_time: form.procedure_time || null,
         nurse_name: form.nurse_name || null,
         notes: form.notes || null,
       });
@@ -110,6 +130,20 @@ export default function NursingCareDashboard() {
 
       <ClinicalStatGrid stats={stats} />
 
+      <div className="clinical-tabs" role="tablist">
+        <button type="button" className={`clinical-tab${view === 'record' ? ' active' : ''}`} onClick={() => setView('record')}>
+          Enregistrement
+        </button>
+        <button type="button" className={`clinical-tab${view === 'register' ? ' active' : ''}`} onClick={() => setView('register')}>
+          Registre mensuel
+        </button>
+        <button type="button" className={`clinical-tab${view === 'report' ? ' active' : ''}`} onClick={() => setView('report')}>
+          Statistiques
+        </button>
+      </div>
+
+      {view === 'record' && (
+        <>
       <DepartmentQueuePanel
         department="nursing"
         title="File de visite — Soins"
@@ -178,6 +212,14 @@ export default function NursingCareDashboard() {
               />
             </label>
             <label>
+              Heure
+              <input
+                type="time"
+                value={form.procedure_time}
+                onChange={(e) => setForm({ ...form, procedure_time: e.target.value })}
+              />
+            </label>
+            <label>
               Infirmier(ère)
               <input
                 value={form.nurse_name}
@@ -223,8 +265,60 @@ export default function NursingCareDashboard() {
           </table>
         )}
       </section>
+        </>
+      )}
 
-      {monthlyReport && (
+      {view === 'register' && (
+        <section className="clinical-card">
+          <h2>Registre mensuel — pointage soins</h2>
+          <div className="clinical-inline-form">
+            <label>
+              Mois
+              <input
+                type="month"
+                value={`${reportMonth.year}-${String(reportMonth.month).padStart(2, '0')}`}
+                onChange={(e) => {
+                  const [y, m] = e.target.value.split('-').map(Number);
+                  setReportMonth({ year: y, month: m });
+                  loadMonthlyData(y, m);
+                }}
+              />
+            </label>
+          </div>
+          {registerRows.length === 0 ? (
+            <p>Aucune procédure pour cette période.</p>
+          ) : (
+            <table className="clinical-table">
+              <thead>
+                <tr>
+                  <th>N°</th>
+                  <th>Date</th>
+                  <th>Heure</th>
+                  <th>Patient</th>
+                  <th>Type</th>
+                  <th>Infirmier(ère)</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {registerRows.map((row) => (
+                  <tr key={row.record?.id || row.line_number}>
+                    <td>{row.line_number}</td>
+                    <td>{row.record?.procedure_date}</td>
+                    <td>{row.record?.procedure_time || '—'}</td>
+                    <td>{row.patient?.first_name} {row.patient?.last_name}</td>
+                    <td>{TYPE_LABELS[row.record?.procedure_type] || row.record?.procedure_type}</td>
+                    <td>{row.record?.nurse_name || '—'}</td>
+                    <td>{row.record?.notes || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+      )}
+
+      {view === 'report' && monthlyReport && (
         <section className="clinical-card">
           <h2>Rapport mensuel — {monthlyReport.month}/{monthlyReport.year}</h2>
           <p>Total procédures : <strong>{monthlyReport.total_procedures}</strong></p>

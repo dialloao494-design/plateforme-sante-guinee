@@ -16,6 +16,7 @@ WORKFLOW_STEPS: dict[str, list[str]] = {
     "adult_doctor": ["reception", "doctor"],
     "adult_lab": ["reception", "lab"],
     "adult_midwife": ["reception", "midwife"],
+    "nursing_visit": ["reception", "nursing"],
 }
 
 DEPARTMENT_LABELS = {
@@ -25,6 +26,7 @@ DEPARTMENT_LABELS = {
     "doctor": "Médecin",
     "lab": "Laboratoire",
     "midwife": "Sage-femme",
+    "nursing": "Soins infirmiers",
 }
 
 CHILD_AGE_THRESHOLD = 18

@@ -138,6 +138,23 @@ def hospitalization_dashboard(
     return HospitalizationService.dashboard_stats(db, clinic_id=clinic.id)
 
 
+@router.get("/reports/monthly")
+def hospitalization_monthly_report(
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None, ge=1, le=12),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, ADMISSION_ROLES)
+    from datetime import date
+
+    today = date.today()
+    clinic = resolve_clinic_for_user(db, current_user)
+    return HospitalizationService.monthly_report(
+        db, clinic_id=clinic.id, year=year or today.year, month=month or today.month
+    )
+
+
 @router.get("/occupancy", response_model=OccupancySummary)
 def occupancy(
     db: Session = Depends(get_db),

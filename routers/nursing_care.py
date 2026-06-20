@@ -53,6 +53,7 @@ def _procedure_response(row: models.NursingProcedure) -> NursingProcedureRespons
         nurse_user_id=row.nurse_user_id,
         nurse_name=row.nurse_name,
         notes=row.notes,
+        procedure_time=row.procedure_time,
         created_at=row.created_at,
         patient_name=patient_name,
     )
@@ -66,6 +67,35 @@ def nursing_dashboard(
     _require_role(current_user, NURSING_READ_ROLES)
     clinic = resolve_clinic_for_user(db, current_user)
     return NursingCareService.dashboard_stats(db, clinic_id=clinic.id)
+
+
+@router.get("/register")
+def nursing_register(
+    year: Optional[int] = Query(None),
+    month: Optional[int] = Query(None, ge=1, le=12),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, NURSING_READ_ROLES)
+    from datetime import date
+
+    today = date.today()
+    clinic = resolve_clinic_for_user(db, current_user)
+    return NursingCareService.list_register(
+        db, clinic_id=clinic.id, year=year or today.year, month=month or today.month
+    )
+
+
+@router.get("/patients/{patient_id}/history", response_model=List[NursingProcedureResponse])
+def patient_nursing_history(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, NURSING_READ_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    rows = NursingCareService.list_patient_history(db, clinic_id=clinic.id, patient_id=patient_id)
+    return [_procedure_response(r) for r in rows]
 
 
 @router.get("/reports/monthly", response_model=NursingMonthlyReport)
@@ -115,6 +145,7 @@ def record_procedure(
         actor=current_user,
         procedure_type=body.procedure_type,
         procedure_date=body.procedure_date,
+        procedure_time=body.procedure_time,
         nurse_name=body.nurse_name,
         notes=body.notes,
     )

@@ -231,6 +231,26 @@ const clinicalApi = {
     import('../utils/downloadPdf').then(({ downloadAuthenticatedPdf }) =>
       downloadAuthenticatedPdf(`/clinical/lab/results/${resultId}/pdf`, filename)
     ),
+
+  // Phase 2 — unified timeline & registers
+  patientTimeline: (patientId) => httpClient.get(`/clinical/patients/${patientId}/timeline`),
+  kolomaMonthlyReports: (year, month) =>
+    httpClient.get('/clinical/reports/koloma/monthly', { params: { year, month } }),
+  nursingRegister: (year, month) =>
+    httpClient.get('/clinical/nursing-care/register', { params: { year, month } }),
+  nutritionRegister: (year, month) =>
+    httpClient.get('/clinical/nutrition/register', { params: { year, month } }),
+  hospitalizationMonthlyReport: (year, month) =>
+    httpClient.get('/clinical/hospitalization/reports/monthly', { params: { year, month } }),
+  labDashboardStats: () => httpClient.get('/clinical/lab/dashboard'),
+  labCatalog: () => httpClient.get('/clinical/lab/catalog'),
+  labMonthlyReport: (year, month) =>
+    httpClient.get('/clinical/lab/reports/monthly', { params: { year, month } }),
+  labValidatedResults: (limit = 100) =>
+    httpClient.get('/clinical/lab/results/validated', { params: { limit } }),
+  pharmacyDashboardStats: () => httpClient.get('/clinical/pharmacy/dashboard'),
+  pharmacyMonthlyReport: (year, month) =>
+    httpClient.get('/clinical/pharmacy/reports/monthly', { params: { year, month } }),
 };
 
 export default clinicalApi;

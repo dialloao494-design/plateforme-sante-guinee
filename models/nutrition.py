@@ -25,6 +25,7 @@ class NutritionAssessment(Base):
     nutritional_diagnosis = Column(Text, nullable=True)
     is_follow_up = Column(Boolean, default=False, nullable=False)
     follow_up_date = Column(Date, nullable=True)
+    recommendations = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
     recorded_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     recorded_at = Column(DateTime, default=datetime.utcnow, nullable=False)

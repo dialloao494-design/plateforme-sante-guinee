@@ -46,6 +46,7 @@ const PlatformOwnerSetup = lazy(() => import("../pages/platform/PlatformOwnerSet
 const NutritionDashboard = lazy(() => import("../pages/clinical/NutritionDashboard.jsx"));
 const ImmunizationDashboard = lazy(() => import("../pages/clinical/ImmunizationDashboard.jsx"));
 const NursingCareDashboard = lazy(() => import("../pages/clinical/NursingCareDashboard.jsx"));
+const PatientHistoryDashboard = lazy(() => import("../pages/clinical/PatientHistoryDashboard.jsx"));
 
 const STAFF_ADMIN_ROLES = ["admin", "clinic_admin", "platform_admin"];
 const PLATFORM_OWNER_ROLES = ["platform_owner"];
@@ -58,6 +59,20 @@ const PEV_ROLES = ["pev_agent", "midwife", "receptionist", "doctor", "admin", "c
 const NURSING_ROLES = ["nurse", "midwife", "admin", "clinic_admin", "receptionist", "doctor"];
 const IMMUNIZATION_ROLES = PEV_ROLES.concat(["nutritionist"]);
 const HOSPITALIZATION_ROLES = ["admin", "clinic_admin", "platform_admin", "receptionist", "doctor", "nurse"];
+const PATIENT_HISTORY_ROLES = [
+  "receptionist",
+  "cashier",
+  "doctor",
+  "lab_technician",
+  "pharmacist",
+  "nutritionist",
+  "pev_agent",
+  "nurse",
+  "midwife",
+  "clinic_admin",
+  "admin",
+  "platform_admin",
+];
 
 const AppRoutes = () => {
   return (
@@ -359,6 +374,15 @@ const AppRoutes = () => {
       <Route
         path="/clinical/midwife"
         element={<Navigate to="/clinical/pev" replace />}
+      />
+
+      <Route
+        path="/clinical/patient-history"
+        element={
+          <ProtectedRoute allowedRoles={PATIENT_HISTORY_ROLES}>
+            <PatientHistoryDashboard />
+          </ProtectedRoute>
+        }
       />
 
       <Route

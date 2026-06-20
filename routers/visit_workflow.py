@@ -27,7 +27,8 @@ PEV_ROLES = ("midwife", "receptionist", "clinic_admin", "admin")
 DOCTOR_ROLES = ("doctor", "clinic_admin", "admin")
 LAB_ROLES = ("lab_technician", "clinic_admin", "admin")
 MIDWIFE_ROLES = ("midwife", "clinic_admin", "admin")
-READ_ROLES = RECEPTION_ROLES + NUTRITION_ROLES + PEV_ROLES + DOCTOR_ROLES + LAB_ROLES + MIDWIFE_ROLES
+NURSING_ROLES = ("nurse", "midwife", "clinic_admin", "admin", "receptionist", "doctor")
+READ_ROLES = RECEPTION_ROLES + NUTRITION_ROLES + PEV_ROLES + DOCTOR_ROLES + LAB_ROLES + MIDWIFE_ROLES + NURSING_ROLES
 
 DEPARTMENT_ACCESS = {
     "reception": RECEPTION_ROLES,
@@ -36,6 +37,7 @@ DEPARTMENT_ACCESS = {
     "doctor": DOCTOR_ROLES,
     "lab": LAB_ROLES,
     "midwife": MIDWIFE_ROLES,
+    "nursing": NURSING_ROLES,
 }
 
 

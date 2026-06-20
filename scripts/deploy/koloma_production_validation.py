@@ -38,6 +38,7 @@ FRONTEND_ROUTES = [
     "/clinical/hospitalization",
     "/clinical/nursing-care",
     "/clinical/nutrition",
+    "/clinical/patient-history",
     "/clinical/admin",
     "/clinical/reception",
     "/clinical/doctor",
@@ -353,20 +354,62 @@ def workflow_c(report: Report, tokens: dict[str, str]) -> int | None:
 
 def validate_central_history(report: Report, tokens: dict[str, str], patient_ids: list[int]) -> None:
     recv = tokens["receptionist"]
+    now = datetime.now()
     for pid in patient_ids:
         j = api("GET", f"/clinical/patients/{pid}/journey", recv)
-        ok = j.status_code == 200
-        keys = list(j.json().keys()) if ok else []
-        imm_count = len(j.json().get("immunizations", [])) if ok else 0
-        imm = api("GET", f"/clinical/immunization/patients/{pid}/history", recv)
-        nut = api("GET", f"/clinical/nutrition/patients/{pid}/history", recv)
-        proc = api("GET", "/clinical/nursing-care/procedures", recv)
+        tl = api("GET", f"/clinical/patients/{pid}/timeline", recv)
+        ok = j.status_code == 200 and tl.status_code == 200
+        events = tl.json().get("events", []) if tl.status_code == 200 else []
         report.add(
             "History",
-            f"Central journey patient {pid}",
-            ok,
-            f"journey_keys={keys[:6]} imm_events={imm_count} imm={imm.status_code} nut={nut.status_code} proc={proc.status_code}",
+            f"Central journey + timeline patient {pid}",
+            ok and len(events) >= 0,
+            f"journey={j.status_code} timeline={tl.status_code} events={len(events)}",
         )
+
+
+def validate_phase2_modules(report: Report, tokens: dict[str, str], patient_ids: list[int]) -> None:
+    now = datetime.now()
+    y, m = now.year, now.month
+    params = {"year": y, "month": m}
+    checks = [
+        ("nurse", "GET", "/clinical/nursing-care/register", tokens.get("nurse")),
+        ("nutritionist", "GET", "/clinical/nutrition/register", tokens.get("nutritionist")),
+        ("receptionist", "GET", "/clinical/hospitalization/reports/monthly", tokens.get("receptionist")),
+        ("lab", "GET", "/clinical/lab/dashboard", tokens.get("lab")),
+        ("lab", "GET", "/clinical/lab/reports/monthly", tokens.get("lab")),
+        ("lab", "GET", "/clinical/lab/catalog", tokens.get("lab")),
+        ("pharmacy", "GET", "/clinical/pharmacy/dashboard", tokens.get("pharmacy")),
+        ("pharmacy", "GET", "/clinical/pharmacy/reports/monthly", tokens.get("pharmacy")),
+        ("clinic_admin", "GET", "/clinical/reports/koloma/monthly", tokens.get("clinic_admin")),
+    ]
+    for role, method, path, tok in checks:
+        if not tok:
+            report.add("Phase2", f"{role} {path}", False, "no token")
+            continue
+        r = api(method, path, tok, params=params if "monthly" in path or "register" in path else None)
+        ok = r.status_code == 200
+        detail = f"status={r.status_code}"
+        if ok and "register" in path:
+            detail += f" rows={len(r.json()) if isinstance(r.json(), list) else 'n/a'}"
+        if ok and path.endswith("/koloma/monthly"):
+            body = r.json()
+            detail += f" modules={list(body.keys())[:8]}"
+        report.add("Phase2", f"{role} {path}", ok, detail)
+
+    if patient_ids:
+        pid = patient_ids[-1]
+        for role in ("doctor", "receptionist", "nurse"):
+            tok = tokens.get(role)
+            if not tok:
+                continue
+            r = api("GET", f"/clinical/patients/{pid}/timeline", tok)
+            report.add(
+                "Phase2",
+                f"{role} patient timeline",
+                r.status_code == 200,
+                f"patient={pid} status={r.status_code}",
+            )
 
 
 def pharmacy_stock(report: Report, token: str) -> None:
@@ -509,6 +552,7 @@ def main() -> int:
         pids.append(pc)
     if pids:
         validate_central_history(report, tokens, pids)
+        validate_phase2_modules(report, tokens, pids)
 
     write_report(report)
     print(f"PASS={sum(1 for c in report.checks if c.status=='PASS')} FAIL={report.failed} overall={'PASS' if report.failed==0 else 'FAIL'}")

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, date
 
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 import models
 from models.user import User
@@ -454,6 +454,56 @@ class HospitalizationService:
             "admissions_this_month": admissions_month,
             "discharges_this_month": len(discharged_rows),
             "average_length_of_stay_days": avg_stay,
+        }
+
+    @staticmethod
+    def monthly_report(db: Session, *, clinic_id: int, year: int, month: int) -> dict:
+        from calendar import monthrange
+
+        from services.clinical_register_utils import patient_snapshot, serialize_admission_row
+
+        start = datetime(year, month, 1)
+        end = datetime(year, month, monthrange(year, month)[1], 23, 59, 59)
+        rows = (
+            db.query(models.Admission)
+            .options(joinedload(models.Admission.patient))
+            .filter(
+                models.Admission.clinic_id == clinic_id,
+                models.Admission.admitted_at >= start,
+                models.Admission.admitted_at <= end,
+            )
+            .order_by(models.Admission.admitted_at)
+            .all()
+        )
+        register_rows = []
+        for idx, adm in enumerate(rows, start=1):
+            if not adm.patient:
+                continue
+            los = None
+            if adm.admitted_at and adm.discharged_at:
+                los = round((adm.discharged_at - adm.admitted_at).total_seconds() / 86400, 1)
+            register_rows.append(
+                serialize_admission_row(
+                    {
+                        "line_number": idx,
+                        "admission": adm,
+                        "patient": patient_snapshot(
+                            adm.patient, adm.admitted_at.date() if adm.admitted_at else date.today()
+                        ),
+                        "length_of_stay_days": los,
+                    }
+                )
+            )
+        discharged = sum(1 for a in rows if a.status == "discharged")
+        active_end = sum(1 for a in rows if a.status in ("admitted", "in_care", "transferred"))
+        return {
+            "year": year,
+            "month": month,
+            "clinic_id": clinic_id,
+            "total_admissions": len(rows),
+            "discharges": discharged,
+            "still_hospitalized": active_end,
+            "register_rows": register_rows,
         }
 
     @staticmethod

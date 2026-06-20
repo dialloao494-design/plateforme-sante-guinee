@@ -17,6 +17,7 @@ class NursingProcedureCreate(BaseModel):
     patient_id: int
     procedure_type: str = Field(..., pattern="^(injection|perfusion|dressing|suture|other)$")
     procedure_date: date
+    procedure_time: Optional[str] = Field(None, max_length=8)
     nurse_name: Optional[str] = Field(None, max_length=128)
     notes: Optional[str] = None
 
@@ -29,6 +30,7 @@ class NursingProcedureResponse(BaseModel):
     patient_id: int
     procedure_type: str
     procedure_date: date
+    procedure_time: Optional[str] = None
     nurse_user_id: Optional[int] = None
     nurse_name: Optional[str] = None
     notes: Optional[str] = None
@@ -50,6 +52,8 @@ class NursingDashboardStats(BaseModel):
 class NursingMonthlyReport(BaseModel):
     year: int
     month: int
+    clinic_id: Optional[int] = None
     total_procedures: int
     by_type: Dict[str, int]
     daily_tally: List[Dict[str, int]]
+    register_rows: List[dict] = Field(default_factory=list)

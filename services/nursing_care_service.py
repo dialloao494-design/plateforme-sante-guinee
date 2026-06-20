@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, joinedload
 import models
 from core.tenant import assert_patient_in_clinic
 from models.user import User
+from services.clinical_register_utils import patient_snapshot, serialize_row, wrap_register_rows
 
 
 PROCEDURE_TYPES = ("injection", "perfusion", "dressing", "suture", "other")
@@ -47,6 +48,7 @@ class NursingCareService:
         actor: User,
         procedure_type: str,
         procedure_date: date,
+        procedure_time: Optional[str] = None,
         nurse_name: Optional[str] = None,
         notes: Optional[str] = None,
     ) -> models.NursingProcedure:
@@ -60,6 +62,7 @@ class NursingCareService:
             patient_id=patient_id,
             procedure_type=ptype,
             procedure_date=procedure_date,
+            procedure_time=procedure_time,
             nurse_user_id=actor.id,
             nurse_name=display_name,
             notes=notes,
@@ -99,12 +102,52 @@ class NursingCareService:
         }
 
     @staticmethod
+    def list_register(db: Session, *, clinic_id: int, year: int, month: int) -> list[dict]:
+        start = date(year, month, 1)
+        last_day = monthrange(year, month)[1]
+        end = date(year, month, last_day)
+        rows = (
+            db.query(models.NursingProcedure)
+            .options(joinedload(models.NursingProcedure.patient))
+            .filter(
+                models.NursingProcedure.clinic_id == clinic_id,
+                models.NursingProcedure.deleted_at.is_(None),
+                models.NursingProcedure.procedure_date >= start,
+                models.NursingProcedure.procedure_date <= end,
+            )
+            .order_by(models.NursingProcedure.procedure_date, models.NursingProcedure.id)
+            .all()
+        )
+        return [
+            serialize_row(
+                e,
+                ["id", "procedure_type", "procedure_date", "procedure_time", "nurse_name", "notes"],
+            )
+            for e in wrap_register_rows(rows, on_date_attr="procedure_date")
+        ]
+
+    @staticmethod
+    def list_patient_history(db: Session, *, clinic_id: int, patient_id: int) -> List[models.NursingProcedure]:
+        assert_patient_in_clinic(db, patient_id=patient_id, clinic_id=clinic_id)
+        return (
+            db.query(models.NursingProcedure)
+            .filter(
+                models.NursingProcedure.clinic_id == clinic_id,
+                models.NursingProcedure.patient_id == patient_id,
+                models.NursingProcedure.deleted_at.is_(None),
+            )
+            .order_by(models.NursingProcedure.procedure_date.desc())
+            .all()
+        )
+
+    @staticmethod
     def monthly_report(db: Session, *, clinic_id: int, year: int, month: int) -> dict:
         start = date(year, month, 1)
         last_day = monthrange(year, month)[1]
         end = date(year, month, last_day)
         rows = (
             db.query(models.NursingProcedure)
+            .options(joinedload(models.NursingProcedure.patient))
             .filter(
                 models.NursingProcedure.clinic_id == clinic_id,
                 models.NursingProcedure.deleted_at.is_(None),
@@ -122,10 +165,29 @@ class NursingCareService:
             {"day": day, **counts, "total": sum(counts.values())}
             for day, counts in sorted(daily.items())
         ]
+        register_rows = [
+            serialize_row(
+                e,
+                [
+                    "id",
+                    "procedure_type",
+                    "procedure_date",
+                    "procedure_time",
+                    "nurse_name",
+                    "notes",
+                ],
+            )
+            for e in wrap_register_rows(
+                sorted(rows, key=lambda r: (r.procedure_date, r.id)),
+                on_date_attr="procedure_date",
+            )
+        ]
         return {
             "year": year,
             "month": month,
+            "clinic_id": clinic_id,
             "total_procedures": len(rows),
             "by_type": by_type,
             "daily_tally": daily_tally,
+            "register_rows": register_rows,
         }

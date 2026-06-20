@@ -65,20 +65,23 @@ export default function PharmacyDashboard() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pharmacyStats, setPharmacyStats] = useState(null);
 
   const load = useCallback(async () => {
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const [ordersRes, todayRes, stockRes, revRes] = await Promise.all([
+      const [ordersRes, todayRes, stockRes, revRes, dashRes] = await Promise.all([
         clinicalApi.pharmacyQueue({ scope: 'all' }),
         clinicalApi.pharmacyQueue({ scope: 'dispensed_today' }),
         clinicalApi.pharmacyInventory(),
         clinicalApi.dailyRevenue(today).catch(() => ({ data: null })),
+        clinicalApi.pharmacyDashboardStats().catch(() => ({ data: null })),
       ]);
       setOrders(ordersRes.data || []);
       setDispensedToday(todayRes.data || []);
       setStock(stockRes.data || []);
       setRevenue(revRes.data || null);
+      setPharmacyStats(dashRes.data || null);
       setError('');
     } catch (err) {
       setError(err?.response?.data?.detail || 'Chargement pharmacie impossible');
@@ -101,19 +104,27 @@ export default function PharmacyDashboard() {
   const pharmacyRevenueToday =
     revenue?.by_charge_type?.pharmacy ?? revenue?.by_charge_type?.Pharmacie ?? null;
 
-  const stats = [
-    { label: 'Ordonnances en attente', value: pendingCount, tone: 'warning', hint: 'À traiter' },
-    { label: 'Délivrées aujourd\'hui', value: dispensedToday.length, tone: 'success', hint: 'Session du jour' },
-    { label: 'Stock bas', value: alerts.low.length, tone: alerts.low.length ? 'warning' : 'muted', hint: 'Sous seuil' },
-    { label: 'Expire bientôt', value: alerts.expiring.length, tone: alerts.expiring.length ? 'danger' : 'muted', hint: '< 30 jours' },
-    { label: 'Valeur stock', value: formatGNF(stockValue), tone: 'accent', hint: 'Estimation' },
-    {
-      label: 'Recettes pharmacie',
-      value: pharmacyRevenueToday != null ? formatGNF(pharmacyRevenueToday) : '—',
-      tone: 'accent',
-      hint: 'Aujourd\'hui',
-    },
-  ];
+  const stats = pharmacyStats
+    ? [
+        { label: 'Ordonnances en attente', value: pharmacyStats.pending_orders, tone: 'warning', hint: 'À traiter' },
+        { label: 'Délivrées aujourd\'hui', value: pharmacyStats.dispensed_today, tone: 'success', hint: 'Session du jour' },
+        { label: 'Délivrées ce mois', value: pharmacyStats.dispensed_this_month, tone: 'accent', hint: 'Mensuel' },
+        { label: 'Stock bas', value: pharmacyStats.low_stock_count, tone: pharmacyStats.low_stock_count ? 'warning' : 'muted', hint: 'Sous seuil' },
+        { label: 'Valeur stock', value: formatGNF(pharmacyStats.stock_value_gnf), tone: 'accent', hint: 'Estimation' },
+      ]
+    : [
+        { label: 'Ordonnances en attente', value: pendingCount, tone: 'warning', hint: 'À traiter' },
+        { label: 'Délivrées aujourd\'hui', value: dispensedToday.length, tone: 'success', hint: 'Session du jour' },
+        { label: 'Stock bas', value: alerts.low.length, tone: alerts.low.length ? 'warning' : 'muted', hint: 'Sous seuil' },
+        { label: 'Expire bientôt', value: alerts.expiring.length, tone: alerts.expiring.length ? 'danger' : 'muted', hint: '< 30 jours' },
+        { label: 'Valeur stock', value: formatGNF(stockValue), tone: 'accent', hint: 'Estimation' },
+        {
+          label: 'Recettes pharmacie',
+          value: pharmacyRevenueToday != null ? formatGNF(pharmacyRevenueToday) : '—',
+          tone: 'accent',
+          hint: 'Aujourd\'hui',
+        },
+      ];
 
   const recordMovement = (order, action, quantityHint) => {
     const pharmacist = user?.full_name || user?.email?.split('@')[0] || 'Pharmacien';

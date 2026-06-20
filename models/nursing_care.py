@@ -17,6 +17,7 @@ class NursingProcedure(Base):
     procedure_type = Column(String(32), nullable=False, index=True)
     # injection | perfusion | dressing | suture | other
     procedure_date = Column(Date, nullable=False, index=True)
+    procedure_time = Column(String(8), nullable=True)  # HH:MM
     nurse_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     nurse_name = Column(String(128), nullable=True)
     notes = Column(Text, nullable=True)

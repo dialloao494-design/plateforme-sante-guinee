@@ -11,7 +11,7 @@ import models
 from routers import patient, patient_record, rendezvous, doctor, auth, teleconsultation, notifications, messages
 from routers import users, appointments, doctor_dashboard, ws, clinical, medical_history, hospitalization
 from routers import unified_billing, discharge, radiology, reminders, clinical_reports, platform, platform_setup
-from routers import nutrition, immunization, nursing_care, visit_workflow
+from routers import nutrition, immunization, nursing_care, visit_workflow, clinical_phase2, lab_phase2, pharmacy_phase2
 from security import hash_password, verify_password
 from services.user_provisioning import register_public_user
 import os
@@ -266,6 +266,9 @@ app.include_router(radiology.router)
 app.include_router(nutrition.router)
 app.include_router(immunization.router)
 app.include_router(nursing_care.router)
+app.include_router(clinical_phase2.router)
+app.include_router(lab_phase2.router)
+app.include_router(pharmacy_phase2.router)
 app.include_router(visit_workflow.router)
 app.include_router(reminders.router)
 app.include_router(clinical_reports.router)
