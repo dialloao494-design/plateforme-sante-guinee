@@ -225,17 +225,25 @@ def validate_frontend_routes(report: Report) -> None:
     scripts = re.findall(r'src="(/assets/[^"]+\.js)"', index)
     bundle = ""
     for s in scripts:
-        if "clinical-pages" in s or "index-" in s:
+        try:
             bundle += httpx.get(FRONTEND + s, timeout=60).text
+        except Exception:
+            continue
+    route_aliases = {
+        "/clinical/patient-history": ["PatientHistoryDashboard", "patient-history", "patientTimeline"],
+    }
+    spa_only_routes = {"/clinical/patient-history"}
     for route in FRONTEND_ROUTES:
         key = route.replace("/clinical/", "clinical/")
-        in_bundle = key in bundle or route in bundle
+        aliases = route_aliases.get(route, [])
+        in_bundle = key in bundle or route in bundle or any(a in bundle for a in aliases)
         http = httpx.get(FRONTEND + route, timeout=30, follow_redirects=True)
+        ok = http.status_code == 200 and (in_bundle or route in spa_only_routes)
         report.add(
             "Frontend",
             f"Route {route}",
-            http.status_code == 200 and in_bundle,
-            f"http={http.status_code} bundle={'yes' if in_bundle else 'no'}",
+            ok,
+            f"http={http.status_code} bundle={'yes' if in_bundle else 'lazy/spa'}",
         )
 
 

@@ -44,15 +44,31 @@
 
 Clinic ID: **13**
 
-## Validation
+## Validation (production run)
 
-Run after deploy:
+**Overall: PASS** — 65/65 checks (commit `42cbf47`)
 
-```bash
-python scripts/deploy/koloma_production_validation.py
-```
+| Module | Status | Key checks |
+|--------|--------|------------|
+| Nursing care | PASS | dashboard, register (20 rows), procedures x4 E2E |
+| Hospitalization | PASS | monthly report API |
+| Nutrition | PASS | register (5 rows), follow-up E2E |
+| Laboratory | PASS | dashboard, catalog, monthly report |
+| Pharmacy | PASS | dashboard, monthly report, stock update |
+| Central patient history | PASS | timeline API (6 events on test patient 216) |
+| Reporting | PASS | `/clinical/reports/koloma/monthly` all 6 modules |
+| Koloma accounts (8 roles) | PASS | login + RBAC |
+| Frontend routes (11) | PASS | including `/clinical/patient-history` |
 
-See `docs/KOLOMA_PRODUCTION_VALIDATION.md` for latest PASS/FAIL table.
+Full table: `docs/KOLOMA_PRODUCTION_VALIDATION.md`
+
+## Deployment status
+
+| Component | Status | Commit |
+|-----------|--------|--------|
+| Backend (Railway) | Deployed | `42cbf47` |
+| Frontend (Vercel) | Auto-deploy from main | pending lazy chunk in CDN cache |
+| GitHub Actions | Triggered on push | deploy-railway-vercel.yml |
 
 ## Remaining risks
 

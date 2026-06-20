@@ -1,0 +1,462 @@
+{
+  "run_id": "20260620-0158-ba819d",
+  "backend": "https://web-production-ad6a36.up.railway.app",
+  "frontend": "https://frontend-seven-rust-94.vercel.app",
+  "clinic_id": 13,
+  "timestamp": "2026-06-20T02:00:56.122758+00:00",
+  "overall": "PASS",
+  "passed": 65,
+  "failed": 0,
+  "warn": 0,
+  "accounts_tested": [
+    {
+      "role": "clinic_admin",
+      "email": "centre.koloma.admin@sante-gn.test",
+      "clinic_id": 13
+    },
+    {
+      "role": "receptionist",
+      "email": "monemoumariejeanne94@gmail.com",
+      "clinic_id": 13
+    },
+    {
+      "role": "doctor",
+      "email": "saatollno69@gmail.com",
+      "clinic_id": 13
+    },
+    {
+      "role": "lab",
+      "email": "salifoudian719@gmail.com",
+      "clinic_id": 13
+    },
+    {
+      "role": "pharmacy",
+      "email": "thioutobarry90@gmail.com",
+      "clinic_id": 13
+    },
+    {
+      "role": "nutritionist",
+      "email": "dialloaissatoutoupe013@gmail.com",
+      "clinic_id": 13
+    },
+    {
+      "role": "pev_agent",
+      "email": "niepousalomonloua@gmail.com",
+      "clinic_id": 13
+    },
+    {
+      "role": "nurse",
+      "email": "infirmsadjo01@gmail.com",
+      "clinic_id": 13
+    }
+  ],
+  "patients": [
+    {
+      "label": "A",
+      "id": 217,
+      "workflow": "rx-pharmacy-cashier"
+    },
+    {
+      "label": "B",
+      "id": 218,
+      "workflow": "lab-rx-pharmacy-cashier"
+    },
+    {
+      "label": "C",
+      "id": 219,
+      "workflow": "pev-nutrition-nursing"
+    }
+  ],
+  "checks": [
+    {
+      "category": "Accounts",
+      "name": "Login clinic_admin",
+      "status": "PASS",
+      "detail": "centre.koloma.admin@sante-gn.test clinic_id=13 role=clinic_admin"
+    },
+    {
+      "category": "RBAC",
+      "name": "clinic_admin GET /clinical/staff",
+      "status": "PASS",
+      "detail": "expected=200 got=200"
+    },
+    {
+      "category": "Accounts",
+      "name": "Login receptionist",
+      "status": "PASS",
+      "detail": "monemoumariejeanne94@gmail.com clinic_id=13 role=receptionist"
+    },
+    {
+      "category": "RBAC",
+      "name": "receptionist GET /clinical/reception/queue",
+      "status": "PASS",
+      "detail": "expected=200 got=200"
+    },
+    {
+      "category": "RBAC",
+      "name": "receptionist GET /clinical/lab/orders",
+      "status": "PASS",
+      "detail": "expected=403 got=403"
+    },
+    {
+      "category": "Accounts",
+      "name": "Login doctor",
+      "status": "PASS",
+      "detail": "saatollno69@gmail.com clinic_id=13 role=doctor"
+    },
+    {
+      "category": "RBAC",
+      "name": "doctor GET /clinical/doctor/queue",
+      "status": "PASS",
+      "detail": "expected=200 got=200"
+    },
+    {
+      "category": "RBAC",
+      "name": "doctor GET /clinical/pharmacy/orders",
+      "status": "PASS",
+      "detail": "expected=403 got=403"
+    },
+    {
+      "category": "Accounts",
+      "name": "Login lab",
+      "status": "PASS",
+      "detail": "salifoudian719@gmail.com clinic_id=13 role=lab_technician"
+    },
+    {
+      "category": "RBAC",
+      "name": "lab GET /clinical/lab/orders",
+      "status": "PASS",
+      "detail": "expected=200 got=200"
+    },
+    {
+      "category": "RBAC",
+      "name": "lab GET /clinical/reception/queue",
+      "status": "PASS",
+      "detail": "expected=403 got=403"
+    },
+    {
+      "category": "Accounts",
+      "name": "Login pharmacy",
+      "status": "PASS",
+      "detail": "thioutobarry90@gmail.com clinic_id=13 role=pharmacist"
+    },
+    {
+      "category": "RBAC",
+      "name": "pharmacy GET /clinical/pharmacy/orders",
+      "status": "PASS",
+      "detail": "expected=200 got=200"
+    },
+    {
+      "category": "RBAC",
+      "name": "pharmacy GET /clinical/lab/orders",
+      "status": "PASS",
+      "detail": "expected=403 got=403"
+    },
+    {
+      "category": "Accounts",
+      "name": "Login nutritionist",
+      "status": "PASS",
+      "detail": "dialloaissatoutoupe013@gmail.com clinic_id=13 role=nutritionist"
+    },
+    {
+      "category": "RBAC",
+      "name": "nutritionist GET /clinical/nutrition/dashboard",
+      "status": "PASS",
+      "detail": "expected=200 got=200"
+    },
+    {
+      "category": "RBAC",
+      "name": "nutritionist GET /clinical/lab/orders",
+      "status": "PASS",
+      "detail": "expected=403 got=403"
+    },
+    {
+      "category": "Accounts",
+      "name": "Login pev_agent",
+      "status": "PASS",
+      "detail": "niepousalomonloua@gmail.com clinic_id=13 role=pev_agent"
+    },
+    {
+      "category": "RBAC",
+      "name": "pev_agent GET /clinical/immunization/dashboard",
+      "status": "PASS",
+      "detail": "expected=200 got=200"
+    },
+    {
+      "category": "RBAC",
+      "name": "pev_agent GET /clinical/pharmacy/orders",
+      "status": "PASS",
+      "detail": "expected=403 got=403"
+    },
+    {
+      "category": "Accounts",
+      "name": "Login nurse",
+      "status": "PASS",
+      "detail": "infirmsadjo01@gmail.com clinic_id=13 role=nurse"
+    },
+    {
+      "category": "RBAC",
+      "name": "nurse GET /clinical/nursing-care/dashboard",
+      "status": "PASS",
+      "detail": "expected=200 got=200"
+    },
+    {
+      "category": "RBAC",
+      "name": "nurse GET /clinical/doctor/queue",
+      "status": "PASS",
+      "detail": "expected=403 got=403"
+    },
+    {
+      "category": "Admin",
+      "name": "Staff list Koloma only",
+      "status": "PASS",
+      "detail": "15 staff at clinic 13"
+    },
+    {
+      "category": "Admin",
+      "name": "Blocked from other clinic staff",
+      "status": "PASS",
+      "detail": "status=403 (clinic admin must not list clinic 1)"
+    },
+    {
+      "category": "Accounts",
+      "name": "Cashier exists",
+      "status": "PASS",
+      "detail": "koloma.cashier.f34070@sante-gn.test"
+    },
+    {
+      "category": "Frontend",
+      "name": "Route /clinical/pev",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "category": "Frontend",
+      "name": "Route /clinical/hospitalization",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "category": "Frontend",
+      "name": "Route /clinical/nursing-care",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "category": "Frontend",
+      "name": "Route /clinical/nutrition",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "category": "Frontend",
+      "name": "Route /clinical/patient-history",
+      "status": "PASS",
+      "detail": "http=200 bundle=lazy/spa"
+    },
+    {
+      "category": "Frontend",
+      "name": "Route /clinical/admin",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "category": "Frontend",
+      "name": "Route /clinical/reception",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "category": "Frontend",
+      "name": "Route /clinical/doctor",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "category": "Frontend",
+      "name": "Route /clinical/lab",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "category": "Frontend",
+      "name": "Route /clinical/pharmacy",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "category": "Frontend",
+      "name": "Route /clinical/billing",
+      "status": "PASS",
+      "detail": "http=200 bundle=yes"
+    },
+    {
+      "category": "PEV",
+      "name": "Field options API",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "category": "PEV",
+      "name": "Injection sites configured",
+      "status": "PASS",
+      "detail": "7"
+    },
+    {
+      "category": "PEV",
+      "name": "Monthly register API",
+      "status": "PASS",
+      "detail": "rows=5"
+    },
+    {
+      "category": "PEV",
+      "name": "Monthly report register_rows",
+      "status": "PASS",
+      "detail": "total=5"
+    },
+    {
+      "category": "Pharmacy",
+      "name": "Update stock",
+      "status": "PASS",
+      "detail": "KOL-ba819d status=201"
+    },
+    {
+      "category": "Setup",
+      "name": "Doctor ID for appointments",
+      "status": "PASS",
+      "detail": "35"
+    },
+    {
+      "category": "Patient A",
+      "name": "Pharmacy order queued",
+      "status": "PASS",
+      "detail": "132"
+    },
+    {
+      "category": "Patient A",
+      "name": "Cashier payment",
+      "status": "PASS",
+      "detail": "2 charge(s) paid"
+    },
+    {
+      "category": "Patient B",
+      "name": "Lab validated",
+      "status": "PASS",
+      "detail": "order=54"
+    },
+    {
+      "category": "Patient B",
+      "name": "End-to-end lab→pharmacy→cashier",
+      "status": "PASS",
+      "detail": "paid=3"
+    },
+    {
+      "category": "Patient C",
+      "name": "PEV vaccination",
+      "status": "PASS",
+      "detail": "patient_id=219"
+    },
+    {
+      "category": "Patient C",
+      "name": "Nutrition follow-up",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "category": "Patient C",
+      "name": "Nursing procedures x4",
+      "status": "PASS",
+      "detail": "injection, perfusion, dressing, suture"
+    },
+    {
+      "category": "History",
+      "name": "Central journey + timeline patient 217",
+      "status": "PASS",
+      "detail": "journey=200 timeline=200 events=3"
+    },
+    {
+      "category": "History",
+      "name": "Central journey + timeline patient 218",
+      "status": "PASS",
+      "detail": "journey=200 timeline=200 events=5"
+    },
+    {
+      "category": "History",
+      "name": "Central journey + timeline patient 219",
+      "status": "PASS",
+      "detail": "journey=200 timeline=200 events=6"
+    },
+    {
+      "category": "Phase2",
+      "name": "nurse /clinical/nursing-care/register",
+      "status": "PASS",
+      "detail": "status=200 rows=24"
+    },
+    {
+      "category": "Phase2",
+      "name": "nutritionist /clinical/nutrition/register",
+      "status": "PASS",
+      "detail": "status=200 rows=6"
+    },
+    {
+      "category": "Phase2",
+      "name": "receptionist /clinical/hospitalization/reports/monthly",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "category": "Phase2",
+      "name": "lab /clinical/lab/dashboard",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "category": "Phase2",
+      "name": "lab /clinical/lab/reports/monthly",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "category": "Phase2",
+      "name": "lab /clinical/lab/catalog",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "category": "Phase2",
+      "name": "pharmacy /clinical/pharmacy/dashboard",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "category": "Phase2",
+      "name": "pharmacy /clinical/pharmacy/reports/monthly",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "category": "Phase2",
+      "name": "clinic_admin /clinical/reports/koloma/monthly",
+      "status": "PASS",
+      "detail": "status=200 modules=['year', 'month', 'clinic_id', 'pev', 'nursing', 'hospitalization', 'nutrition', 'laboratory']"
+    },
+    {
+      "category": "Phase2",
+      "name": "doctor patient timeline",
+      "status": "PASS",
+      "detail": "patient=219 status=200"
+    },
+    {
+      "category": "Phase2",
+      "name": "receptionist patient timeline",
+      "status": "PASS",
+      "detail": "patient=219 status=200"
+    },
+    {
+      "category": "Phase2",
+      "name": "nurse patient timeline",
+      "status": "PASS",
+      "detail": "patient=219 status=200"
+    }
+  ]
+}
