@@ -108,8 +108,8 @@ const AppRoutes = () => {
       <Route
         path="/platform"
         element={
-          <ProtectedRoute allowedRoles={PLATFORM_OWNER_ROLES}>
-            <PlatformOwnerDashboard />
+          <ProtectedRoute allowedRoles={PLATFORM_CLINIC_PROVISION_ROLES}>
+            <Navigate to="/platform/clinics" replace />
           </ProtectedRoute>
         }
       />
@@ -277,6 +277,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={PLATFORM_CLINIC_PROVISION_ROLES}>
             <PlatformClinicDirectory />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/platform/clinics/:clinicId/:section"
+        element={
+          <ProtectedRoute allowedRoles={PLATFORM_CLINIC_PROVISION_ROLES}>
+            <PlatformClinicDetail />
           </ProtectedRoute>
         }
       />

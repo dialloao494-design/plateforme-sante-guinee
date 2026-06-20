@@ -31,21 +31,10 @@ const ROLE_NAV = {
   admin: CLINIC_ADMIN_NAV,
   clinic_admin: CLINIC_ADMIN_NAV,
   platform_owner: [
-    { path: '/platform/onboard', label: 'Onboarding personnel', icon: 'shield' },
-    { path: '/platform', label: 'Console plateforme', icon: 'shield' },
     { path: '/platform/clinics', label: 'Cliniques', icon: 'shield' },
-    { path: '/clinical', label: 'Opérations', icon: 'dash' },
-    { path: '/clinical/reception', label: 'Réception', icon: 'calendar' },
-    { path: '/clinical/doctor', label: 'Médecin', icon: 'board' },
-    { path: '/clinical/lab', label: 'Laboratoire', icon: 'queue' },
-    { path: '/clinical/pharmacy', label: 'Pharmacie', icon: 'steth' },
-    { path: '/clinical/reports', label: 'Rapports', icon: 'calendar' },
   ],
   platform_admin: [
-    { path: '/platform/onboard', label: 'Onboarding personnel', icon: 'shield' },
     { path: '/platform/clinics', label: 'Cliniques', icon: 'shield' },
-    { path: '/clinical', label: 'Opérations', icon: 'dash' },
-    { path: '/clinical/reports', label: 'Rapports', icon: 'calendar' },
   ],
   receptionist: [
     { path: '/clinical/reception', label: 'Réception', icon: 'calendar' },

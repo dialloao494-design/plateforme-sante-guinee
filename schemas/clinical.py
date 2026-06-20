@@ -55,6 +55,11 @@ class StaffRoleUpdate(BaseModel):
     clinic_id: int
 
 
+class StaffPasswordReset(BaseModel):
+    clinic_id: int
+    new_password: str = Field(..., min_length=8)
+
+
 # --- Patient (reception intake) ---
 
 

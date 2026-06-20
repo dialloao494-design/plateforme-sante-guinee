@@ -19,6 +19,7 @@ const API_PROXY_PREFIXES = [
   '/redoc',
   '/openapi.json',
   '/clinical',
+  '/platform',
 ]
 
 function buildApiProxy(target) {

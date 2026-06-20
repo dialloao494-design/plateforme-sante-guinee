@@ -2,17 +2,31 @@
 
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, field_validator
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 import models
 import schemas
 from schemas.clinical import ClinicResponse
+from schemas.platform import (
+    PlatformClinicDetail,
+    PlatformClinicSummary,
+    PlatformOwnerSummary,
+    PlatformStaffMember,
+    PlatformStaffPasswordReset,
+)
 from database import get_db
-from security import get_current_platform_owner, validate_password
+from security import get_current_platform_admin, get_current_platform_owner, hash_password, validate_password
+from services.platform_clinic_service import (
+    get_clinic_detail,
+    get_platform_summary,
+    list_clinic_directory,
+    list_clinic_staff,
+)
 from services.user_provisioning import (
     EmailAlreadyRegisteredError,
     UserProvisioningError,
@@ -51,6 +65,83 @@ def platform_settings(current_user=Depends(get_current_platform_owner)):
     import os
 
     return PlatformSettingsResponse(environment=os.getenv("ENVIRONMENT", "development"))
+
+
+@router.get("/summary", response_model=PlatformOwnerSummary)
+def platform_summary(
+    category: str = Query("production", pattern="^(production|demo|test|archived|all)$"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_platform_admin),
+):
+    return get_platform_summary(db, category=category)
+
+
+@router.get("/clinics/directory", response_model=List[PlatformClinicSummary])
+def clinic_directory(
+    category: str = Query("production", pattern="^(production|demo|test|archived|all)$"),
+    search: Optional[str] = Query(None, min_length=1, max_length=128),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_platform_admin),
+):
+    return list_clinic_directory(db, category=category, search=search)
+
+
+@router.get("/clinics/{clinic_id}/detail", response_model=PlatformClinicDetail)
+def clinic_detail(
+    clinic_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_platform_admin),
+):
+    detail = get_clinic_detail(db, clinic_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="Clinic not found")
+    return detail
+
+
+@router.get("/clinics/{clinic_id}/staff", response_model=List[PlatformStaffMember])
+def clinic_staff(
+    clinic_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_platform_admin),
+):
+    clinic = db.query(models.Clinic).filter(models.Clinic.id == clinic_id).first()
+    if not clinic:
+        raise HTTPException(status_code=404, detail="Clinic not found")
+    return list_clinic_staff(db, clinic_id)
+
+
+@router.post("/clinics/{clinic_id}/staff/{user_id}/reset-password")
+def reset_clinic_staff_password(
+    clinic_id: int,
+    user_id: int,
+    body: PlatformStaffPasswordReset,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_platform_admin),
+):
+    user = (
+        db.query(models.User)
+        .filter(
+            models.User.id == user_id,
+            or_(
+                models.User.clinic_id == clinic_id,
+                models.User.id.in_(
+                    db.query(models.ClinicStaff.user_id).filter(
+                        models.ClinicStaff.clinic_id == clinic_id,
+                        models.ClinicStaff.is_active.is_(True),
+                    )
+                ),
+            ),
+        )
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    if user.role in ("platform_owner", "platform_admin"):
+        raise HTTPException(status_code=400, detail="Cannot reset password for platform accounts")
+    validate_password(body.new_password)
+    user.hashed_password = hash_password(body.new_password)
+    db.commit()
+    return {"id": user.id, "email": user.email, "reset": True}
 
 
 @router.get("/clinics", response_model=List[ClinicResponse])
@@ -117,7 +208,7 @@ def set_user_status(
     user_id: int,
     body: UserStatusUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_platform_owner),
+    current_user=Depends(get_current_platform_admin),
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:

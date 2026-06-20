@@ -57,6 +57,7 @@ from schemas.clinical import (
     PrescriptionResponse,
     StaffCreate,
     StaffResponse,
+    StaffPasswordReset,
     StaffRoleUpdate,
 )
 from schemas.pharmacy_inventory import (
@@ -64,7 +65,7 @@ from schemas.pharmacy_inventory import (
     PharmacyInventoryItemResponse,
     PharmacyInventoryUpsert,
 )
-from security import get_current_user
+from security import get_current_user, hash_password, validate_password
 from services.clinical_audit_service import ClinicalAuditService
 from services.clinic_operations_service import clinic_operations_summary
 from services.clinic_billing_service import ClinicBillingService
@@ -313,6 +314,30 @@ def deactivate_staff(
     db.commit()
     db.refresh(user)
     return StaffResponse(id=user.id, email=user.email, role=user.role, clinic_id=user.clinic_id, is_active=user.is_active)
+
+
+@router.post("/staff/{user_id}/reset-password")
+def reset_staff_password(
+    user_id: int,
+    body: StaffPasswordReset,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    assert_clinic_access(current_user, body.clinic_id)
+    user = (
+        db.query(models.User)
+        .filter(models.User.id == user_id, models.User.clinic_id == body.clinic_id)
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    if user.role in ("platform_owner", "platform_admin"):
+        raise HTTPException(status_code=400, detail="Cannot reset password for platform accounts")
+    validate_password(body.new_password)
+    user.hashed_password = hash_password(body.new_password)
+    db.commit()
+    return {"id": user.id, "email": user.email, "reset": True}
 
 
 @router.patch("/staff/{user_id}/role", response_model=StaffResponse)

@@ -23,8 +23,8 @@ export function isClinicStaffRole(role) {
 const ROLE_HOME = {
   admin: '/clinical/admin',
   clinic_admin: '/clinical/admin',
-  platform_owner: '/platform',
-  platform_admin: '/platform/onboard',
+  platform_owner: '/platform/clinics',
+  platform_admin: '/platform/clinics',
   receptionist: '/clinical/reception',
   cashier: '/clinical/reception',
   doctor: '/clinical/doctor',
