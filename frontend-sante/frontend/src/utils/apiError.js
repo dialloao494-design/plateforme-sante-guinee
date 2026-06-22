@@ -54,6 +54,11 @@ export function formatApiError(err, fallback = 'Une erreur est survenue.') {
     return humanizeApiError(msg.trim());
   }
 
+  const statusPayload = err?.response?.data?.status;
+  if (statusPayload === 'error' && typeof err?.response?.data?.message === 'string') {
+    return humanizeApiError(err.response.data.message.trim());
+  }
+
   const net = String(err?.message || '');
   if (/network|failed to fetch|timeout/i.test(net)) {
     return 'Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.';

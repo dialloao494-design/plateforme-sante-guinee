@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import { usePollingQuery } from '../../hooks/usePollingQuery.js';
 import './clinical.css';
-
 const WORKFLOW_LABELS = {
   child: 'Enfant',
   adult_doctor: 'Adulte → Médecin',
@@ -56,7 +55,14 @@ export default function DepartmentQueuePanel({ department, title, onSelectPatien
           Actualiser
         </button>
       </div>
-      {(error || actionError) && <p className="clinical-error">{String(error || actionError)}</p>}
+      {(error || actionError) && (
+        <div className="clinical-retry-bar">
+          <p>{String(error || actionError)}</p>
+          <button type="button" className="clinical-btn secondary clinical-btn-sm" onClick={refresh}>
+            Réessayer
+          </button>
+        </div>
+      )}
       {message && <p className="clinical-success">{message}</p>}
       {loading && rows.length === 0 ? (
         <p className="clinical-stat-hint">Chargement de la file…</p>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
+import { formatApiError } from '../../utils/apiError.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
 import './clinical.css';
@@ -40,20 +41,27 @@ export default function LabDashboard() {
   });
 
   const load = useCallback(async () => {
-    try {
-      const [queueRes, dashRes, catalogRes, validatedRes] = await Promise.all([
-        clinicalApi.labQueue(),
-        clinicalApi.labDashboardStats().catch(() => ({ data: null })),
-        clinicalApi.labCatalog().catch(() => ({ data: { tests: [] } })),
-        clinicalApi.labValidatedResults(50).catch(() => ({ data: [] })),
-      ]);
-      setOrders(queueRes.data || []);
-      setLabStats(dashRes.data || null);
-      setCatalog(catalogRes.data?.tests || []);
-      setValidated(validatedRes.data || []);
+    const errors = [];
+    const [queueRes, dashRes, catalogRes, validatedRes] = await Promise.allSettled([
+      clinicalApi.labQueue(),
+      clinicalApi.labDashboardStats(),
+      clinicalApi.labCatalog(),
+      clinicalApi.labValidatedResults(50),
+    ]);
+    if (queueRes.status === 'fulfilled') {
+      setOrders(queueRes.value.data || []);
+    } else {
+      errors.push('examens en cours');
+    }
+    if (dashRes.status === 'fulfilled') setLabStats(dashRes.value.data || null);
+    if (catalogRes.status === 'fulfilled') setCatalog(catalogRes.value.data?.tests || []);
+    else errors.push('catalogue');
+    if (validatedRes.status === 'fulfilled') setValidated(validatedRes.value.data || []);
+    if (errors.length) {
+      const firstReject = [queueRes, dashRes, catalogRes, validatedRes].find((r) => r.status === 'rejected');
+      setError(formatApiError(firstReject?.reason, `Chargement partiel : ${errors.join(', ')}`));
+    } else {
       setError('');
-    } catch (err) {
-      setError(err?.response?.data?.detail || 'File laboratoire indisponible');
     }
   }, []);
 
@@ -207,7 +215,12 @@ export default function LabDashboard() {
     <div className="clinical-page">
       <h1>Tableau de bord — Laboratoire</h1>
       <p className="clinical-lead">Demandes d&apos;examens, catalogue tarifé, prélèvement, résultats et rapports.</p>
-      {error && <p className="clinical-error">{String(error)}</p>}
+      {error && (
+        <div className="clinical-retry-bar">
+          <p>{String(error)}</p>
+          <button type="button" className="clinical-btn" onClick={load}>Réessayer</button>
+        </div>
+      )}
       {message && <p className="clinical-success">{message}</p>}
 
       <ClinicalStatGrid stats={stats} />

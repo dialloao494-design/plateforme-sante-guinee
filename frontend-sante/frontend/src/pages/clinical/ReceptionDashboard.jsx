@@ -55,22 +55,36 @@ export default function ReceptionDashboard() {
   const [patientMatches, setPatientMatches] = useState([]);
   const [visitForm, setVisitForm] = useState({ patient_id: '', workflow_type: '' });
 
+  const [loadErrors, setLoadErrors] = useState([]);
+
   const load = useCallback(async () => {
-    try {
-      const [q, d, charges, rev, fu] = await Promise.all([
-        clinicalApi.receptionQueue(),
-        clinicalApi.clinicDoctors(),
-        clinicalApi.pendingCharges(),
-        clinicalApi.dailyRevenue(revenueDate).catch(() => ({ data: null })),
-        clinicalApi.receptionFollowUps().catch(() => ({ data: { due_today: [], overdue: [], upcoming: [] } })),
-      ]);
-      setQueue(q.data || []);
-      setDoctors(d.data || []);
-      setPendingCharges(charges.data || []);
-      setRevenue(rev.data || null);
-      setFollowUps(fu.data || { due_today: [], overdue: [], upcoming: [] });
-    } catch (err) {
-      setError(err?.response?.data?.detail || 'Impossible de charger la réception');
+    setLoadErrors([]);
+    const results = await Promise.allSettled([
+      clinicalApi.receptionQueue(),
+      clinicalApi.clinicDoctors(),
+      clinicalApi.pendingCharges(),
+      clinicalApi.dailyRevenue(revenueDate),
+      clinicalApi.receptionFollowUps(),
+    ]);
+    const labels = ['File d\'attente', 'Médecins', 'Factures', 'Recettes', 'Suivis'];
+    const errors = [];
+    if (results[0].status === 'fulfilled') setQueue(results[0].value.data || []);
+    else errors.push(labels[0]);
+    if (results[1].status === 'fulfilled') setDoctors(results[1].value.data || []);
+    else errors.push(labels[1]);
+    if (results[2].status === 'fulfilled') setPendingCharges(results[2].value.data || []);
+    else errors.push(labels[2]);
+    if (results[3].status === 'fulfilled') setRevenue(results[3].value.data || null);
+    if (results[4].status === 'fulfilled') {
+      setFollowUps(results[4].value.data || { due_today: [], overdue: [], upcoming: [] });
+    }
+    if (errors.length) {
+      const first = results.find((r) => r.status === 'rejected');
+      const detail = first?.reason?.response?.data?.message || first?.reason?.response?.data?.detail;
+      setLoadErrors(errors);
+      setError(detail || `Erreur de chargement : ${errors.join(', ')}`);
+    } else {
+      setError('');
     }
   }, [revenueDate]);
 
@@ -208,7 +222,12 @@ export default function ReceptionDashboard() {
       <p className="clinical-lead">
         Accueil, rendez-vous, check-in et encaissement — poste unique réception &amp; caisse.
       </p>
-      {error && <p className="clinical-error">{String(error)}</p>}
+      {error && (
+        <div className="clinical-retry-bar">
+          <p>{String(error)}</p>
+          <button type="button" className="clinical-btn" onClick={load}>Réessayer</button>
+        </div>
+      )}
       {message && <p className="clinical-success">{message}</p>}
 
       <ClinicalStatGrid stats={stats} />
@@ -260,49 +279,57 @@ export default function ReceptionDashboard() {
         <section id="reception-patient" className="clinical-card">
           <h2>Enregistrement patient</h2>
           <form onSubmit={registerPatient}>
-            <div className="clinical-field">
-              <label>Prénom</label>
-              <input value={patientForm.first_name} onChange={(e) => setPatientForm({ ...patientForm, first_name: e.target.value })} required />
+            <div className="clinical-form-row clinical-form-row--identity">
+              <div className="clinical-field">
+                <label>Prénom</label>
+                <input value={patientForm.first_name} onChange={(e) => setPatientForm({ ...patientForm, first_name: e.target.value })} required />
+              </div>
+              <div className="clinical-field">
+                <label>Nom</label>
+                <input value={patientForm.last_name} onChange={(e) => setPatientForm({ ...patientForm, last_name: e.target.value })} required />
+              </div>
+              <div className="clinical-field clinical-form-span-2">
+                <label>Nom de la mère</label>
+                <input value={patientForm.mother_name} onChange={(e) => setPatientForm({ ...patientForm, mother_name: e.target.value })} required />
+              </div>
             </div>
-            <div className="clinical-field">
-              <label>Nom</label>
-              <input value={patientForm.last_name} onChange={(e) => setPatientForm({ ...patientForm, last_name: e.target.value })} required />
+            <div className="clinical-form-row">
+              <div className="clinical-field">
+                <label>Âge</label>
+                <input type="number" value={patientForm.age} onChange={(e) => setPatientForm({ ...patientForm, age: Number(e.target.value) })} required />
+              </div>
+              <div className="clinical-field">
+                <label>Sexe</label>
+                <select value={patientForm.gender} onChange={(e) => setPatientForm({ ...patientForm, gender: e.target.value })}>
+                  <option value="F">Féminin</option>
+                  <option value="M">Masculin</option>
+                  <option value="other">Autre</option>
+                </select>
+              </div>
+              <div className="clinical-field">
+                <label>Date de naissance</label>
+                <input type="date" value={patientForm.date_of_birth} onChange={(e) => setPatientForm({ ...patientForm, date_of_birth: e.target.value })} />
+              </div>
             </div>
-            <div className="clinical-field">
-              <label>Âge</label>
-              <input type="number" value={patientForm.age} onChange={(e) => setPatientForm({ ...patientForm, age: Number(e.target.value) })} required />
+            <div className="clinical-form-row">
+              <div className="clinical-field">
+                <label>Téléphone</label>
+                <input value={patientForm.phone} onChange={(e) => setPatientForm({ ...patientForm, phone: e.target.value })} required />
+              </div>
+              <div className="clinical-field">
+                <label>Profession</label>
+                <input value={patientForm.profession} onChange={(e) => setPatientForm({ ...patientForm, profession: e.target.value })} required />
+              </div>
             </div>
-            <div className="clinical-field">
-              <label>Sexe</label>
-              <select value={patientForm.gender} onChange={(e) => setPatientForm({ ...patientForm, gender: e.target.value })}>
-                <option value="F">Féminin</option>
-                <option value="M">Masculin</option>
-                <option value="other">Autre</option>
-              </select>
-            </div>
-            <div className="clinical-field">
-              <label>Téléphone</label>
-              <input value={patientForm.phone} onChange={(e) => setPatientForm({ ...patientForm, phone: e.target.value })} required />
-            </div>
-            <div className="clinical-field">
-              <label>Date de naissance</label>
-              <input type="date" value={patientForm.date_of_birth} onChange={(e) => setPatientForm({ ...patientForm, date_of_birth: e.target.value })} />
-            </div>
-            <div className="clinical-field">
-              <label>Quartier / résidence</label>
-              <input value={patientForm.quartier} onChange={(e) => setPatientForm({ ...patientForm, quartier: e.target.value })} required />
-            </div>
-            <div className="clinical-field">
-              <label>Adresse complète</label>
-              <input value={patientForm.address} onChange={(e) => setPatientForm({ ...patientForm, address: e.target.value })} />
-            </div>
-            <div className="clinical-field">
-              <label>Profession</label>
-              <input value={patientForm.profession} onChange={(e) => setPatientForm({ ...patientForm, profession: e.target.value })} required />
-            </div>
-            <div className="clinical-field">
-              <label>Nom de la mère</label>
-              <input value={patientForm.mother_name} onChange={(e) => setPatientForm({ ...patientForm, mother_name: e.target.value })} required />
+            <div className="clinical-form-row">
+              <div className="clinical-field">
+                <label>Quartier / résidence</label>
+                <input value={patientForm.quartier} onChange={(e) => setPatientForm({ ...patientForm, quartier: e.target.value })} required />
+              </div>
+              <div className="clinical-field">
+                <label>Adresse complète</label>
+                <input value={patientForm.address} onChange={(e) => setPatientForm({ ...patientForm, address: e.target.value })} />
+              </div>
             </div>
             <div className="clinical-field">
               <label>Motif de visite / service</label>

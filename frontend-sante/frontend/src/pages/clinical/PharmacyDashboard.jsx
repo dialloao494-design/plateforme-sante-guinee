@@ -79,6 +79,8 @@ export default function PharmacyDashboard() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
+  const [saleForm, setSaleForm] = useState({ item_id: '', quantity: 1, patient_name: '' });
+  const [stockAdjust, setStockAdjust] = useState({ item_id: '', delta: 10, reason: 'Réapprovisionnement' });
 
   const load = useCallback(async () => {
     try {
@@ -186,6 +188,64 @@ export default function PharmacyDashboard() {
     setMovements(next);
   };
 
+  const logStockMovement = (item, action, quantity, patientName = '—') => {
+    const pharmacist = user?.full_name || user?.email?.split('@')[0] || 'Pharmacien';
+    const next = saveMovement({
+      pharmacist,
+      patient_name: patientName,
+      medicine: item.medication_name,
+      quantity,
+      at: new Date().toISOString(),
+      order_id: `stock-${item.id}`,
+      action,
+    });
+    setMovements(next);
+  };
+
+  const applyStockDelta = async (itemId, delta, reason, patientName) => {
+    setBusy(true);
+    setError('');
+    try {
+      const item = stock.find((s) => String(s.id) === String(itemId));
+      await clinicalApi.adjustPharmacyInventory(itemId, { delta });
+      if (item) {
+        logStockMovement(item, reason, Math.abs(delta), patientName);
+      }
+      setMessage(`Stock mis à jour (${delta > 0 ? '+' : ''}${delta})`);
+      await load();
+    } catch (err) {
+      setError(err?.response?.data?.detail || 'Mouvement stock impossible');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitDirectSale = async (e) => {
+    e.preventDefault();
+    if (!saleForm.item_id) {
+      setError('Choisissez un médicament');
+      return;
+    }
+    const qty = Number(saleForm.quantity);
+    if (qty < 1) {
+      setError('Quantité invalide');
+      return;
+    }
+    await applyStockDelta(saleForm.item_id, -qty, 'Vente directe', saleForm.patient_name || 'Client comptoir');
+    setSaleForm({ item_id: '', quantity: 1, patient_name: '' });
+  };
+
+  const submitStockEntry = async (e) => {
+    e.preventDefault();
+    if (!stockAdjust.item_id) {
+      setError('Choisissez un article');
+      return;
+    }
+    const delta = Number(stockAdjust.delta);
+    await applyStockDelta(stockAdjust.item_id, delta, stockAdjust.reason || (delta > 0 ? 'Entrée stock' : 'Sortie stock'));
+    setStockAdjust((prev) => ({ ...prev, delta: 10, reason: 'Réapprovisionnement' }));
+  };
+
   const updateStatus = async (order, status) => {
     setBusy(true);
     setError('');
@@ -287,7 +347,12 @@ export default function PharmacyDashboard() {
         </div>
       </header>
 
-      {error && <p className="clinical-error">{String(error)}</p>}
+      {error && (
+        <div className="clinical-retry-bar">
+          <p>{String(error)}</p>
+          <button type="button" className="clinical-btn" onClick={load} disabled={busy}>Réessayer</button>
+        </div>
+      )}
       {message && <p className="clinical-success">{message}</p>}
 
       <div className="pharmacy-stat-grid">
@@ -304,6 +369,7 @@ export default function PharmacyDashboard() {
         {[
           ['orders', 'Ordonnances'],
           ['stock', 'Stock'],
+          ['sale', 'Vente directe'],
           ['alerts', 'Alertes'],
           ['history', 'Mouvements'],
           ['doctor', 'Stock médecin'],
@@ -453,6 +519,49 @@ export default function PharmacyDashboard() {
 
           <section className="pharmacy-panel">
             <div className="pharmacy-panel-header">
+              <h2>Entrée / sortie stock</h2>
+            </div>
+            <form onSubmit={submitStockEntry}>
+              <div className="pharmacy-form-grid">
+                <label>
+                  Article
+                  <select
+                    required
+                    value={stockAdjust.item_id}
+                    onChange={(e) => setStockAdjust({ ...stockAdjust, item_id: e.target.value })}
+                  >
+                    <option value="">Choisir</option>
+                    {stock.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.medication_name} — Qté {item.quantity}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Quantité (+ entrée / − sortie)
+                  <input
+                    type="number"
+                    value={stockAdjust.delta}
+                    onChange={(e) => setStockAdjust({ ...stockAdjust, delta: Number(e.target.value) })}
+                  />
+                </label>
+                <label>
+                  Motif
+                  <input
+                    value={stockAdjust.reason}
+                    onChange={(e) => setStockAdjust({ ...stockAdjust, reason: e.target.value })}
+                  />
+                </label>
+              </div>
+              <button type="submit" className="pharmacy-btn pharmacy-btn--primary" disabled={busy}>
+                Enregistrer mouvement
+              </button>
+            </form>
+          </section>
+
+          <section className="pharmacy-panel">
+            <div className="pharmacy-panel-header">
               <h2>Inventaire</h2>
               <div className="pharmacy-toolbar">
                 <input type="search" placeholder="Rechercher médicament, SKU, lot…" value={stockSearch} onChange={(e) => setStockSearch(e.target.value)} />
@@ -501,6 +610,53 @@ export default function PharmacyDashboard() {
             </div>
           </section>
         </>
+      )}
+
+      {tab === 'sale' && (
+        <section className="pharmacy-panel">
+          <h2>Vente directe (comptoir)</h2>
+          <p className="clinical-stat-hint">Déduit automatiquement le stock pharmacie et enregistre le mouvement.</p>
+          <form onSubmit={submitDirectSale}>
+            <div className="pharmacy-form-grid">
+              <label>
+                Médicament
+                <select
+                  required
+                  value={saleForm.item_id}
+                  onChange={(e) => setSaleForm({ ...saleForm, item_id: e.target.value })}
+                >
+                  <option value="">Choisir</option>
+                  {stock.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.medication_name} — {item.quantity} en stock · {formatGNF(item.unit_price_gnf)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Quantité
+                <input
+                  type="number"
+                  min={1}
+                  required
+                  value={saleForm.quantity}
+                  onChange={(e) => setSaleForm({ ...saleForm, quantity: Number(e.target.value) })}
+                />
+              </label>
+              <label>
+                Patient / client (optionnel)
+                <input
+                  value={saleForm.patient_name}
+                  onChange={(e) => setSaleForm({ ...saleForm, patient_name: e.target.value })}
+                  placeholder="Nom du client"
+                />
+              </label>
+            </div>
+            <button type="submit" className="pharmacy-btn pharmacy-btn--primary" disabled={busy}>
+              Valider la vente
+            </button>
+          </form>
+        </section>
       )}
 
       {tab === 'alerts' && (

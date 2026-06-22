@@ -117,7 +117,13 @@ class VisitWorkflowService:
         return workflow
 
     @staticmethod
-    def _patient_display(patient: models.Patient) -> dict:
+    def _patient_display(patient: models.Patient | None) -> dict:
+        if not patient:
+            return {
+                "patient_name": "Patient inconnu",
+                "patient_age": None,
+                "patient_phone": None,
+            }
         return {
             "patient_name": f"{patient.first_name} {patient.last_name}".strip(),
             "patient_age": patient.age,

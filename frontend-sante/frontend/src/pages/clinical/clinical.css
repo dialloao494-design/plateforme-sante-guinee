@@ -74,6 +74,44 @@
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
 
+.clinical-form-row {
+  display: grid;
+  gap: 0.75rem 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.clinical-form-row--identity {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 520px) {
+  .clinical-form-row--identity {
+    grid-template-columns: 1fr;
+  }
+}
+
+.clinical-form-span-2 {
+  grid-column: 1 / -1;
+}
+
+.clinical-retry-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+}
+
+.clinical-retry-bar p {
+  margin: 0;
+  flex: 1;
+  color: #b91c1c;
+}
+
 .clinical-card {
   background: #fff;
   border: 1px solid #e2e8f0;
