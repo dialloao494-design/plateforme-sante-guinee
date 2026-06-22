@@ -389,6 +389,7 @@ async def startup_event():
             ensure_user_roles_check_constraint,
             normalize_legacy_user_roles,
             ensure_email_verification_schema,
+            ensure_must_change_password_schema,
             ensure_clinical_modules_schema,
             run_alembic_upgrade_head,
         )
@@ -412,6 +413,7 @@ async def startup_event():
         ensure_user_roles_check_constraint(engine)
         normalize_legacy_user_roles(engine)
         ensure_email_verification_schema(engine)
+        ensure_must_change_password_schema(engine)
         ensure_clinical_modules_schema(engine)
 
         from database import SessionLocal

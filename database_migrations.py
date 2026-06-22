@@ -934,6 +934,29 @@ def ensure_email_verification_schema(engine: Engine) -> None:
             logger.warning("email_verification_tokens migration failed: %s", exc)
 
 
+def ensure_must_change_password_schema(engine: Engine) -> None:
+    """users.must_change_password — required for clinic staff temp password flow."""
+    insp = inspect(engine)
+    if "users" not in insp.get_table_names():
+        return
+    cols = {c["name"] for c in insp.get_columns("users")}
+    if "must_change_password" in cols:
+        return
+    dialect = engine.dialect.name
+    bool_type = "BOOLEAN" if dialect == "postgresql" else "BOOLEAN"
+    default = "FALSE" if dialect == "postgresql" else "0"
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    f"ALTER TABLE users ADD COLUMN must_change_password {bool_type} NOT NULL DEFAULT {default}"
+                )
+            )
+        logger.info("Added users.must_change_password")
+    except Exception as exc:
+        logger.warning("must_change_password migration skipped: %s", exc)
+
+
 def ensure_clinical_modules_schema(engine: Engine) -> None:
     """PEV, hospitalization, nutrition extensions + nursing_procedures table."""
     insp = inspect(engine)
