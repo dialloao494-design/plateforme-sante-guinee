@@ -26,9 +26,7 @@ const Login = () => {
 
   useEffect(() => {
     if (!authLoading && user) {
-      const target = user.must_change_password
-        ? '/account/password'
-        : getRoleHomePath(user.role, user.clinic_id);
+      const target = getRoleHomePath(user.role, user.clinic_id);
       console.info('[AUTH-DEBUG] Login redirect (session user)', { role: user.role, target });
       navigate(target, { replace: true });
       return;
@@ -66,9 +64,7 @@ const Login = () => {
     try {
       const result = await login(email, password);
       if (result.success) {
-        const target = result.must_change_password
-          ? '/account/password'
-          : getRoleHomePath(result.role, result.clinic_id);
+        const target = getRoleHomePath(result.role, result.clinic_id);
         console.info('[AUTH-DEBUG] Login redirect (submit)', { role: result.role, target });
         navigate(target, { replace: true });
       } else {

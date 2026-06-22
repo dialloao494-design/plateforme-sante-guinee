@@ -100,7 +100,7 @@ const AppRoutes = () => {
         path="/account/password"
         element={
           <ProtectedRoute>
-            <ChangePassword forced />
+            <ChangePassword />
           </ProtectedRoute>
         }
       />
