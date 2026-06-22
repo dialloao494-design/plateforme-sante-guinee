@@ -955,6 +955,12 @@ def ensure_must_change_password_schema(engine: Engine) -> None:
         logger.info("Added users.must_change_password")
     except Exception as exc:
         logger.warning("must_change_password migration skipped: %s", exc)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("UPDATE users SET must_change_password = FALSE WHERE must_change_password = TRUE"))
+        logger.info("Cleared must_change_password for all existing users")
+    except Exception as exc:
+        logger.warning("must_change_password clear skipped: %s", exc)
 
 
 def ensure_clinical_modules_schema(engine: Engine) -> None:

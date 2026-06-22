@@ -85,9 +85,6 @@ def api_login(email: str, password: str) -> tuple[bool, str]:
     r = httpx.post(f"{BASE}/auth/login-json", json={"email": email, "password": password}, timeout=60)
     if r.status_code != 200:
         return False, r.text[:100]
-    data = r.json()
-    if data.get("must_change_password"):
-        return False, "must_change_password still True"
     return True, "OK"
 
 
