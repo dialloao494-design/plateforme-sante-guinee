@@ -146,6 +146,7 @@ class Token(BaseModel):
     user_role: str
     role: str
     email: str
+    must_change_password: bool = False
 
 
 class RegisterResponse(BaseModel):
@@ -194,3 +195,4 @@ class UserResponse(BaseModel):
     clinic_id: Optional[int] = None
     clinic_name: Optional[str] = None
     email_verified: bool = False
+    must_change_password: bool = False

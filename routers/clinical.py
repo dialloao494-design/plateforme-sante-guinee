@@ -336,8 +336,9 @@ def reset_staff_password(
         raise HTTPException(status_code=400, detail="Cannot reset password for platform accounts")
     validate_password(body.new_password)
     user.hashed_password = hash_password(body.new_password)
+    user.must_change_password = True
     db.commit()
-    return {"id": user.id, "email": user.email, "reset": True}
+    return {"id": user.id, "email": user.email, "reset": True, "must_change_password": True}
 
 
 @router.patch("/staff/{user_id}/role", response_model=StaffResponse)

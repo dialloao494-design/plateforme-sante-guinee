@@ -64,6 +64,10 @@
   gap: 1rem;
 }
 
+.login-form .password-input-wrap {
+  gap: 0.35rem;
+}
+
 .login-field {
   display: flex;
   flex-direction: column;

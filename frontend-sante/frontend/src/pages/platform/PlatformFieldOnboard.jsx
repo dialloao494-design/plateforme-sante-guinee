@@ -7,6 +7,12 @@ import { Link, useParams } from 'react-router-dom';
 import clinicalApi from '../../services/clinicalApi';
 import { formatApiError } from '../../utils/apiError.js';
 import { filterProductionClinics } from '../../utils/clinicProductionFilter.js';
+import {
+  displaySessionPassword,
+  genStaffPassword,
+  loadSessionCreds,
+  saveSessionCred,
+} from '../../utils/staffSessionCreds.js';
 import './PlatformOwner.css';
 import '../clinical/clinical.css';
 
@@ -21,32 +27,6 @@ const ONBOARD_ROLES = [
 
 const ROLE_LABELS = Object.fromEntries(ONBOARD_ROLES.map((o) => [o.value, o.label]));
 
-function credKey(clinicId) {
-  return `field_onboard_creds_${clinicId}`;
-}
-
-function loadCreds(clinicId) {
-  try {
-    const raw = sessionStorage.getItem(credKey(clinicId));
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveCred(clinicId, userId, entry) {
-  const all = loadCreds(clinicId);
-  all[userId] = entry;
-  sessionStorage.setItem(credKey(clinicId), JSON.stringify(all));
-}
-
-function genPassword() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-  let s = 'Aasma';
-  for (let i = 0; i < 6; i += 1) s += chars[Math.floor(Math.random() * chars.length)];
-  return s + '!';
-}
-
 export default function PlatformFieldOnboard() {
   const { clinicId: routeClinicId } = useParams();
   const [clinics, setClinics] = useState([]);
@@ -56,7 +36,7 @@ export default function PlatformFieldOnboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [form, setForm] = useState({ email: '', password: genPassword(), role: 'receptionist' });
+  const [form, setForm] = useState({ email: '', password: '', role: 'receptionist' });
 
   const clinic = useMemo(
     () => clinics.find((c) => c.id === Number(selectedId)),
@@ -80,7 +60,7 @@ export default function PlatformFieldOnboard() {
     if (!id) return;
     const { data } = await clinicalApi.listStaff(Number(id));
     setStaff(Array.isArray(data) ? data : []);
-    setCreds(loadCreds(id));
+    setCreds(loadSessionCreds(id));
   }, []);
 
   useEffect(() => {
@@ -99,7 +79,7 @@ export default function PlatformFieldOnboard() {
     e.preventDefault();
     if (!selectedId) return;
     setError('');
-    const password = form.password || genPassword();
+    const password = form.password || genStaffPassword('Aasma');
     try {
       const { data } = await clinicalApi.createStaff({
         email: form.email.trim(),
@@ -107,11 +87,10 @@ export default function PlatformFieldOnboard() {
         role: form.role,
         clinic_id: Number(selectedId),
       });
-      const entry = { email: data.email, role: data.role, password, createdAt: Date.now() };
-      saveCred(selectedId, data.id, entry);
-      setCreds((prev) => ({ ...prev, [data.id]: entry }));
+      saveSessionCred(selectedId, data.id, password);
+      setCreds(loadSessionCreds(selectedId));
       setMessage(`Compte créé : ${data.email} — mot de passe : ${password}`);
-      setForm({ email: '', password: genPassword(), role: form.role });
+      setForm({ email: '', password: '', role: form.role });
       loadStaff(selectedId);
     } catch (err) {
       setError(formatApiError(err, 'Création impossible'));
@@ -169,6 +148,9 @@ export default function PlatformFieldOnboard() {
                     type="email"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    onFocus={() => {
+                      if (!form.password) setForm((f) => ({ ...f, password: genStaffPassword('Aasma') }));
+                    }}
                     required
                     placeholder="nom@email.com"
                   />
@@ -211,7 +193,7 @@ export default function PlatformFieldOnboard() {
                   <tr key={member.id}>
                     <td>{member.email}</td>
                     <td>{ROLE_LABELS[member.role] || member.role}</td>
-                    <td>{creds[member.id]?.password || '— (créé avant cette session)'}</td>
+                    <td>{displaySessionPassword(creds, member.id)}</td>
                     <td>{member.is_active ? 'Actif' : 'Inactif'}</td>
                   </tr>
                 ))}

@@ -1,5 +1,6 @@
 /**
- * Dedicated clinic dashboard — one clinic only, no cross-clinic mixing.
+ * PlatformClinicDetail — per-clinic staff management.
+ * Temp passwords are generated only on explicit create or confirmed reset.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -16,16 +17,16 @@ import {
   resetClinicStaffPassword,
 } from '../../services/platformClinicData.js';
 import { formatApiError } from '../../utils/apiError.js';
+import {
+  displaySessionPassword,
+  genStaffPassword,
+  loadSessionCreds,
+  saveSessionCred,
+} from '../../utils/staffSessionCreds.js';
+import { copyToClipboard } from '../../components/PasswordInput.jsx';
 import ClinicalStatGrid from '../clinical/ClinicalStatGrid.jsx';
 import '../clinical/clinical.css';
 import './PlatformOwner.css';
-
-function genPassword() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-  let s = 'Clinic';
-  for (let i = 0; i < 6; i += 1) s += chars[Math.floor(Math.random() * chars.length)];
-  return `${s}!`;
-}
 
 function formatDate(value) {
   if (!value) return '—';
@@ -51,10 +52,17 @@ export default function PlatformClinicDetail() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ email: '', password: genPassword(), role: 'receptionist' });
+  const [form, setForm] = useState({ email: '', password: '', role: 'receptionist' });
   const [resetTarget, setResetTarget] = useState(null);
+  const [resetStep, setResetStep] = useState('confirm');
   const [resetPassword, setResetPassword] = useState('');
-  const [createdPasswords, setCreatedPasswords] = useState({});
+  const [resetBusy, setResetBusy] = useState(false);
+  const [copyHint, setCopyHint] = useState('');
+  const [sessionCreds, setSessionCreds] = useState(() => loadSessionCreds(numericId));
+
+  useEffect(() => {
+    setSessionCreds(loadSessionCreds(numericId));
+  }, [numericId]);
 
   const loadAll = useCallback(async () => {
     if (!numericId) return;
@@ -82,8 +90,7 @@ export default function PlatformClinicDetail() {
 
   useEffect(() => {
     if (activeModule) {
-      setForm((f) => ({ ...f, role: activeModule.createRole, password: genPassword() }));
-      setShowForm(true);
+      setForm((f) => ({ ...f, role: activeModule.createRole }));
     }
   }, [activeModule]);
 
@@ -107,10 +114,28 @@ export default function PlatformClinicDetail() {
     [detail, staff.length]
   );
 
+  const openCreateForm = () => {
+    setShowForm((open) => {
+      if (open) return false;
+      setForm((f) => ({
+        ...f,
+        password: f.password || genStaffPassword(),
+        role: activeModule?.createRole || f.role,
+      }));
+      return true;
+    });
+  };
+
+  const handleCopyPassword = async (password) => {
+    const ok = await copyToClipboard(password);
+    setCopyHint(ok ? 'Copié !' : 'Copie impossible');
+    setTimeout(() => setCopyHint(''), 2000);
+  };
+
   const createStaff = async (e) => {
     e.preventDefault();
     setError('');
-    const password = form.password || genPassword();
+    const password = form.password || genStaffPassword();
     try {
       const data = await createClinicStaff({
         clinicId: numericId,
@@ -118,9 +143,10 @@ export default function PlatformClinicDetail() {
         password,
         role: form.role,
       });
-      setCreatedPasswords((prev) => ({ ...prev, [data.id]: password }));
+      saveSessionCred(numericId, data.id, password);
+      setSessionCreds(loadSessionCreds(numericId));
       setMessage(`Compte créé : ${data.email} — mot de passe : ${password}`);
-      setForm({ email: '', password: genPassword(), role: activeModule?.createRole || form.role });
+      setForm({ email: '', password: '', role: activeModule?.createRole || form.role });
       setShowForm(false);
       loadAll();
     } catch (err) {
@@ -144,22 +170,41 @@ export default function PlatformClinicDetail() {
     }
   };
 
-  const submitReset = async (e) => {
-    e.preventDefault();
-    if (!resetTarget) return;
+  const openResetDialog = (member) => {
+    setResetTarget(member);
+    setResetStep('confirm');
+    setResetPassword('');
+    setResetBusy(false);
+  };
+
+  const closeResetDialog = () => {
+    setResetTarget(null);
+    setResetStep('confirm');
+    setResetPassword('');
+    setResetBusy(false);
+  };
+
+  const confirmReset = async () => {
+    if (!resetTarget || resetBusy) return;
     setError('');
+    setResetBusy(true);
+    const password = genStaffPassword();
     try {
       await resetClinicStaffPassword({
         clinicId: numericId,
         userId: resetTarget.id,
-        newPassword: resetPassword,
+        newPassword: password,
       });
-      setCreatedPasswords((prev) => ({ ...prev, [resetTarget.id]: resetPassword }));
+      saveSessionCred(numericId, resetTarget.id, password);
+      setSessionCreds(loadSessionCreds(numericId));
+      setResetPassword(password);
+      setResetStep('done');
       setMessage(`Mot de passe réinitialisé pour ${resetTarget.email}`);
-      setResetTarget(null);
-      setResetPassword('');
     } catch (err) {
       setError(formatApiError(err, 'Réinitialisation impossible'));
+      closeResetDialog();
+    } finally {
+      setResetBusy(false);
     }
   };
 
@@ -261,7 +306,7 @@ export default function PlatformClinicDetail() {
             {activeModule ? `${activeModule.label} — personnel` : 'Tout le personnel'}
             {' '}({visibleStaff.length})
           </h2>
-          <button type="button" className="clinical-btn" onClick={() => setShowForm((v) => !v)}>
+          <button type="button" className="clinical-btn" onClick={openCreateForm}>
             {showForm ? 'Annuler' : `+ Créer ${ROLE_LABELS[activeModule?.createRole || 'receptionist'] || 'compte'}`}
           </button>
         </div>
@@ -327,7 +372,7 @@ export default function PlatformClinicDetail() {
                 <tr key={member.id} className={!member.is_active ? 'platform-row-inactive' : ''}>
                   <td>{member.email}</td>
                   <td><span className="clinical-badge">{ROLE_LABELS[member.role] || member.role}</span></td>
-                  <td>{createdPasswords[member.id] || '—'}</td>
+                  <td>{displaySessionPassword(sessionCreds, member.id)}</td>
                   <td>{member.is_active ? 'Actif' : 'Inactif'}</td>
                   <td className="platform-actions-cell">
                     <button type="button" className="platform-action-btn" onClick={() => toggleStatus(member)}>
@@ -336,10 +381,7 @@ export default function PlatformClinicDetail() {
                     <button
                       type="button"
                       className="platform-action-btn"
-                      onClick={() => {
-                        setResetTarget(member);
-                        setResetPassword(genPassword());
-                      }}
+                      onClick={() => openResetDialog(member)}
                     >
                       Réinitialiser MDP
                     </button>
@@ -353,26 +395,54 @@ export default function PlatformClinicDetail() {
 
       {resetTarget && (
         <div className="platform-modal-backdrop" role="dialog" aria-modal="true">
-          <form className="clinical-card platform-modal" onSubmit={submitReset}>
-            <h2>Réinitialiser le mot de passe</h2>
-            <p className="clinical-lead">{resetTarget.email}</p>
-            <div className="clinical-field">
-              <label>Nouveau mot de passe</label>
-              <input
-                type="text"
-                value={resetPassword}
-                onChange={(e) => setResetPassword(e.target.value)}
-                required
-                minLength={8}
-              />
-            </div>
-            <div className="platform-modal-actions">
-              <button type="button" className="clinical-btn clinical-btn--ghost" onClick={() => setResetTarget(null)}>
-                Annuler
-              </button>
-              <button type="submit" className="clinical-btn">Confirmer</button>
-            </div>
-          </form>
+          <div className="clinical-card platform-modal">
+            {resetStep === 'confirm' ? (
+              <>
+                <h2>Réinitialiser le mot de passe ?</h2>
+                <p className="clinical-lead">
+                  Un nouveau mot de passe temporaire sera généré pour <strong>{resetTarget.email}</strong>.
+                  L&apos;utilisateur devra le changer à la première connexion.
+                </p>
+                <div className="platform-modal-actions">
+                  <button type="button" className="clinical-btn clinical-btn--ghost" onClick={closeResetDialog}>
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    className="clinical-btn"
+                    onClick={confirmReset}
+                    disabled={resetBusy}
+                  >
+                    {resetBusy ? 'Génération…' : 'Confirmer la réinitialisation'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2>Mot de passe réinitialisé</h2>
+                <p className="clinical-lead">{resetTarget.email}</p>
+                <div className="clinical-field">
+                  <label>Nouveau mot de passe temporaire (affiché une seule fois)</label>
+                  <div className="password-copy-row">
+                    <input type="text" value={resetPassword} readOnly />
+                    <button
+                      type="button"
+                      className="password-copy-btn"
+                      onClick={() => handleCopyPassword(resetPassword)}
+                    >
+                      Copier
+                    </button>
+                  </div>
+                  {copyHint && <p className="clinical-lead">{copyHint}</p>}
+                </div>
+                <div className="platform-modal-actions">
+                  <button type="button" className="clinical-btn" onClick={closeResetDialog}>
+                    Fermer
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

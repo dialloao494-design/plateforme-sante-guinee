@@ -14,7 +14,7 @@ const TEST_NAME_KEYWORDS = [
   'test clinic',
 ];
 
-const TEST_EMAIL_SUFFIXES = ['@sante-gn.test', '@pilot.local', '@clinic.test', '@aasma-clinic.gn'];
+const TEST_EMAIL_SUFFIXES = ['@sante-gn.test', '@pilot.local', '@clinic.test', '@aasma-clinic.gn', '@field.local'];
 
 function clinicFamilyKey(name) {
   const n = String(name || '').toLowerCase();
@@ -25,7 +25,10 @@ function clinicFamilyKey(name) {
 
 export function isTestStaffEmail(email) {
   const e = String(email || '').toLowerCase();
-  return TEST_EMAIL_SUFFIXES.some((s) => e.endsWith(s)) || /field\.(verify|probe)/.test(e);
+  if (TEST_EMAIL_SUFFIXES.some((s) => e.endsWith(s))) return true;
+  if (/field\.(verify|probe)/.test(e)) return true;
+  if (/pwtest|\.probe\./.test(e)) return true;
+  return false;
 }
 
 export function isProductionClinic(clinic) {

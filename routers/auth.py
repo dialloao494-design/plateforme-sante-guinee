@@ -168,6 +168,7 @@ def create_token_response(user: User):
         "user_role": canonical_role,
         "role": canonical_role,
         "email": user.email,
+        "must_change_password": bool(getattr(user, "must_change_password", False)),
     }
 
 
@@ -308,6 +309,7 @@ def build_user_response(db: Session, user: User) -> dict:
         "clinic_id": clinic_id,
         "clinic_name": clinic_name,
         "email_verified": bool(getattr(user, "email_verified_at", None)),
+        "must_change_password": bool(getattr(user, "must_change_password", False)),
     }
 
 
@@ -342,6 +344,8 @@ def change_password(
             detail="Mot de passe actuel incorrect",
         )
     current_user.hashed_password = hash_password(body.new_password)
+    if hasattr(current_user, "must_change_password"):
+        current_user.must_change_password = False
     db.add(current_user)
     db.commit()
     logger.info("Password changed for user id=%s", current_user.id)

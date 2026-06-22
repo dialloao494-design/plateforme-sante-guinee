@@ -26,6 +26,7 @@ class User(Base):
     role = Column(String, nullable=False)
     clinic_id = Column(Integer, nullable=True, index=True)  # staff home clinic
     is_active = Column(Boolean, nullable=False, default=True)
+    must_change_password = Column(Boolean, nullable=False, default=False)
     email_verified_at = Column(DateTime, nullable=True)
 
     patient_profile = relationship("Patient", back_populates="user", uselist=False)

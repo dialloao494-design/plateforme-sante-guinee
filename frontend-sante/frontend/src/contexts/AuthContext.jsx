@@ -51,9 +51,7 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   const clearPasswordResetFlags = () => {
-    localStorage.removeItem('must_change_password');
     localStorage.removeItem('password_reset_required');
-    localStorage.removeItem('force_password_change');
   };
 
   const toUserFriendlyLoginMessage = (err) => {
@@ -121,8 +119,6 @@ export const AuthProvider = ({ children }) => {
   }, [normalizeAndStoreUser]);
 
   useEffect(() => {
-    clearPasswordResetFlags();
-
     const storedToken = localStorage.getItem('token') || localStorage.getItem('access_token');
     if (!storedToken) {
       devLog('[AUTH] No token in localStorage on app load');
@@ -215,7 +211,13 @@ export const AuthProvider = ({ children }) => {
       const normalizedUser = await applyLoginToken(loginPayload);
       const home = normalizedUser?.role;
       authDebug('login: complete', { role: normalizedUser?.role, clinic_id: normalizedUser?.clinic_id });
-      return { success: true, role: normalizedUser?.role, clinic_id: normalizedUser?.clinic_id, home };
+      return {
+        success: true,
+        role: normalizedUser?.role,
+        clinic_id: normalizedUser?.clinic_id,
+        home: normalizedUser?.role,
+        must_change_password: Boolean(normalizedUser?.must_change_password),
+      };
     } catch (err) {
       authDebug('login: failed', err?.response?.status, err?.message);
       clearClientAuth();
@@ -233,7 +235,9 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     try {
       await authAPI.changePassword(currentPassword, newPassword);
-      return { success: true };
+      invalidateCache('/auth/me');
+      const updated = await refreshUser();
+      return { success: true, user: updated };
     } catch (err) {
       const message =
         err?.response?.data?.detail ||

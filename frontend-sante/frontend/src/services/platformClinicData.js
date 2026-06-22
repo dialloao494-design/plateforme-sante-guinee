@@ -101,7 +101,19 @@ export async function loadClinicDirectory({ category = 'production', search = ''
       category,
       search: search.trim() || undefined,
     });
-    return Array.isArray(data) ? data : [];
+    let rows = Array.isArray(data) ? data : [];
+    if (category === 'production') {
+      rows = filterProductionClinics(rows);
+    }
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (c) =>
+        String(c.name || '').toLowerCase().includes(q)
+        || String(c.id) === q
+        || String(c.city || '').toLowerCase().includes(q)
+        || String(c.admin_email || '').toLowerCase().includes(q)
+    );
   } catch {
     const { data } = await clinicalApi.listClinics({ forceRefresh: true });
     let rows = filterProductionClinics(data || []);

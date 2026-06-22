@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { getRoleHomePath } from '../utils/rolePaths.js';
 import { platformSetupAPI } from '../services/api.js';
+import PasswordInput from '../components/PasswordInput.jsx';
 import './Login.css';
 
 const PILOT_DEMO_ACCOUNTS = import.meta.env.DEV
@@ -25,7 +26,9 @@ const Login = () => {
 
   useEffect(() => {
     if (!authLoading && user) {
-      const target = getRoleHomePath(user.role, user.clinic_id);
+      const target = user.must_change_password
+        ? '/account/password'
+        : getRoleHomePath(user.role, user.clinic_id);
       console.info('[AUTH-DEBUG] Login redirect (session user)', { role: user.role, target });
       navigate(target, { replace: true });
       return;
@@ -63,7 +66,9 @@ const Login = () => {
     try {
       const result = await login(email, password);
       if (result.success) {
-        const target = getRoleHomePath(result.role, result.clinic_id);
+        const target = result.must_change_password
+          ? '/account/password'
+          : getRoleHomePath(result.role, result.clinic_id);
         console.info('[AUTH-DEBUG] Login redirect (submit)', { role: result.role, target });
         navigate(target, { replace: true });
       } else {
@@ -111,19 +116,15 @@ const Login = () => {
             />
           </div>
 
-          <div className="login-field">
-            <label htmlFor="password">Mot de passe</label>
-            <input
-              id="password"
-              type="password"
-              placeholder="Mot de passe"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-              required
-              autoComplete="current-password"
-            />
-          </div>
+          <PasswordInput
+            id="password"
+            label="Mot de passe"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Mot de passe"
+            autoComplete="current-password"
+            disabled={loading}
+          />
           <p className="login-forgot">
             <Link to="/forgot-password">Mot de passe oublié ?</Link>
           </p>

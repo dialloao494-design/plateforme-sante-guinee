@@ -44,6 +44,11 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   }
 
   const role = user?.role || user?.user_role;
+
+  if (user?.must_change_password && location.pathname !== '/account/password') {
+    return <Navigate to="/account/password" replace state={{ forcedPasswordChange: true }} />;
+  }
+
   if (allowedRoles.length > 0 && !userHasRole(role, allowedRoles)) {
     return <Navigate to={getRoleHomePath(role, user.clinic_id)} replace />;
   }
