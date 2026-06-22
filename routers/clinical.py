@@ -70,6 +70,7 @@ from services.clinical_audit_service import ClinicalAuditService
 from services.clinic_operations_service import clinic_operations_summary
 from services.clinic_billing_service import ClinicBillingService
 from services.clinical_workflow_service import ClinicalWorkflowService
+from services.lab_clinical_service import LabClinicalService
 from services.medical_history_service import MedicalHistoryService
 from schemas import medical_history as mh_schemas
 from services.cis_audit import log_cis_denied
@@ -766,25 +767,7 @@ def lab_queue(
     assert_role(current_user, LAB_QUEUE_ROLES)
     clinic = resolve_clinic_for_user(db, current_user)
     orders = ClinicalWorkflowService.lab_queue(db, clinic_id=clinic.id)
-    out = []
-    for order in orders:
-        db.refresh(order, ["patient"])
-        out.append(
-            LabOrderResponse(
-                id=order.id,
-                clinic_id=order.clinic_id,
-                consultation_id=order.consultation_id,
-                patient_id=order.patient_id,
-                test_code=order.test_code,
-                test_name=order.test_name,
-                priority=order.priority,
-                status=order.status,
-                patient_name=f"{order.patient.first_name} {order.patient.last_name}"
-                if order.patient
-                else None,
-            )
-        )
-    return out
+    return [LabOrderResponse(**LabClinicalService.serialize_order(db, order)) for order in orders]
 
 
 @router.patch("/lab/orders/{order_id}", response_model=LabOrderResponse)
@@ -806,17 +789,7 @@ def update_lab_order(
         client_ip=client_ip(request),
     )
     db.refresh(order, ["patient"])
-    return LabOrderResponse(
-        id=order.id,
-        clinic_id=order.clinic_id,
-        consultation_id=order.consultation_id,
-        patient_id=order.patient_id,
-        test_code=order.test_code,
-        test_name=order.test_name,
-        priority=order.priority,
-        status=order.status,
-        patient_name=f"{order.patient.first_name} {order.patient.last_name}" if order.patient else None,
-    )
+    return LabOrderResponse(**LabClinicalService.serialize_order(db, order))
 
 
 @router.post("/lab/orders/{order_id}/results", response_model=LabResultResponse, status_code=201)

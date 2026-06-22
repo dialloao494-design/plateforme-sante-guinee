@@ -66,22 +66,37 @@ export default function PharmacyDashboard() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [pharmacyStats, setPharmacyStats] = useState(null);
+  const [doctorDeliveries, setDoctorDeliveries] = useState([]);
+  const [doctorForm, setDoctorForm] = useState({
+    patient_name: '',
+    medicine_name: '',
+    quantity: 1,
+    doctor_name: '',
+    reason: '',
+  });
+  const [pharmacyReport, setPharmacyReport] = useState(null);
+  const [reportMonth, setReportMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   const load = useCallback(async () => {
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const [ordersRes, todayRes, stockRes, revRes, dashRes] = await Promise.all([
+      const [ordersRes, todayRes, stockRes, revRes, dashRes, doctorRes] = await Promise.all([
         clinicalApi.pharmacyQueue({ scope: 'all' }),
         clinicalApi.pharmacyQueue({ scope: 'dispensed_today' }),
         clinicalApi.pharmacyInventory(),
         clinicalApi.dailyRevenue(today).catch(() => ({ data: null })),
         clinicalApi.pharmacyDashboardStats().catch(() => ({ data: null })),
+        clinicalApi.doctorMedicineDeliveries().catch(() => ({ data: [] })),
       ]);
       setOrders(ordersRes.data || []);
       setDispensedToday(todayRes.data || []);
       setStock(stockRes.data || []);
       setRevenue(revRes.data || null);
       setPharmacyStats(dashRes.data || null);
+      setDoctorDeliveries(doctorRes.data || []);
       setError('');
     } catch (err) {
       setError(err?.response?.data?.detail || 'Chargement pharmacie impossible');
@@ -91,6 +106,33 @@ export default function PharmacyDashboard() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (tab !== 'report') return;
+    const [year, month] = reportMonth.split('-').map(Number);
+    clinicalApi.pharmacyMonthlyReport(year, month)
+      .then(({ data }) => setPharmacyReport(data))
+      .catch((err) => setError(err?.response?.data?.detail || 'Rapport indisponible'));
+  }, [tab, reportMonth]);
+
+  const saveDoctorDelivery = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await clinicalApi.createDoctorMedicineDelivery({
+        ...doctorForm,
+        quantity: Number(doctorForm.quantity),
+      });
+      setMessage('Livraison cabinet médecin enregistrée (hors stock pharmacie)');
+      setDoctorForm({ patient_name: '', medicine_name: '', quantity: 1, doctor_name: '', reason: '' });
+      await load();
+    } catch (err) {
+      setError(err?.response?.data?.detail || 'Enregistrement impossible');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const alerts = useMemo(() => computeStockAlerts(stock), [stock]);
   const stockValue = useMemo(() => totalStockValue(stock), [stock]);
@@ -236,7 +278,7 @@ export default function PharmacyDashboard() {
       <header className="pharmacy-header">
         <div>
           <h1>Poste pharmacie</h1>
-          <p className="clinical-lead">Ordonnances, stock, alertes et traçabilité — Clinique Alpha Conakry</p>
+          <p className="clinical-lead">Ordonnances, stock, alertes et traçabilité — stock pharmacie et livraisons cabinet médecin.</p>
         </div>
         <div className="pharmacy-header-actions">
           <button type="button" className="pharmacy-btn pharmacy-btn--secondary" onClick={load} disabled={busy}>
@@ -264,6 +306,8 @@ export default function PharmacyDashboard() {
           ['stock', 'Stock'],
           ['alerts', 'Alertes'],
           ['history', 'Mouvements'],
+          ['doctor', 'Stock médecin'],
+          ['report', 'Rapport mensuel'],
         ].map(([key, label]) => (
           <button
             key={key}
@@ -529,6 +573,102 @@ export default function PharmacyDashboard() {
               </tbody>
             </table>
           </div>
+        </section>
+      )}
+
+      {tab === 'doctor' && (
+        <>
+          <section className="pharmacy-panel">
+            <h2>Livraison depuis le stock médecin</h2>
+            <p className="clinical-stat-hint">Ces médicaments sont délivrés depuis le cabinet médical — ils ne sont pas déduits du stock pharmacie.</p>
+            <form onSubmit={saveDoctorDelivery}>
+              <div className="pharmacy-form-grid">
+                <label>
+                  Patient
+                  <input required value={doctorForm.patient_name} onChange={(e) => setDoctorForm({ ...doctorForm, patient_name: e.target.value })} />
+                </label>
+                <label>
+                  Médicament
+                  <input required value={doctorForm.medicine_name} onChange={(e) => setDoctorForm({ ...doctorForm, medicine_name: e.target.value })} />
+                </label>
+                <label>
+                  Quantité
+                  <input type="number" min={1} required value={doctorForm.quantity} onChange={(e) => setDoctorForm({ ...doctorForm, quantity: e.target.value })} />
+                </label>
+                <label>
+                  Médecin
+                  <input required value={doctorForm.doctor_name} onChange={(e) => setDoctorForm({ ...doctorForm, doctor_name: e.target.value })} />
+                </label>
+                <label>
+                  Motif / note
+                  <input value={doctorForm.reason} onChange={(e) => setDoctorForm({ ...doctorForm, reason: e.target.value })} />
+                </label>
+              </div>
+              <button type="submit" className="pharmacy-btn pharmacy-btn--primary" disabled={busy}>
+                Enregistrer — stock médecin
+              </button>
+            </form>
+          </section>
+          <section className="pharmacy-panel">
+            <h2>Historique livraisons cabinet médecin</h2>
+            <div className="pharmacy-table-wrap">
+              <table className="pharmacy-table">
+                <thead>
+                  <tr>
+                    <th>Date / heure</th>
+                    <th>Patient</th>
+                    <th>Médicament</th>
+                    <th>Qté</th>
+                    <th>Médecin</th>
+                    <th>Note</th>
+                    <th>Source</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {doctorDeliveries.length === 0 && (
+                    <tr><td colSpan={7} className="pharmacy-empty">Aucune livraison enregistrée.</td></tr>
+                  )}
+                  {doctorDeliveries.map((row) => (
+                    <tr key={row.id}>
+                      <td>{formatDateTime(row.delivered_at)}</td>
+                      <td>{row.patient_name}</td>
+                      <td>{row.medicine_name}</td>
+                      <td>{row.quantity}</td>
+                      <td>{row.doctor_name}</td>
+                      <td>{row.reason || '—'}</td>
+                      <td><span className="pharmacy-badge pharmacy-badge--warning">Stock médecin</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      )}
+
+      {tab === 'report' && (
+        <section className="pharmacy-panel">
+          <div className="pharmacy-panel-header">
+            <h2>Rapport mensuel pharmacie</h2>
+            <input type="month" value={reportMonth} onChange={(e) => setReportMonth(e.target.value)} />
+          </div>
+          {pharmacyReport && (
+            <>
+              <p>
+                {pharmacyReport.total_orders ?? pharmacyReport.dispensed_count ?? '—'} délivrances ·
+                Recettes {formatGNF(pharmacyReport.total_revenue_gnf || pharmacyReport.revenue_gnf || 0)}
+              </p>
+              <ul className="clinical-list">
+                {(pharmacyReport.register_entries || pharmacyReport.entries || []).slice(0, 50).map((row, idx) => (
+                  <li key={row.id || idx}>
+                    <strong>{row.patient_name || row.patient?.first_name}</strong>
+                    {' — '}{row.medications || row.medicine_name || '—'}
+                    {row.amount_gnf != null && <> · {formatGNF(row.amount_gnf)}</>}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </section>
       )}
 

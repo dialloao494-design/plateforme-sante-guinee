@@ -72,6 +72,10 @@ class PatientIntakeCreate(BaseModel):
     address: Optional[str] = None
     date_of_birth: Optional[date] = None
     emergency_contact: Optional[str] = None
+    mother_name: str = Field(..., min_length=1, max_length=255)
+    profession: Optional[str] = None
+    quartier: Optional[str] = None
+    visit_destination: str = Field(..., min_length=1, max_length=255)
 
 
 class PatientIntakeResponse(BaseModel):
@@ -83,6 +87,10 @@ class PatientIntakeResponse(BaseModel):
     phone: Optional[str]
     address: Optional[str] = None
     emergency_contact: Optional[str] = None
+    mother_name: Optional[str] = None
+    profession: Optional[str] = None
+    quartier: Optional[str] = None
+    visit_destination: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -189,6 +197,19 @@ class LabOrderResponse(BaseModel):
     priority: str
     status: str
     patient_name: Optional[str] = None
+    patient_first_name: Optional[str] = None
+    patient_last_name: Optional[str] = None
+    patient_age: Optional[int] = None
+    patient_gender: Optional[str] = None
+    patient_profession: Optional[str] = None
+    patient_quartier: Optional[str] = None
+    patient_phone: Optional[str] = None
+    price_gnf: Optional[int] = None
+    payment_status: Optional[str] = None
+    result_status: Optional[str] = None
+    validated_at: Optional[datetime] = None
+    technician_name: Optional[str] = None
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -196,6 +217,45 @@ class LabOrderResponse(BaseModel):
 
 class LabOrderStatusUpdate(BaseModel):
     status: str
+
+
+class WalkInLabTestItem(BaseModel):
+    test_code: str
+    test_name: str
+
+
+class WalkInLabRequestCreate(BaseModel):
+    patient_id: int
+    tests: list[WalkInLabTestItem] = Field(..., min_length=1)
+    priority: str = "routine"
+    clinical_notes: Optional[str] = None
+    payment_status: str = "pending"
+
+
+class DoctorMedicineDeliveryCreate(BaseModel):
+    patient_name: str = Field(..., min_length=1, max_length=255)
+    patient_id: Optional[int] = None
+    medicine_name: str = Field(..., min_length=1, max_length=255)
+    quantity: int = Field(..., ge=1)
+    doctor_name: str = Field(..., min_length=1, max_length=255)
+    reason: Optional[str] = None
+    delivered_at: Optional[datetime] = None
+
+
+class DoctorMedicineDeliveryResponse(BaseModel):
+    id: int
+    clinic_id: int
+    patient_id: Optional[int] = None
+    patient_name: str
+    medicine_name: str
+    quantity: int
+    doctor_name: str
+    reason: Optional[str] = None
+    source: str
+    delivered_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 class LabResultCreate(BaseModel):

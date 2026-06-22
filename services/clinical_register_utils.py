@@ -32,7 +32,10 @@ def patient_snapshot(patient: models.Patient, on_date: date | None = None) -> di
         "gender": patient.gender,
         "date_of_birth": dob.isoformat() if dob else None,
         "age_display": age_display,
-        "mother_or_guardian": patient.emergency_contact,
+        "mother_or_guardian": getattr(patient, "mother_name", None) or patient.emergency_contact,
+        "profession": getattr(patient, "profession", None),
+        "quartier": getattr(patient, "quartier", None),
+        "visit_destination": getattr(patient, "visit_destination", None),
         "address": patient.address,
         "phone": patient.phone,
     }

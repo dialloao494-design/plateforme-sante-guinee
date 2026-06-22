@@ -111,10 +111,17 @@ def browser_proof() -> list[tuple[str, bool, str, str]]:
                 url = page.url
                 on_dashboard = acc["dashboard"] in url
                 not_change_pw = "/account/password" not in url
-                ok = on_dashboard and not_change_pw
+                nav_text = page.locator("nav, aside, .sidebar").first.inner_text(timeout=5000) if page.locator("nav, aside, .sidebar").count() else ""
+                no_pev_nutrition = True
+                if acc["role"] == "Admin clinique":
+                    lower = nav_text.lower()
+                    no_pev_nutrition = "pev" not in lower and "vaccination" not in lower and "nutrition" not in lower
+                ok = on_dashboard and not_change_pw and no_pev_nutrition
                 shot = OUT / f"{slug}.png"
                 page.screenshot(path=str(shot), full_page=True)
                 detail = url if ok else f"expected {acc['dashboard']}, got {url}"
+                if not no_pev_nutrition:
+                    detail = "PEV/Nutrition visible in nav"
                 proofs.append((acc["role"], ok, detail, str(shot.name)))
             except Exception as exc:
                 proofs.append((acc["role"], False, str(exc)[:120], ""))

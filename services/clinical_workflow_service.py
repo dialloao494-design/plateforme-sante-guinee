@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 import models
 from models.user import User
@@ -90,7 +90,11 @@ class ClinicalWorkflowService:
             phone=payload.phone,
             address=payload.address,
             date_of_birth=payload.date_of_birth,
-            emergency_contact=payload.emergency_contact,
+            emergency_contact=payload.emergency_contact or payload.mother_name,
+            mother_name=payload.mother_name.strip(),
+            profession=(payload.profession or "").strip() or None,
+            quartier=(payload.quartier or "").strip() or None,
+            visit_destination=payload.visit_destination.strip(),
         )
         db.add(patient)
         db.commit()
@@ -465,6 +469,7 @@ class ClinicalWorkflowService:
     def lab_queue(db: Session, *, clinic_id: int) -> list[models.LabOrder]:
         return (
             db.query(models.LabOrder)
+            .options(joinedload(models.LabOrder.patient))
             .filter(
                 models.LabOrder.clinic_id == clinic_id,
                 models.LabOrder.status.in_(("ordered", "sample_collected", "in_analysis")),

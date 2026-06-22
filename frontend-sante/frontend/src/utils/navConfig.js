@@ -1,6 +1,7 @@
 /** Navigation — each role sees only its own workflow. */
 
 import { isClinicOptionalRole } from './clinicAccess.js';
+import { filterNavItemsForClinic } from './clinicModuleConfig.js';
 
 export const PATIENT_NAV_ITEMS = [
   { path: '/dashboard', label: 'Tableau de bord', icon: 'dash' },
@@ -119,7 +120,8 @@ export function getNavItemsForRole(role, clinicId = null) {
   if (r === 'doctor' && clinicId == null) {
     return DOCTOR_STANDALONE_NAV;
   }
-  return filterNavByClinic(ROLE_NAV[r] || [], clinicId, r);
+  const items = filterNavByClinic(ROLE_NAV[r] || [], clinicId, r);
+  return filterNavItemsForClinic(items, clinicId);
 }
 
 export function getNavSectionTitle(role) {

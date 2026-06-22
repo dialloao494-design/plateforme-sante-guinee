@@ -246,6 +246,7 @@ const clinicalApi = {
     httpClient.get('/clinical/hospitalization/reports/monthly', { params: { year, month } }),
   labDashboardStats: () => httpClient.get('/clinical/lab/dashboard'),
   labCatalog: () => httpClient.get('/clinical/lab/catalog'),
+  createWalkInLabOrders: (data) => httpClient.post('/clinical/lab/walk-in-orders', data),
   labMonthlyReport: (year, month) =>
     httpClient.get('/clinical/lab/reports/monthly', { params: { year, month } }),
   labValidatedResults: (limit = 100) =>
@@ -253,6 +254,8 @@ const clinicalApi = {
   pharmacyDashboardStats: () => httpClient.get('/clinical/pharmacy/dashboard'),
   pharmacyMonthlyReport: (year, month) =>
     httpClient.get('/clinical/pharmacy/reports/monthly', { params: { year, month } }),
+  doctorMedicineDeliveries: () => httpClient.get('/clinical/pharmacy/doctor-deliveries'),
+  createDoctorMedicineDelivery: (data) => httpClient.post('/clinical/pharmacy/doctor-deliveries', data),
 };
 
 export default clinicalApi;

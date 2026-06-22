@@ -1,8 +1,8 @@
-"""Laboratory Phase 2 endpoints — catalog, dashboard, register."""
+"""Laboratory Phase 2 endpoints — catalog, dashboard, walk-in requests, register."""
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -10,12 +10,14 @@ from sqlalchemy.orm import Session
 from core.clinical_access import resolve_clinic_for_user
 from database import get_db
 from models.user import User
+from schemas.clinical import LabOrderResponse, WalkInLabRequestCreate
 from security import get_current_user
 from services.lab_clinical_service import LabClinicalService
 
 router = APIRouter(prefix="/clinical/lab", tags=["Laboratory Phase 2"])
 
 LAB_READ = ("lab_technician", "doctor", "clinic_admin", "admin", "receptionist", "platform_admin", "platform_owner")
+LAB_WRITE = ("lab_technician", "clinic_admin", "admin", "receptionist")
 
 
 def _require_role(user: User, allowed: tuple[str, ...]) -> None:
@@ -24,9 +26,24 @@ def _require_role(user: User, allowed: tuple[str, ...]) -> None:
 
 
 @router.get("/catalog")
-def lab_catalog(current_user: User = Depends(get_current_user)):
+def lab_catalog(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     _require_role(current_user, LAB_READ)
-    return {"tests": LabClinicalService.test_catalog()}
+    clinic = resolve_clinic_for_user(db, current_user)
+    return {"tests": LabClinicalService.test_catalog(clinic_id=clinic.id)}
+
+
+@router.post("/walk-in-orders", response_model=List[LabOrderResponse], status_code=201)
+def create_walk_in_lab_orders(
+    body: WalkInLabRequestCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, LAB_WRITE)
+    clinic = resolve_clinic_for_user(db, current_user)
+    orders = LabClinicalService.create_walk_in_orders(
+        db, clinic_id=clinic.id, payload=body, actor=current_user
+    )
+    return [LabOrderResponse(**LabClinicalService.serialize_order(db, o)) for o in orders]
 
 
 @router.get("/dashboard")
@@ -66,6 +83,7 @@ def lab_validated_results(
     for res in rows:
         order = res.lab_order
         patient = order.patient if order else None
+        charge = LabClinicalService._charge_for_order(db, order) if order else None
         out.append(
             {
                 "id": res.id,
@@ -74,9 +92,12 @@ def lab_validated_results(
                 "test_code": order.test_code if order else None,
                 "patient_id": order.patient_id if order else None,
                 "patient_name": f"{patient.first_name} {patient.last_name}" if patient else None,
+                "price_gnf": charge.amount_gnf if charge else None,
+                "payment_status": charge.payment_status if charge else None,
                 "result_summary": res.result_summary,
                 "status": res.status,
                 "validated_at": res.validated_at.isoformat() if res.validated_at else None,
+                "technician_name": LabClinicalService._technician_name(db, res),
             }
         )
     return out

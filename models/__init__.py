@@ -39,5 +39,6 @@ from .nursing_care import NursingProcedure
 from .password_reset_token import PasswordResetToken
 from .email_verification_token import EmailVerificationToken
 from .visit_workflow import PatientVisitWorkflow, PatientVisitWorkflowStep
+from .doctor_medicine_delivery import DoctorMedicineDelivery
 
 from . import user_hooks as _user_hooks  # noqa: F401

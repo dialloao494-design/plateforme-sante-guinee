@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
+import { useAuth } from '../../contexts/AuthContext.jsx';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
+import { getVisitWorkflowOptions, clinicHasExtendedModules } from '../../utils/clinicModuleConfig.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
 import './clinical.css';
@@ -19,6 +21,9 @@ function chargeTypeLabel(type) {
 }
 
 export default function ReceptionDashboard() {
+  const { user } = useAuth();
+  const clinicId = user?.clinic_id;
+  const visitOptions = useMemo(() => getVisitWorkflowOptions(clinicId), [clinicId]);
   const [queue, setQueue] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [pendingCharges, setPendingCharges] = useState([]);
@@ -34,7 +39,10 @@ export default function ReceptionDashboard() {
     gender: 'other',
     phone: '',
     address: '',
-    emergency_contact: '',
+    quartier: '',
+    profession: '',
+    mother_name: '',
+    visit_destination: '',
     date_of_birth: '',
   });
   const [apptForm, setApptForm] = useState({
@@ -79,7 +87,8 @@ export default function ReceptionDashboard() {
         ...patientForm,
         date_of_birth: patientForm.date_of_birth || undefined,
         address: patientForm.address || undefined,
-        emergency_contact: patientForm.emergency_contact || undefined,
+        quartier: patientForm.quartier || undefined,
+        profession: patientForm.profession || undefined,
       });
       setMessage(`Patient enregistré : ${data.first_name} ${data.last_name} (#${data.id})`);
       setApptForm((prev) => ({ ...prev, patient_id: String(data.id) }));
@@ -91,7 +100,10 @@ export default function ReceptionDashboard() {
         gender: 'other',
         phone: '',
         address: '',
-        emergency_contact: '',
+        quartier: '',
+        profession: '',
+        mother_name: '',
+        visit_destination: '',
         date_of_birth: '',
       });
       load();
@@ -216,7 +228,9 @@ export default function ReceptionDashboard() {
         <section id="reception-visit" className="clinical-card">
           <h2>Démarrer une visite</h2>
           <p className="clinical-stat-hint">
-            Enfant (&lt;18 ans) : Réception → Nutrition → PEV → Médecin. Adulte : choisissez le parcours.
+            {clinicHasExtendedModules(clinicId)
+              ? 'Enfant (<18 ans) : Réception → Nutrition → PEV → Médecin. Adulte : choisissez le parcours.'
+              : 'Adulte : consultation, laboratoire ou pharmacie. Sélectionnez le service de destination.'}
           </p>
           <form onSubmit={startVisit}>
             <div className="clinical-field">
@@ -234,11 +248,9 @@ export default function ReceptionDashboard() {
                 value={visitForm.workflow_type}
                 onChange={(e) => setVisitForm({ ...visitForm, workflow_type: e.target.value })}
               >
-                <option value="">Auto (enfant si &lt;18 ans)</option>
-                <option value="child">Enfant — Nutrition + PEV + Médecin</option>
-                <option value="adult_doctor">Adulte — Médecin</option>
-                <option value="adult_lab">Adulte — Laboratoire</option>
-                <option value="adult_midwife">Adulte — Sage-femme</option>
+                {visitOptions.map((opt) => (
+                  <option key={opt.value || 'auto'} value={opt.value}>{opt.label}</option>
+                ))}
               </select>
             </div>
             <button type="submit" className="clinical-btn">Démarrer la visite</button>
@@ -270,19 +282,41 @@ export default function ReceptionDashboard() {
             </div>
             <div className="clinical-field">
               <label>Téléphone</label>
-              <input value={patientForm.phone} onChange={(e) => setPatientForm({ ...patientForm, phone: e.target.value })} />
+              <input value={patientForm.phone} onChange={(e) => setPatientForm({ ...patientForm, phone: e.target.value })} required />
             </div>
             <div className="clinical-field">
               <label>Date de naissance</label>
               <input type="date" value={patientForm.date_of_birth} onChange={(e) => setPatientForm({ ...patientForm, date_of_birth: e.target.value })} />
             </div>
             <div className="clinical-field">
-              <label>Adresse</label>
+              <label>Quartier / résidence</label>
+              <input value={patientForm.quartier} onChange={(e) => setPatientForm({ ...patientForm, quartier: e.target.value })} required />
+            </div>
+            <div className="clinical-field">
+              <label>Adresse complète</label>
               <input value={patientForm.address} onChange={(e) => setPatientForm({ ...patientForm, address: e.target.value })} />
             </div>
             <div className="clinical-field">
-              <label>Contact d&apos;urgence</label>
-              <input value={patientForm.emergency_contact} onChange={(e) => setPatientForm({ ...patientForm, emergency_contact: e.target.value })} />
+              <label>Profession</label>
+              <input value={patientForm.profession} onChange={(e) => setPatientForm({ ...patientForm, profession: e.target.value })} required />
+            </div>
+            <div className="clinical-field">
+              <label>Nom de la mère</label>
+              <input value={patientForm.mother_name} onChange={(e) => setPatientForm({ ...patientForm, mother_name: e.target.value })} required />
+            </div>
+            <div className="clinical-field">
+              <label>Motif de visite / service</label>
+              <select
+                value={patientForm.visit_destination}
+                onChange={(e) => setPatientForm({ ...patientForm, visit_destination: e.target.value })}
+                required
+              >
+                <option value="">Choisir le service</option>
+                <option value="Consultation médicale">Consultation médicale</option>
+                <option value="Laboratoire">Laboratoire</option>
+                <option value="Pharmacie">Pharmacie</option>
+                <option value="Autre">Autre</option>
+              </select>
             </div>
             <button type="submit" className="clinical-btn">Enregistrer</button>
           </form>
