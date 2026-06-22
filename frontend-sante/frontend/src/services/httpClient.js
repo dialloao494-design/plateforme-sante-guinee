@@ -179,6 +179,7 @@ const redirectToLogin = () => {
 const httpClient = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: false,
+  timeout: 25_000,
 });
 
 const syncAuthHeader = () => {
@@ -245,6 +246,12 @@ httpClient.interceptors.response.use(
     const message = error?.response?.data?.detail || error?.message || 'unknown';
 
     const method = String(config?.method || 'get').toLowerCase();
+    const isTimeout = error?.code === 'ECONNABORTED';
+
+    if (isTimeout) {
+      console.error(`[HTTP] Timeout after ${config?.timeout || httpClient.defaults.timeout}ms: ${method.toUpperCase()} ${url}`);
+    }
+
     const retryableGet =
       Boolean(config) &&
       method === 'get' &&

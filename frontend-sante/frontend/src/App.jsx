@@ -1,9 +1,10 @@
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import AppRoutes from './routes/AppRoutes.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import PageLoader from './components/PageLoader.jsx';
 import { useAuth } from './contexts/AuthContext.jsx';
+import { logAuthSessionFailure } from './utils/authSession.js';
 import { ToastContainer } from 'react-toastify';
 import { getShellContext } from './utils/appShellMeta.js';
 import { portalLabel } from './utils/portalAccess.js';
@@ -12,9 +13,10 @@ import './AppLayout.css';
 const PUBLIC_PATHS = new Set(['/', '/login', '/signup']);
 
 function App() {
-  const { authLoading, user } = useAuth();
+  const { authLoading, user, authInitError, retrySessionBootstrap } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sessionTimedOut, setSessionTimedOut] = useState(false);
 
   const showClinicalShell = !(PUBLIC_PATHS.has(location.pathname) && !user);
 
@@ -26,7 +28,37 @@ function App() {
   const role = user?.role || user?.user_role;
   const topbarTitle = user ? portalLabel(role) : 'Plateforme Santé';
 
+  useEffect(() => {
+    if (!authLoading) {
+      setSessionTimedOut(false);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      setSessionTimedOut(true);
+      logAuthSessionFailure('app_session_timeout', new Error('Initial session bootstrap timeout'), {
+        path: location.pathname,
+      });
+    }, 15_000);
+    return () => window.clearTimeout(timer);
+  }, [authLoading, location.pathname]);
+
   if (authLoading) {
+    if (sessionTimedOut || authInitError) {
+      return (
+        <div className="app-loading" role="alert">
+          <div className="login-card login-card--narrow" style={{ margin: '2rem auto', maxWidth: '28rem' }}>
+            <p className="login-eyebrow">Plateforme Santé · Guinée</p>
+            <h1 className="login-title">Session bloquée</h1>
+            <p className="login-lead">
+              {authInitError || 'La vérification de session a pris trop de temps. Réessayez ou reconnectez-vous.'}
+            </p>
+            <button type="button" className="btn btn-primary login-submit" onClick={() => retrySessionBootstrap()}>
+              Réessayer
+            </button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="app-loading" role="status" aria-live="polite">
         <div className="app-loading-inner">

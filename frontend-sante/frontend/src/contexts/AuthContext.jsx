@@ -4,11 +4,17 @@ import { authAPI } from '../services/api.js';
 import { clearClientAuth } from '../services/httpClient.js';
 import { invalidateCache } from '../utils/apiCache.js';
 import { touchSessionActivity } from '../utils/authStorage.js';
-import { CACHE_TTL, getCached, setCached } from '../utils/apiCache.js';
+import { CACHE_TTL, getCached, setCached, buildCacheKey } from '../utils/apiCache.js';
+import {
+  AUTH_BOOTSTRAP_TIMEOUT_MS,
+  logAuthSessionFailure,
+  toBootstrapErrorMessage,
+  withTimeout,
+} from '../utils/authSession.js';
 import { useSessionTimeout } from '../hooks/useSessionTimeout.js';
 import SessionTimeoutModal from '../components/SessionTimeoutModal.jsx';
 
-const AUTH_PROFILE_KEY = 'get:/auth/me';
+const AUTH_PROFILE_KEY = buildCacheKey('get', '/auth/me', undefined);
 
 function readCachedProfile() {
   return getCached(AUTH_PROFILE_KEY, { persist: true });
@@ -47,6 +53,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [authInitError, setAuthInitError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -112,16 +119,25 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const refreshUser = useCallback(async () => {
-    const data = await authAPI.me({ forceRefresh: true });
+    const data = await withTimeout(
+      authAPI.me({ forceRefresh: true }),
+      AUTH_BOOTSTRAP_TIMEOUT_MS,
+      '/auth/me'
+    );
+    if (!data) {
+      throw new Error('Profil utilisateur vide');
+    }
     const normalizedUser = normalizeAndStoreUser(data);
     setUser(normalizedUser);
+    setAuthInitError(null);
     return normalizedUser;
   }, [normalizeAndStoreUser]);
 
-  useEffect(() => {
+  const bootstrapSession = useCallback(async () => {
     const storedToken = localStorage.getItem('token') || localStorage.getItem('access_token');
     if (!storedToken) {
-      devLog('[AUTH] No token in localStorage on app load');
+      setUser(null);
+      setAuthInitError(null);
       setAuthLoading(false);
       return;
     }
@@ -129,29 +145,39 @@ export const AuthProvider = ({ children }) => {
     const cachedProfile = readCachedProfile();
     if (cachedProfile) {
       setUser(cachedProfile);
-      setAuthLoading(false);
     }
-
-    devLog('[AUTH] Found token in localStorage, verifying with backend');
 
     if (!localStorage.getItem('token')) {
       localStorage.setItem('token', storedToken);
     }
 
-    authAPI
-      .me()
-      .then((data) => {
-        devLog('[AUTH] Successfully verified user:', data?.email, data?.role);
-        const normalizedUser = normalizeAndStoreUser(data);
-        setUser(normalizedUser);
-      })
-      .catch((err) => {
-        devWarn('[AUTH] Failed to verify token:', err?.response?.status, err?.message);
-        clearClientAuth();
-        setUser(null);
-      })
-      .finally(() => setAuthLoading(false));
+    setAuthInitError(null);
+    setAuthLoading(true);
+
+    try {
+      const data = await withTimeout(authAPI.me(), AUTH_BOOTSTRAP_TIMEOUT_MS, '/auth/me');
+      if (!data) {
+        throw new Error('Profil utilisateur vide');
+      }
+      const normalizedUser = normalizeAndStoreUser(data);
+      setUser(normalizedUser);
+    } catch (err) {
+      logAuthSessionFailure('bootstrap', err);
+      clearClientAuth();
+      setUser(null);
+      setAuthInitError(toBootstrapErrorMessage(err));
+    } finally {
+      setAuthLoading(false);
+    }
   }, [normalizeAndStoreUser]);
+
+  const retrySessionBootstrap = useCallback(async () => {
+    await bootstrapSession();
+  }, [bootstrapSession]);
+
+  useEffect(() => {
+    bootstrapSession();
+  }, [bootstrapSession]);
 
   const applyLoginToken = useCallback(
     async (loginPayload) => {
@@ -172,8 +198,15 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('access_token', access_token);
       authDebug('applyLoginToken: token stored', Boolean(access_token));
 
-      const meResponse = await authAPI.me({ forceRefresh: true });
+      const meResponse = await withTimeout(
+        authAPI.me({ forceRefresh: true }),
+        AUTH_BOOTSTRAP_TIMEOUT_MS,
+        '/auth/me'
+      );
       authDebug('applyLoginToken: /auth/me ok', meResponse?.email, meResponse?.role);
+      if (!meResponse) {
+        throw new Error('Profil utilisateur vide après connexion');
+      }
       const normalizedUser = normalizeAndStoreUser(meResponse);
       setUser(normalizedUser);
       authDebug('applyLoginToken: user state set', normalizedUser?.role);
@@ -253,11 +286,13 @@ export const AuthProvider = ({ children }) => {
     user,
     loading: actionLoading,
     authLoading,
+    authInitError,
     error,
     login,
     loginWithToken,
     logout,
     refreshUser,
+    retrySessionBootstrap,
     changePassword,
     isAuthenticated: Boolean(user),
   };
