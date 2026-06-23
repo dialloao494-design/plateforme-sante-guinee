@@ -20,6 +20,19 @@ _CATEGORY_PREFIX = {
     "AUTRES EXAMENS": "AUT",
 }
 
+_CATEGORY_DISPLAY = {
+    "HEMATOLOGIE": "Hématologie",
+    "HEMOSTASE": "Hémostase",
+    "BIOCHIMIE": "Biochimie",
+    "IMMUNO-SEROLOGIE": "Immuno-Sérologie",
+    "BACTERIOLOGIE": "Bactériologie",
+    "PARASITOLOGIE": "Parasitologie",
+    "HORMONES": "Hormones",
+    "REPRODUCTION / FERTILITE": "Reproduction/Fertilité",
+    "MARQUEURS CANCEREUX": "Marqueurs Cancéreux",
+    "AUTRES EXAMENS": "Autres examens",
+}
+
 # (category_label, examination_name) — ordre des formulaires AASMA
 _AASMA_EXAM_LINES: list[tuple[str, str]] = [
     # HEMATOLOGIE
@@ -172,16 +185,17 @@ def _build_catalog() -> tuple[list[dict], list[dict]]:
         seen_codes[base] = count + 1
         code = base if count == 0 else f"{base}_{count + 1}"
         category_key = _slugify(category_label)
+        display_label = _CATEGORY_DISPLAY.get(category_label, category_label)
         entry = {
             "code": code,
             "name": name,
             "category": category_key,
-            "category_label": category_label,
+            "category_label": display_label,
             "price_gnf": None,
             "sort_order": idx,
         }
         flat.append(entry)
-        by_category.setdefault(category_label, []).append(entry)
+        by_category.setdefault(display_label, []).append(entry)
 
     for category_label, tests in by_category.items():
         categories.append(

@@ -436,7 +436,7 @@ export default function LabDashboard() {
                   <input value={patientPanel?.profession || ''} readOnly placeholder="—" />
                 </div>
                 <div className="clinical-field">
-                  <label>Quartier / Résidence</label>
+                  <label>Quartier</label>
                   <input value={patientPanel?.quartier || patientPanel?.address || ''} readOnly placeholder="—" />
                 </div>
                 <div className="clinical-field">
