@@ -106,6 +106,8 @@ class PatientSearchResponse(BaseModel):
     date_of_birth: Optional[date] = None
     address: Optional[str] = None
     emergency_contact: Optional[str] = None
+    profession: Optional[str] = None
+    quartier: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -222,6 +224,16 @@ class LabOrderStatusUpdate(BaseModel):
 class WalkInLabTestItem(BaseModel):
     test_code: str
     test_name: str
+    price_gnf: Optional[int] = None
+
+
+class LabCatalogPriceItem(BaseModel):
+    code: str
+    price_gnf: Optional[int] = None
+
+
+class LabCatalogPricesUpdate(BaseModel):
+    items: list[LabCatalogPriceItem] = Field(..., min_length=1)
 
 
 class WalkInLabRequestCreate(BaseModel):

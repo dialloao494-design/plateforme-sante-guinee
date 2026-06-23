@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from core.clinical_access import resolve_clinic_for_user
 from database import get_db
 from models.user import User
-from schemas.clinical import LabOrderResponse, WalkInLabRequestCreate
+from schemas.clinical import LabCatalogPricesUpdate, LabOrderResponse, WalkInLabRequestCreate
 from security import get_current_user
 from services.lab_clinical_service import LabClinicalService
 
@@ -29,7 +29,22 @@ def _require_role(user: User, allowed: tuple[str, ...]) -> None:
 def lab_catalog(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     _require_role(current_user, LAB_READ)
     clinic = resolve_clinic_for_user(db, current_user)
-    return {"tests": LabClinicalService.test_catalog(clinic_id=clinic.id)}
+    return LabClinicalService.catalog_payload(db, clinic_id=clinic.id)
+
+
+@router.patch("/catalog/prices")
+def update_lab_catalog_prices(
+    body: LabCatalogPricesUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, LAB_WRITE)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return LabClinicalService.update_catalog_prices(
+        db,
+        clinic_id=clinic.id,
+        items=[item.model_dump() for item in body.items],
+    )
 
 
 @router.post("/walk-in-orders", response_model=List[LabOrderResponse], status_code=201)

@@ -246,6 +246,7 @@ const clinicalApi = {
     httpClient.get('/clinical/hospitalization/reports/monthly', { params: { year, month } }),
   labDashboardStats: () => httpClient.get('/clinical/lab/dashboard'),
   labCatalog: () => httpClient.get('/clinical/lab/catalog'),
+  updateLabCatalogPrices: (items) => httpClient.patch('/clinical/lab/catalog/prices', { items }),
   createWalkInLabOrders: (data) => httpClient.post('/clinical/lab/walk-in-orders', data),
   labMonthlyReport: (year, month) =>
     httpClient.get('/clinical/lab/reports/monthly', { params: { year, month } }),

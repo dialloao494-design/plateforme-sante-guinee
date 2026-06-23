@@ -16,7 +16,10 @@ const STATUS_LABELS = {
 export default function LabDashboard() {
   const [orders, setOrders] = useState([]);
   const [validated, setValidated] = useState([]);
-  const [catalog, setCatalog] = useState([]);
+  const [catalogCategories, setCatalogCategories] = useState([]);
+  const [catalogMeta, setCatalogMeta] = useState({ total_categories: 0, total_tests: 0 });
+  const [priceEdits, setPriceEdits] = useState({});
+  const [savingPrices, setSavingPrices] = useState(false);
   const [tab, setTab] = useState('pending');
   const [selected, setSelected] = useState(null);
   const [resultForm, setResultForm] = useState({
@@ -34,6 +37,7 @@ export default function LabDashboard() {
   });
   const [patientSearch, setPatientSearch] = useState('');
   const [patientMatches, setPatientMatches] = useState([]);
+  const [patientPanel, setPatientPanel] = useState(null);
   const [requestForm, setRequestForm] = useState({
     patient_id: '',
     payment_status: 'pending',
@@ -54,8 +58,21 @@ export default function LabDashboard() {
       errors.push('examens en cours');
     }
     if (dashRes.status === 'fulfilled') setLabStats(dashRes.value.data || null);
-    if (catalogRes.status === 'fulfilled') setCatalog(catalogRes.value.data?.tests || []);
-    else errors.push('catalogue');
+    if (catalogRes.status === 'fulfilled') {
+      const payload = catalogRes.value.data || {};
+      setCatalogCategories(payload.categories || []);
+      setCatalogMeta({
+        total_categories: payload.total_categories || payload.categories?.length || 0,
+        total_tests: payload.total_tests || payload.tests?.length || 0,
+      });
+      const prices = {};
+      (payload.tests || []).forEach((test) => {
+        prices[test.code] = test.price_gnf ?? '';
+      });
+      setPriceEdits(prices);
+    } else {
+      errors.push('catalogue');
+    }
     if (validatedRes.status === 'fulfilled') setValidated(validatedRes.value.data || []);
     if (errors.length) {
       const firstReject = [queueRes, dashRes, catalogRes, validatedRes].find((r) => r.status === 'rejected');
@@ -85,23 +102,95 @@ export default function LabDashboard() {
     }
   }, [tab, reportMonth]);
 
+  const catalog = useMemo(
+    () => catalogCategories.flatMap((cat) => cat.tests || []),
+    [catalogCategories]
+  );
+
   const selectedTestsList = useMemo(
     () => catalog.filter((t) => requestForm.selectedTests[t.code]),
     [catalog, requestForm.selectedTests]
   );
 
   const totalSelectedPrice = useMemo(
-    () => selectedTestsList.reduce((sum, t) => sum + (t.price_gnf || 0), 0),
-    [selectedTestsList]
+    () => selectedTestsList.reduce((sum, t) => {
+      const raw = priceEdits[t.code];
+      const price = raw === '' || raw == null ? 0 : Number(raw);
+      return sum + (Number.isFinite(price) ? price : 0);
+    }, 0),
+    [selectedTestsList, priceEdits]
   );
 
+  const applyPatient = (patient) => {
+    if (!patient) return;
+    setPatientPanel(patient);
+    setRequestForm((prev) => ({ ...prev, patient_id: String(patient.id) }));
+  };
+
+  const loadPatientById = async (rawId) => {
+    const id = String(rawId || '').trim();
+    if (!id) {
+      setPatientPanel(null);
+      return;
+    }
+    try {
+      const { data } = await clinicalApi.searchPatients(id);
+      const match = (data || []).find((p) => String(p.id) === id) || (data || [])[0];
+      if (match) {
+        applyPatient(match);
+      } else {
+        setPatientPanel(null);
+        setError('Patient introuvable pour cet ID');
+      }
+    } catch (err) {
+      setError(formatApiError(err, 'Chargement patient impossible'));
+    }
+  };
+
   const searchPatients = async () => {
-    if (patientSearch.trim().length < 2) return;
+    if (patientSearch.trim().length < 1) return;
     try {
       const { data } = await clinicalApi.searchPatients(patientSearch.trim());
       setPatientMatches(data || []);
+      if ((data || []).length === 1) {
+        applyPatient(data[0]);
+      }
     } catch (err) {
       setError(err?.response?.data?.detail || 'Recherche impossible');
+    }
+  };
+
+  const setPriceForTest = (code, value) => {
+    setPriceEdits((prev) => ({ ...prev, [code]: value }));
+  };
+
+  const saveCatalogPrices = async () => {
+    const items = catalog.map((test) => {
+      const raw = priceEdits[test.code];
+      if (raw === '' || raw == null) {
+        return { code: test.code, price_gnf: null };
+      }
+      const parsed = Number(raw);
+      return { code: test.code, price_gnf: Number.isFinite(parsed) ? parsed : null };
+    });
+    setSavingPrices(true);
+    try {
+      const { data } = await clinicalApi.updateLabCatalogPrices(items);
+      setCatalogCategories(data.categories || []);
+      setCatalogMeta({
+        total_categories: data.total_categories || 0,
+        total_tests: data.total_tests || 0,
+      });
+      const prices = {};
+      (data.tests || []).forEach((test) => {
+        prices[test.code] = test.price_gnf ?? '';
+      });
+      setPriceEdits(prices);
+      setMessage(`Tarifs enregistrés — ${data.total_tests} examens · ${data.total_categories} catégories`);
+    } catch (err) {
+      setError(formatApiError(err, 'Enregistrement des tarifs impossible'));
+    } finally {
+      setSavingPrices(false);
     }
   };
 
@@ -126,10 +215,19 @@ export default function LabDashboard() {
       await clinicalApi.createWalkInLabOrders({
         patient_id: Number(requestForm.patient_id),
         payment_status: requestForm.payment_status,
-        tests: selectedTestsList.map((t) => ({ test_code: t.code, test_name: t.name })),
+        tests: selectedTestsList.map((t) => {
+          const raw = priceEdits[t.code];
+          const parsed = raw === '' || raw == null ? null : Number(raw);
+          return {
+            test_code: t.code,
+            test_name: t.name,
+            price_gnf: Number.isFinite(parsed) ? parsed : null,
+          };
+        }),
       });
       setMessage(`${selectedTestsList.length} examen(s) enregistré(s) — total ${formatGNF(totalSelectedPrice)}`);
       setRequestForm({ patient_id: '', payment_status: 'pending', selectedTests: {} });
+      setPatientPanel(null);
       setPatientMatches([]);
       setPatientSearch('');
       load();
@@ -272,31 +370,82 @@ export default function LabDashboard() {
       )}
 
       {tab === 'new' && (
-        <section className="clinical-card">
+        <section className="clinical-card lab-request-card">
           <h2>Nouvelle demande laboratoire</h2>
+          <p className="clinical-lead">
+            Catalogue AASMA — {catalogMeta.total_categories} catégories · {catalogMeta.total_tests} examens
+          </p>
           <form onSubmit={submitWalkIn}>
-            <div className="clinical-field">
-              <label>Rechercher patient</label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input value={patientSearch} onChange={(e) => setPatientSearch(e.target.value)} placeholder="Nom ou téléphone" />
-                <button type="button" className="clinical-btn secondary" onClick={searchPatients}>Rechercher</button>
+            <div className="clinical-card lab-patient-panel">
+              <h3>Informations patient</h3>
+              <div className="clinical-form-row">
+                <div className="clinical-field">
+                  <label>Rechercher patient</label>
+                  <div className="lab-inline-actions">
+                    <input value={patientSearch} onChange={(e) => setPatientSearch(e.target.value)} placeholder="Nom, téléphone ou ID" />
+                    <button type="button" className="clinical-btn secondary" onClick={searchPatients}>Rechercher</button>
+                  </div>
+                  {patientMatches.length > 1 && (
+                    <ul className="clinical-list">
+                      {patientMatches.map((p) => (
+                        <li key={p.id}>
+                          <button type="button" className="clinical-btn secondary" onClick={() => applyPatient(p)}>
+                            {p.first_name} {p.last_name} #{p.id} {p.phone ? `· ${p.phone}` : ''}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
-              {patientMatches.length > 0 && (
-                <ul className="clinical-list">
-                  {patientMatches.map((p) => (
-                    <li key={p.id}>
-                      <button type="button" className="clinical-btn secondary" onClick={() => setRequestForm((prev) => ({ ...prev, patient_id: String(p.id) }))}>
-                        {p.first_name} {p.last_name} #{p.id} {p.phone ? `· ${p.phone}` : ''}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <div className="clinical-form-row lab-patient-grid">
+                <div className="clinical-field">
+                  <label>ID Patient</label>
+                  <input
+                    value={requestForm.patient_id}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setRequestForm((prev) => ({ ...prev, patient_id: value }));
+                    }}
+                    onBlur={() => loadPatientById(requestForm.patient_id)}
+                    required
+                  />
+                </div>
+                <div className="clinical-field">
+                  <label>Nom</label>
+                  <input value={patientPanel?.last_name || ''} readOnly placeholder="—" />
+                </div>
+                <div className="clinical-field">
+                  <label>Prénom</label>
+                  <input value={patientPanel?.first_name || ''} readOnly placeholder="—" />
+                </div>
+                <div className="clinical-field">
+                  <label>Âge</label>
+                  <input value={patientPanel?.age ?? ''} readOnly placeholder="—" />
+                </div>
+                <div className="clinical-field">
+                  <label>Sexe</label>
+                  <input
+                    value={patientPanel?.gender === 'F' ? 'Féminin' : patientPanel?.gender === 'M' ? 'Masculin' : patientPanel?.gender || ''}
+                    readOnly
+                    placeholder="—"
+                  />
+                </div>
+                <div className="clinical-field">
+                  <label>Profession</label>
+                  <input value={patientPanel?.profession || ''} readOnly placeholder="—" />
+                </div>
+                <div className="clinical-field">
+                  <label>Quartier / Résidence</label>
+                  <input value={patientPanel?.quartier || patientPanel?.address || ''} readOnly placeholder="—" />
+                </div>
+                <div className="clinical-field">
+                  <label>Téléphone</label>
+                  <input value={patientPanel?.phone || ''} readOnly placeholder="—" />
+                </div>
+              </div>
             </div>
-            <div className="clinical-field">
-              <label>ID patient</label>
-              <input value={requestForm.patient_id} onChange={(e) => setRequestForm({ ...requestForm, patient_id: e.target.value })} required />
-            </div>
+
             <div className="clinical-field">
               <label>Statut paiement</label>
               <select value={requestForm.payment_status} onChange={(e) => setRequestForm({ ...requestForm, payment_status: e.target.value })}>
@@ -304,15 +453,45 @@ export default function LabDashboard() {
                 <option value="paid">Payé</option>
               </select>
             </div>
-            <h3>Catalogue examens AASMA</h3>
-            <div className="clinical-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
-              {catalog.map((test) => (
-                <label key={test.code} className="clinical-field" style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
-                  <input type="checkbox" checked={!!requestForm.selectedTests[test.code]} onChange={() => toggleTest(test.code)} />
-                  <span>{test.name} — {formatGNF(test.price_gnf || 0)}</span>
-                </label>
-              ))}
+
+            <div className="lab-catalog-toolbar">
+              <h3>Examens par catégorie</h3>
+              <button type="button" className="clinical-btn secondary" onClick={saveCatalogPrices} disabled={savingPrices || catalog.length === 0}>
+                {savingPrices ? 'Enregistrement…' : 'Enregistrer les tarifs'}
+              </button>
             </div>
+
+            {catalogCategories.map((category) => (
+              <section key={category.key} className="lab-catalog-category">
+                <h4>{category.label}</h4>
+                <ul className="lab-catalog-list">
+                  {(category.tests || []).map((test) => (
+                    <li key={test.code} className="lab-catalog-row">
+                      <label className="lab-catalog-check">
+                        <input
+                          type="checkbox"
+                          checked={!!requestForm.selectedTests[test.code]}
+                          onChange={() => toggleTest(test.code)}
+                        />
+                        <span>{test.name}</span>
+                      </label>
+                      <div className="lab-catalog-price">
+                        <input
+                          type="number"
+                          min="0"
+                          step="500"
+                          placeholder="Prix GNF"
+                          value={priceEdits[test.code] ?? ''}
+                          onChange={(e) => setPriceForTest(test.code, e.target.value)}
+                        />
+                        <span className="lab-catalog-price-label">GNF</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+
             <p><strong>Total sélectionné : {formatGNF(totalSelectedPrice)}</strong></p>
             <button type="submit" className="clinical-btn">Enregistrer la demande</button>
           </form>

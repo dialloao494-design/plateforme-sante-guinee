@@ -391,6 +391,9 @@ async def startup_event():
             ensure_email_verification_schema,
             ensure_must_change_password_schema,
             ensure_clinical_modules_schema,
+            ensure_patient_intake_fields,
+            ensure_doctor_medicine_deliveries_table,
+            ensure_clinic_lab_tests_table,
             run_alembic_upgrade_head,
         )
 
@@ -417,6 +420,7 @@ async def startup_event():
         ensure_clinical_modules_schema(engine)
         ensure_patient_intake_fields(engine)
         ensure_doctor_medicine_deliveries_table(engine)
+        ensure_clinic_lab_tests_table(engine)
 
         from database import SessionLocal
         from services.user_provisioning import bootstrap_initial_admin, bootstrap_platform_owner

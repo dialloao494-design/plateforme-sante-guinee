@@ -120,6 +120,19 @@ class ClinicalWorkflowService:
         db: Session, *, clinic_id: int, query: str, limit: int = 20
     ) -> list[models.Patient]:
         q = query.strip()
+        if not q:
+            return []
+        if q.isdigit():
+            patient = (
+                db.query(models.Patient)
+                .filter(
+                    models.Patient.clinic_id == clinic_id,
+                    models.Patient.id == int(q),
+                    models.Patient.is_archived.is_(False),
+                )
+                .first()
+            )
+            return [patient] if patient else []
         if len(q) < 2:
             return []
         pattern = f"%{q}%"

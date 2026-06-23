@@ -9,7 +9,12 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 
 import models
-from data.aasma_lab_catalog import AASMA_CLINIC_ID, AASMA_LAB_CATALOG, AASMA_PRICE_BY_CODE
+from data.aasma_lab_catalog import (
+    AASMA_CLINIC_ID,
+    AASMA_EXAM_COUNT,
+    AASMA_LAB_CATALOG,
+    AASMA_LAB_CATEGORIES,
+)
 from data.lab_test_catalog import LAB_CATEGORIES, LAB_TEST_CATALOG
 from models.user import User
 from schemas.clinical import WalkInLabRequestCreate
@@ -19,19 +24,165 @@ from services.clinical_register_utils import patient_snapshot
 
 class LabClinicalService:
     @staticmethod
-    def test_catalog(*, clinic_id: int | None = None) -> list[dict]:
+    def sync_aasma_catalog(db: Session, *, clinic_id: int) -> None:
+        if clinic_id != AASMA_CLINIC_ID:
+            return
+        existing = {
+            row.code: row
+            for row in db.query(models.ClinicLabTest).filter(models.ClinicLabTest.clinic_id == clinic_id).all()
+        }
+        expected_codes = {item["code"] for item in AASMA_LAB_CATALOG}
+        now = datetime.utcnow()
+        for item in AASMA_LAB_CATALOG:
+            row = existing.get(item["code"])
+            if row:
+                row.name = item["name"]
+                row.category = item["category"]
+                row.category_label = item["category_label"]
+                row.sort_order = item["sort_order"]
+                row.active = True
+                row.updated_at = now
+            else:
+                db.add(
+                    models.ClinicLabTest(
+                        clinic_id=clinic_id,
+                        code=item["code"],
+                        name=item["name"],
+                        category=item["category"],
+                        category_label=item["category_label"],
+                        price_gnf=None,
+                        sort_order=item["sort_order"],
+                        active=True,
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
+        for code, row in existing.items():
+            if code not in expected_codes:
+                row.active = False
+                row.updated_at = now
+        db.commit()
+
+    @staticmethod
+    def _serialize_clinic_test(row: models.ClinicLabTest) -> dict:
+        return {
+            "code": row.code,
+            "name": row.name,
+            "category": row.category,
+            "category_label": row.category_label,
+            "price_gnf": row.price_gnf,
+            "sort_order": row.sort_order,
+        }
+
+    @staticmethod
+    def catalog_payload(db: Session, *, clinic_id: int) -> dict:
         if clinic_id == AASMA_CLINIC_ID:
-            return list(AASMA_LAB_CATALOG)
+            LabClinicalService.sync_aasma_catalog(db, clinic_id=clinic_id)
+            rows = (
+                db.query(models.ClinicLabTest)
+                .filter(
+                    models.ClinicLabTest.clinic_id == clinic_id,
+                    models.ClinicLabTest.active.is_(True),
+                )
+                .order_by(models.ClinicLabTest.sort_order.asc())
+                .all()
+            )
+            by_label: dict[str, dict] = {}
+            for row in rows:
+                bucket = by_label.setdefault(
+                    row.category_label,
+                    {
+                        "key": row.category,
+                        "label": row.category_label,
+                        "tests": [],
+                    },
+                )
+                bucket["tests"].append(LabClinicalService._serialize_clinic_test(row))
+            categories = list(by_label.values())
+            tests = [LabClinicalService._serialize_clinic_test(row) for row in rows]
+            return {
+                "clinic_id": clinic_id,
+                "source": "aasma_forms",
+                "total_categories": len(categories),
+                "total_tests": len(tests),
+                "expected_categories": len(AASMA_LAB_CATEGORIES),
+                "expected_tests": AASMA_EXAM_COUNT,
+                "categories": categories,
+                "tests": tests,
+            }
+
+        tests = [
+            {**t, "price_gnf": DEFAULT_LAB_FEE_GNF, "category_label": LAB_CATEGORIES.get(t["category"], t["category"])}
+            for t in LAB_TEST_CATALOG
+        ]
+        return {
+            "clinic_id": clinic_id,
+            "source": "default",
+            "total_categories": len(LAB_CATEGORIES),
+            "total_tests": len(tests),
+            "categories": [],
+            "tests": tests,
+        }
+
+    @staticmethod
+    def test_catalog(*, clinic_id: int | None = None, db: Session | None = None) -> list[dict]:
+        if clinic_id == AASMA_CLINIC_ID and db is not None:
+            return LabClinicalService.catalog_payload(db, clinic_id=clinic_id)["tests"]
+        if clinic_id == AASMA_CLINIC_ID:
+            return [{**t, "price_gnf": None} for t in AASMA_LAB_CATALOG]
         return [
             {**t, "price_gnf": DEFAULT_LAB_FEE_GNF}
             for t in LAB_TEST_CATALOG
         ]
 
     @staticmethod
-    def price_for_test(*, clinic_id: int, test_code: str) -> int:
-        if clinic_id == AASMA_CLINIC_ID:
-            return AASMA_PRICE_BY_CODE.get(test_code, DEFAULT_LAB_FEE_GNF)
-        return DEFAULT_LAB_FEE_GNF
+    def update_catalog_prices(
+        db: Session,
+        *,
+        clinic_id: int,
+        items: list[dict],
+    ) -> dict:
+        if clinic_id != AASMA_CLINIC_ID:
+            raise HTTPException(status_code=400, detail="Catalogue tarifaire modifiable uniquement pour AASMA")
+        LabClinicalService.sync_aasma_catalog(db, clinic_id=clinic_id)
+        codes = {item["code"] for item in items}
+        rows = (
+            db.query(models.ClinicLabTest)
+            .filter(
+                models.ClinicLabTest.clinic_id == clinic_id,
+                models.ClinicLabTest.code.in_(codes),
+            )
+            .all()
+        )
+        row_map = {row.code: row for row in rows}
+        updated = 0
+        now = datetime.utcnow()
+        for item in items:
+            row = row_map.get(item["code"])
+            if not row:
+                continue
+            price = item.get("price_gnf")
+            row.price_gnf = price if price is None or price >= 0 else None
+            row.updated_at = now
+            updated += 1
+        db.commit()
+        return LabClinicalService.catalog_payload(db, clinic_id=clinic_id)
+
+    @staticmethod
+    def price_for_test(*, clinic_id: int, test_code: str, db: Session | None = None) -> int | None:
+        if clinic_id == AASMA_CLINIC_ID and db is not None:
+            row = (
+                db.query(models.ClinicLabTest)
+                .filter(
+                    models.ClinicLabTest.clinic_id == clinic_id,
+                    models.ClinicLabTest.code == test_code,
+                    models.ClinicLabTest.active.is_(True),
+                )
+                .first()
+            )
+            if row:
+                return row.price_gnf
+        return DEFAULT_LAB_FEE_GNF if clinic_id != AASMA_CLINIC_ID else None
 
     @staticmethod
     def _default_doctor(db: Session, clinic_id: int) -> models.Doctor:
@@ -104,7 +255,11 @@ class LabClinicalService:
         created: list[models.LabOrder] = []
         mark_paid = payload.payment_status == "paid"
         for item in payload.tests:
-            price = LabClinicalService.price_for_test(clinic_id=clinic_id, test_code=item.test_code)
+            price = item.price_gnf
+            if price is None:
+                price = LabClinicalService.price_for_test(
+                    clinic_id=clinic_id, test_code=item.test_code, db=db
+                )
             order = models.LabOrder(
                 clinic_id=clinic_id,
                 consultation_id=consultation.id,
@@ -125,7 +280,7 @@ class LabClinicalService:
                 patient_id=payload.patient_id,
                 lab_order_id=order.id,
                 test_name=order.test_name,
-                amount_gnf=price,
+                amount_gnf=price or 0,
             )
             if mark_paid:
                 charge.payment_status = "paid"
@@ -341,17 +496,17 @@ class LabClinicalService:
             "pending": pending,
             "total_revenue_gnf": total_revenue,
             "by_test_type": by_type,
-            "by_category": LabClinicalService._by_category(orders, clinic_id),
+            "by_category": LabClinicalService._by_category(orders, clinic_id, db),
             "register_entries": register_entries,
         }
 
     @staticmethod
-    def _by_category(orders: list[models.LabOrder], clinic_id: int) -> dict[str, int]:
-        catalog = LabClinicalService.test_catalog(clinic_id=clinic_id)
-        code_map = {t["code"]: t["category"] for t in catalog}
+    def _by_category(orders: list[models.LabOrder], clinic_id: int, db: Session) -> dict[str, int]:
+        catalog = LabClinicalService.test_catalog(clinic_id=clinic_id, db=db)
+        code_map = {t["code"]: t.get("category_label") or t.get("category") for t in catalog}
         counts: dict[str, int] = {}
         for o in orders:
             cat = code_map.get(o.test_code, "other")
-            label = LAB_CATEGORIES.get(cat, cat)
+            label = cat if isinstance(cat, str) and cat.isupper() else LAB_CATEGORIES.get(cat, cat)
             counts[label] = counts.get(label, 0) + 1
         return counts
