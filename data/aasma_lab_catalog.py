@@ -1,4 +1,4 @@
-"""Catalogue laboratoire Clinique AASMA — formulaires et grilles tarifaires papier."""
+"""Catalogue laboratoire Clinique AASMA — grille tarifaire (4 photos) + formulaires papier."""
 
 from __future__ import annotations
 
@@ -33,126 +33,139 @@ _CATEGORY_DISPLAY = {
     "AUTRES EXAMENS": "Autres examens",
 }
 
-# (category_label, examination_name, price_gnf from tariff sheet or None)
-_AASMA_EXAM_LINES: list[tuple[str, str, int | None]] = [
-    # HEMATOLOGIE
-    ("HEMATOLOGIE", "NFS / hémogramme complet", 120_000),
-    ("HEMATOLOGIE", "Taux d'hémoglobine d'urgence", 120_000),
-    ("HEMATOLOGIE", "Test d'Emmel", 50_000),
-    ("HEMATOLOGIE", "Vitesse de sédimentation", 50_000),
-    ("HEMATOLOGIE", "Frottis sanguin", 70_000),
-    ("HEMATOLOGIE", "Groupe sanguin", 50_000),
-    ("HEMATOLOGIE", "Test de Coombs", None),
-    ("HEMATOLOGIE", "Électrophorèse d'hémoglobine", 250_000),
-    ("HEMATOLOGIE", "Myélogramme", 300_000),
-    # HEMOSTASE
-    ("HEMOSTASE", "TCA / TCK", 150_000),
-    ("HEMOSTASE", "TP / INR", 150_000),
-    ("HEMOSTASE", "D-Dimères", 250_000),
-    ("HEMOSTASE", "Fibrinogène", 200_000),
-    ("HEMOSTASE", "TS / TC", None),
-    # BIOCHIMIE
-    ("BIOCHIMIE", "Glucose à jeun / glycémie", 50_000),
-    ("BIOCHIMIE", "Glycémie d'urgence", 25_000),
-    ("BIOCHIMIE", "Créatinine / créatininémie", 60_000),
-    ("BIOCHIMIE", "Urée", 50_000),
+# Grille tarifaire AASMA — ordre exact des 4 photos (catégorie d'origine conservée)
+_AASMA_TARIFF_LINES: list[tuple[str, str, int]] = [
+    # Photo 1 (IMG_1178)
+    ("IMMUNO-SEROLOGIE", "Ac anti HBc Total", 300_000),
     ("BIOCHIMIE", "Acide urique", 60_000),
-    ("BIOCHIMIE", "ASAT", 80_000),
+    ("MARQUEURS CANCEREUX", "AFP- Alpha foetoprotéine", 300_000),
+    ("IMMUNO-SEROLOGIE", "AgHBe", 270_000),
     ("BIOCHIMIE", "ALAT", 50_000),
-    ("BIOCHIMIE", "Bilirubine totale", 350_000),
-    ("BIOCHIMIE", "Bilirubine directe", 60_000),
-    ("BIOCHIMIE", "Cholestérol total", 250_000),
-    ("BIOCHIMIE", "Cholestérol HDL", 50_000),
-    ("BIOCHIMIE", "Cholestérol LDL", 50_000),
-    ("BIOCHIMIE", "Triglycérides", 300_000),
-    ("BIOCHIMIE", "Protéines totales", 110_000),
     ("BIOCHIMIE", "Albuminémie", 85_000),
     ("BIOCHIMIE", "Albuminurie", 50_000),
-    ("BIOCHIMIE", "Calcium / calcémie", 250_000),
-    ("BIOCHIMIE", "Magnésium", 75_000),
-    ("BIOCHIMIE", "Phosphore", 55_000),
-    ("BIOCHIMIE", "Sodium", 55_000),
-    ("BIOCHIMIE", "Potassium", 55_000),
-    ("BIOCHIMIE", "Chlore", 50_000),
-    ("BIOCHIMIE", "Ionogramme sanguin", 250_000),
-    ("BIOCHIMIE", "Amylase", 80_000),
-    ("BIOCHIMIE", "Lipase", 60_000),
-    ("BIOCHIMIE", "Ferritine", 80_000),
-    ("BIOCHIMIE", "Fer saturation", 95_000),
-    ("BIOCHIMIE", "CRP", 50_000),
-    ("BIOCHIMIE", "Glycorachie", 40_000),
-    ("BIOCHIMIE", "Protéinurie", 50_000),
-    ("BIOCHIMIE", "Microalbuminurie", 50_000),
-    ("BIOCHIMIE", "Phosphatases alcalines", 80_000),
-    ("BIOCHIMIE", "GGT", 80_000),
-    ("BIOCHIMIE", "Bandelette urinaire", 60_000),
-    ("BIOCHIMIE", "Électrophorèse des protéines", 250_000),
-    ("BIOCHIMIE", "HbA1c", 250_000),
-    # IMMUNO-SEROLOGIE
-    ("IMMUNO-SEROLOGIE", "Sérologie rétrovirale VIH", 100_000),
-    ("IMMUNO-SEROLOGIE", "Hépatite B AgHBs bandelette", 50_000),
-    ("IMMUNO-SEROLOGIE", "AgHBe", 270_000),
-    ("IMMUNO-SEROLOGIE", "Ac anti HBc Total", 300_000),
-    ("IMMUNO-SEROLOGIE", "Hépatite C Ac anti VHC", 250_000),
-    ("IMMUNO-SEROLOGIE", "Sérologie hépatite C", 120_000),
-    ("IMMUNO-SEROLOGIE", "Syphilis", 50_000),
-    ("IMMUNO-SEROLOGIE", "ASLO", 50_000),
-    ("IMMUNO-SEROLOGIE", "Facteur rhumatoïde", 50_000),
-    ("IMMUNO-SEROLOGIE", "Widal et Félix", 50_000),
-    ("IMMUNO-SEROLOGIE", "Chlamydia", 60_000),
-    ("IMMUNO-SEROLOGIE", "Rubéole", 300_000),
-    ("IMMUNO-SEROLOGIE", "Toxoplasmose", 300_000),
-    ("IMMUNO-SEROLOGIE", "RPR", 50_000),
-    ("IMMUNO-SEROLOGIE", "TPHA", 50_000),
-    ("IMMUNO-SEROLOGIE", "AgHBs", None),
-    ("IMMUNO-SEROLOGIE", "AgHBs avec ELISA", None),
-    ("IMMUNO-SEROLOGIE", "Ac anti-HBs quantitatif", None),
-    ("IMMUNO-SEROLOGIE", "Ac anti-HBe", None),
-    # BACTERIOLOGIE
-    ("BACTERIOLOGIE", "ECBU simple", 100_000),
-    ("BACTERIOLOGIE", "ECBU + Antibiogramme", 250_000),
-    ("BACTERIOLOGIE", "ECBSV + Antibiogramme", 250_000),
-    ("BACTERIOLOGIE", "ECB du pus + Antibiogramme", 250_000),
-    ("BACTERIOLOGIE", "Hémoculture + antibiogramme", 250_000),
+    ("BIOCHIMIE", "Amylase (amylasémie)", 80_000),
+    ("BACTERIOLOGIE", "Analyse du Liquide cérébro-spinal+ Antibiogramme", 250_000),
+    ("IMMUNO-SEROLOGIE", "Antistreptolysin O (ASLO)", 50_000),
+    ("BIOCHIMIE", "ASAT", 50_000),
+    ("BIOCHIMIE", "Bandelette Urinaire", 80_000),
+    ("BIOCHIMIE", "Bilirubine Directe", 60_000),
+    ("BIOCHIMIE", "Bilirubine totale", 60_000),
+    ("MARQUEURS CANCEREUX", "CA 125", 350_000),
+    ("MARQUEURS CANCEREUX", "CA 15-3", 300_000),
+    ("MARQUEURS CANCEREUX", "CA 19-9", 300_000),
+    ("BIOCHIMIE", "Calcium (calcemie)", 75_000),
+    ("IMMUNO-SEROLOGIE", "Chlamydia", 250_000),
+    ("BIOCHIMIE", "Chloré", 60_000),
+    ("BIOCHIMIE", "Cholestérol HDL", 50_000),
+    ("BIOCHIMIE", "Cholestérol LDL", 50_000),
+    ("BIOCHIMIE", "Cholestérol total", 50_000),
     ("BACTERIOLOGIE", "Coproculture", 250_000),
-    ("BACTERIOLOGIE", "Analyse du liquide cérébro-spinal + antibiogramme", 250_000),
-    # PARASITOLOGIE
-    ("PARASITOLOGIE", "Goutte épaisse", 50_000),
-    ("PARASITOLOGIE", "Recherche paludisme TDR", 25_000),
-    ("PARASITOLOGIE", "Parasitologie des selles", None),
-    ("PARASITOLOGIE", "Parasitologie des urines", 50_000),
-    ("PARASITOLOGIE", "Recherche des microfilaires", 90_000),
+    # Photo 2 (IMG_1180)
+    ("BIOCHIMIE", "Créatinine (créatinémie)", 60_000),
+    ("HEMOSTASE", "D-Dimères", 300_000),
+    ("BACTERIOLOGIE", "ECB du pus + Antibiogramme", 250_000),
+    ("BACTERIOLOGIE", "ECBSV+Antibiogramme", 250_000),
+    ("BACTERIOLOGIE", "ECBU + Antibiogramme", 250_000),
+    ("BACTERIOLOGIE", "ECBU simple", 100_000),
+    ("BIOCHIMIE", "Electrophorèse des proteines", 250_000),
+    ("HEMATOLOGIE", "Electrophorèse d'hémoglobine", 250_000),
     ("PARASITOLOGIE", "Examen microscopique direct des selles", 50_000),
-    ("PARASITOLOGIE", "Examen mycologique", 175_000),
-    # HORMONES
-    ("HORMONES", "HCG urinaire", 50_000),
-    ("HORMONES", "Test de grossesse", 55_000),
-    ("HORMONES", "BHCG sanguin", None),
+    ("PARASITOLOGIE", "Examen mycologique (Recherche de champignons)", 175_000),
+    ("IMMUNO-SEROLOGIE", "Facteur Rhumatoïde", 50_000),
+    ("BIOCHIMIE", "Fer; saturation", 95_000),
+    ("BIOCHIMIE", "Ferritine", 80_000),
+    ("HEMOSTASE", "Fibrinogène", 200_000),
+    ("HEMATOLOGIE", "Frottis sanguin", 70_000),
     ("HORMONES", "FSH", 300_000),
+    ("BIOCHIMIE", "Gamma-Glutamyl Transférase (GGT)", 80_000),
+    ("BIOCHIMIE", "Glucose à jeun (glycémie) - (Automate)", 50_000),
+    ("BIOCHIMIE", "Glycémie d'urgence - (Hémocu)", 25_000),
+    ("BIOCHIMIE", "Glycorachie", 40_000),
+    ("PARASITOLOGIE", "Goutte épaisse (Dp)", 50_000),
+    ("HEMATOLOGIE", "Groupe sanguin", 50_000),
+    ("AUTRES EXAMENS", "H.Pylori dans le sang", 250_000),
+    ("AUTRES EXAMENS", "H.Pylori dans les selles", 250_000),
+    ("AUTRES EXAMENS", "HCG urinaire", 50_000),
+    # Photo 3 (IMG_1181)
+    ("BACTERIOLOGIE", "Hémoculture (incl, antibiogramme)", 250_000),
+    ("AUTRES EXAMENS", "Hémoglobine glyquée A1c (Hb A1c)", 250_000),
+    ("AUTRES EXAMENS", "Hépatite B (AgHBs) bandelette", 50_000),
+    ("AUTRES EXAMENS", "Hépatite C (Ac anti VHC)", 250_000),
+    ("BIOCHIMIE", "Ionogramme sanguin", 250_000),
     ("HORMONES", "LH", 300_000),
-    ("HORMONES", "TSH", 40_000),
+    ("BIOCHIMIE", "Lipase (Lipasemie)", 60_000),
+    ("BIOCHIMIE", "Magnésium (Magnesemie)", 75_000),
+    ("BIOCHIMIE", "Microalbuminurie", 50_000),
+    ("HEMATOLOGIE", "Myélogramme (Médulogramme)", 300_000),
+    ("HEMATOLOGIE", "NFS (hemogramme complet)", 120_000),
+    ("HORMONES", "Oestradiol", 300_000),
+    ("PARASITOLOGIE", "Parasitologies des urines", 50_000),
+    ("BIOCHIMIE", "Phosphatases alcalines", 80_000),
+    ("BIOCHIMIE", "Phosphore (phosphorémie)", 55_000),
+    ("BIOCHIMIE", "Potassium (kaliémie)", 55_000),
     ("HORMONES", "Progestérone", 300_000),
-    ("HORMONES", "Testostérone", 300_000),
-    ("HORMONES", "Œstradiol", 300_000),
     ("HORMONES", "Prolactine", 300_000),
+    ("BIOCHIMIE", "Protéine C-réactive (CRP)", 50_000),
+    ("BIOCHIMIE", "Protéines totales (protides plasmatiques)", 110_000),
+    ("BIOCHIMIE", "Protéinurie", 50_000),
+    ("MARQUEURS CANCEREUX", "PSA Total", 300_000),
+    ("PARASITOLOGIE", "Recherche des Microfilaires", 90_000),
+    ("PARASITOLOGIE", "Recherche paludisme -TDR", 25_000),
+    # Photo 4 (IMG_1182)
+    ("IMMUNO-SEROLOGIE", "RPR", 50_000),
+    ("IMMUNO-SEROLOGIE", "Rubéole", 300_000),
+    ("IMMUNO-SEROLOGIE", "Sérologie hépatite C", 120_000),
+    ("IMMUNO-SEROLOGIE", "Sérologie rétrovirale VIH", 100_000),
+    ("BIOCHIMIE", "Sodium", 55_000),
+    ("IMMUNO-SEROLOGIE", "Syphilis", 50_000),
     ("HORMONES", "T3 Total", 300_000),
     ("HORMONES", "T4 Total", 300_000),
-    ("HORMONES", "T3", None),
-    ("HORMONES", "T4", None),
-    # REPRODUCTION / FERTILITE
-    ("REPRODUCTION / FERTILITE", "Spermogramme", None),
-    ("REPRODUCTION / FERTILITE", "Spermocytogramme", None),
-    ("REPRODUCTION / FERTILITE", "Spermo-culture", None),
-    # MARQUEURS CANCEREUX
-    ("MARQUEURS CANCEREUX", "PSA Total", 300_000),
-    ("MARQUEURS CANCEREUX", "PSA Total et libre", None),
-    ("MARQUEURS CANCEREUX", "CA 125", 300_000),
-    ("MARQUEURS CANCEREUX", "CA 15-3", 300_000),
-    ("MARQUEURS CANCEREUX", "CA 19-9", 75_000),
-    ("MARQUEURS CANCEREUX", "AFP / Alpha foetoprotéine", 300_000),
-    # AUTRES EXAMENS
-    ("AUTRES EXAMENS", "H. Pylori dans le sang", 250_000),
-    ("AUTRES EXAMENS", "H. Pylori dans les selles", 250_000),
+    ("HEMATOLOGIE", "Taux d'hémoglobine d'urgence (hemmograme)", 120_000),
+    ("HEMOSTASE", "TCA; TCK (Temps de céphaline kaolin)", 150_000),
+    ("HORMONES", "Test de grossesse", 55_000),
+    ("HEMATOLOGIE", "Test d'Emmel", 50_000),
+    ("HORMONES", "Testostérone", 300_000),
+    ("HORMONES", "Testostérone", 300_000),
+    ("IMMUNO-SEROLOGIE", "Toxoplasmose", 300_000),
+    ("HEMOSTASE", "TP; INR (Temps de prothrombine; International Norm", 150_000),
+    ("IMMUNO-SEROLOGIE", "TPHA", 50_000),
+    ("BIOCHIMIE", "Triglycérides", 50_000),
+    ("HORMONES", "TSH", 300_000),
+    ("BIOCHIMIE", "Urée", 40_000),
+    ("HEMATOLOGIE", "Vitesse de sédimentation", 50_000),
+    ("IMMUNO-SEROLOGIE", "Widal et Félix", 50_000),
+]
+
+# Examens des formulaires papier AASMA absents de la grille tarifaire (sans prix inventé)
+_AASMA_FORM_LINES: list[tuple[str, str]] = [
+    ("HEMATOLOGIE", "Test de Coombs"),
+    ("HEMOSTASE", "TS / TC"),
+    ("IMMUNO-SEROLOGIE", "SRV (VIH)"),
+    ("IMMUNO-SEROLOGIE", "AgHBs"),
+    ("IMMUNO-SEROLOGIE", "AgHBs avec ELISA"),
+    ("IMMUNO-SEROLOGIE", "Ac anti-HBs quantitatif"),
+    ("IMMUNO-SEROLOGIE", "Ac anti-HCV"),
+    ("IMMUNO-SEROLOGIE", "Ac anti-HBe"),
+    ("IMMUNO-SEROLOGIE", "CRP"),
+    ("IMMUNO-SEROLOGIE", "Syphilis (VDRL/TPHA)"),
+    ("HORMONES", "BHCG urinaire"),
+    ("HORMONES", "BHCG sanguin"),
+    ("HORMONES", "T3"),
+    ("HORMONES", "T4"),
+    ("REPRODUCTION / FERTILITE", "Spermogramme"),
+    ("REPRODUCTION / FERTILITE", "Spermocytogramme"),
+    ("REPRODUCTION / FERTILITE", "Spermo-culture"),
+    ("MARQUEURS CANCEREUX", "PSA Total et libre"),
+    ("PARASITOLOGIE", "Parasitologie des selles"),
+    ("AUTRES EXAMENS", "Recherche paludisme TDR"),
+    ("AUTRES EXAMENS", "Recherche des microfilaires"),
+    ("AUTRES EXAMENS", "Créatinine"),
+    ("AUTRES EXAMENS", "Protéines plasmatiques"),
+    ("AUTRES EXAMENS", "Calcium"),
+    ("AUTRES EXAMENS", "Magnésium"),
+    ("AUTRES EXAMENS", "Phosphore"),
+    ("AUTRES EXAMENS", "Potassium"),
+    ("AUTRES EXAMENS", "Sodium"),
 ]
 
 
@@ -168,8 +181,9 @@ def _build_catalog() -> tuple[list[dict], list[dict]]:
     categories: list[dict] = []
     seen_codes: dict[str, int] = {}
     by_category: dict[str, list[dict]] = {}
+    idx = 0
 
-    for idx, (category_label, name, price_gnf) in enumerate(_AASMA_EXAM_LINES):
+    for category_label, name, price_gnf in _AASMA_TARIFF_LINES:
         prefix = _CATEGORY_PREFIX[category_label]
         base = f"{prefix}_{_slugify(name)}"
         count = seen_codes.get(base, 0)
@@ -184,9 +198,32 @@ def _build_catalog() -> tuple[list[dict], list[dict]]:
             "category_label": display_label,
             "price_gnf": price_gnf,
             "sort_order": idx,
+            "tariff_sheet": True,
         }
         flat.append(entry)
         by_category.setdefault(display_label, []).append(entry)
+        idx += 1
+
+    for category_label, name in _AASMA_FORM_LINES:
+        prefix = _CATEGORY_PREFIX[category_label]
+        base = f"{prefix}_{_slugify(name)}"
+        count = seen_codes.get(base, 0)
+        seen_codes[base] = count + 1
+        code = base if count == 0 else f"{base}_{count + 1}"
+        category_key = _slugify(category_label)
+        display_label = _CATEGORY_DISPLAY.get(category_label, category_label)
+        entry = {
+            "code": code,
+            "name": name,
+            "category": category_key,
+            "category_label": display_label,
+            "price_gnf": None,
+            "sort_order": idx,
+            "tariff_sheet": False,
+        }
+        flat.append(entry)
+        by_category.setdefault(display_label, []).append(entry)
+        idx += 1
 
     for category_label, tests in by_category.items():
         categories.append(
@@ -203,4 +240,4 @@ def _build_catalog() -> tuple[list[dict], list[dict]]:
 AASMA_LAB_CATALOG, AASMA_LAB_CATEGORIES = _build_catalog()
 AASMA_CATEGORY_COUNT = len(AASMA_LAB_CATEGORIES)
 AASMA_EXAM_COUNT = len(AASMA_LAB_CATALOG)
-AASMA_TARIFF_COUNT = sum(1 for item in AASMA_LAB_CATALOG if item["price_gnf"] is not None)
+AASMA_TARIFF_COUNT = len(_AASMA_TARIFF_LINES)
