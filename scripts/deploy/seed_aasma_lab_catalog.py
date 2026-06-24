@@ -17,7 +17,7 @@ os.environ["DATABASE_URL"] = PROD_URL
 
 from sqlalchemy import create_engine, inspect
 
-from data.aasma_lab_catalog import AASMA_CLINIC_ID, AASMA_EXAM_COUNT, AASMA_CATEGORY_COUNT
+from data.aasma_lab_catalog import AASMA_CLINIC_ID, AASMA_EXAM_COUNT, AASMA_CATEGORY_COUNT, AASMA_TARIFF_COUNT
 from database import SessionLocal
 from database_migrations import ensure_clinic_lab_tests_table
 from services.lab_clinical_service import LabClinicalService
@@ -38,9 +38,13 @@ def main() -> int:
 
     print("categories:", payload.get("total_categories"), "expected:", AASMA_CATEGORY_COUNT)
     print("exams:", payload.get("total_tests"), "expected:", AASMA_EXAM_COUNT)
+    priced = sum(1 for t in payload.get("tests", []) if t.get("price_gnf") is not None)
+    print("priced:", priced, "expected:", AASMA_TARIFF_COUNT)
     if payload.get("total_categories") != AASMA_CATEGORY_COUNT:
         return 1
     if payload.get("total_tests") != AASMA_EXAM_COUNT:
+        return 1
+    if priced != AASMA_TARIFF_COUNT:
         return 1
     print("Seed OK")
     return 0

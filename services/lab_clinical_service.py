@@ -41,6 +41,8 @@ class LabClinicalService:
                 row.category_label = item["category_label"]
                 row.sort_order = item["sort_order"]
                 row.active = True
+                if item.get("price_gnf") is not None:
+                    row.price_gnf = item["price_gnf"]
                 row.updated_at = now
             else:
                 db.add(
@@ -50,7 +52,7 @@ class LabClinicalService:
                         name=item["name"],
                         category=item["category"],
                         category_label=item["category_label"],
-                        price_gnf=None,
+                        price_gnf=item.get("price_gnf"),
                         sort_order=item["sort_order"],
                         active=True,
                         created_at=now,
