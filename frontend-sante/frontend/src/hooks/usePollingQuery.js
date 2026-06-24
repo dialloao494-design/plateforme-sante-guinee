@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { formatApiError } from '../utils/apiError.js';
+import { formatApiError, isPermissionDeniedError } from '../utils/apiError.js';
 import { useVisibilityAwareInterval } from './useVisibilityAwareInterval.js';
 
 /**
@@ -25,7 +25,12 @@ export function usePollingQuery(fetcher, { pollMs = 0, enabled = true, initialDa
         }
       } catch (err) {
         if (mounted.current) {
-          setError(formatApiError(err, 'Chargement impossible'));
+          const hasData = Array.isArray(data) ? data.length > 0 : data != null;
+          if (forceRefresh || !hasData) {
+            if (!isPermissionDeniedError(err) || forceRefresh) {
+              setError(formatApiError(err, 'Chargement impossible'));
+            }
+          }
         }
       } finally {
         if (mounted.current) {

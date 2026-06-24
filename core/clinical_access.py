@@ -42,6 +42,8 @@ PATIENT_LOOKUP_ROLES = (
     "platform_owner",
 )
 
+PATIENT_INTAKE_ROLES = PATIENT_LOOKUP_ROLES
+
 CLINIC_OPS_ROLES = (
     "platform_owner",
     "platform_admin",
@@ -73,6 +75,7 @@ __all__ = [
     "BILLING_REVENUE_ROLES",
     "user_clinic_id",
     "PATIENT_LOOKUP_ROLES",
+    "PATIENT_INTAKE_ROLES",
     "assert_role",
     "assert_clinic_access",
     "resolve_clinic_for_user",

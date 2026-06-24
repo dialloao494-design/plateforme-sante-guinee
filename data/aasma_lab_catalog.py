@@ -157,6 +157,8 @@ _AASMA_FORM_LINES: list[tuple[str, str]] = [
     ("REPRODUCTION / FERTILITE", "Spermo-culture"),
     ("MARQUEURS CANCEREUX", "PSA Total et libre"),
     ("PARASITOLOGIE", "Parasitologie des selles"),
+    ("AUTRES EXAMENS", "H. Pylori dans le sang"),
+    ("AUTRES EXAMENS", "H. Pylori dans les selles"),
     ("AUTRES EXAMENS", "Recherche paludisme TDR"),
     ("AUTRES EXAMENS", "Recherche des microfilaires"),
     ("AUTRES EXAMENS", "Créatinine"),

@@ -87,7 +87,7 @@ const ensureNginxApiPath = (url = '') => {
   return `/api${path}`;
 };
 
-import { clearAllClientStorage } from '../utils/authStorage.js';
+import { clearAllClientStorage, getAuthToken, setAuthToken } from '../utils/authStorage.js';
 import { invalidateCache } from '../utils/apiCache.js';
 
 // Resolve API base URL from environment variable
@@ -183,7 +183,7 @@ const httpClient = axios.create({
 });
 
 const syncAuthHeader = () => {
-  const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+  const token = getAuthToken();
   if (token) {
     httpClient.defaults.headers.common.Authorization = `Bearer ${token}`;
   } else if (httpClient.defaults.headers.common?.Authorization) {
@@ -210,7 +210,7 @@ httpClient.interceptors.request.use(
       config.url = config.url.replace(/^http:\/\//i, 'https://');
     }
 
-    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+    const token = getAuthToken();
     config.headers = config.headers || {};
 
     if (token) {
@@ -274,11 +274,17 @@ httpClient.interceptors.response.use(
     }
 
     if (error?.response?.status === 401) {
-      if (import.meta.env.DEV) {
-        console.warn('[HTTP 401] Clearing token and redirecting to login');
+      const sentAuth = String(config?.headers?.Authorization || '');
+      const currentToken = getAuthToken();
+      const stillOurSession =
+        currentToken && sentAuth === `Bearer ${currentToken}`;
+      if (stillOurSession) {
+        if (import.meta.env.DEV) {
+          console.warn('[HTTP 401] Clearing tab session and redirecting to login');
+        }
+        clearClientAuth();
+        redirectToLogin();
       }
-      clearClientAuth();
-      redirectToLogin();
     }
 
     return Promise.reject(error);

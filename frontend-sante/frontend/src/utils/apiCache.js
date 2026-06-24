@@ -15,10 +15,19 @@ function stableParams(params) {
 }
 
 export function buildCacheKey(method, url, params) {
-  const uid =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('user_id') || localStorage.getItem('user_role') || ''
-      : '';
+  let uid = '';
+  if (typeof window !== 'undefined') {
+    try {
+      uid =
+        sessionStorage.getItem('user_id') ||
+        sessionStorage.getItem('user_role') ||
+        localStorage.getItem('user_id') ||
+        localStorage.getItem('user_role') ||
+        '';
+    } catch {
+      uid = '';
+    }
+  }
   return `${uid}:${String(method || 'get').toLowerCase()}:${url}?${stableParams(params)}`;
 }
 

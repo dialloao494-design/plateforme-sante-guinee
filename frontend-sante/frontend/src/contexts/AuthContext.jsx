@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api.js';
 import { clearClientAuth } from '../services/httpClient.js';
 import { invalidateCache } from '../utils/apiCache.js';
-import { touchSessionActivity } from '../utils/authStorage.js';
+import { touchSessionActivity, getAuthItem, setAuthItem, removeAuthItem, setAuthToken, getAuthToken } from '../utils/authStorage.js';
 import { CACHE_TTL, getCached, setCached, buildCacheKey } from '../utils/apiCache.js';
 import {
   AUTH_BOOTSTRAP_TIMEOUT_MS,
@@ -58,7 +58,7 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   const clearPasswordResetFlags = () => {
-    localStorage.removeItem('password_reset_required');
+    removeAuthItem('password_reset_required');
   };
 
   const toUserFriendlyLoginMessage = (err) => {
@@ -99,10 +99,10 @@ export const AuthProvider = ({ children }) => {
     };
 
     if (normalizedUser.id) {
-      localStorage.setItem('user_id', String(normalizedUser.id));
+      setAuthItem('user_id', String(normalizedUser.id));
     }
     if (normalizedUser.role) {
-      localStorage.setItem('user_role', normalizedUser.role);
+      setAuthItem('user_role', normalizedUser.role);
     }
     touchSessionActivity();
 
@@ -134,7 +134,7 @@ export const AuthProvider = ({ children }) => {
   }, [normalizeAndStoreUser]);
 
   const bootstrapSession = useCallback(async () => {
-    const storedToken = localStorage.getItem('token') || localStorage.getItem('access_token');
+    const storedToken = getAuthToken();
     if (!storedToken) {
       setUser(null);
       setAuthInitError(null);
@@ -147,8 +147,8 @@ export const AuthProvider = ({ children }) => {
       setUser(cachedProfile);
     }
 
-    if (!localStorage.getItem('token')) {
-      localStorage.setItem('token', storedToken);
+    if (!getAuthItem('token')) {
+      setAuthToken(storedToken);
     }
 
     setAuthInitError(null);
@@ -195,8 +195,7 @@ export const AuthProvider = ({ children }) => {
       clearPasswordResetFlags();
       invalidateCache();
       invalidateCache('/auth/me');
-      localStorage.setItem('token', access_token);
-      localStorage.setItem('access_token', access_token);
+      setAuthToken(access_token);
       authDebug('applyLoginToken: token stored', Boolean(access_token));
 
       const meResponse = await withTimeout(

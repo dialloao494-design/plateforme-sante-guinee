@@ -34,6 +34,15 @@ export function humanizeApiError(text) {
   return trimmed;
 }
 
+export function isPermissionDeniedError(err) {
+  const detail = String(err?.response?.data?.detail || err?.message || '');
+  return (
+    /^Requires one of roles:/i.test(detail) ||
+    /^Operation requires one of roles:/i.test(detail) ||
+    /^Permission denied:/i.test(detail)
+  );
+}
+
 export function formatApiError(err, fallback = 'Une erreur est survenue.') {
   if (!err) return fallback;
 

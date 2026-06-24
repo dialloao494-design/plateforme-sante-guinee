@@ -16,6 +16,7 @@ from core.clinical_access import (
     BILLING_REVENUE_ROLES,
     CLINIC_OPS_ROLES,
     PATIENT_LOOKUP_ROLES,
+    PATIENT_INTAKE_ROLES,
     DOCTOR_ROLES,
     LAB_QUEUE_ROLES,
     LAB_ROLES,
@@ -401,7 +402,7 @@ def operations_summary(
 
 @router.get("/reception/patients", response_model=List[PatientSearchResponse])
 def search_patients(
-    q: str = Query(..., min_length=2),
+    q: str = Query(..., min_length=1),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -418,7 +419,7 @@ def intake_patient(
     current_user: User = Depends(get_current_user),
 ):
     clinic = resolve_clinic_for_user(db, current_user)
-    _require_role(db, current_user, RECEPTION_ROLES, request, clinic_id=clinic.id)
+    assert_role(current_user, PATIENT_INTAKE_ROLES)
     patient = ClinicalWorkflowService.register_patient(
         db,
         clinic_id=clinic.id,

@@ -1,10 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
-import { formatApiError } from '../../utils/apiError.js';
+import { formatApiError, isPermissionDeniedError } from '../../utils/apiError.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
 import './clinical.css';
+
+const EMPTY_PATIENT_FORM = {
+  patient_id: '',
+  last_name: '',
+  first_name: '',
+  age: '',
+  gender: '',
+  profession: '',
+  quartier: '',
+  phone: '',
+};
 
 const STATUS_LABELS = {
   ordered: 'En attente',
@@ -37,9 +48,8 @@ export default function LabDashboard() {
   });
   const [patientSearch, setPatientSearch] = useState('');
   const [patientMatches, setPatientMatches] = useState([]);
-  const [patientPanel, setPatientPanel] = useState(null);
+  const [patientForm, setPatientForm] = useState(EMPTY_PATIENT_FORM);
   const [requestForm, setRequestForm] = useState({
-    patient_id: '',
     payment_status: 'pending',
     selectedTests: {},
   });
@@ -103,8 +113,17 @@ export default function LabDashboard() {
     else errors.push('résultats validés');
 
     if (errors.length) {
-      const firstReject = [queueRes, dashRes, catalogRes, validatedRes].find((r) => r.status === 'rejected');
-      setError(formatApiError(firstReject?.reason, `Chargement partiel : ${errors.join(', ')}`));
+      const critical = [queueRes, catalogRes].find((r) => r.status === 'rejected');
+      if (critical) {
+        const reason = critical.reason;
+        if (!isPermissionDeniedError(reason) || queueRes.status === 'rejected') {
+          setError(formatApiError(reason, `Chargement partiel : ${errors.join(', ')}`));
+        } else {
+          setError('');
+        }
+      } else {
+        setError('');
+      }
     } else {
       setError('');
     }
@@ -151,14 +170,25 @@ export default function LabDashboard() {
 
   const applyPatient = (patient) => {
     if (!patient) return;
-    setPatientPanel(patient);
-    setRequestForm((prev) => ({ ...prev, patient_id: String(patient.id) }));
+    setPatientForm({
+      patient_id: String(patient.id),
+      last_name: patient.last_name || '',
+      first_name: patient.first_name || '',
+      age: patient.age != null ? String(patient.age) : '',
+      gender: patient.gender || '',
+      profession: patient.profession || '',
+      quartier: patient.quartier || patient.address || '',
+      phone: patient.phone || '',
+    });
+  };
+
+  const updatePatientField = (field, value) => {
+    setPatientForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const loadPatientById = async (rawId) => {
     const id = String(rawId || '').trim();
     if (!id) {
-      setPatientPanel(null);
       return;
     }
     try {
@@ -166,26 +196,52 @@ export default function LabDashboard() {
       const match = (data || []).find((p) => String(p.id) === id) || (data || [])[0];
       if (match) {
         applyPatient(match);
-      } else {
-        setPatientPanel(null);
-        setError('Patient introuvable pour cet ID');
+        setError('');
       }
     } catch (err) {
-      setError(formatApiError(err, 'Chargement patient impossible'));
+      if (!isPermissionDeniedError(err)) {
+        setError(formatApiError(err, 'Chargement patient impossible'));
+      }
     }
   };
 
   const searchPatients = async () => {
-    if (patientSearch.trim().length < 1) return;
+    const query = patientSearch.trim();
+    if (query.length < 1) return;
     try {
-      const { data } = await clinicalApi.searchPatients(patientSearch.trim());
+      const { data } = await clinicalApi.searchPatients(query);
       setPatientMatches(data || []);
       if ((data || []).length === 1) {
         applyPatient(data[0]);
+        setError('');
       }
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Recherche impossible');
+      setError(formatApiError(err, 'Recherche impossible'));
     }
+  };
+
+  const resolvePatientId = async () => {
+    const existingId = Number(patientForm.patient_id);
+    if (Number.isFinite(existingId) && existingId > 0) {
+      return existingId;
+    }
+    if (!patientForm.first_name.trim() || !patientForm.last_name.trim()) {
+      throw new Error('Nom et prénom requis pour enregistrer le patient');
+    }
+    const age = Number(patientForm.age);
+    const { data } = await clinicalApi.intakePatient({
+      first_name: patientForm.first_name.trim(),
+      last_name: patientForm.last_name.trim(),
+      age: Number.isFinite(age) ? age : 0,
+      gender: patientForm.gender || 'other',
+      phone: patientForm.phone.trim() || null,
+      profession: patientForm.profession.trim() || null,
+      quartier: patientForm.quartier.trim() || null,
+      mother_name: patientForm.last_name.trim(),
+      visit_destination: 'Laboratoire',
+    });
+    applyPatient(data);
+    return data.id;
   };
 
   const setPriceForTest = (code, value) => {
@@ -231,17 +287,14 @@ export default function LabDashboard() {
 
   const submitWalkIn = async (e) => {
     e.preventDefault();
-    if (!requestForm.patient_id) {
-      setError('Sélectionnez un patient');
-      return;
-    }
     if (selectedTestsList.length === 0) {
       setError('Sélectionnez au moins un examen du catalogue');
       return;
     }
     try {
+      const patientId = await resolvePatientId();
       await clinicalApi.createWalkInLabOrders({
-        patient_id: Number(requestForm.patient_id),
+        patient_id: patientId,
         payment_status: requestForm.payment_status,
         tests: selectedTestsList.map((t) => {
           const raw = priceEdits[t.code];
@@ -254,14 +307,14 @@ export default function LabDashboard() {
         }),
       });
       setMessage(`${selectedTestsList.length} examen(s) enregistré(s) — total ${formatGNF(totalSelectedPrice)}`);
-      setRequestForm({ patient_id: '', payment_status: 'pending', selectedTests: {} });
-      setPatientPanel(null);
+      setRequestForm({ payment_status: 'pending', selectedTests: {} });
+      setPatientForm(EMPTY_PATIENT_FORM);
       setPatientMatches([]);
       setPatientSearch('');
       load();
       setTab('pending');
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Création demande impossible');
+      setError(formatApiError(err, 'Création demande impossible'));
     }
   };
 
@@ -430,46 +483,74 @@ export default function LabDashboard() {
                 <div className="clinical-field">
                   <label>ID Patient</label>
                   <input
-                    value={requestForm.patient_id}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setRequestForm((prev) => ({ ...prev, patient_id: value }));
-                    }}
-                    onBlur={() => loadPatientById(requestForm.patient_id)}
-                    required
+                    value={patientForm.patient_id}
+                    onChange={(e) => updatePatientField('patient_id', e.target.value)}
+                    onBlur={() => loadPatientById(patientForm.patient_id)}
+                    placeholder="Optionnel si nouveau patient"
                   />
                 </div>
                 <div className="clinical-field">
                   <label>Nom</label>
-                  <input value={patientPanel?.last_name || ''} readOnly placeholder="—" />
-                </div>
-                <div className="clinical-field">
-                  <label>Prénom</label>
-                  <input value={patientPanel?.first_name || ''} readOnly placeholder="—" />
-                </div>
-                <div className="clinical-field">
-                  <label>Âge</label>
-                  <input value={patientPanel?.age ?? ''} readOnly placeholder="—" />
-                </div>
-                <div className="clinical-field">
-                  <label>Sexe</label>
                   <input
-                    value={patientPanel?.gender === 'F' ? 'Féminin' : patientPanel?.gender === 'M' ? 'Masculin' : patientPanel?.gender || ''}
-                    readOnly
-                    placeholder="—"
+                    value={patientForm.last_name}
+                    onChange={(e) => updatePatientField('last_name', e.target.value)}
+                    placeholder="Nom de famille"
                   />
                 </div>
                 <div className="clinical-field">
+                  <label>Prénom</label>
+                  <input
+                    value={patientForm.first_name}
+                    onChange={(e) => updatePatientField('first_name', e.target.value)}
+                    placeholder="Prénom"
+                  />
+                </div>
+                <div className="clinical-field">
+                  <label>Âge</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="130"
+                    value={patientForm.age}
+                    onChange={(e) => updatePatientField('age', e.target.value)}
+                    placeholder="Âge"
+                  />
+                </div>
+                <div className="clinical-field">
+                  <label>Sexe</label>
+                  <select
+                    value={patientForm.gender}
+                    onChange={(e) => updatePatientField('gender', e.target.value)}
+                  >
+                    <option value="">—</option>
+                    <option value="M">Masculin</option>
+                    <option value="F">Féminin</option>
+                    <option value="other">Autre</option>
+                  </select>
+                </div>
+                <div className="clinical-field">
                   <label>Profession</label>
-                  <input value={patientPanel?.profession || ''} readOnly placeholder="—" />
+                  <input
+                    value={patientForm.profession}
+                    onChange={(e) => updatePatientField('profession', e.target.value)}
+                    placeholder="Profession"
+                  />
                 </div>
                 <div className="clinical-field">
                   <label>Quartier</label>
-                  <input value={patientPanel?.quartier || patientPanel?.address || ''} readOnly placeholder="—" />
+                  <input
+                    value={patientForm.quartier}
+                    onChange={(e) => updatePatientField('quartier', e.target.value)}
+                    placeholder="Quartier / résidence"
+                  />
                 </div>
                 <div className="clinical-field">
                   <label>Téléphone</label>
-                  <input value={patientPanel?.phone || ''} readOnly placeholder="—" />
+                  <input
+                    value={patientForm.phone}
+                    onChange={(e) => updatePatientField('phone', e.target.value)}
+                    placeholder="Numéro de téléphone"
+                  />
                 </div>
               </div>
             </div>
