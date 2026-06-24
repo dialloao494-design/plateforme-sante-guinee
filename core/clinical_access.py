@@ -23,9 +23,24 @@ from core.rbac import (
     PLATFORM_ADMIN_ROLES,
     RECEPTION_ROLES,
 )
-from core.roles import requires_clinic_assignment
+from core.roles import requires_clinic_assignment, user_has_any_role
 from core.tenant import is_platform_admin, user_clinic_id
 from models.user import User
+
+PATIENT_LOOKUP_ROLES = (
+    "receptionist",
+    "cashier",
+    "doctor",
+    "lab_technician",
+    "pharmacist",
+    "clinic_admin",
+    "admin",
+    "nutritionist",
+    "midwife",
+    "nurse",
+    "platform_admin",
+    "platform_owner",
+)
 
 CLINIC_OPS_ROLES = (
     "platform_owner",
@@ -57,6 +72,7 @@ __all__ = [
     "BILLING_PAY_ROLES",
     "BILLING_REVENUE_ROLES",
     "user_clinic_id",
+    "PATIENT_LOOKUP_ROLES",
     "assert_role",
     "assert_clinic_access",
     "resolve_clinic_for_user",
@@ -65,7 +81,7 @@ __all__ = [
 
 
 def assert_role(user: User, allowed: tuple[str, ...]) -> None:
-    if user.role not in allowed:
+    if not user_has_any_role(user.role, allowed):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Requires one of roles: {list(allowed)}",

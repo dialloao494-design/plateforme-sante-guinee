@@ -193,6 +193,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       clearPasswordResetFlags();
+      invalidateCache();
       invalidateCache('/auth/me');
       localStorage.setItem('token', access_token);
       localStorage.setItem('access_token', access_token);

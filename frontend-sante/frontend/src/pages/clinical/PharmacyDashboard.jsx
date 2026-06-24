@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
+import { formatApiError } from '../../utils/apiError.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import {
   computeStockAlerts,
@@ -101,7 +102,7 @@ export default function PharmacyDashboard() {
       setDoctorDeliveries(doctorRes.data || []);
       setError('');
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Chargement pharmacie impossible');
+      setError(formatApiError(err, 'Chargement pharmacie impossible'));
     }
   }, []);
 

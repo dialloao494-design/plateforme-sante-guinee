@@ -7,7 +7,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from core.clinical_access import resolve_clinic_for_user
+from core.clinical_access import assert_role, resolve_clinic_for_user
 from database import get_db
 from models.user import User
 from schemas.visit_workflow import (
@@ -42,11 +42,7 @@ DEPARTMENT_ACCESS = {
 
 
 def _require_role(user: User, allowed: tuple[str, ...]) -> None:
-    if user.role not in allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Requires one of roles: {list(allowed)}",
-        )
+    assert_role(user, allowed)
 
 
 def _workflow_response(wf) -> VisitWorkflowResponse:

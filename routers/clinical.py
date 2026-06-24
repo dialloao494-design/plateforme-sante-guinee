@@ -15,6 +15,7 @@ from core.clinical_access import (
     BILLING_READ_ROLES,
     BILLING_REVENUE_ROLES,
     CLINIC_OPS_ROLES,
+    PATIENT_LOOKUP_ROLES,
     DOCTOR_ROLES,
     LAB_QUEUE_ROLES,
     LAB_ROLES,
@@ -90,7 +91,9 @@ def _require_role(
     resource_type: str = "cis",
     clinic_id: int | None = None,
 ) -> None:
-    if user.role in allowed:
+    from core.roles import user_has_any_role
+
+    if user_has_any_role(user.role, allowed):
         return
     log_cis_denied(
         db,
@@ -402,7 +405,7 @@ def search_patients(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assert_role(current_user, RECEPTION_ROLES)
+    assert_role(current_user, PATIENT_LOOKUP_ROLES)
     clinic = resolve_clinic_for_user(db, current_user)
     return ClinicalWorkflowService.search_patients(db, clinic_id=clinic.id, query=q)
 
@@ -502,7 +505,9 @@ def reception_follow_ups(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assert_role(current_user, RECEPTION_ROLES)
+    from core.rbac import CASHIER_ROLES, CLINIC_ADMIN_ROLES
+
+    assert_role(current_user, RECEPTION_ROLES + CASHIER_ROLES + CLINIC_ADMIN_ROLES)
     clinic = resolve_clinic_for_user(db, current_user)
     return MedicalHistoryService.reception_follow_up_summary(db, clinic_id=clinic.id)
 

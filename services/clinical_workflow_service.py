@@ -123,16 +123,32 @@ class ClinicalWorkflowService:
         if not q:
             return []
         if q.isdigit():
+            pid = int(q)
             patient = (
                 db.query(models.Patient)
                 .filter(
                     models.Patient.clinic_id == clinic_id,
-                    models.Patient.id == int(q),
+                    models.Patient.id == pid,
                     models.Patient.is_archived.is_(False),
                 )
                 .first()
             )
-            return [patient] if patient else []
+            if patient:
+                return [patient]
+            if len(q) >= 8:
+                pattern = f"%{q}%"
+                return (
+                    db.query(models.Patient)
+                    .filter(
+                        models.Patient.clinic_id == clinic_id,
+                        models.Patient.is_archived.is_(False),
+                        models.Patient.phone.ilike(pattern),
+                    )
+                    .order_by(models.Patient.last_name, models.Patient.first_name)
+                    .limit(limit)
+                    .all()
+                )
+            return []
         if len(q) < 2:
             return []
         pattern = f"%{q}%"

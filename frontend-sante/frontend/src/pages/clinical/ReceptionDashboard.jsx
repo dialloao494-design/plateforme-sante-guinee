@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
+import { formatApiError } from '../../utils/apiError.js';
 import { getVisitWorkflowOptions, clinicHasExtendedModules } from '../../utils/clinicModuleConfig.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
@@ -80,9 +81,8 @@ export default function ReceptionDashboard() {
     }
     if (errors.length) {
       const first = results.find((r) => r.status === 'rejected');
-      const detail = first?.reason?.response?.data?.message || first?.reason?.response?.data?.detail;
       setLoadErrors(errors);
-      setError(detail || `Erreur de chargement : ${errors.join(', ')}`);
+      setError(formatApiError(first?.reason, `Erreur de chargement : ${errors.join(', ')}`));
     } else {
       setError('');
     }

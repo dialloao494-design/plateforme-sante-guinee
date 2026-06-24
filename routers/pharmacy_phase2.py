@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from core.clinical_access import resolve_clinic_for_user
+from core.roles import user_has_any_role
 from database import get_db
 from models.user import User
 from schemas.clinical import DoctorMedicineDeliveryCreate, DoctorMedicineDeliveryResponse
@@ -22,7 +23,7 @@ PHARMACY_WRITE = ("pharmacist", "clinic_admin", "admin", "doctor")
 
 
 def _require_role(user: User, allowed: tuple[str, ...]) -> None:
-    if user.role not in allowed:
+    if not user_has_any_role(user.role, allowed):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Requires one of roles: {list(allowed)}")
 
 

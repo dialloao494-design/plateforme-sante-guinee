@@ -15,7 +15,11 @@ function stableParams(params) {
 }
 
 export function buildCacheKey(method, url, params) {
-  return `${String(method || 'get').toLowerCase()}:${url}?${stableParams(params)}`;
+  const uid =
+    typeof window !== 'undefined'
+      ? localStorage.getItem('user_id') || localStorage.getItem('user_role') || ''
+      : '';
+  return `${uid}:${String(method || 'get').toLowerCase()}:${url}?${stableParams(params)}`;
 }
 
 function readSession(key) {

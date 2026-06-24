@@ -58,22 +58,50 @@ export default function LabDashboard() {
       errors.push('examens en cours');
     }
     if (dashRes.status === 'fulfilled') setLabStats(dashRes.value.data || null);
+    else errors.push('statistiques');
+
     if (catalogRes.status === 'fulfilled') {
       const payload = catalogRes.value.data || {};
-      setCatalogCategories(payload.categories || []);
+      const categories = payload.categories || [];
+      const tests = payload.tests || [];
+      setCatalogCategories(categories);
       setCatalogMeta({
-        total_categories: payload.total_categories || payload.categories?.length || 0,
-        total_tests: payload.total_tests || payload.tests?.length || 0,
+        total_categories: payload.total_categories || categories.length || 0,
+        total_tests: payload.total_tests || tests.length || 0,
       });
       const prices = {};
-      (payload.tests || []).forEach((test) => {
+      tests.forEach((test) => {
         prices[test.code] = test.price_gnf ?? '';
       });
       setPriceEdits(prices);
     } else {
       errors.push('catalogue');
+      try {
+        const retry = await clinicalApi.labCatalog();
+        const payload = retry.data || {};
+        const categories = payload.categories || [];
+        const tests = payload.tests || [];
+        if (categories.length) {
+          setCatalogCategories(categories);
+          setCatalogMeta({
+            total_categories: payload.total_categories || categories.length,
+            total_tests: payload.total_tests || tests.length,
+          });
+          const prices = {};
+          tests.forEach((test) => {
+            prices[test.code] = test.price_gnf ?? '';
+          });
+          setPriceEdits(prices);
+          errors.splice(errors.indexOf('catalogue'), 1);
+        }
+      } catch {
+        /* keep catalogue error */
+      }
     }
+
     if (validatedRes.status === 'fulfilled') setValidated(validatedRes.value.data || []);
+    else errors.push('résultats validés');
+
     if (errors.length) {
       const firstReject = [queueRes, dashRes, catalogRes, validatedRes].find((r) => r.status === 'rejected');
       setError(formatApiError(firstReject?.reason, `Chargement partiel : ${errors.join(', ')}`));
