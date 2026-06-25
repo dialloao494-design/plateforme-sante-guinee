@@ -1101,6 +1101,46 @@
   font-weight: 600;
 }
 
+.reception-his-auto-display {
+  min-height: 2.45rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  color: #94a3b8;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.reception-his-auto-display--filled {
+  border-color: #0d9488;
+  background: #f0fdfa;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.reception-his-generated-id {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid #0d9488;
+  border-radius: 8px;
+  background: #ecfdf5;
+}
+
+.reception-his-generated-id span {
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.reception-his-generated-id strong {
+  font-size: 1.15rem;
+  color: #0f766e;
+  letter-spacing: 0.02em;
+}
+
 .reception-his-auto-filled {
   background: #fff !important;
   border-color: #0d9488 !important;

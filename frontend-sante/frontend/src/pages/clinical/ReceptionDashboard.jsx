@@ -159,14 +159,24 @@ const patientFullName = (patient) => {
   return `${patient.last_name || ''} ${patient.first_name || ''}`.trim();
 };
 
-const PatientField = ({ value, filled = false }) => (
-  <input
-    readOnly
-    tabIndex={-1}
-    value={value || ''}
-    className={filled && value ? 'reception-his-auto-filled' : 'reception-his-auto-empty'}
-  />
+const AutoIdField = ({ value, emptyLabel = '' }) => (
+  <div
+    className={`reception-his-auto-display${value ? ' reception-his-auto-display--filled' : ''}`}
+    aria-live="polite"
+  >
+    {value || emptyLabel}
+  </div>
 );
+
+const GeneratedIdBanner = ({ label, value }) => {
+  if (!value) return null;
+  return (
+    <div className="reception-his-generated-id">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+};
 
 const PaymentMethodRadios = ({ name, value, onChange, methods }) => (
   <div className="reception-his-payment-methods" role="radiogroup" aria-label="Mode de paiement">
@@ -331,6 +341,8 @@ export default function ReceptionDashboard() {
       }
     }
     setSelectedPatient(patient);
+    setLastAdmission(null);
+    setLastRefund(null);
     setSearchQ('');
     setSearchResults([]);
     setActiveInvoice(null);
@@ -612,6 +624,7 @@ export default function ReceptionDashboard() {
       }
     : null;
 
+  const patientDossier = selectedPatient?.patient_number || '';
   const patientDisplayName = patientFullName(selectedPatient);
 
   const PatientContextPanel = () => (
@@ -673,7 +686,13 @@ export default function ReceptionDashboard() {
             <ul className="reception-his-search-results">
               {searchResults.map((p) => (
                 <li key={p.id}>
-                  <button type="button" onClick={() => selectPatient(p)}>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      selectPatient(p);
+                    }}
+                  >
                     <strong>{p.last_name} {p.first_name}</strong>
                     <span>ID patient {p.patient_number || '—'} · {p.phone || '—'}</span>
                   </button>
@@ -770,6 +789,7 @@ export default function ReceptionDashboard() {
         <section className="reception-his-panel">
           <form className="clinical-card" onSubmit={handleRegister}>
             <h2>Enregistrement patient</h2>
+            <GeneratedIdBanner label="N° dossier patient généré" value={registeredPatient?.patient_number} />
             {registeredPatient && (
               <div className="reception-his-qr-block">
                 <div>
@@ -780,7 +800,7 @@ export default function ReceptionDashboard() {
               </div>
             )}
             <fieldset><legend>Identité</legend><div className="clinical-form-row">
-              <label>N° dossier patient<PatientField value={registeredPatient?.patient_number || ''} filled={Boolean(registeredPatient?.patient_number)} /></label>
+              <label>N° dossier patient<AutoIdField value={registeredPatient?.patient_number || ''} emptyLabel="Généré automatiquement à l'enregistrement" /></label>
               <label>Date inscription<input required type="date" value={registeredPatient?.registration_date ? String(registeredPatient.registration_date).slice(0, 10) : regForm.registration_date} onChange={(e) => updateReg({ registration_date: e.target.value })} readOnly={Boolean(registeredPatient)} /></label>
               <label className="reception-his-check"><input type="checkbox" checked={regForm.is_newborn} onChange={(e) => updateReg({ is_newborn: e.target.checked })} />Nouveau-né</label>
               <label>Nom *<input required value={regForm.last_name} onChange={(e) => updateReg({ last_name: e.target.value })} /></label>
@@ -840,20 +860,21 @@ export default function ReceptionDashboard() {
           <PatientContextPanel />
           <form className="clinical-card reception-his-form-sheet" onSubmit={handleAdmission}>
             <h2>Admission</h2>
+            <GeneratedIdBanner label="N° admission généré" value={lastAdmission?.admission_number} />
             <fieldset>
               <legend>Admission</legend>
               <div className="reception-his-form-row reception-his-form-row--4">
                 <label>
                   N° d&apos;admission
-                  <PatientField value={lastAdmission?.admission_number || ''} filled={Boolean(lastAdmission?.admission_number)} />
+                  <AutoIdField value={lastAdmission?.admission_number || ''} emptyLabel="Généré automatiquement à la création" />
                 </label>
                 <label>
                   N° dossier patient
-                  <PatientField value={selectedPatient?.patient_number || ''} filled={Boolean(selectedPatient)} />
+                  <AutoIdField value={patientDossier} emptyLabel={selectedPatient ? '' : 'Sélectionnez un patient'} />
                 </label>
                 <label>
                   Nom et prénom
-                  <PatientField value={patientDisplayName} filled={Boolean(selectedPatient)} />
+                  <AutoIdField value={patientDisplayName} emptyLabel={selectedPatient ? '' : 'Sélectionnez un patient'} />
                 </label>
                 <label>
                   Service *
@@ -944,26 +965,26 @@ export default function ReceptionDashboard() {
               <div className="reception-his-form-row reception-his-form-row--4">
                 <label>
                   N° facture
-                  <PatientField value={activeInvoice?.invoice_number || ''} filled={Boolean(activeInvoice)} />
+                  <AutoIdField value={activeInvoice?.invoice_number || ''} emptyLabel="Généré à la création de la facture" />
                 </label>
                 <label>
                   N° dossier patient
-                  <PatientField value={selectedPatient?.patient_number || ''} filled={Boolean(selectedPatient)} />
+                  <AutoIdField value={patientDossier} emptyLabel={selectedPatient ? '' : 'Sélectionnez un patient'} />
                 </label>
                 <label>
                   Nom et prénom
-                  <PatientField value={patientDisplayName} filled={Boolean(selectedPatient)} />
+                  <AutoIdField value={patientDisplayName} emptyLabel={selectedPatient ? '' : 'Sélectionnez un patient'} />
                 </label>
                 <label>
                   Date de facturation
-                  <PatientField value={(activeInvoice?.created_at || '').slice(0, 10)} filled={Boolean(activeInvoice)} />
+                  <AutoIdField value={(activeInvoice?.created_at || '').slice(0, 10)} />
                 </label>
               </div>
               <div className="reception-his-form-row">
                 <label>
                   Service concerné
                   {activeInvoice ? (
-                    <PatientField value={activeInvoice.department || ''} filled />
+                    <AutoIdField value={activeInvoice.department || ''} />
                   ) : (
                     <select value={billingForm.department} onChange={(e) => updateBilling({ department: e.target.value })}>
                       {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
@@ -1093,6 +1114,7 @@ export default function ReceptionDashboard() {
           <PatientContextPanel />
           <div className="clinical-card reception-his-form-sheet">
             <h2>Remboursement</h2>
+            <GeneratedIdBanner label="N° remboursement généré" value={lastRefund?.refund_number} />
 
             <form onSubmit={handleRefund}>
               <fieldset>
@@ -1100,15 +1122,15 @@ export default function ReceptionDashboard() {
                 <div className="reception-his-form-row reception-his-form-row--4">
                   <label>
                     N° remboursement
-                    <input readOnly disabled value={lastRefund?.refund_number || ''} />
+                    <AutoIdField value={lastRefund?.refund_number || ''} emptyLabel="Généré automatiquement à la soumission" />
                   </label>
                   <label>
                     N° dossier patient
-                    <PatientField value={selectedPatient?.patient_number || ''} filled={Boolean(selectedPatient)} />
+                    <AutoIdField value={patientDossier} emptyLabel={selectedPatient ? '' : 'Sélectionnez un patient'} />
                   </label>
                   <label>
                     Nom et prénom
-                    <PatientField value={patientDisplayName} filled={Boolean(selectedPatient)} />
+                    <AutoIdField value={patientDisplayName} emptyLabel={selectedPatient ? '' : 'Sélectionnez un patient'} />
                   </label>
                   <label>
                     Service payé
