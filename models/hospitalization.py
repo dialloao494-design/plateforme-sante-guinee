@@ -51,6 +51,9 @@ class Admission(Base):
     patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False, index=True)
     consultation_id = Column(Integer, ForeignKey("consultations.id"), nullable=True, index=True)
     admission_number = Column(String(32), nullable=False, unique=True, index=True)
+    department = Column(String(128), nullable=True, index=True)
+    admission_type = Column(String(32), nullable=True, index=True)
+    # emergency | outpatient | hospitalization
     status = Column(String(32), nullable=False, default="pending", index=True)
     # pending | admitted | in_care | transferred | discharged | cancelled
     reason = Column(Text, nullable=True)

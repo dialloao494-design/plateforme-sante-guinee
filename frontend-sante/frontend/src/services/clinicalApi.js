@@ -100,6 +100,53 @@ const clinicalApi = {
       forceRefresh: opts.forceRefresh,
     }),
 
+  // Reception HIS
+  receptionHisDashboard: (opts = {}) =>
+    cachedGet('/clinical/reception/his/dashboard', {
+      cacheTtlMs: 15000,
+      forceRefresh: opts.forceRefresh,
+    }),
+  receptionHisSearch: (q) => httpClient.get('/clinical/reception/his/patients/search', { params: { q } }),
+  receptionHisCheckDuplicates: (data) =>
+    httpClient.post('/clinical/reception/his/patients/check-duplicates', data),
+  receptionHisRegister: (data) => {
+    invalidateApiCache('/clinical/reception/');
+    invalidateApiCache('/clinical/reception/his/');
+    return httpClient.post('/clinical/reception/his/patients', data);
+  },
+  receptionHisCreateAdmission: (data) => {
+    invalidateApiCache('/clinical/reception/his/');
+    return httpClient.post('/clinical/reception/his/admissions', data);
+  },
+  receptionHisCreateInvoice: (data) => {
+    invalidateApiCache('/clinical/reception/his/');
+    invalidateApiCache('/clinical/billing/');
+    return httpClient.post('/clinical/reception/his/invoices', data);
+  },
+  receptionHisListInvoices: (patientId) =>
+    httpClient.get('/clinical/reception/his/invoices', {
+      params: patientId ? { patient_id: patientId } : {},
+    }),
+  receptionHisGetInvoice: (id) => httpClient.get(`/clinical/reception/his/invoices/${id}`),
+  receptionHisAddPayment: (invoiceId, data) => {
+    invalidateApiCache('/clinical/reception/his/');
+    invalidateApiCache('/clinical/billing/');
+    return httpClient.post(`/clinical/reception/his/invoices/${invoiceId}/payments`, data);
+  },
+  receptionHisInvoiceReceipt: (invoiceId) =>
+    httpClient.get(`/clinical/reception/his/invoices/${invoiceId}/receipt`, { responseType: 'blob' }),
+  receptionHisCreateRefund: (data) => {
+    invalidateApiCache('/clinical/reception/his/');
+    return httpClient.post('/clinical/reception/his/refunds', data);
+  },
+  receptionHisListRefunds: () => httpClient.get('/clinical/reception/his/refunds'),
+  receptionHisUpdateRefund: (id, data) => {
+    invalidateApiCache('/clinical/reception/his/');
+    return httpClient.patch(`/clinical/reception/his/refunds/${id}`, data);
+  },
+  receptionHisRefundReceipt: (id) =>
+    httpClient.get(`/clinical/reception/his/refunds/${id}/receipt`, { responseType: 'blob' }),
+
   // Doctor
   doctorQueue: () => httpClient.get('/clinical/doctor/queue'),
   startConsultation: (data) => httpClient.post('/clinical/consultations', data),

@@ -126,3 +126,25 @@ def clinical_report_pdf(summary: dict) -> bytes:
         f"Charges en attente: {rev.get('pending_charges_count', 0)}",
     ]
     return build_simple_pdf("RAPPORT CLINIQUE — Plateforme Santé Guinée", lines)
+
+
+def refund_receipt_pdf(refund, clinic_name: str = "") -> bytes:
+    patient_name = "—"
+    if getattr(refund, "patient", None):
+        patient_name = f"{refund.patient.first_name} {refund.patient.last_name}".strip()
+    invoice_number = refund.invoice.invoice_number if getattr(refund, "invoice", None) else "—"
+    lines = [
+        f"Clinique: {clinic_name or '—'}",
+        f"Patient: {patient_name}",
+        f"N° remboursement: {refund.refund_number}",
+        f"Facture: {invoice_number}",
+        f"Service: {refund.service_paid_for or '—'}",
+        f"Montant consommé: {refund.amount_consumed_gnf:,} GNF".replace(",", " "),
+        f"Montant remboursé: {refund.refund_amount_gnf:,} GNF".replace(",", " "),
+        f"Motif: {refund.reason}",
+        f"Bénéficiaire: {refund.recipient_name or '—'} ({refund.recipient_relationship or '—'})",
+        f"Tél: {refund.recipient_phone or '—'}",
+        f"Mode: {refund.refund_method or '—'}",
+        f"Statut: {refund.status}",
+    ]
+    return build_simple_pdf("REÇU DE REMBOURSEMENT", lines)

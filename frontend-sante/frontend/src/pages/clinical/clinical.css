@@ -723,3 +723,195 @@
   white-space: nowrap;
 }
 
+/* Reception HIS */
+.reception-his-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.reception-his-search {
+  position: relative;
+  min-width: 280px;
+  flex: 1;
+  max-width: 420px;
+}
+
+.reception-his-search label {
+  display: block;
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-bottom: 0.25rem;
+}
+
+.reception-his-search input {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.reception-his-search-results {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.reception-his-search-results button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.reception-his-search-results button:hover {
+  background: #f1f5f9;
+}
+
+.reception-his-search-results strong {
+  display: block;
+}
+
+.reception-his-search-results span {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.reception-his-selected {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 0.6rem 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.reception-his-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1.25rem;
+}
+
+.reception-his-tabs button {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+
+.reception-his-tabs button.active {
+  background: #0d6efd;
+  color: #fff;
+  border-color: #0d6efd;
+}
+
+.reception-his-tabs kbd {
+  margin-left: 0.35rem;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.reception-his-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.reception-his-stat-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+}
+
+.reception-his-stat-card span {
+  display: block;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.reception-his-stat-card strong {
+  font-size: 1.35rem;
+}
+
+.reception-his-bar-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.reception-his-bar-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.reception-his-qr-block {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.reception-his-duplicate-warn {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.reception-his-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.reception-his-invoice-row {
+  border-top: 1px solid #e2e8f0;
+  padding: 0.75rem 0;
+}
+
+.reception-his-invoice-row ul {
+  margin: 0.35rem 0;
+  padding-left: 1.1rem;
+  font-size: 0.88rem;
+  color: #475569;
+}
+
+.reception-his-refund-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.reception-his .clinical-page {
+  max-width: 1200px;
+}
+

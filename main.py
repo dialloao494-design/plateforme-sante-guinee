@@ -11,7 +11,7 @@ import models
 from routers import patient, patient_record, rendezvous, doctor, auth, teleconsultation, notifications, messages
 from routers import users, appointments, doctor_dashboard, ws, clinical, medical_history, hospitalization
 from routers import unified_billing, discharge, radiology, reminders, clinical_reports, platform, platform_setup
-from routers import nutrition, immunization, nursing_care, visit_workflow, clinical_phase2, lab_phase2, pharmacy_phase2
+from routers import nutrition, immunization, nursing_care, visit_workflow, clinical_phase2, lab_phase2, pharmacy_phase2, reception_his
 from security import hash_password, verify_password
 from services.user_provisioning import register_public_user
 import os
@@ -272,6 +272,7 @@ app.include_router(pharmacy_phase2.router)
 app.include_router(visit_workflow.router)
 app.include_router(reminders.router)
 app.include_router(clinical_reports.router)
+app.include_router(reception_his.router)
 app.include_router(ws.router)
 
 
@@ -394,6 +395,7 @@ async def startup_event():
             ensure_patient_intake_fields,
             ensure_doctor_medicine_deliveries_table,
             ensure_clinic_lab_tests_table,
+            ensure_reception_his_schema,
             run_alembic_upgrade_head,
         )
 
@@ -421,6 +423,7 @@ async def startup_event():
         ensure_patient_intake_fields(engine)
         ensure_doctor_medicine_deliveries_table(engine)
         ensure_clinic_lab_tests_table(engine)
+        ensure_reception_his_schema(engine)
 
         from database import SessionLocal
         from services.user_provisioning import bootstrap_initial_admin, bootstrap_platform_owner

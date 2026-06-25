@@ -16,6 +16,7 @@ class Invoice(Base):
     patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False, index=True)
     visit_id = Column(Integer, ForeignKey("clinical_visits.id"), nullable=True, index=True)
     invoice_number = Column(String(32), nullable=False, unique=True, index=True)
+    department = Column(String(128), nullable=True, index=True)
     status = Column(String(32), nullable=False, default="draft", index=True)
     # draft | issued | partially_paid | paid | cancelled
     total_amount_gnf = Column(Integer, nullable=False, default=0)
@@ -33,6 +34,7 @@ class Invoice(Base):
     items = relationship("InvoiceItem", back_populates="invoice", cascade="all, delete-orphan")
     payments = relationship("PaymentRecord", back_populates="invoice", cascade="all, delete-orphan")
     charges = relationship("ClinicCharge", foreign_keys="ClinicCharge.invoice_id", back_populates="invoice")
+    refunds = relationship("ClinicRefund", back_populates="invoice")
 
 
 class InvoiceItem(Base):

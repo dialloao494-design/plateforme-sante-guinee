@@ -1,0 +1,400 @@
+"""Reception HIS REST API — central clinic entry point."""
+
+from __future__ import annotations
+
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import Response
+from sqlalchemy.orm import Session, joinedload
+
+import models
+from core.clinical_access import RECEPTION_ROLES, resolve_clinic_for_user
+from core.http_utils import client_ip
+from database import get_db
+from models.user import User
+from schemas.reception_his import (
+    DuplicateCheckRequest,
+    DuplicatePatientMatch,
+    PatientRegistrationCreate,
+    PatientRegistrationResponse,
+    PatientSearchResult,
+    ReceptionAdmissionCreate,
+    ReceptionAdmissionResponse,
+    ReceptionDashboardStats,
+    ReceptionInvoiceCreate,
+    ReceptionInvoiceResponse,
+    ReceptionPaymentCreate,
+    RefundCreate,
+    RefundResponse,
+    RefundStatusUpdate,
+    PaymentRecordOut,
+)
+from security import get_current_user
+from services.reception_his_service import ReceptionHisService
+
+router = APIRouter(prefix="/clinical/reception/his", tags=["Reception HIS"])
+
+
+def _require_reception(user: User) -> None:
+    from fastapi import HTTPException
+
+    if user.role not in RECEPTION_ROLES and user.role not in (
+        "admin",
+        "clinic_admin",
+        "platform_admin",
+        "platform_owner",
+    ):
+        raise HTTPException(status_code=403, detail="Accès réservé à la réception")
+
+
+def _invoice_out(invoice: models.Invoice) -> ReceptionInvoiceResponse:
+    patient_name = None
+    if invoice.patient:
+        patient_name = f"{invoice.patient.first_name} {invoice.patient.last_name}".strip()
+    remaining = max(0, invoice.total_amount_gnf - invoice.paid_amount_gnf)
+    payments = [
+        PaymentRecordOut(
+            id=p.id,
+            amount_gnf=p.amount_gnf,
+            payment_method=p.payment_method,
+            reference=p.reference,
+            paid_at=p.paid_at,
+        )
+        for p in sorted(invoice.payments or [], key=lambda x: x.paid_at)
+    ]
+    status = invoice.status
+    if status in ("issued", "partially_paid") and remaining <= 0 and invoice.paid_amount_gnf > 0:
+        status = "paid"
+    elif status == "issued" and invoice.paid_amount_gnf > 0:
+        status = "partially_paid"
+    elif status == "issued" and invoice.paid_amount_gnf == 0:
+        status = "unpaid"
+    return ReceptionInvoiceResponse(
+        id=invoice.id,
+        invoice_number=invoice.invoice_number,
+        patient_id=invoice.patient_id,
+        patient_name=patient_name,
+        department=invoice.department,
+        status=status,
+        total_amount_gnf=invoice.total_amount_gnf,
+        paid_amount_gnf=invoice.paid_amount_gnf,
+        remaining_balance_gnf=remaining,
+        issued_at=invoice.issued_at,
+        payments=payments,
+    )
+
+
+def _refund_out(refund: models.ClinicRefund) -> RefundResponse:
+    patient_name = None
+    if refund.patient:
+        patient_name = f"{refund.patient.first_name} {refund.patient.last_name}".strip()
+    invoice_number = refund.invoice.invoice_number if refund.invoice else None
+    return RefundResponse(
+        id=refund.id,
+        refund_number=refund.refund_number,
+        patient_id=refund.patient_id,
+        patient_name=patient_name,
+        invoice_id=refund.invoice_id,
+        invoice_number=invoice_number,
+        original_amount_paid_gnf=refund.original_amount_paid_gnf,
+        service_paid_for=refund.service_paid_for,
+        amount_consumed_gnf=refund.amount_consumed_gnf,
+        refund_amount_gnf=refund.refund_amount_gnf,
+        reason=refund.reason,
+        reason_notes=refund.reason_notes,
+        recipient_name=refund.recipient_name,
+        recipient_relationship=refund.recipient_relationship,
+        recipient_phone=refund.recipient_phone,
+        refund_method=refund.refund_method,
+        status=refund.status,
+        created_at=refund.created_at,
+        approved_at=refund.approved_at,
+        paid_at=refund.paid_at,
+    )
+
+
+@router.get("/dashboard", response_model=ReceptionDashboardStats)
+def reception_dashboard(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return ReceptionHisService.dashboard_stats(db, clinic_id=clinic.id)
+
+
+@router.get("/patients/search", response_model=List[PatientSearchResult])
+def search_patients(
+    q: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    patients = ReceptionHisService.search_patients(db, clinic_id=clinic.id, query=q)
+    return [
+        PatientSearchResult(
+            id=p.id,
+            patient_number=p.patient_number,
+            qr_token=p.qr_token,
+            first_name=p.first_name,
+            last_name=p.last_name,
+            phone=p.phone,
+            age=p.age or 0,
+            gender=p.gender,
+            date_of_birth=p.date_of_birth,
+        )
+        for p in patients
+    ]
+
+
+@router.post("/patients/check-duplicates", response_model=List[DuplicatePatientMatch])
+def check_duplicates(
+    body: DuplicateCheckRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return ReceptionHisService.find_duplicates(db, clinic_id=clinic.id, payload=body)
+
+
+@router.post("/patients", response_model=PatientRegistrationResponse, status_code=201)
+def register_patient(
+    body: PatientRegistrationCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    patient = ReceptionHisService.register_patient(
+        db,
+        clinic_id=clinic.id,
+        payload=body,
+        actor=current_user,
+        client_ip=client_ip(request),
+    )
+    return PatientRegistrationResponse.model_validate(patient)
+
+
+@router.post("/admissions", response_model=ReceptionAdmissionResponse, status_code=201)
+def create_admission(
+    body: ReceptionAdmissionCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    admission = ReceptionHisService.create_admission(
+        db,
+        clinic_id=clinic.id,
+        payload=body,
+        actor=current_user,
+        client_ip=client_ip(request),
+    )
+    patient = db.query(models.Patient).filter(models.Patient.id == admission.patient_id).first()
+    patient_name = f"{patient.first_name} {patient.last_name}".strip() if patient else None
+    return ReceptionAdmissionResponse(
+        id=admission.id,
+        admission_number=admission.admission_number,
+        patient_id=admission.patient_id,
+        patient_name=patient_name,
+        department=admission.department,
+        admission_type=admission.admission_type,
+        status=admission.status,
+        admitted_at=admission.admitted_at,
+        attending_clinician_user_id=admission.attending_clinician_user_id,
+    )
+
+
+@router.post("/invoices", response_model=ReceptionInvoiceResponse, status_code=201)
+def create_invoice(
+    body: ReceptionInvoiceCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    invoice = ReceptionHisService.create_invoice(
+        db,
+        clinic_id=clinic.id,
+        payload=body,
+        actor=current_user,
+        client_ip=client_ip(request),
+    )
+    invoice = ReceptionHisService.get_invoice(db, clinic_id=clinic.id, invoice_id=invoice.id)
+    return _invoice_out(invoice)
+
+
+@router.get("/invoices", response_model=List[ReceptionInvoiceResponse])
+def list_invoices(
+    patient_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    invoices = ReceptionHisService.list_invoices(db, clinic_id=clinic.id, patient_id=patient_id)
+    return [_invoice_out(i) for i in invoices]
+
+
+@router.get("/invoices/{invoice_id}", response_model=ReceptionInvoiceResponse)
+def get_invoice(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    invoice = ReceptionHisService.get_invoice(db, clinic_id=clinic.id, invoice_id=invoice_id)
+    if not invoice:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail="Facture introuvable")
+    return _invoice_out(invoice)
+
+
+@router.post("/invoices/{invoice_id}/payments", response_model=ReceptionInvoiceResponse)
+def add_payment(
+    invoice_id: int,
+    body: ReceptionPaymentCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    invoice = ReceptionHisService.add_payment(
+        db,
+        clinic_id=clinic.id,
+        invoice_id=invoice_id,
+        payload=body,
+        actor=current_user,
+        client_ip=client_ip(request),
+    )
+    invoice = ReceptionHisService.get_invoice(db, clinic_id=clinic.id, invoice_id=invoice.id)
+    return _invoice_out(invoice)
+
+
+@router.get("/invoices/{invoice_id}/receipt")
+def print_receipt(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    invoice = ReceptionHisService.get_invoice(db, clinic_id=clinic.id, invoice_id=invoice_id)
+    if not invoice:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail="Facture introuvable")
+    from services.pdf_service import invoice_pdf as build_invoice_pdf
+
+    patient_name = (
+        f"{invoice.patient.first_name} {invoice.patient.last_name}".strip() if invoice.patient else "—"
+    )
+    items = [{"description": i.description, "amount_gnf": i.amount_gnf} for i in (invoice.items or [])]
+    pdf_bytes = build_invoice_pdf(
+        invoice.invoice_number, patient_name, items, invoice.total_amount_gnf, invoice.paid_amount_gnf
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="recu-{invoice.invoice_number}.pdf"'},
+    )
+
+
+@router.post("/refunds", response_model=RefundResponse, status_code=201)
+def create_refund(
+    body: RefundCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    refund = ReceptionHisService.create_refund(
+        db,
+        clinic_id=clinic.id,
+        payload=body,
+        actor=current_user,
+        client_ip=client_ip(request),
+    )
+    refund = (
+        db.query(models.ClinicRefund)
+        .options(joinedload(models.ClinicRefund.patient), joinedload(models.ClinicRefund.invoice))
+        .filter(models.ClinicRefund.id == refund.id)
+        .first()
+    )
+    return _refund_out(refund)
+
+
+@router.get("/refunds", response_model=List[RefundResponse])
+def list_refunds(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    refunds = ReceptionHisService.list_refunds(db, clinic_id=clinic.id)
+    return [_refund_out(r) for r in refunds]
+
+
+@router.patch("/refunds/{refund_id}", response_model=RefundResponse)
+def update_refund(
+    refund_id: int,
+    body: RefundStatusUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    refund = ReceptionHisService.update_refund_status(
+        db,
+        clinic_id=clinic.id,
+        refund_id=refund_id,
+        payload=body,
+        actor=current_user,
+        client_ip=client_ip(request),
+    )
+    refund = (
+        db.query(models.ClinicRefund)
+        .options(joinedload(models.ClinicRefund.patient), joinedload(models.ClinicRefund.invoice))
+        .filter(models.ClinicRefund.id == refund.id)
+        .first()
+    )
+    return _refund_out(refund)
+
+
+@router.get("/refunds/{refund_id}/receipt")
+def print_refund_receipt(
+    refund_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    refund = (
+        db.query(models.ClinicRefund)
+        .options(joinedload(models.ClinicRefund.patient), joinedload(models.ClinicRefund.invoice))
+        .filter(models.ClinicRefund.id == refund_id, models.ClinicRefund.clinic_id == clinic.id)
+        .first()
+    )
+    if not refund:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail="Remboursement introuvable")
+    from services.pdf_service import refund_receipt_pdf
+
+    pdf_bytes = refund_receipt_pdf(refund, clinic_name=clinic.name)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="remboursement-{refund.refund_number}.pdf"'},
+    )
