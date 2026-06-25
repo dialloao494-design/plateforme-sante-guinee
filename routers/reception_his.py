@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -25,6 +26,7 @@ from schemas.reception_his import (
     ReceptionInvoiceCreate,
     ReceptionInvoiceResponse,
     ReceptionPaymentCreate,
+    ReceptionPeriodReport,
     RefundCreate,
     RefundResponse,
     RefundStatusUpdate,
@@ -53,6 +55,7 @@ def _invoice_out(invoice: models.Invoice) -> ReceptionInvoiceResponse:
     if invoice.patient:
         patient_name = f"{invoice.patient.first_name} {invoice.patient.last_name}".strip()
     remaining = max(0, invoice.total_amount_gnf - invoice.paid_amount_gnf)
+    description = invoice.items[0].description if invoice.items else None
     payments = [
         PaymentRecordOut(
             id=p.id,
@@ -81,6 +84,7 @@ def _invoice_out(invoice: models.Invoice) -> ReceptionInvoiceResponse:
         paid_amount_gnf=invoice.paid_amount_gnf,
         remaining_balance_gnf=remaining,
         issued_at=invoice.issued_at,
+        description=description,
         payments=payments,
     )
 
@@ -238,6 +242,8 @@ def list_invoices(
 ):
     _require_reception(current_user)
     clinic = resolve_clinic_for_user(db, current_user)
+    if not patient_id:
+        return []
     invoices = ReceptionHisService.list_invoices(db, clinic_id=clinic.id, patient_id=patient_id)
     return [_invoice_out(i) for i in invoices]
 
@@ -278,6 +284,90 @@ def add_payment(
     )
     invoice = ReceptionHisService.get_invoice(db, clinic_id=clinic.id, invoice_id=invoice.id)
     return _invoice_out(invoice)
+
+
+@router.get("/invoices/search", response_model=ReceptionInvoiceResponse)
+def search_invoice(
+    q: str = Query(..., min_length=1),
+    patient_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    invoice = ReceptionHisService.find_invoice(
+        db, clinic_id=clinic.id, query=q, patient_id=patient_id
+    )
+    if not invoice:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail="Facture introuvable")
+    return _invoice_out(invoice)
+
+
+@router.get("/reports", response_model=ReceptionPeriodReport)
+def reception_period_report(
+    start: date = Query(...),
+    end: date = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return ReceptionHisService.period_report(db, clinic_id=clinic.id, start=start, end=end)
+
+
+@router.get("/reports/export.csv")
+def reception_report_csv(
+    start: date = Query(...),
+    end: date = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    report = ReceptionHisService.period_report(db, clinic_id=clinic.id, start=start, end=end)
+    csv_text = ReceptionHisService.export_report_csv(report)
+    return Response(
+        content=csv_text,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="rapport-reception-{start}.csv"'},
+    )
+
+
+@router.get("/reports/export.pdf")
+def reception_report_pdf(
+    start: date = Query(...),
+    end: date = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    report = ReceptionHisService.period_report(db, clinic_id=clinic.id, start=start, end=end)
+    from services.pdf_service import build_simple_pdf
+
+    lines = [
+        f"Période: {report['period_start']} → {report['period_end']}",
+        f"Patients enregistrés: {report['patients_registered']}",
+        f"Admissions: {report['admissions']}",
+        f"Hospitalisations: {report['hospitalizations']}",
+        f"Factures payées: {report['invoices_paid']}",
+        f"Factures impayées: {report['invoices_unpaid']}",
+        f"Paiements reçus: {report['payments_received_gnf']:,} GNF".replace(",", " "),
+        f"Remboursements: {report['refunds_gnf']:,} GNF".replace(",", " "),
+        f"Recettes nettes: {report['net_revenue_gnf']:,} GNF".replace(",", " "),
+        "",
+        "Recettes par service:",
+    ]
+    for svc, amt in (report.get("revenue_by_service") or {}).items():
+        lines.append(f"  {svc}: {amt:,} GNF".replace(",", " "))
+    pdf_bytes = build_simple_pdf("RAPPORT RÉCEPTION — CLINIQUE AASMA", lines)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="rapport-reception-{start}.pdf"'},
+    )
 
 
 @router.get("/invoices/{invoice_id}/receipt")
@@ -336,12 +426,13 @@ def create_refund(
 
 @router.get("/refunds", response_model=List[RefundResponse])
 def list_refunds(
+    patient_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     _require_reception(current_user)
     clinic = resolve_clinic_for_user(db, current_user)
-    refunds = ReceptionHisService.list_refunds(db, clinic_id=clinic.id)
+    refunds = ReceptionHisService.list_refunds(db, clinic_id=clinic.id, patient_id=patient_id)
     return [_refund_out(r) for r in refunds]
 
 

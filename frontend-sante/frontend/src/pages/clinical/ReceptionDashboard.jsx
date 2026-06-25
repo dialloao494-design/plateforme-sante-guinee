@@ -13,29 +13,30 @@ const TABS = [
   { id: 'refund', label: 'Remboursement', shortcut: '5' },
 ];
 
-const DEPARTMENTS = [
-  'Urgences',
-  'Consultation externe',
-  'Laboratoire',
-  'Pharmacie',
-  'Hospitalisation',
-  'Radiologie',
-];
-
+const DEPARTMENTS = ['Urgences', 'Consultation externe', 'Laboratoire', 'Pharmacie', 'Hospitalisation', 'Radiologie'];
 const ADMISSION_TYPES = [
   { value: 'emergency', label: 'Urgence' },
   { value: 'outpatient', label: 'Consultation externe' },
   { value: 'hospitalization', label: 'Hospitalisation' },
 ];
-
+const ADMISSION_CONFIRMATIONS = [
+  { value: 'confirmed', label: 'Confirmée' },
+  { value: 'pending', label: 'En attente' },
+];
 const PAYMENT_METHODS = [
-  { value: 'cash', label: 'Espèces' },
   { value: 'orange_money', label: 'Orange Money' },
+  { value: 'cash', label: 'Espèces' },
   { value: 'bank_transfer', label: 'Virement bancaire' },
   { value: 'card', label: 'Carte bancaire' },
   { value: 'insurance', label: 'Assurance' },
 ];
-
+const REFUND_METHODS = [
+  { value: 'orange_money', label: 'Orange Money' },
+  { value: 'cash', label: 'Espèces' },
+  { value: 'bank_transfer', label: 'Virement bancaire' },
+  { value: 'card', label: 'Carte bancaire' },
+  { value: 'insurance_adjustment', label: 'Assurance' },
+];
 const REFUND_REASONS = [
   { value: 'deceased', label: 'Décès' },
   { value: 'service_cancelled', label: 'Service annulé' },
@@ -43,35 +44,29 @@ const REFUND_REASONS = [
   { value: 'other', label: 'Autre' },
 ];
 
-const REFUND_METHODS = [
-  { value: 'cash', label: 'Espèces' },
-  { value: 'orange_money', label: 'Orange Money' },
-  { value: 'bank_transfer', label: 'Virement bancaire' },
-  { value: 'card', label: 'Carte' },
-  { value: 'insurance_adjustment', label: 'Ajustement assurance' },
-];
+const todayStr = new Date().toISOString().slice(0, 10);
 
 const EMPTY_REG = {
+  is_newborn: false,
   first_name: '',
   last_name: '',
-  gender: 'F',
   date_of_birth: '',
+  gender: 'F',
+  marital_status: '',
+  nationality: 'Guinéenne',
+  mother_last_name: '',
+  mother_first_name: '',
+  profession: '',
+  preferred_language: 'Français',
+  email: '',
+  photo_url: '',
+  address: '',
   phone: '',
   phone_secondary: '',
-  email: '',
-  address: '',
   commune: '',
   city: '',
   region: '',
   country: 'Guinée',
-  place_of_birth: '',
-  nationality: 'Guinéenne',
-  marital_status: '',
-  mother_first_name: '',
-  mother_last_name: '',
-  profession: '',
-  preferred_language: 'Français',
-  photo_url: '',
   emergency_same_address: false,
   emergency_full_name: '',
   emergency_relationship: '',
@@ -80,120 +75,148 @@ const EMPTY_REG = {
   emergency_commune: '',
   emergency_region: '',
   emergency_country: 'Guinée',
-  emergency_email: '',
   payer_type: 'patient',
   insurance_company: '',
   insurance_number: '',
   company_name: '',
+  payer_notes: '',
 };
 
-function qrImageUrl(token) {
-  if (!token) return '';
-  return `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(token)}`;
-}
+const EMPTY_ADMISSION = {
+  admission_date: todayStr,
+  admission_time: new Date().toTimeString().slice(0, 5),
+  department: 'Consultation externe',
+  admission_type: 'outpatient',
+  attending_clinician_user_id: '',
+  attending_physician_name: '',
+  confirmation_status: 'confirmed',
+  notes: '',
+};
 
-function statusLabel(status) {
+const EMPTY_BILLING = { department: 'Consultation externe', description: '', total_amount_gnf: '' };
+const EMPTY_PAYMENT = { amount_gnf: '', payment_method: 'orange_money', reference: '' };
+const EMPTY_REFUND = {
+  invoice_id: '',
+  service_paid_for: '',
+  amount_consumed_gnf: '',
+  refund_amount_gnf: '',
+  recipient_name: '',
+  recipient_phone: '',
+  recipient_relationship: '',
+  refund_method: 'orange_money',
+  reason: 'service_cancelled',
+  reason_notes: '',
+};
+
+const calcAge = (dob) => {
+  if (!dob) return '';
+  const b = new Date(dob);
+  if (Number.isNaN(b.getTime())) return '';
+  const n = new Date();
+  let age = n.getFullYear() - b.getFullYear();
+  const m = n.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && n.getDate() < b.getDate())) age -= 1;
+  return age >= 0 ? age : '';
+};
+
+const qrImageUrl = (token) =>
+  token ? `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(token)}` : '';
+
+const refundStatusLabel = (status) => {
+  if (status === 'pending') return 'Demandé';
+  if (status === 'approved') return 'Approuvé';
+  if (status === 'paid') return 'Payé';
+  if (status === 'rejected') return 'Rejeté';
+  return status || '—';
+};
+
+const invoiceStatusLabel = (status) => {
   if (status === 'paid') return 'Payée';
   if (status === 'partially_paid') return 'Partiellement payée';
   if (status === 'unpaid') return 'Impayée';
-  if (status === 'pending') return 'En attente';
-  if (status === 'approved') return 'Approuvé';
-  if (status === 'rejected') return 'Rejeté';
-  return status;
-}
+  return status || '—';
+};
 
 export default function ReceptionDashboard() {
   const { user } = useAuth();
   const searchRef = useRef(null);
+
   const [tab, setTab] = useState('dashboard');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
   const [stats, setStats] = useState(null);
-  const [selectedPatient, setSelectedPatient] = useState(null);
-  const [registeredPatient, setRegisteredPatient] = useState(null);
+  const [doctors, setDoctors] = useState([]);
   const [searchQ, setSearchQ] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
-  const [doctors, setDoctors] = useState([]);
+
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [registeredPatient, setRegisteredPatient] = useState(null);
+  const [lastAdmission, setLastAdmission] = useState(null);
+
   const [invoices, setInvoices] = useState([]);
+  const [activeInvoice, setActiveInvoice] = useState(null);
   const [refunds, setRefunds] = useState([]);
+
   const [regForm, setRegForm] = useState(EMPTY_REG);
-  const [duplicateWarn, setDuplicateWarn] = useState(null);
-  const [admissionForm, setAdmissionForm] = useState({
-    admission_date: new Date().toISOString().slice(0, 10),
-    admission_time: new Date().toTimeString().slice(0, 5),
-    department: 'Consultation externe',
-    admission_type: 'outpatient',
-    attending_clinician_user_id: '',
-    attending_physician_name: '',
-    notes: '',
-  });
-  const [billingForm, setBillingForm] = useState({
-    department: 'Consultation externe',
-    description: '',
-    total_amount_gnf: '',
-  });
-  const [paymentForm, setPaymentForm] = useState({
-    invoice_id: '',
-    amount_gnf: '',
-    payment_method: 'cash',
-    reference: '',
-  });
-  const [refundForm, setRefundForm] = useState({
-    invoice_id: '',
-    service_paid_for: '',
-    amount_consumed_gnf: '',
-    refund_amount_gnf: '',
-    reason: 'service_cancelled',
-    reason_notes: '',
-    recipient_name: '',
-    recipient_relationship: '',
-    recipient_phone: '',
-    refund_method: 'cash',
-  });
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [admissionForm, setAdmissionForm] = useState(EMPTY_ADMISSION);
+  const [billingForm, setBillingForm] = useState(EMPTY_BILLING);
+  const [paymentForm, setPaymentForm] = useState(EMPTY_PAYMENT);
+  const [refundForm, setRefundForm] = useState(EMPTY_REFUND);
+
+  const [invoiceSearchQ, setInvoiceSearchQ] = useState('');
+  const [invoiceSearchHits, setInvoiceSearchHits] = useState([]);
+
+  const updateReg = (v) => setRegForm((p) => ({ ...p, ...v }));
+  const updateAdmission = (v) => setAdmissionForm((p) => ({ ...p, ...v }));
+  const updateBilling = (v) => setBillingForm((p) => ({ ...p, ...v }));
+  const updatePayment = (v) => setPaymentForm((p) => ({ ...p, ...v }));
+  const updateRefund = (v) => setRefundForm((p) => ({ ...p, ...v }));
 
   const loadDashboard = useCallback(async () => {
     try {
       const { data } = await clinicalApi.receptionHisDashboard({ forceRefresh: true });
-      setStats(data);
-    } catch (err) {
-      setError(formatApiError(err, 'Impossible de charger le tableau de bord'));
+      setStats(data || null);
+    } catch (e) {
+      setError(formatApiError(e, 'Impossible de charger le tableau de bord'));
     }
   }, []);
 
   const loadInvoices = useCallback(async (patientId) => {
+    if (!patientId) {
+      setInvoices([]);
+      return;
+    }
     try {
-      const { data } = await clinicalApi.receptionHisListInvoices(patientId || undefined);
+      const { data } = await clinicalApi.receptionHisListInvoices(patientId);
       setInvoices(data || []);
     } catch {
       setInvoices([]);
     }
   }, []);
 
-  const loadRefunds = useCallback(async () => {
+  const loadRefunds = useCallback(async (patientId) => {
     try {
-      const { data } = await clinicalApi.receptionHisListRefunds();
+      const { data } = await clinicalApi.receptionHisListRefunds(patientId);
       setRefunds(data || []);
     } catch {
       setRefunds([]);
     }
   }, []);
 
-  const refreshAll = useCallback(async () => {
-    await Promise.all([loadDashboard(), loadInvoices(selectedPatient?.id), loadRefunds()]);
+  const refresh = useCallback(async () => {
+    await Promise.all([loadDashboard(), loadInvoices(selectedPatient?.id), loadRefunds(selectedPatient?.id)]);
   }, [loadDashboard, loadInvoices, loadRefunds, selectedPatient?.id]);
 
   useEffect(() => {
+    loadDashboard();
     clinicalApi.clinicDoctors().then((r) => setDoctors(r.data || [])).catch(() => setDoctors([]));
-    refreshAll();
-  }, [refreshAll]);
+  }, [loadDashboard]);
 
   useEffect(() => {
-    if (!searchQ.trim()) {
-      setSearchResults([]);
-      return undefined;
-    }
+    if (!searchQ.trim()) return void setSearchResults([]);
     const t = setTimeout(async () => {
       setSearching(true);
       try {
@@ -209,97 +232,118 @@ export default function ReceptionDashboard() {
   }, [searchQ]);
 
   useEffect(() => {
+    if (!selectedPatient?.id || !invoiceSearchQ.trim()) return void setInvoiceSearchHits([]);
+    const t = setTimeout(async () => {
+      try {
+        const { data } = await clinicalApi.receptionHisSearchInvoice(invoiceSearchQ.trim(), selectedPatient.id);
+        setInvoiceSearchHits(data ? [data] : []);
+      } catch {
+        setInvoiceSearchHits([]);
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [invoiceSearchQ, selectedPatient?.id]);
+
+  useEffect(() => {
     const onKey = (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
-        if (e.key === 'F3') {
-          e.preventDefault();
-          searchRef.current?.focus();
-        }
-        return;
-      }
-      const hit = TABS.find((t) => t.shortcut === e.key);
-      if (hit) setTab(hit.id);
       if (e.key === 'F3') {
         e.preventDefault();
         searchRef.current?.focus();
       }
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+      const hit = TABS.find((t) => t.shortcut === e.key);
+      if (hit) setTab(hit.id);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const selectPatient = (p) => {
+  const selectPatient = async (p) => {
     setSelectedPatient(p);
     setSearchQ('');
     setSearchResults([]);
-    loadInvoices(p.id);
-    setMessage(`Patient sélectionné : ${p.first_name} ${p.last_name} (#${p.patient_number || p.id})`);
+    setActiveInvoice(null);
+    setInvoiceSearchQ('');
+    setInvoiceSearchHits([]);
+    setRefundForm((prev) => ({ ...prev, invoice_id: '' }));
+    await Promise.all([loadInvoices(p.id), loadRefunds(p.id)]);
+    setMessage(`Patient sélectionné : ${p.last_name} ${p.first_name} · ID patient ${p.patient_number || '—'}`);
   };
 
-  const buildRegistrationPayload = (confirmDuplicate = false) => ({
-    first_name: regForm.first_name.trim(),
-    last_name: regForm.last_name.trim(),
-    gender: regForm.gender,
-    date_of_birth: regForm.date_of_birth,
-    phone: regForm.phone.trim(),
-    address: regForm.address.trim(),
-    phone_secondary: regForm.phone_secondary || undefined,
-    email: regForm.email || undefined,
-    commune: regForm.commune || undefined,
-    city: regForm.city || undefined,
-    region: regForm.region || undefined,
-    country: regForm.country || undefined,
-    place_of_birth: regForm.place_of_birth || undefined,
-    nationality: regForm.nationality || undefined,
-    marital_status: regForm.marital_status || undefined,
-    mother_first_name: regForm.mother_first_name || undefined,
-    mother_last_name: regForm.mother_last_name || undefined,
-    profession: regForm.profession || undefined,
-    preferred_language: regForm.preferred_language || undefined,
-    photo_url: regForm.photo_url || undefined,
-    emergency_contact: {
-      same_address_as_patient: regForm.emergency_same_address,
-      full_name: regForm.emergency_full_name.trim(),
-      relationship: regForm.emergency_relationship || undefined,
-      phone: regForm.emergency_phone.trim(),
-      address: regForm.emergency_same_address ? undefined : regForm.emergency_address || undefined,
-      commune: regForm.emergency_same_address ? undefined : regForm.emergency_commune || undefined,
-      region: regForm.emergency_same_address ? undefined : regForm.emergency_region || undefined,
-      country: regForm.emergency_same_address ? undefined : regForm.emergency_country || undefined,
-      email: regForm.emergency_email || undefined,
-    },
-    payer: {
-      payer_type: regForm.payer_type,
-      insurance_company: regForm.payer_type === 'insurance' ? regForm.insurance_company : undefined,
-      insurance_number: regForm.payer_type === 'insurance' ? regForm.insurance_number : undefined,
-      company_name: regForm.payer_type === 'company' ? regForm.company_name : undefined,
-    },
-    confirm_duplicate: confirmDuplicate,
-  });
+  const clearPatient = () => {
+    setSelectedPatient(null);
+    setInvoices([]);
+    setRefunds([]);
+    setActiveInvoice(null);
+    setRefundForm((prev) => ({ ...prev, invoice_id: '' }));
+  };
 
-  const handleRegister = async (e, forceDuplicate = false) => {
+  const onPhotoFile = (file) => {
+    if (!file) return updateReg({ photo_url: '' });
+    if (file.size > 400 * 1024) return setError('La photo doit faire moins de 400 KB.');
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateReg({ photo_url: String(reader.result || '') });
+      setError('');
+    };
+    reader.onerror = () => setError('Lecture de la photo impossible.');
+    reader.readAsDataURL(file);
+  };
+
+  const handleRegister = async (e) => {
     e.preventDefault();
+    setLoading(true);
     setError('');
     setMessage('');
-    setLoading(true);
     try {
-      const { data } = await clinicalApi.receptionHisRegister(buildRegistrationPayload(forceDuplicate));
-      setRegisteredPatient(data);
-      setSelectedPatient(data);
-      setDuplicateWarn(null);
+      const payload = {
+        first_name: regForm.first_name.trim(),
+        last_name: regForm.last_name.trim(),
+        date_of_birth: regForm.date_of_birth,
+        gender: regForm.gender,
+        is_newborn: regForm.is_newborn,
+        marital_status: regForm.marital_status || undefined,
+        nationality: regForm.nationality || undefined,
+        mother_last_name: regForm.mother_last_name || undefined,
+        mother_first_name: regForm.mother_first_name || undefined,
+        profession: regForm.profession || undefined,
+        preferred_language: regForm.preferred_language || undefined,
+        email: regForm.email || undefined,
+        photo_url: regForm.photo_url || undefined,
+        address: regForm.address.trim(),
+        phone: regForm.phone.trim(),
+        phone_secondary: regForm.phone_secondary || undefined,
+        commune: regForm.commune || undefined,
+        city: regForm.city || undefined,
+        region: regForm.region || undefined,
+        country: regForm.country || undefined,
+        emergency_contact: {
+          same_address_as_patient: regForm.emergency_same_address,
+          full_name: regForm.emergency_full_name.trim(),
+          relationship: regForm.emergency_relationship || undefined,
+          phone: regForm.emergency_phone.trim(),
+          address: regForm.emergency_same_address ? regForm.address : regForm.emergency_address || undefined,
+          commune: regForm.emergency_same_address ? regForm.commune : regForm.emergency_commune || undefined,
+          region: regForm.emergency_same_address ? regForm.region : regForm.emergency_region || undefined,
+          country: regForm.emergency_same_address ? regForm.country : regForm.emergency_country || undefined,
+        },
+        payer: {
+          payer_type: regForm.payer_type,
+          insurance_company: regForm.payer_type === 'insurance' ? regForm.insurance_company || undefined : undefined,
+          insurance_number: regForm.payer_type === 'insurance' ? regForm.insurance_number || undefined : undefined,
+          company_name: regForm.payer_type === 'company' ? regForm.company_name || undefined : undefined,
+          notes: regForm.payer_notes || undefined,
+        },
+      };
+      const { data } = await clinicalApi.receptionHisRegister(payload);
+      setRegisteredPatient(data || null);
       setRegForm(EMPTY_REG);
-      setMessage(`Patient enregistré : ${data.patient_number} — ${data.first_name} ${data.last_name}`);
-      await refreshAll();
-      setTab('admission');
+      setMessage(`Patient enregistré · N° dossier patient ${data?.patient_number || '—'}`);
+      if (data?.id) await selectPatient(data);
+      await loadDashboard();
     } catch (err) {
-      const detail = err?.response?.data?.detail;
-      if (detail?.code === 'duplicate_patient') {
-        setDuplicateWarn(detail.matches || []);
-        setError(detail.message || 'Doublon détecté');
-      } else {
-        setError(formatApiError(err, 'Enregistrement impossible'));
-      }
+      setError(formatApiError(err, 'Enregistrement du patient impossible'));
     } finally {
       setLoading(false);
     }
@@ -307,12 +351,10 @@ export default function ReceptionDashboard() {
 
   const handleAdmission = async (e) => {
     e.preventDefault();
-    if (!selectedPatient) {
-      setError('Sélectionnez un patient (recherche F3)');
-      return;
-    }
-    setError('');
+    if (!selectedPatient?.id) return setError('Veuillez d’abord rechercher un patient avec F3.');
     setLoading(true);
+    setError('');
+    setMessage('');
     try {
       const { data } = await clinicalApi.receptionHisCreateAdmission({
         patient_id: selectedPatient.id,
@@ -324,13 +366,15 @@ export default function ReceptionDashboard() {
           ? Number(admissionForm.attending_clinician_user_id)
           : undefined,
         attending_physician_name: admissionForm.attending_physician_name || undefined,
+        confirmation_status: admissionForm.confirmation_status,
         notes: admissionForm.notes || undefined,
       });
-      setMessage(`Admission créée : ${data.admission_number}`);
-      await refreshAll();
+      setLastAdmission(data || null);
+      setMessage(`Admission créée · N° admission ${data?.admission_number || '—'}`);
+      await loadDashboard();
       setTab('billing');
     } catch (err) {
-      setError(formatApiError(err, 'Admission impossible'));
+      setError(formatApiError(err, 'Création de l’admission impossible'));
     } finally {
       setLoading(false);
     }
@@ -338,89 +382,87 @@ export default function ReceptionDashboard() {
 
   const handleCreateInvoice = async (e) => {
     e.preventDefault();
-    if (!selectedPatient) {
-      setError('Sélectionnez un patient');
-      return;
-    }
-    setError('');
+    if (!selectedPatient?.id) return setError('Veuillez d’abord rechercher un patient avec F3.');
     setLoading(true);
+    setError('');
+    setMessage('');
     try {
       const { data } = await clinicalApi.receptionHisCreateInvoice({
         patient_id: selectedPatient.id,
         department: billingForm.department,
         description: billingForm.description.trim(),
-        total_amount_gnf: Number(billingForm.total_amount_gnf),
+        total_amount_gnf: Number(billingForm.total_amount_gnf || 0),
       });
-      setPaymentForm((prev) => ({ ...prev, invoice_id: String(data.id), amount_gnf: String(data.remaining_balance_gnf) }));
-      setMessage(`Facture ${data.invoice_number} créée`);
-      await loadInvoices(selectedPatient.id);
-      await loadDashboard();
+      setActiveInvoice(data || null);
+      setPaymentForm((prev) => ({ ...prev, amount_gnf: String(data?.remaining_balance_gnf ?? data?.total_amount_gnf ?? '') }));
+      setMessage(`Facture créée · N° facture ${data?.invoice_number || '—'}`);
+      await Promise.all([loadInvoices(selectedPatient.id), loadDashboard()]);
     } catch (err) {
-      setError(formatApiError(err, 'Facturation impossible'));
+      setError(formatApiError(err, 'Création de facture impossible'));
     } finally {
       setLoading(false);
     }
+  };
+
+  const selectInvoice = (id) => {
+    const inv = invoices.find((item) => String(item.id) === String(id));
+    setActiveInvoice(inv || null);
+    updatePayment({ amount_gnf: String(inv?.remaining_balance_gnf ?? '') });
+    updateRefund({
+      invoice_id: inv ? String(inv.id) : '',
+      service_paid_for: inv?.department || '',
+      refund_amount_gnf: String(inv?.paid_amount_gnf ?? ''),
+    });
   };
 
   const handlePayment = async (e) => {
     e.preventDefault();
-    if (!paymentForm.invoice_id) {
-      setError('Sélectionnez une facture');
-      return;
-    }
-    setError('');
+    if (!activeInvoice?.id) return setError('Sélectionnez une facture du patient.');
     setLoading(true);
+    setError('');
+    setMessage('');
     try {
-      const { data } = await clinicalApi.receptionHisAddPayment(Number(paymentForm.invoice_id), {
-        amount_gnf: Number(paymentForm.amount_gnf),
+      const { data } = await clinicalApi.receptionHisAddPayment(activeInvoice.id, {
+        amount_gnf: Number(paymentForm.amount_gnf || 0),
         payment_method: paymentForm.payment_method,
         reference: paymentForm.reference || undefined,
       });
-      setMessage(`Paiement enregistré — reste : ${formatGNF(data.remaining_balance_gnf)}`);
-      setPaymentForm((prev) => ({
-        ...prev,
-        amount_gnf: String(data.remaining_balance_gnf || ''),
-      }));
-      await loadInvoices(selectedPatient?.id);
-      await loadDashboard();
+      setMessage(`Paiement enregistré · reste ${formatGNF(data?.remaining_balance_gnf || 0)}`);
+      updatePayment({ amount_gnf: String(data?.remaining_balance_gnf ?? '') });
+      setActiveInvoice(data || null);
+      await Promise.all([loadInvoices(selectedPatient?.id), loadDashboard()]);
     } catch (err) {
-      setError(formatApiError(err, 'Paiement impossible'));
+      setError(formatApiError(err, 'Enregistrement du paiement impossible'));
     } finally {
       setLoading(false);
-    }
-  };
-
-  const openReceipt = async (invoiceId) => {
-    try {
-      const { data } = await clinicalApi.receptionHisInvoiceReceipt(invoiceId);
-      const url = URL.createObjectURL(data);
-      window.open(url, '_blank');
-    } catch {
-      setError('Impossible d\'imprimer le reçu');
     }
   };
 
   const handleRefund = async (e) => {
     e.preventDefault();
-    setError('');
+    if (!selectedPatient?.id) return setError('Veuillez d’abord rechercher un patient avec F3.');
+    if (!refundForm.invoice_id) return setError('Sélectionnez une facture du patient.');
     setLoading(true);
+    setError('');
+    setMessage('');
     try {
       const { data } = await clinicalApi.receptionHisCreateRefund({
         invoice_id: Number(refundForm.invoice_id),
-        service_paid_for: refundForm.service_paid_for.trim(),
-        amount_consumed_gnf: Number(refundForm.amount_consumed_gnf),
-        refund_amount_gnf: Number(refundForm.refund_amount_gnf),
+        service_paid_for: refundForm.service_paid_for || undefined,
+        amount_consumed_gnf: Number(refundForm.amount_consumed_gnf || 0),
+        refund_amount_gnf: Number(refundForm.refund_amount_gnf || 0),
+        recipient_name: refundForm.recipient_name.trim(),
+        recipient_phone: refundForm.recipient_phone.trim(),
+        recipient_relationship: refundForm.recipient_relationship || undefined,
+        refund_method: refundForm.refund_method,
         reason: refundForm.reason,
         reason_notes: refundForm.reason_notes || undefined,
-        recipient_name: refundForm.recipient_name.trim(),
-        recipient_relationship: refundForm.recipient_relationship || undefined,
-        recipient_phone: refundForm.recipient_phone.trim(),
-        refund_method: refundForm.refund_method,
       });
-      setMessage(`Demande de remboursement ${data.refund_number} créée`);
-      await loadRefunds();
+      setMessage(`Demande enregistrée · N° remboursement ${data?.refund_number || '—'}`);
+      setRefundForm((prev) => ({ ...EMPTY_REFUND, invoice_id: prev.invoice_id }));
+      await Promise.all([loadRefunds(selectedPatient.id), loadDashboard()]);
     } catch (err) {
-      setError(formatApiError(err, 'Remboursement impossible'));
+      setError(formatApiError(err, 'Création du remboursement impossible'));
     } finally {
       setLoading(false);
     }
@@ -428,57 +470,117 @@ export default function ReceptionDashboard() {
 
   const updateRefundStatus = async (id, status) => {
     setLoading(true);
+    setError('');
     try {
       await clinicalApi.receptionHisUpdateRefund(id, { status });
-      setMessage(`Remboursement ${statusLabel(status)}`);
-      await loadRefunds();
-      await loadDashboard();
+      setMessage(`Remboursement mis à jour : ${refundStatusLabel(status)}`);
+      await Promise.all([loadRefunds(selectedPatient?.id), loadDashboard()]);
     } catch (err) {
-      setError(formatApiError(err, 'Mise à jour impossible'));
+      setError(formatApiError(err, 'Mise à jour du remboursement impossible'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const printInvoiceReceipt = async (invoiceId) => {
+    try {
+      const { data } = await clinicalApi.receptionHisInvoiceReceipt(invoiceId);
+      window.open(URL.createObjectURL(data), '_blank');
+    } catch {
+      setError('Impossible d’imprimer le reçu.');
+    }
+  };
+
+  const printRefundReceipt = async (refundId) => {
+    try {
+      const { data } = await clinicalApi.receptionHisRefundReceipt(refundId);
+      window.open(URL.createObjectURL(data), '_blank');
+    } catch {
+      setError('Impossible d’imprimer le reçu de remboursement.');
     }
   };
 
   const statCards = useMemo(() => {
     if (!stats) return [];
     return [
-      { label: 'Patients enregistrés', value: stats.total_patients },
-      { label: 'Inscriptions aujourd\'hui', value: stats.patients_registered_today },
-      { label: 'Admissions du jour', value: stats.admissions_today },
-      { label: 'Hospitalisés', value: stats.hospitalized_patients },
-      { label: 'Recettes du jour', value: formatGNF(stats.revenue_today_gnf) },
-      { label: 'Recettes mensuelles', value: formatGNF(stats.revenue_month_gnf) },
-      { label: 'Factures impayées', value: stats.outstanding_invoices },
+      { label: 'Patients total', value: stats.total_patients ?? 0 },
+      { label: 'Patients inscrits aujourd’hui', value: stats.patients_registered_today ?? 0 },
+      { label: 'Admissions aujourd’hui', value: stats.admissions_today ?? 0 },
+      { label: 'Patients hospitalisés', value: stats.hospitalized_patients ?? 0 },
+      { label: 'Factures payées', value: stats.paid_invoices ?? 0 },
+      { label: 'Factures impayées', value: stats.unpaid_invoices ?? 0 },
+      { label: 'Recette du jour', value: formatGNF(stats.revenue_today_gnf ?? 0) },
+      { label: 'Recette du mois', value: formatGNF(stats.revenue_month_gnf ?? 0) },
+      { label: 'Total remboursements', value: formatGNF(stats.refunds_total_gnf ?? 0) },
     ];
   }, [stats]);
+
+  const filteredRefunds = useMemo(() => {
+    if (!selectedPatient?.id) return [];
+    return refunds.filter((r) => Number(r.patient_id) === Number(selectedPatient.id));
+  }, [refunds, selectedPatient?.id]);
+
+  const refundInvoices = useMemo(() => {
+    if (!invoiceSearchQ.trim()) return invoices;
+    const q = invoiceSearchQ.trim().toLowerCase();
+    const ids = new Set((invoiceSearchHits || []).map((x) => Number(x.id)));
+    return invoices.filter((i) => String(i.invoice_number || '').toLowerCase().includes(q) || ids.has(Number(i.id)));
+  }, [invoiceSearchQ, invoiceSearchHits, invoices]);
+
+  const activeMeta = activeInvoice
+    ? {
+        total: Number(activeInvoice.total_amount_gnf || 0),
+        paid: Number(activeInvoice.paid_amount_gnf || 0),
+        remaining: Number(activeInvoice.remaining_balance_gnf || 0),
+      }
+    : null;
+
+  const PatientContextPanel = () => {
+    if (!selectedPatient) return null;
+    return (
+      <div className="clinical-card reception-his-patient-context">
+        <h3>Contexte patient</h3>
+        <div className="reception-his-patient-context-grid">
+          <div><strong>ID patient</strong><span>{selectedPatient.patient_number || '—'}</span></div>
+          <div><strong>Nom</strong><span>{selectedPatient.last_name || '—'}</span></div>
+          <div><strong>Prénom</strong><span>{selectedPatient.first_name || '—'}</span></div>
+          <div><strong>Téléphone</strong><span>{selectedPatient.phone || '—'}</span></div>
+          <div><strong>Âge</strong><span>{selectedPatient.date_of_birth ? calcAge(selectedPatient.date_of_birth) : selectedPatient.age || '—'}</span></div>
+          <div><strong>Sexe</strong><span>{selectedPatient.gender || '—'}</span></div>
+        </div>
+      </div>
+    );
+  };
+
+  const needPatient = !selectedPatient && (tab === 'admission' || tab === 'billing' || tab === 'refund');
 
   return (
     <div className="clinical-page reception-his">
       <header className="reception-his-header">
         <div>
-          <h1>Réception — HIS</h1>
-          <p className="clinical-lead">Enregistrement · Admission · Facturation · Remboursement</p>
+          <h1>Tableau de bord — Réception</h1>
+          <p className="clinical-lead">Enregistrement patient · Admission · Facturation · Remboursement</p>
+          <p className="reception-his-session">Session : {user?.full_name || user?.email || 'Utilisateur'}</p>
         </div>
         <div className="reception-his-search">
-          <label htmlFor="patient-search">Recherche (F3)</label>
+          <label htmlFor="patient-search">Recherche patient (F3)</label>
           <input
             id="patient-search"
             ref={searchRef}
             type="search"
-            placeholder="ID, QR, téléphone, nom…"
+            placeholder="N° dossier, nom, téléphone, QR…"
             value={searchQ}
             onChange={(e) => setSearchQ(e.target.value)}
             autoComplete="off"
           />
-          {searching && <span className="reception-his-search-hint">…</span>}
+          {searching && <span className="reception-his-search-hint">Recherche…</span>}
           {searchResults.length > 0 && (
             <ul className="reception-his-search-results">
               {searchResults.map((p) => (
                 <li key={p.id}>
                   <button type="button" onClick={() => selectPatient(p)}>
                     <strong>{p.last_name} {p.first_name}</strong>
-                    <span>{p.patient_number || `#${p.id}`} · {p.phone || '—'} · {p.age} ans</span>
+                    <span>ID patient {p.patient_number || '—'} · {p.phone || '—'}</span>
                   </button>
                 </li>
               ))}
@@ -489,339 +591,279 @@ export default function ReceptionDashboard() {
 
       {selectedPatient && (
         <div className="reception-his-selected">
-          Patient actif :
-          {' '}
-          <strong>{selectedPatient.last_name} {selectedPatient.first_name}</strong>
-          {' '}
-          ({selectedPatient.patient_number || `#${selectedPatient.id}`})
-          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => setSelectedPatient(null)}>
-            Effacer
-          </button>
+          Patient actif : <strong>{selectedPatient.last_name} {selectedPatient.first_name}</strong> · ID patient{' '}
+          <strong>{selectedPatient.patient_number || '—'}</strong>
+          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={clearPatient}>Effacer</button>
         </div>
       )}
 
       {message && <p className="clinical-message clinical-message--ok">{message}</p>}
       {error && <p className="clinical-message clinical-message--err">{error}</p>}
 
-      <nav className="reception-his-tabs" aria-label="Modules réception">
+      <nav className="reception-his-tabs">
         {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className={tab === t.id ? 'active' : ''}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-            <kbd>{t.shortcut}</kbd>
+          <button key={t.id} type="button" className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
+            {t.label}<kbd>{t.shortcut}</kbd>
           </button>
         ))}
       </nav>
 
+      {needPatient && (
+        <div className="clinical-card reception-his-empty-state">
+          Veuillez rechercher d’abord un patient avec F3.
+        </div>
+      )}
+
       {tab === 'dashboard' && (
         <section className="reception-his-panel">
           <div className="reception-his-stats">
-            {statCards.map((c) => (
-              <div key={c.label} className="reception-his-stat-card">
-                <span>{c.label}</span>
-                <strong>{c.value}</strong>
-              </div>
+            {statCards.map((s) => (
+              <article key={s.label} className="reception-his-stat-card"><span>{s.label}</span><strong>{s.value}</strong></article>
             ))}
           </div>
-          {stats && (
-            <div className="clinical-grid">
-              <div className="clinical-card">
-                <h3>Répartition H/F</h3>
-                <ul className="reception-his-bar-list">
-                  <li><span>Hommes</span><strong>{stats.gender_distribution?.male ?? 0}</strong></li>
-                  <li><span>Femmes</span><strong>{stats.gender_distribution?.female ?? 0}</strong></li>
-                  <li><span>Autre</span><strong>{stats.gender_distribution?.other ?? 0}</strong></li>
-                </ul>
-              </div>
-              <div className="clinical-card">
-                <h3>Répartition par service (mois)</h3>
-                <ul className="reception-his-bar-list">
-                  {Object.entries(stats.department_distribution || {}).map(([d, n]) => (
-                    <li key={d}><span>{d}</span><strong>{n}</strong></li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-          <button type="button" className="clinical-btn" onClick={refreshAll}>Actualiser</button>
+          <div className="clinical-grid">
+            <article className="clinical-card">
+              <h3>Répartition H/F/Autre</h3>
+              <ul className="reception-his-list">
+                <li>H : {stats?.gender_distribution?.male ?? 0}</li>
+                <li>F : {stats?.gender_distribution?.female ?? 0}</li>
+                <li>Autre : {stats?.gender_distribution?.other ?? 0}</li>
+              </ul>
+            </article>
+            <article className="clinical-card">
+              <h3>Répartition par service</h3>
+              <ul className="reception-his-list">
+                {Object.entries(stats?.department_distribution || {}).map(([k, v]) => <li key={k}>{k} : {v}</li>)}
+              </ul>
+            </article>
+          </div>
+          <div className="clinical-grid">
+            <article className="clinical-card">
+              <h3>Inscriptions récentes</h3>
+              <ul className="reception-his-list">
+                {(stats?.recent_registrations || []).map((r, idx) => (
+                  <li key={`${r.patient_id}-${idx}`}>{r.patient_name} · ID patient {r.patient_id}</li>
+                ))}
+              </ul>
+            </article>
+            <article className="clinical-card">
+              <h3>Admissions récentes</h3>
+              <ul className="reception-his-list">
+                {(stats?.recent_admissions || []).map((r, idx) => (
+                  <li key={`${r.admission_number}-${idx}`}>N° admission {r.admission_number} · {r.patient_id} · {r.department || '—'}</li>
+                ))}
+              </ul>
+            </article>
+          </div>
+          <div className="clinical-grid">
+            <article className="clinical-card">
+              <h3>Paiements récents</h3>
+              <ul className="reception-his-list">
+                {(stats?.recent_payments || []).map((r, idx) => (
+                  <li key={`${r.invoice_number}-${idx}`}>N° facture {r.invoice_number} · {formatGNF(r.amount_gnf || 0)} · {r.payment_method}</li>
+                ))}
+              </ul>
+            </article>
+            <article className="clinical-card">
+              <h3>Remboursements récents</h3>
+              <ul className="reception-his-list">
+                {(stats?.recent_refunds || []).map((r, idx) => (
+                  <li key={`${r.refund_number}-${idx}`}>{r.refund_number} · {r.patient_id} · {formatGNF(r.refund_amount_gnf || 0)} · {refundStatusLabel(r.status)}</li>
+                ))}
+              </ul>
+            </article>
+          </div>
+          <button type="button" className="clinical-btn" onClick={refresh} disabled={loading}>Actualiser</button>
         </section>
       )}
 
       {tab === 'register' && (
         <section className="reception-his-panel">
-          <form className="clinical-card" onSubmit={(e) => handleRegister(e, false)}>
+          <form className="clinical-card" onSubmit={handleRegister}>
             <h2>Enregistrement patient</h2>
             {registeredPatient && (
               <div className="reception-his-qr-block">
                 <div>
-                  <p><strong>ID :</strong> {registeredPatient.patient_number}</p>
-                  <p><strong>QR :</strong> {registeredPatient.qr_token}</p>
+                  <p><strong>N° dossier patient :</strong> {registeredPatient.patient_number || '—'}</p>
+                  <p><strong>QR :</strong> {registeredPatient.qr_token || '—'}</p>
                 </div>
-                <img src={qrImageUrl(registeredPatient.qr_token)} alt="QR patient" width={140} height={140} />
+                {registeredPatient.qr_token && <img src={qrImageUrl(registeredPatient.qr_token)} alt="QR patient" width={140} height={140} />}
               </div>
             )}
-            {duplicateWarn && (
-              <div className="reception-his-duplicate-warn">
-                <p>Patients similaires détectés :</p>
-                <ul>
-                  {duplicateWarn.map((m) => (
-                    <li key={m.id}>{m.last_name} {m.first_name} — {m.phone || '—'} ({m.match_reasons?.join(', ')})</li>
-                  ))}
-                </ul>
-                <button type="button" className="clinical-btn" onClick={(e) => handleRegister(e, true)}>
-                  Créer quand même
-                </button>
-              </div>
-            )}
-            <fieldset>
-              <legend>Identité</legend>
+            <fieldset><legend>Identité</legend><div className="clinical-form-row">
+              <label>N° dossier patient<input readOnly value={registeredPatient?.patient_number || 'Généré à l’enregistrement'} /></label>
+              <label>Date inscription<input readOnly type="date" value={todayStr} /></label>
+              <label className="reception-his-check"><input type="checkbox" checked={regForm.is_newborn} onChange={(e) => updateReg({ is_newborn: e.target.checked })} />Nouveau-né</label>
+              <label>Nom *<input required value={regForm.last_name} onChange={(e) => updateReg({ last_name: e.target.value })} /></label>
+              <label>Prénom *<input required value={regForm.first_name} onChange={(e) => updateReg({ first_name: e.target.value })} /></label>
+              <label>Date naissance *<input required type="date" value={regForm.date_of_birth} onChange={(e) => updateReg({ date_of_birth: e.target.value })} /></label>
+              <label>Âge<input readOnly value={calcAge(regForm.date_of_birth)} /></label>
+              <label>Sexe *<select required value={regForm.gender} onChange={(e) => updateReg({ gender: e.target.value })}><option value="F">Féminin</option><option value="M">Masculin</option><option value="Autre">Autre</option></select></label>
+              <label>État civil<input value={regForm.marital_status} onChange={(e) => updateReg({ marital_status: e.target.value })} /></label>
+              <label>Nationalité<input value={regForm.nationality} onChange={(e) => updateReg({ nationality: e.target.value })} /></label>
+              <label>Nom mère<input value={regForm.mother_last_name} onChange={(e) => updateReg({ mother_last_name: e.target.value })} /></label>
+              <label>Prénom mère<input value={regForm.mother_first_name} onChange={(e) => updateReg({ mother_first_name: e.target.value })} /></label>
+              <label>Profession du patient<input value={regForm.profession} onChange={(e) => updateReg({ profession: e.target.value })} /></label>
+              <label>Langue<input value={regForm.preferred_language} onChange={(e) => updateReg({ preferred_language: e.target.value })} /></label>
+              <label>Email<input type="email" value={regForm.email} onChange={(e) => updateReg({ email: e.target.value })} /></label>
+            </div></fieldset>
+            <fieldset><legend>Photo</legend><div className="clinical-form-row">
+              <label>Photo (optionnelle)<input type="file" accept="image/*" onChange={(e) => onPhotoFile(e.target.files?.[0])} /></label>
+              {regForm.photo_url && <div className="reception-his-photo-preview"><img src={regForm.photo_url} alt="Aperçu" /></div>}
+            </div></fieldset>
+            <fieldset><legend>Adresse</legend><div className="clinical-form-row">
+              <label>Adresse *<input required value={regForm.address} onChange={(e) => updateReg({ address: e.target.value })} /></label>
+              <label>Tél. principal *<input required value={regForm.phone} onChange={(e) => updateReg({ phone: e.target.value })} /></label>
+              <label>Tél. secondaire<input value={regForm.phone_secondary} onChange={(e) => updateReg({ phone_secondary: e.target.value })} /></label>
+              <label>Commune / ville<input value={regForm.commune} onChange={(e) => updateReg({ commune: e.target.value })} /></label>
+              <label>Région<input value={regForm.region} onChange={(e) => updateReg({ region: e.target.value })} /></label>
+              <label>Pays<input value={regForm.country} onChange={(e) => updateReg({ country: e.target.value })} /></label>
+            </div></fieldset>
+            <fieldset><legend>Personne à contacter</legend>
+              <label className="reception-his-check"><input type="checkbox" checked={regForm.emergency_same_address} onChange={(e) => updateReg({ emergency_same_address: e.target.checked })} />Adresse identique à celle du patient</label>
               <div className="clinical-form-row">
-                <label>Prénom *<input required value={regForm.first_name} onChange={(e) => setRegForm({ ...regForm, first_name: e.target.value })} /></label>
-                <label>Nom *<input required value={regForm.last_name} onChange={(e) => setRegForm({ ...regForm, last_name: e.target.value })} /></label>
-                <label>Sexe *
-                  <select required value={regForm.gender} onChange={(e) => setRegForm({ ...regForm, gender: e.target.value })}>
-                    <option value="F">Féminin</option>
-                    <option value="M">Masculin</option>
-                  </select>
-                </label>
-                <label>Date naissance *
-                  <input required type="date" value={regForm.date_of_birth} onChange={(e) => setRegForm({ ...regForm, date_of_birth: e.target.value })} />
-                </label>
-                <label>Lieu naissance<input value={regForm.place_of_birth} onChange={(e) => setRegForm({ ...regForm, place_of_birth: e.target.value })} /></label>
-                <label>Nationalité<input value={regForm.nationality} onChange={(e) => setRegForm({ ...regForm, nationality: e.target.value })} /></label>
-                <label>État civil<input value={regForm.marital_status} onChange={(e) => setRegForm({ ...regForm, marital_status: e.target.value })} /></label>
-                <label>Prénom mère<input value={regForm.mother_first_name} onChange={(e) => setRegForm({ ...regForm, mother_first_name: e.target.value })} /></label>
-                <label>Nom mère<input value={regForm.mother_last_name} onChange={(e) => setRegForm({ ...regForm, mother_last_name: e.target.value })} /></label>
-                <label>Profession<input value={regForm.profession} onChange={(e) => setRegForm({ ...regForm, profession: e.target.value })} /></label>
-                <label>Langue<input value={regForm.preferred_language} onChange={(e) => setRegForm({ ...regForm, preferred_language: e.target.value })} /></label>
-                <label>Email<input type="email" value={regForm.email} onChange={(e) => setRegForm({ ...regForm, email: e.target.value })} /></label>
-                <label>Photo (URL)<input value={regForm.photo_url} onChange={(e) => setRegForm({ ...regForm, photo_url: e.target.value })} /></label>
-              </div>
-            </fieldset>
-            <fieldset>
-              <legend>Contact</legend>
-              <div className="clinical-form-row">
-                <label>Tél. principal *<input required value={regForm.phone} onChange={(e) => setRegForm({ ...regForm, phone: e.target.value })} /></label>
-                <label>Tél. secondaire<input value={regForm.phone_secondary} onChange={(e) => setRegForm({ ...regForm, phone_secondary: e.target.value })} /></label>
-                <label>Adresse *<input required value={regForm.address} onChange={(e) => setRegForm({ ...regForm, address: e.target.value })} /></label>
-                <label>Quartier<input value={regForm.commune} onChange={(e) => setRegForm({ ...regForm, commune: e.target.value })} /></label>
-                <label>Ville<input value={regForm.city} onChange={(e) => setRegForm({ ...regForm, city: e.target.value })} /></label>
-                <label>Région<input value={regForm.region} onChange={(e) => setRegForm({ ...regForm, region: e.target.value })} /></label>
-                <label>Pays<input value={regForm.country} onChange={(e) => setRegForm({ ...regForm, country: e.target.value })} /></label>
-              </div>
-            </fieldset>
-            <fieldset>
-              <legend>Personne à contacter</legend>
-              <label className="reception-his-check">
-                <input type="checkbox" checked={regForm.emergency_same_address} onChange={(e) => setRegForm({ ...regForm, emergency_same_address: e.target.checked })} />
-                Adresse identique au patient
-              </label>
-              <div className="clinical-form-row">
-                <label>Nom complet *<input required value={regForm.emergency_full_name} onChange={(e) => setRegForm({ ...regForm, emergency_full_name: e.target.value })} /></label>
-                <label>Lien<input value={regForm.emergency_relationship} onChange={(e) => setRegForm({ ...regForm, emergency_relationship: e.target.value })} /></label>
-                <label>Téléphone *<input required value={regForm.emergency_phone} onChange={(e) => setRegForm({ ...regForm, emergency_phone: e.target.value })} /></label>
+                <label>Nom du contact *<input required value={regForm.emergency_full_name} onChange={(e) => updateReg({ emergency_full_name: e.target.value })} /></label>
+                <label>Relation<input value={regForm.emergency_relationship} onChange={(e) => updateReg({ emergency_relationship: e.target.value })} /></label>
+                <label>Téléphone *<input required value={regForm.emergency_phone} onChange={(e) => updateReg({ emergency_phone: e.target.value })} /></label>
                 {!regForm.emergency_same_address && (
                   <>
-                    <label>Adresse<input value={regForm.emergency_address} onChange={(e) => setRegForm({ ...regForm, emergency_address: e.target.value })} /></label>
-                    <label>Commune<input value={regForm.emergency_commune} onChange={(e) => setRegForm({ ...regForm, emergency_commune: e.target.value })} /></label>
+                    <label>Adresse contact<input value={regForm.emergency_address} onChange={(e) => updateReg({ emergency_address: e.target.value })} /></label>
+                    <label>Commune / ville contact<input value={regForm.emergency_commune} onChange={(e) => updateReg({ emergency_commune: e.target.value })} /></label>
+                    <label>Région contact<input value={regForm.emergency_region} onChange={(e) => updateReg({ emergency_region: e.target.value })} /></label>
+                    <label>Pays contact<input value={regForm.emergency_country} onChange={(e) => updateReg({ emergency_country: e.target.value })} /></label>
                   </>
                 )}
               </div>
             </fieldset>
-            <fieldset>
-              <legend>Payeur</legend>
-              <div className="clinical-form-row">
-                <label>Type
-                  <select value={regForm.payer_type} onChange={(e) => setRegForm({ ...regForm, payer_type: e.target.value })}>
-                    <option value="patient">Patient</option>
-                    <option value="insurance">Assurance</option>
-                    <option value="company">Entreprise</option>
-                  </select>
-                </label>
-                {regForm.payer_type === 'insurance' && (
-                  <>
-                    <label>Compagnie<input value={regForm.insurance_company} onChange={(e) => setRegForm({ ...regForm, insurance_company: e.target.value })} /></label>
-                    <label>N° assurance<input value={regForm.insurance_number} onChange={(e) => setRegForm({ ...regForm, insurance_number: e.target.value })} /></label>
-                  </>
-                )}
-                {regForm.payer_type === 'company' && (
-                  <label>Entreprise<input value={regForm.company_name} onChange={(e) => setRegForm({ ...regForm, company_name: e.target.value })} /></label>
-                )}
-              </div>
-            </fieldset>
+            <fieldset><legend>Payeur</legend><div className="clinical-form-row">
+              <label>Type de payeur<select value={regForm.payer_type} onChange={(e) => updateReg({ payer_type: e.target.value })}><option value="patient">Patient</option><option value="insurance">Assurance</option><option value="company">Entreprise</option></select></label>
+              {regForm.payer_type === 'insurance' && (<><label>Compagnie d’assurance<input value={regForm.insurance_company} onChange={(e) => updateReg({ insurance_company: e.target.value })} /></label><label>Numéro d’assurance<input value={regForm.insurance_number} onChange={(e) => updateReg({ insurance_number: e.target.value })} /></label></>)}
+              {regForm.payer_type === 'company' && <label>Nom de l’entreprise<input value={regForm.company_name} onChange={(e) => updateReg({ company_name: e.target.value })} /></label>}
+              <label>Notes<textarea rows={2} value={regForm.payer_notes} onChange={(e) => updateReg({ payer_notes: e.target.value })} /></label>
+            </div></fieldset>
             <button type="submit" className="clinical-btn" disabled={loading}>Enregistrer le patient</button>
           </form>
         </section>
       )}
 
-      {tab === 'admission' && (
+      {tab === 'admission' && selectedPatient && (
         <section className="reception-his-panel">
+          <PatientContextPanel />
           <form className="clinical-card" onSubmit={handleAdmission}>
             <h2>Admission</h2>
-            {!selectedPatient && <p className="clinical-hint">Recherchez et sélectionnez un patient (F3).</p>}
             <div className="clinical-form-row">
-              <label>Date<input type="date" required value={admissionForm.admission_date} onChange={(e) => setAdmissionForm({ ...admissionForm, admission_date: e.target.value })} /></label>
-              <label>Heure<input type="time" required value={admissionForm.admission_time} onChange={(e) => setAdmissionForm({ ...admissionForm, admission_time: e.target.value })} /></label>
-              <label>Service *
-                <select required value={admissionForm.department} onChange={(e) => setAdmissionForm({ ...admissionForm, department: e.target.value })}>
-                  {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </label>
-              <label>Type *
-                <select required value={admissionForm.admission_type} onChange={(e) => setAdmissionForm({ ...admissionForm, admission_type: e.target.value })}>
-                  {ADMISSION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              </label>
-              <label>Médecin traitant
-                <select value={admissionForm.attending_clinician_user_id} onChange={(e) => setAdmissionForm({ ...admissionForm, attending_clinician_user_id: e.target.value })}>
-                  <option value="">—</option>
-                  {doctors.map((d) => <option key={d.id} value={d.id}>{d.full_name || d.email}</option>)}
-                </select>
-              </label>
-              <label>Nom médecin (libre)<input value={admissionForm.attending_physician_name} onChange={(e) => setAdmissionForm({ ...admissionForm, attending_physician_name: e.target.value })} /></label>
-              <label>Notes<textarea value={admissionForm.notes} onChange={(e) => setAdmissionForm({ ...admissionForm, notes: e.target.value })} rows={2} /></label>
+              <label>N° admission<input readOnly value={lastAdmission?.admission_number || 'Auto'} /></label>
+              <label>ID patient<input readOnly value={selectedPatient.patient_number || ''} /></label>
+              <label>Date *<input required type="date" value={admissionForm.admission_date} onChange={(e) => updateAdmission({ admission_date: e.target.value })} /></label>
+              <label>Heure *<input required type="time" value={admissionForm.admission_time} onChange={(e) => updateAdmission({ admission_time: e.target.value })} /></label>
+              <label>Service *<select required value={admissionForm.department} onChange={(e) => updateAdmission({ department: e.target.value })}>{DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}</select></label>
+              <label>Médecin traitant<select value={admissionForm.attending_clinician_user_id} onChange={(e) => updateAdmission({ attending_clinician_user_id: e.target.value })}><option value="">—</option>{doctors.map((d) => <option key={d.id} value={d.id}>{d.full_name || d.email}</option>)}</select></label>
+              <label>Médecin traitant (texte libre)<input value={admissionForm.attending_physician_name} onChange={(e) => updateAdmission({ attending_physician_name: e.target.value })} /></label>
+              <label>Type admission<select value={admissionForm.admission_type} onChange={(e) => updateAdmission({ admission_type: e.target.value })}>{ADMISSION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
+              <label>Confirmation<select value={admissionForm.confirmation_status} onChange={(e) => updateAdmission({ confirmation_status: e.target.value })}>{ADMISSION_CONFIRMATIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</select></label>
+              <label>Notes<textarea rows={2} value={admissionForm.notes} onChange={(e) => updateAdmission({ notes: e.target.value })} /></label>
             </div>
-            <button type="submit" className="clinical-btn" disabled={loading || !selectedPatient}>Créer l&apos;admission</button>
+            <button type="submit" className="clinical-btn" disabled={loading}>Créer l&apos;admission</button>
           </form>
         </section>
       )}
 
-      {tab === 'billing' && (
-        <section className="reception-his-panel clinical-grid">
-          <form className="clinical-card" onSubmit={handleCreateInvoice}>
-            <h2>Nouvelle facture</h2>
-            <div className="clinical-form-row">
-              <label>Service
-                <select value={billingForm.department} onChange={(e) => setBillingForm({ ...billingForm, department: e.target.value })}>
-                  {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </label>
-              <label>Description<input required value={billingForm.description} onChange={(e) => setBillingForm({ ...billingForm, description: e.target.value })} /></label>
-              <label>Montant total (GNF)<input required type="number" min="0" value={billingForm.total_amount_gnf} onChange={(e) => setBillingForm({ ...billingForm, total_amount_gnf: e.target.value })} /></label>
-            </div>
-            <button type="submit" className="clinical-btn" disabled={loading || !selectedPatient}>Créer facture</button>
-          </form>
-
-          <form className="clinical-card" onSubmit={handlePayment}>
-            <h2>Paiement</h2>
-            <div className="clinical-form-row">
-              <label>Facture
-                <select value={paymentForm.invoice_id} onChange={(e) => {
-                  const inv = invoices.find((i) => String(i.id) === e.target.value);
-                  setPaymentForm({
-                    ...paymentForm,
-                    invoice_id: e.target.value,
-                    amount_gnf: inv ? String(inv.remaining_balance_gnf) : '',
-                  });
-                }}>
-                  <option value="">—</option>
-                  {invoices.map((i) => (
-                    <option key={i.id} value={i.id}>
-                      {i.invoice_number} — {formatGNF(i.remaining_balance_gnf)} restant
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>Montant<input required type="number" min="1" value={paymentForm.amount_gnf} onChange={(e) => setPaymentForm({ ...paymentForm, amount_gnf: e.target.value })} /></label>
-              <label>Mode
-                <select value={paymentForm.payment_method} onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}>
-                  {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </select>
-              </label>
-              <label>Référence<input value={paymentForm.reference} onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })} /></label>
-            </div>
-            <button type="submit" className="clinical-btn" disabled={loading}>Enregistrer paiement</button>
-          </form>
-
-          <div className="clinical-card reception-his-invoices">
-            <h2>Factures & historique</h2>
-            {invoices.length === 0 && <p>Aucune facture.</p>}
-            {invoices.map((inv) => (
-              <div key={inv.id} className="reception-his-invoice-row">
-                <div>
-                  <strong>{inv.invoice_number}</strong>
-                  {' '}
-                  — {statusLabel(inv.status)} — {formatGNF(inv.paid_amount_gnf)} / {formatGNF(inv.total_amount_gnf)}
-                </div>
-                <ul>
-                  {(inv.payments || []).map((p) => (
-                    <li key={p.id}>{new Date(p.paid_at).toLocaleString('fr-FR')} — {formatGNF(p.amount_gnf)} ({p.payment_method})</li>
-                  ))}
-                </ul>
-                <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => openReceipt(inv.id)}>Imprimer reçu</button>
+      {tab === 'billing' && selectedPatient && (
+        <section className="reception-his-panel">
+          <PatientContextPanel />
+          <div className="clinical-grid">
+            <form className="clinical-card" onSubmit={handleCreateInvoice}>
+              <h2>1) Créer facture</h2>
+              <div className="clinical-form-row">
+                <label>ID patient<input readOnly value={selectedPatient.patient_number || ''} /></label>
+                <label>Service<select value={billingForm.department} onChange={(e) => updateBilling({ department: e.target.value })}>{DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}</select></label>
+                <label>Description<input required value={billingForm.description} onChange={(e) => updateBilling({ description: e.target.value })} /></label>
+                <label>Montant total<input required type="number" min="0" value={billingForm.total_amount_gnf} onChange={(e) => updateBilling({ total_amount_gnf: e.target.value })} /></label>
               </div>
-            ))}
+              <button type="submit" className="clinical-btn" disabled={loading}>Créer facture</button>
+            </form>
+
+            <div className="clinical-card">
+              <h2>2) Facture active</h2>
+              <label>Facture du patient<select value={activeInvoice?.id || ''} onChange={(e) => selectInvoice(e.target.value)}><option value="">—</option>{invoices.map((i) => <option key={i.id} value={i.id}>{i.invoice_number} · {invoiceStatusLabel(i.status)}</option>)}</select></label>
+              {activeInvoice && activeMeta && (
+                <div className="clinical-form-row">
+                  <label>N° facture<input readOnly value={activeInvoice.invoice_number || ''} /></label>
+                  <label>Date facturation<input readOnly value={(activeInvoice.created_at || '').slice(0, 10)} /></label>
+                  <label>Service<input readOnly value={activeInvoice.department || ''} /></label>
+                  <label>Description<input readOnly value={activeInvoice.description || ''} /></label>
+                  <label>Montant total<input readOnly value={formatGNF(activeMeta.total)} /></label>
+                  <label>Montant payé<input readOnly value={formatGNF(activeMeta.paid)} /></label>
+                  <label>Montant reçu<input readOnly value={formatGNF(activeMeta.paid)} /></label>
+                  <label>Reste à payer<input readOnly value={formatGNF(activeMeta.remaining)} /></label>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="clinical-grid">
+            <form className="clinical-card" onSubmit={handlePayment}>
+              <h2>3) Paiement</h2>
+              <div className="clinical-form-row">
+                <label>Montant à encaisser<input required type="number" min="0" value={paymentForm.amount_gnf} onChange={(e) => updatePayment({ amount_gnf: e.target.value })} /></label>
+                <label>Mode<select value={paymentForm.payment_method} onChange={(e) => updatePayment({ payment_method: e.target.value })}>{PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}</select></label>
+                <label>Référence<input value={paymentForm.reference} onChange={(e) => updatePayment({ reference: e.target.value })} /></label>
+              </div>
+              <button type="submit" className="clinical-btn" disabled={loading || !activeInvoice}>Enregistrer paiement</button>
+            </form>
+
+            <div className="clinical-card">
+              <h2>4) Historique des paiements</h2>
+              {invoices.length === 0 && <p>Aucune facture pour ce patient.</p>}
+              {invoices.map((inv) => (
+                <div key={inv.id} className="reception-his-invoice-row">
+                  <div><strong>{inv.invoice_number}</strong> · {invoiceStatusLabel(inv.status)} · {formatGNF(inv.paid_amount_gnf || 0)} / {formatGNF(inv.total_amount_gnf || 0)}</div>
+                  <ul>{(inv.payments || []).map((p) => <li key={p.id}>{new Date(p.paid_at).toLocaleString('fr-FR')} · {formatGNF(p.amount_gnf || 0)} · {p.payment_method}</li>)}</ul>
+                  <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => printInvoiceReceipt(inv.id)}>Imprimer reçu</button>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}
 
-      {tab === 'refund' && (
-        <section className="reception-his-panel clinical-grid">
-          <form className="clinical-card" onSubmit={handleRefund}>
-            <h2>Demande de remboursement</h2>
-            <div className="clinical-form-row">
-              <label>Facture
-                <select required value={refundForm.invoice_id} onChange={(e) => setRefundForm({ ...refundForm, invoice_id: e.target.value })}>
-                  <option value="">—</option>
-                  {invoices.filter((i) => i.paid_amount_gnf > 0).map((i) => (
-                    <option key={i.id} value={i.id}>{i.invoice_number} — payé {formatGNF(i.paid_amount_gnf)}</option>
-                  ))}
-                </select>
-              </label>
-              <label>Service payé<input required value={refundForm.service_paid_for} onChange={(e) => setRefundForm({ ...refundForm, service_paid_for: e.target.value })} /></label>
-              <label>Montant consommé<input required type="number" min="0" value={refundForm.amount_consumed_gnf} onChange={(e) => setRefundForm({ ...refundForm, amount_consumed_gnf: e.target.value })} /></label>
-              <label>Montant remboursement<input required type="number" min="1" value={refundForm.refund_amount_gnf} onChange={(e) => setRefundForm({ ...refundForm, refund_amount_gnf: e.target.value })} /></label>
-              <label>Motif
-                <select value={refundForm.reason} onChange={(e) => setRefundForm({ ...refundForm, reason: e.target.value })}>
-                  {REFUND_REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
-              </label>
-              <label>Bénéficiaire<input required value={refundForm.recipient_name} onChange={(e) => setRefundForm({ ...refundForm, recipient_name: e.target.value })} /></label>
-              <label>Lien<input value={refundForm.recipient_relationship} onChange={(e) => setRefundForm({ ...refundForm, recipient_relationship: e.target.value })} /></label>
-              <label>Tél. bénéficiaire<input required value={refundForm.recipient_phone} onChange={(e) => setRefundForm({ ...refundForm, recipient_phone: e.target.value })} /></label>
-              <label>Mode remboursement
-                <select value={refundForm.refund_method} onChange={(e) => setRefundForm({ ...refundForm, refund_method: e.target.value })}>
-                  {REFUND_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </select>
-              </label>
-            </div>
-            <button type="submit" className="clinical-btn" disabled={loading}>Soumettre remboursement</button>
-          </form>
-
-          <div className="clinical-card">
-            <h2>Suivi remboursements</h2>
-            {refunds.length === 0 && <p>Aucun remboursement.</p>}
-            {refunds.map((r) => (
-              <div key={r.id} className="reception-his-invoice-row">
-                <div>
-                  <strong>{r.refund_number}</strong> — {r.patient_name} — {formatGNF(r.refund_amount_gnf)} — {statusLabel(r.status)}
-                </div>
-                <p>Facture {r.invoice_number} · {r.reason}</p>
-                {r.status === 'pending' && (
-                  <div className="reception-his-refund-actions">
-                    <button type="button" className="clinical-btn" onClick={() => updateRefundStatus(r.id, 'approved')}>Approuver</button>
-                    <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => updateRefundStatus(r.id, 'rejected')}>Rejeter</button>
-                  </div>
-                )}
-                {r.status === 'approved' && (
-                  <button type="button" className="clinical-btn" onClick={() => updateRefundStatus(r.id, 'paid')}>Marquer payé</button>
-                )}
-                {r.status === 'paid' && (
-                  <button type="button" className="clinical-btn clinical-btn--secondary" onClick={async () => {
-                    try {
-                      const { data } = await clinicalApi.receptionHisRefundReceipt(r.id);
-                      window.open(URL.createObjectURL(data), '_blank');
-                    } catch {
-                      setError('Reçu indisponible');
-                    }
-                  }}>Imprimer reçu</button>
-                )}
+      {tab === 'refund' && selectedPatient && (
+        <section className="reception-his-panel">
+          <PatientContextPanel />
+          <div className="clinical-grid">
+            <form className="clinical-card" onSubmit={handleRefund}>
+              <h2>Demande de remboursement</h2>
+              <div className="clinical-form-row">
+                <label>Recherche facture<input type="search" placeholder="N° facture..." value={invoiceSearchQ} onChange={(e) => setInvoiceSearchQ(e.target.value)} /></label>
+                <label>Facture originale<select required value={refundForm.invoice_id} onChange={(e) => { updateRefund({ invoice_id: e.target.value }); selectInvoice(e.target.value); }}><option value="">—</option>{refundInvoices.map((i) => <option key={i.id} value={i.id}>{i.invoice_number} · payé {formatGNF(i.paid_amount_gnf || 0)}</option>)}</select></label>
+                <label>ID patient<input readOnly value={selectedPatient.patient_number || ''} /></label>
+                <label>Service payé<input value={refundForm.service_paid_for} onChange={(e) => updateRefund({ service_paid_for: e.target.value })} /></label>
+                <label>Total payé<input readOnly value={formatGNF(activeInvoice?.paid_amount_gnf || 0)} /></label>
+                <label>Montant consommé<input required type="number" min="0" value={refundForm.amount_consumed_gnf} onChange={(e) => updateRefund({ amount_consumed_gnf: e.target.value })} /></label>
+                <label>Montant à rembourser<input required type="number" min="0" value={refundForm.refund_amount_gnf} onChange={(e) => updateRefund({ refund_amount_gnf: e.target.value })} /></label>
+                <label>Bénéficiaire<input required value={refundForm.recipient_name} onChange={(e) => updateRefund({ recipient_name: e.target.value })} /></label>
+                <label>Tél bénéficiaire<input required value={refundForm.recipient_phone} onChange={(e) => updateRefund({ recipient_phone: e.target.value })} /></label>
+                <label>Lien<input value={refundForm.recipient_relationship} onChange={(e) => updateRefund({ recipient_relationship: e.target.value })} /></label>
+                <label>Mode remboursement<select value={refundForm.refund_method} onChange={(e) => updateRefund({ refund_method: e.target.value })}>{REFUND_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}</select></label>
+                <label>Motif<select value={refundForm.reason} onChange={(e) => updateRefund({ reason: e.target.value })}>{REFUND_REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}</select></label>
+                <label>Notes<textarea rows={2} value={refundForm.reason_notes} onChange={(e) => updateRefund({ reason_notes: e.target.value })} /></label>
               </div>
-            ))}
+              <button type="submit" className="clinical-btn" disabled={loading}>Soumettre remboursement</button>
+            </form>
+
+            <div className="clinical-card">
+              <h2>Suivi remboursements (patient)</h2>
+              {filteredRefunds.length === 0 && <p>Aucun remboursement pour ce patient.</p>}
+              {filteredRefunds.map((r) => (
+                <div key={r.id} className="reception-his-invoice-row">
+                  <div><strong>{r.refund_number}</strong> · {refundStatusLabel(r.status)} · {formatGNF(r.refund_amount_gnf || 0)}</div>
+                  <p>Facture {r.invoice_number || '—'} · Motif: {r.reason || '—'}</p>
+                  {r.status === 'pending' && <div className="reception-his-refund-actions"><button type="button" className="clinical-btn" onClick={() => updateRefundStatus(r.id, 'approved')}>Approuver</button><button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => updateRefundStatus(r.id, 'rejected')}>Rejeter</button></div>}
+                  {r.status === 'approved' && <button type="button" className="clinical-btn" onClick={() => updateRefundStatus(r.id, 'paid')}>Marquer payé</button>}
+                  {r.status === 'paid' && <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => printRefundReceipt(r.id)}>Imprimer reçu</button>}
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}

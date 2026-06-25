@@ -197,6 +197,7 @@ class ReceptionHisService:
             emergency_contact_json=json.dumps(emergency_json, ensure_ascii=False),
             payer_json=json.dumps(payer.model_dump(), ensure_ascii=False),
             qr_token=_qr_token(clinic_id),
+            is_newborn=bool(payload.is_newborn),
         )
         db.add(patient)
         db.commit()
@@ -286,6 +287,14 @@ class ReceptionHisService:
         adm_time = payload.admission_time or datetime.utcnow().time()
         admitted_at = datetime.combine(payload.admission_date, adm_time)
 
+        notes_parts = []
+        if payload.confirmation_status:
+            label = "Confirmée" if payload.confirmation_status == "confirmed" else "En attente"
+            notes_parts.append(f"Confirmation: {label}")
+        if payload.notes:
+            notes_parts.append(payload.notes.strip())
+        combined_notes = "\n".join(notes_parts) if notes_parts else None
+
         status = "admitted" if payload.admission_type == "hospitalization" else "pending"
         if payload.admission_type == "emergency":
             status = "in_care"
@@ -298,7 +307,7 @@ class ReceptionHisService:
             admission_type=payload.admission_type,
             status=status,
             attending_clinician_user_id=payload.attending_clinician_user_id,
-            notes=payload.notes or payload.attending_physician_name,
+            notes=combined_notes or payload.attending_physician_name,
             admitted_by_user_id=actor.id,
             admitted_at=admitted_at,
         )
@@ -569,15 +578,17 @@ class ReceptionHisService:
         return refund
 
     @staticmethod
-    def list_refunds(db: Session, *, clinic_id: int) -> list[models.ClinicRefund]:
-        return (
+    def list_refunds(
+        db: Session, *, clinic_id: int, patient_id: int | None = None
+    ) -> list[models.ClinicRefund]:
+        q = (
             db.query(models.ClinicRefund)
             .options(joinedload(models.ClinicRefund.patient), joinedload(models.ClinicRefund.invoice))
             .filter(models.ClinicRefund.clinic_id == clinic_id)
-            .order_by(models.ClinicRefund.created_at.desc())
-            .limit(100)
-            .all()
         )
+        if patient_id:
+            q = q.filter(models.ClinicRefund.patient_id == patient_id)
+        return q.order_by(models.ClinicRefund.created_at.desc()).limit(100).all()
 
     @staticmethod
     def dashboard_stats(db: Session, *, clinic_id: int) -> dict[str, Any]:
@@ -709,14 +720,247 @@ class ReceptionHisService:
         )
         department_distribution = {d or "Non spécifié": c for d, c in dept_rows}
 
+        paid_invoices = (
+            db.query(func.count(models.Invoice.id))
+            .filter(models.Invoice.clinic_id == clinic_id, models.Invoice.status == "paid")
+            .scalar()
+            or 0
+        )
+        refunds_total_gnf = int(refunds_month)
+
+        recent_patients = (
+            db.query(models.Patient)
+            .filter(models.Patient.clinic_id == clinic_id, models.Patient.is_archived.is_(False))
+            .order_by(models.Patient.created_at.desc())
+            .limit(8)
+            .all()
+        )
+        recent_admissions = (
+            db.query(models.Admission)
+            .filter(models.Admission.clinic_id == clinic_id)
+            .order_by(models.Admission.created_at.desc())
+            .limit(8)
+            .all()
+        )
+        recent_payments = (
+            db.query(models.PaymentRecord)
+            .join(models.Invoice, models.PaymentRecord.invoice_id == models.Invoice.id)
+            .filter(models.Invoice.clinic_id == clinic_id)
+            .order_by(models.PaymentRecord.paid_at.desc())
+            .limit(8)
+            .all()
+        )
+        recent_refunds = (
+            db.query(models.ClinicRefund)
+            .filter(models.ClinicRefund.clinic_id == clinic_id)
+            .order_by(models.ClinicRefund.created_at.desc())
+            .limit(8)
+            .all()
+        )
+
+        def _patient_label(pid: int) -> str:
+            p = db.query(models.Patient).filter(models.Patient.id == pid).first()
+            if not p:
+                return f"#{pid}"
+            num = p.patient_number or f"#{p.id}"
+            return f"{num} — {p.last_name} {p.first_name}"
+
         return {
             "total_patients": total_patients,
             "patients_registered_today": patients_today,
             "admissions_today": admissions_today,
             "hospitalized_patients": hospitalized,
+            "paid_invoices": paid_invoices,
+            "unpaid_invoices": outstanding,
             "revenue_today_gnf": revenue_today,
             "revenue_month_gnf": revenue_month,
+            "refunds_total_gnf": refunds_total_gnf,
             "outstanding_invoices": outstanding,
             "gender_distribution": gender_distribution,
             "department_distribution": department_distribution,
+            "recent_registrations": [
+                {
+                    "patient_id": p.patient_number or f"PAT-{clinic_id:03d}-{p.id:06d}",
+                    "patient_name": f"{p.last_name} {p.first_name}",
+                    "registered_at": p.created_at.isoformat() if p.created_at else None,
+                }
+                for p in recent_patients
+            ],
+            "recent_admissions": [
+                {
+                    "admission_number": a.admission_number,
+                    "patient_id": _patient_label(a.patient_id),
+                    "department": a.department,
+                    "admitted_at": a.admitted_at.isoformat() if a.admitted_at else None,
+                }
+                for a in recent_admissions
+            ],
+            "recent_payments": [
+                {
+                    "invoice_number": (
+                        db.query(models.Invoice.invoice_number)
+                        .filter(models.Invoice.id == pay.invoice_id)
+                        .scalar()
+                    ),
+                    "amount_gnf": pay.amount_gnf,
+                    "payment_method": pay.payment_method,
+                    "paid_at": pay.paid_at.isoformat() if pay.paid_at else None,
+                }
+                for pay in recent_payments
+            ],
+            "recent_refunds": [
+                {
+                    "refund_number": r.refund_number,
+                    "patient_id": _patient_label(r.patient_id),
+                    "refund_amount_gnf": r.refund_amount_gnf,
+                    "status": r.status,
+                    "created_at": r.created_at.isoformat() if r.created_at else None,
+                }
+                for r in recent_refunds
+            ],
         }
+
+    @staticmethod
+    def find_invoice(
+        db: Session, *, clinic_id: int, query: str, patient_id: int | None = None
+    ) -> models.Invoice | None:
+        q = query.strip()
+        if not q:
+            return None
+        base = db.query(models.Invoice).options(
+            joinedload(models.Invoice.payments), joinedload(models.Invoice.patient)
+        ).filter(models.Invoice.clinic_id == clinic_id)
+        if patient_id:
+            base = base.filter(models.Invoice.patient_id == patient_id)
+        if q.isdigit():
+            inv = base.filter(models.Invoice.id == int(q)).first()
+            if inv:
+                return inv
+        return base.filter(models.Invoice.invoice_number.ilike(f"%{q}%")).first()
+
+    @staticmethod
+    def period_report(
+        db: Session, *, clinic_id: int, start: date, end: date
+    ) -> dict[str, Any]:
+        start_dt = datetime.combine(start, time.min)
+        end_dt = datetime.combine(end, time.max)
+
+        patients_registered = (
+            db.query(func.count(models.Patient.id))
+            .filter(
+                models.Patient.clinic_id == clinic_id,
+                models.Patient.created_at >= start_dt,
+                models.Patient.created_at <= end_dt,
+            )
+            .scalar()
+            or 0
+        )
+        admissions = (
+            db.query(func.count(models.Admission.id))
+            .filter(
+                models.Admission.clinic_id == clinic_id,
+                models.Admission.admitted_at >= start_dt,
+                models.Admission.admitted_at <= end_dt,
+            )
+            .scalar()
+            or 0
+        )
+        hospitalizations = (
+            db.query(func.count(models.Admission.id))
+            .filter(
+                models.Admission.clinic_id == clinic_id,
+                models.Admission.admission_type == "hospitalization",
+                models.Admission.admitted_at >= start_dt,
+                models.Admission.admitted_at <= end_dt,
+            )
+            .scalar()
+            or 0
+        )
+        invoices_paid = (
+            db.query(func.count(models.Invoice.id))
+            .filter(
+                models.Invoice.clinic_id == clinic_id,
+                models.Invoice.status == "paid",
+                models.Invoice.paid_at >= start_dt,
+                models.Invoice.paid_at <= end_dt,
+            )
+            .scalar()
+            or 0
+        )
+        invoices_unpaid = (
+            db.query(func.count(models.Invoice.id))
+            .filter(
+                models.Invoice.clinic_id == clinic_id,
+                models.Invoice.status.in_(["issued", "partially_paid"]),
+                models.Invoice.issued_at >= start_dt,
+                models.Invoice.issued_at <= end_dt,
+            )
+            .scalar()
+            or 0
+        )
+        payments_received = (
+            db.query(func.coalesce(func.sum(models.PaymentRecord.amount_gnf), 0))
+            .join(models.Invoice, models.PaymentRecord.invoice_id == models.Invoice.id)
+            .filter(
+                models.Invoice.clinic_id == clinic_id,
+                models.PaymentRecord.paid_at >= start_dt,
+                models.PaymentRecord.paid_at <= end_dt,
+            )
+            .scalar()
+            or 0
+        )
+        refunds_paid = (
+            db.query(func.coalesce(func.sum(models.ClinicRefund.refund_amount_gnf), 0))
+            .filter(
+                models.ClinicRefund.clinic_id == clinic_id,
+                models.ClinicRefund.status == "paid",
+                models.ClinicRefund.paid_at >= start_dt,
+                models.ClinicRefund.paid_at <= end_dt,
+            )
+            .scalar()
+            or 0
+        )
+        revenue_by_service_rows = (
+            db.query(models.Invoice.department, func.coalesce(func.sum(models.PaymentRecord.amount_gnf), 0))
+            .join(models.PaymentRecord, models.PaymentRecord.invoice_id == models.Invoice.id)
+            .filter(
+                models.Invoice.clinic_id == clinic_id,
+                models.PaymentRecord.paid_at >= start_dt,
+                models.PaymentRecord.paid_at <= end_dt,
+            )
+            .group_by(models.Invoice.department)
+            .all()
+        )
+        return {
+            "period_start": start.isoformat(),
+            "period_end": end.isoformat(),
+            "patients_registered": patients_registered,
+            "admissions": admissions,
+            "hospitalizations": hospitalizations,
+            "invoices_paid": invoices_paid,
+            "invoices_unpaid": invoices_unpaid,
+            "payments_received_gnf": int(payments_received),
+            "refunds_gnf": int(refunds_paid),
+            "net_revenue_gnf": int(payments_received) - int(refunds_paid),
+            "revenue_by_service": {d or "Non spécifié": int(v) for d, v in revenue_by_service_rows},
+        }
+
+    @staticmethod
+    def export_report_csv(report: dict[str, Any]) -> str:
+        lines = [
+            "Indicateur,Valeur",
+            f"Période,{report['period_start']} → {report['period_end']}",
+            f"Patients enregistrés,{report['patients_registered']}",
+            f"Admissions,{report['admissions']}",
+            f"Hospitalisations,{report['hospitalizations']}",
+            f"Factures payées,{report['invoices_paid']}",
+            f"Factures impayées,{report['invoices_unpaid']}",
+            f"Paiements reçus (GNF),{report['payments_received_gnf']}",
+            f"Remboursements (GNF),{report['refunds_gnf']}",
+            f"Recettes nettes (GNF),{report['net_revenue_gnf']}",
+            "",
+            "Service,Recettes (GNF)",
+        ]
+        for svc, amt in (report.get("revenue_by_service") or {}).items():
+            lines.append(f"{svc},{amt}")
+        return "\n".join(lines)

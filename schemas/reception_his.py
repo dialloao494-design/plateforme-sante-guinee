@@ -25,6 +25,7 @@ class PayerPayload(BaseModel):
     insurance_company: Optional[str] = None
     insurance_number: Optional[str] = None
     company_name: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class DuplicatePatientMatch(BaseModel):
@@ -61,6 +62,7 @@ class PatientRegistrationCreate(BaseModel):
     emergency_contact: EmergencyContactPayload
     payer: PayerPayload = Field(default_factory=PayerPayload)
     confirm_duplicate: bool = False
+    is_newborn: bool = False
 
 
 class PatientRegistrationResponse(BaseModel):
@@ -90,6 +92,7 @@ class PatientRegistrationResponse(BaseModel):
     photo_url: Optional[str] = None
     emergency_contact_json: Optional[str] = None
     payer_json: Optional[str] = None
+    is_newborn: bool = False
     created_at: Optional[datetime] = None
 
     class Config:
@@ -111,6 +114,7 @@ class ReceptionAdmissionCreate(BaseModel):
     attending_clinician_user_id: Optional[int] = None
     attending_physician_name: Optional[str] = None
     admission_type: Literal["emergency", "outpatient", "hospitalization"]
+    confirmation_status: Optional[Literal["confirmed", "pending"]] = None
     notes: Optional[str] = None
 
 
@@ -164,6 +168,7 @@ class ReceptionInvoiceResponse(BaseModel):
     paid_amount_gnf: int
     remaining_balance_gnf: int
     issued_at: Optional[datetime] = None
+    description: Optional[str] = None
     payments: List[PaymentRecordOut] = []
 
     class Config:
@@ -219,11 +224,32 @@ class ReceptionDashboardStats(BaseModel):
     patients_registered_today: int
     admissions_today: int
     hospitalized_patients: int
+    paid_invoices: int = 0
+    unpaid_invoices: int = 0
     revenue_today_gnf: int
     revenue_month_gnf: int
+    refunds_total_gnf: int = 0
     outstanding_invoices: int
     gender_distribution: dict
     department_distribution: dict
+    recent_registrations: List[dict] = []
+    recent_admissions: List[dict] = []
+    recent_payments: List[dict] = []
+    recent_refunds: List[dict] = []
+
+
+class ReceptionPeriodReport(BaseModel):
+    period_start: str
+    period_end: str
+    patients_registered: int
+    admissions: int
+    hospitalizations: int
+    invoices_paid: int
+    invoices_unpaid: int
+    payments_received_gnf: int
+    refunds_gnf: int
+    net_revenue_gnf: int
+    revenue_by_service: dict
 
 
 class PatientSearchResult(BaseModel):

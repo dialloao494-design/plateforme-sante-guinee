@@ -139,13 +139,26 @@ const clinicalApi = {
     invalidateApiCache('/clinical/reception/his/');
     return httpClient.post('/clinical/reception/his/refunds', data);
   },
-  receptionHisListRefunds: () => httpClient.get('/clinical/reception/his/refunds'),
+  receptionHisListRefunds: (patientId) =>
+    httpClient.get('/clinical/reception/his/refunds', {
+      params: patientId ? { patient_id: patientId } : {},
+    }),
   receptionHisUpdateRefund: (id, data) => {
     invalidateApiCache('/clinical/reception/his/');
     return httpClient.patch(`/clinical/reception/his/refunds/${id}`, data);
   },
   receptionHisRefundReceipt: (id) =>
     httpClient.get(`/clinical/reception/his/refunds/${id}/receipt`, { responseType: 'blob' }),
+  receptionHisReport: ({ start, end }) =>
+    httpClient.get('/clinical/reception/his/reports', { params: { start, end } }),
+  receptionHisReportCsv: ({ start, end }) =>
+    httpClient.get('/clinical/reception/his/reports/export.csv', { params: { start, end }, responseType: 'blob' }),
+  receptionHisReportPdf: ({ start, end }) =>
+    httpClient.get('/clinical/reception/his/reports/export.pdf', { params: { start, end }, responseType: 'blob' }),
+  receptionHisSearchInvoice: (q, patientId) =>
+    httpClient.get('/clinical/reception/his/invoices/search', {
+      params: { q, ...(patientId ? { patient_id: patientId } : {}) },
+    }),
 
   // Doctor
   doctorQueue: () => httpClient.get('/clinical/doctor/queue'),
