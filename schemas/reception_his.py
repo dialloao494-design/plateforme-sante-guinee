@@ -63,6 +63,7 @@ class PatientRegistrationCreate(BaseModel):
     payer: PayerPayload = Field(default_factory=PayerPayload)
     confirm_duplicate: bool = False
     is_newborn: bool = False
+    registration_date: Optional[date] = None
 
 
 class PatientRegistrationResponse(BaseModel):
@@ -93,6 +94,7 @@ class PatientRegistrationResponse(BaseModel):
     emergency_contact_json: Optional[str] = None
     payer_json: Optional[str] = None
     is_newborn: bool = False
+    registration_date: Optional[date] = None
     created_at: Optional[datetime] = None
 
     class Config:

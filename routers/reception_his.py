@@ -153,6 +153,38 @@ def search_patients(
     ]
 
 
+@router.get("/patients/{patient_id}", response_model=PatientSearchResult)
+def get_patient(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    patient = (
+        db.query(models.Patient)
+        .filter(
+            models.Patient.id == patient_id,
+            models.Patient.clinic_id == clinic.id,
+            models.Patient.is_archived.is_(False),
+        )
+        .first()
+    )
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient introuvable")
+    return PatientSearchResult(
+        id=patient.id,
+        patient_number=patient.patient_number,
+        qr_token=patient.qr_token,
+        first_name=patient.first_name,
+        last_name=patient.last_name,
+        phone=patient.phone,
+        age=patient.age or 0,
+        gender=patient.gender,
+        date_of_birth=patient.date_of_birth,
+    )
+
+
 @router.post("/patients/check-duplicates", response_model=List[DuplicatePatientMatch])
 def check_duplicates(
     body: DuplicateCheckRequest,

@@ -1174,6 +1174,7 @@ def ensure_reception_his_schema(engine: Engine) -> None:
             ("mother_first_name", "VARCHAR(128)"),
             ("mother_last_name", "VARCHAR(128)"),
             ("is_newborn", "BOOLEAN DEFAULT FALSE"),
+            ("registration_date", "DATE"),
         )
         for col, col_type in patient_cols:
             if col not in cols:

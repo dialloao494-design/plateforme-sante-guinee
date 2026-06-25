@@ -198,6 +198,7 @@ class ReceptionHisService:
             payer_json=json.dumps(payer.model_dump(), ensure_ascii=False),
             qr_token=_qr_token(clinic_id),
             is_newborn=bool(payload.is_newborn),
+            registration_date=payload.registration_date,
         )
         db.add(patient)
         db.commit()

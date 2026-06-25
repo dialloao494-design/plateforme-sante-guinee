@@ -44,6 +44,7 @@ class Patient(Base):
     quartier = Column(String(255), nullable=True)
     visit_destination = Column(String(255), nullable=True)
     is_newborn = Column(Boolean, default=False, nullable=False)
+    registration_date = Column(Date, nullable=True)
     is_archived = Column(Boolean, default=False, nullable=False, index=True)
     archived_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

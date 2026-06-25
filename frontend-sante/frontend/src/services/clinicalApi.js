@@ -107,6 +107,7 @@ const clinicalApi = {
       forceRefresh: opts.forceRefresh,
     }),
   receptionHisSearch: (q) => httpClient.get('/clinical/reception/his/patients/search', { params: { q } }),
+  receptionHisGetPatient: (patientId) => httpClient.get(`/clinical/reception/his/patients/${patientId}`),
   receptionHisCheckDuplicates: (data) =>
     httpClient.post('/clinical/reception/his/patients/check-duplicates', data),
   receptionHisRegister: (data) => {

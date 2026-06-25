@@ -1091,10 +1091,32 @@
   font-size: 0.95rem;
 }
 
-.reception-his-form-row input:disabled,
-.reception-his-form-row input[readonly] {
-  background: #f1f5f9;
-  color: #475569;
+.reception-his-patient-context--active {
+  border-color: #0d9488;
+  background: #f0fdfa;
+}
+
+.reception-his-value-filled {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.reception-his-auto-filled {
+  background: #fff !important;
+  border-color: #0d9488 !important;
+  color: #0f172a !important;
+  font-weight: 600;
+}
+
+.reception-his-auto-empty {
+  background: #fff !important;
+  border-color: #cbd5e1 !important;
+  color: #64748b !important;
+}
+
+.reception-his-form-row input.reception-his-auto-filled,
+.reception-his-form-row input.reception-his-auto-empty {
+  cursor: default;
 }
 
 .reception-his-datetime-pair {

@@ -48,6 +48,7 @@ const todayStr = new Date().toISOString().slice(0, 10);
 
 const EMPTY_REG = {
   is_newborn: false,
+  registration_date: todayStr,
   first_name: '',
   last_name: '',
   date_of_birth: '',
@@ -138,6 +139,34 @@ const invoiceStatusLabel = (status) => {
 };
 
 const methodLabel = (methods, value) => methods.find((m) => m.value === value)?.label || value || '—';
+
+const genderLabel = (gender) => {
+  if (gender === 'F') return 'Féminin';
+  if (gender === 'M') return 'Masculin';
+  if (gender === 'Autre') return 'Autre';
+  return gender || '';
+};
+
+const patientAge = (patient) => {
+  if (!patient) return '';
+  if (patient.date_of_birth) return calcAge(patient.date_of_birth);
+  if (patient.age != null && patient.age !== '') return String(patient.age);
+  return '';
+};
+
+const patientFullName = (patient) => {
+  if (!patient) return '';
+  return `${patient.last_name || ''} ${patient.first_name || ''}`.trim();
+};
+
+const PatientField = ({ value, filled = false }) => (
+  <input
+    readOnly
+    tabIndex={-1}
+    value={value || ''}
+    className={filled && value ? 'reception-his-auto-filled' : 'reception-his-auto-empty'}
+  />
+);
 
 const PaymentMethodRadios = ({ name, value, onChange, methods }) => (
   <div className="reception-his-payment-methods" role="radiogroup" aria-label="Mode de paiement">
@@ -287,15 +316,34 @@ export default function ReceptionDashboard() {
   }, []);
 
   const selectPatient = async (p) => {
-    setSelectedPatient(p);
+    if (!p?.id) return;
+    let patient = p;
+    try {
+      const { data } = await clinicalApi.receptionHisGetPatient(p.id);
+      if (data?.id) patient = data;
+    } catch {
+      try {
+        const { data } = await clinicalApi.receptionHisSearch(String(p.patient_number || p.id));
+        const hit = (data || []).find((row) => row.id === p.id) || data?.[0];
+        if (hit?.id) patient = hit;
+      } catch {
+        /* keep partial payload */
+      }
+    }
+    setSelectedPatient(patient);
     setSearchQ('');
     setSearchResults([]);
     setActiveInvoice(null);
     setInvoiceSearchQ('');
     setInvoiceSearchHits([]);
-    setRefundForm((prev) => ({ ...prev, invoice_id: '' }));
-    await Promise.all([loadInvoices(p.id), loadRefunds(p.id)]);
-    setMessage(`Patient sélectionné : ${p.last_name} ${p.first_name} · ID patient ${p.patient_number || '—'}`);
+    setRefundForm((prev) => ({
+      ...prev,
+      invoice_id: '',
+      recipient_name: prev.recipient_name || patientFullName(patient),
+      recipient_phone: prev.recipient_phone || patient.phone || '',
+    }));
+    await Promise.all([loadInvoices(patient.id), loadRefunds(patient.id)]);
+    setMessage(`Patient sélectionné : ${patientFullName(patient)} · N° dossier ${patient.patient_number || '—'}`);
   };
 
   const clearPatient = () => {
@@ -330,6 +378,7 @@ export default function ReceptionDashboard() {
         date_of_birth: regForm.date_of_birth,
         gender: regForm.gender,
         is_newborn: regForm.is_newborn,
+        registration_date: regForm.registration_date || undefined,
         marital_status: regForm.marital_status || undefined,
         nationality: regForm.nationality || undefined,
         mother_last_name: regForm.mother_last_name || undefined,
@@ -365,7 +414,7 @@ export default function ReceptionDashboard() {
       };
       const { data } = await clinicalApi.receptionHisRegister(payload);
       setRegisteredPatient(data || null);
-      setRegForm(EMPTY_REG);
+      setRegForm({ ...EMPTY_REG, registration_date: todayStr });
       setMessage(`Patient enregistré · N° dossier patient ${data?.patient_number || '—'}`);
       if (data?.id) await selectPatient(data);
       await loadDashboard();
@@ -563,24 +612,22 @@ export default function ReceptionDashboard() {
       }
     : null;
 
-  const patientDisplayName = selectedPatient
-    ? `${selectedPatient.last_name || ''} ${selectedPatient.first_name || ''}`.trim()
-    : '';
+  const patientDisplayName = patientFullName(selectedPatient);
 
   const PatientContextPanel = () => (
-    <div className="clinical-card reception-his-patient-context">
+    <div className={`clinical-card reception-his-patient-context${selectedPatient ? ' reception-his-patient-context--active' : ''}`}>
       <h3>Patient sélectionné</h3>
       <div className="reception-his-patient-context-grid">
-        <div><strong>N° dossier</strong><span>{selectedPatient?.patient_number || '—'}</span></div>
-        <div><strong>Nom</strong><span>{selectedPatient?.last_name || '—'}</span></div>
-        <div><strong>Prénom</strong><span>{selectedPatient?.first_name || '—'}</span></div>
-        <div><strong>Téléphone</strong><span>{selectedPatient?.phone || '—'}</span></div>
-        <div><strong>Âge</strong><span>{selectedPatient?.date_of_birth ? calcAge(selectedPatient.date_of_birth) : selectedPatient?.age || '—'}</span></div>
-        <div><strong>Sexe</strong><span>{selectedPatient?.gender || '—'}</span></div>
+        <div><strong>N° dossier</strong><span className={selectedPatient?.patient_number ? 'reception-his-value-filled' : ''}>{selectedPatient?.patient_number || ''}</span></div>
+        <div><strong>Nom</strong><span className={selectedPatient?.last_name ? 'reception-his-value-filled' : ''}>{selectedPatient?.last_name || ''}</span></div>
+        <div><strong>Prénom</strong><span className={selectedPatient?.first_name ? 'reception-his-value-filled' : ''}>{selectedPatient?.first_name || ''}</span></div>
+        <div><strong>Téléphone</strong><span className={selectedPatient?.phone ? 'reception-his-value-filled' : ''}>{selectedPatient?.phone || ''}</span></div>
+        <div><strong>Âge</strong><span className={patientAge(selectedPatient) ? 'reception-his-value-filled' : ''}>{patientAge(selectedPatient)}</span></div>
+        <div><strong>Sexe</strong><span className={selectedPatient?.gender ? 'reception-his-value-filled' : ''}>{genderLabel(selectedPatient?.gender)}</span></div>
       </div>
       {!selectedPatient && (
         <p className="clinical-hint reception-his-patient-hint">
-          Utilisez la recherche en haut de page pour sélectionner un patient. Les champs ci-dessous restent visibles.
+          Utilisez la recherche en haut de page pour sélectionner un patient.
         </p>
       )}
     </div>
@@ -733,8 +780,8 @@ export default function ReceptionDashboard() {
               </div>
             )}
             <fieldset><legend>Identité</legend><div className="clinical-form-row">
-              <label>N° dossier patient<input readOnly disabled value={registeredPatient?.patient_number || ''} /></label>
-              <label>Date inscription<input readOnly type="date" value={todayStr} /></label>
+              <label>N° dossier patient<PatientField value={registeredPatient?.patient_number || ''} filled={Boolean(registeredPatient?.patient_number)} /></label>
+              <label>Date inscription<input required type="date" value={registeredPatient?.registration_date ? String(registeredPatient.registration_date).slice(0, 10) : regForm.registration_date} onChange={(e) => updateReg({ registration_date: e.target.value })} readOnly={Boolean(registeredPatient)} /></label>
               <label className="reception-his-check"><input type="checkbox" checked={regForm.is_newborn} onChange={(e) => updateReg({ is_newborn: e.target.checked })} />Nouveau-né</label>
               <label>Nom *<input required value={regForm.last_name} onChange={(e) => updateReg({ last_name: e.target.value })} /></label>
               <label>Prénom *<input required value={regForm.first_name} onChange={(e) => updateReg({ first_name: e.target.value })} /></label>
@@ -798,15 +845,15 @@ export default function ReceptionDashboard() {
               <div className="reception-his-form-row reception-his-form-row--4">
                 <label>
                   N° d&apos;admission
-                  <input readOnly disabled value={lastAdmission?.admission_number || ''} />
+                  <PatientField value={lastAdmission?.admission_number || ''} filled={Boolean(lastAdmission?.admission_number)} />
                 </label>
                 <label>
                   N° dossier patient
-                  <input readOnly disabled value={selectedPatient?.patient_number || ''} />
+                  <PatientField value={selectedPatient?.patient_number || ''} filled={Boolean(selectedPatient)} />
                 </label>
                 <label>
                   Nom et prénom
-                  <input readOnly disabled value={patientDisplayName} />
+                  <PatientField value={patientDisplayName} filled={Boolean(selectedPatient)} />
                 </label>
                 <label>
                   Service *
@@ -897,20 +944,26 @@ export default function ReceptionDashboard() {
               <div className="reception-his-form-row reception-his-form-row--4">
                 <label>
                   N° facture
-                  <input readOnly disabled value={activeInvoice?.invoice_number || ''} />
+                  <PatientField value={activeInvoice?.invoice_number || ''} filled={Boolean(activeInvoice)} />
                 </label>
                 <label>
                   N° dossier patient
-                  <input readOnly disabled value={selectedPatient?.patient_number || ''} />
+                  <PatientField value={selectedPatient?.patient_number || ''} filled={Boolean(selectedPatient)} />
+                </label>
+                <label>
+                  Nom et prénom
+                  <PatientField value={patientDisplayName} filled={Boolean(selectedPatient)} />
                 </label>
                 <label>
                   Date de facturation
-                  <input readOnly disabled value={(activeInvoice?.created_at || '').slice(0, 10)} />
+                  <PatientField value={(activeInvoice?.created_at || '').slice(0, 10)} filled={Boolean(activeInvoice)} />
                 </label>
+              </div>
+              <div className="reception-his-form-row">
                 <label>
                   Service concerné
                   {activeInvoice ? (
-                    <input readOnly disabled value={activeInvoice.department || ''} />
+                    <PatientField value={activeInvoice.department || ''} filled />
                   ) : (
                     <select value={billingForm.department} onChange={(e) => updateBilling({ department: e.target.value })}>
                       {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
@@ -1051,11 +1104,11 @@ export default function ReceptionDashboard() {
                   </label>
                   <label>
                     N° dossier patient
-                    <input readOnly disabled value={selectedPatient?.patient_number || ''} />
+                    <PatientField value={selectedPatient?.patient_number || ''} filled={Boolean(selectedPatient)} />
                   </label>
                   <label>
                     Nom et prénom
-                    <input readOnly disabled value={patientDisplayName} />
+                    <PatientField value={patientDisplayName} filled={Boolean(selectedPatient)} />
                   </label>
                   <label>
                     Service payé
