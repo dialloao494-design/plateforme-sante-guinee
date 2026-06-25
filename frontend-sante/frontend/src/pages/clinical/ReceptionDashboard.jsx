@@ -137,6 +137,25 @@ const invoiceStatusLabel = (status) => {
   return status || '—';
 };
 
+const methodLabel = (methods, value) => methods.find((m) => m.value === value)?.label || value || '—';
+
+const PaymentMethodRadios = ({ name, value, onChange, methods }) => (
+  <div className="reception-his-payment-methods" role="radiogroup" aria-label="Mode de paiement">
+    {methods.map((m) => (
+      <label key={m.value} className="reception-his-payment-option">
+        <input
+          type="radio"
+          name={name}
+          value={m.value}
+          checked={value === m.value}
+          onChange={() => onChange(m.value)}
+        />
+        {m.label}
+      </label>
+    ))}
+  </div>
+);
+
 export default function ReceptionDashboard() {
   const { user } = useAuth();
   const searchRef = useRef(null);
@@ -156,6 +175,7 @@ export default function ReceptionDashboard() {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [registeredPatient, setRegisteredPatient] = useState(null);
   const [lastAdmission, setLastAdmission] = useState(null);
+  const [lastRefund, setLastRefund] = useState(null);
 
   const [invoices, setInvoices] = useState([]);
   const [activeInvoice, setActiveInvoice] = useState(null);
@@ -467,6 +487,7 @@ export default function ReceptionDashboard() {
         reason_notes: refundForm.reason_notes || undefined,
       });
       setMessage(`Demande enregistrée · N° remboursement ${data?.refund_number || '—'}`);
+      setLastRefund(data || null);
       setRefundForm((prev) => ({ ...EMPTY_REFUND, invoice_id: prev.invoice_id }));
       await Promise.all([loadRefunds(selectedPatient.id), loadDashboard()]);
     } catch (err) {
@@ -822,20 +843,73 @@ export default function ReceptionDashboard() {
       {tab === 'admission' && selectedPatient && (
         <section className="reception-his-panel">
           <PatientContextPanel />
-          <form className="clinical-card" onSubmit={handleAdmission}>
+          <form className="clinical-card reception-his-form-sheet" onSubmit={handleAdmission}>
             <h2>Admission</h2>
-            <div className="clinical-form-row">
-              <label>N° admission<input readOnly value={lastAdmission?.admission_number || 'Auto'} /></label>
-              <label>ID patient<input readOnly value={selectedPatient.patient_number || ''} /></label>
-              <label>Date *<input required type="date" value={admissionForm.admission_date} onChange={(e) => updateAdmission({ admission_date: e.target.value })} /></label>
-              <label>Heure *<input required type="time" value={admissionForm.admission_time} onChange={(e) => updateAdmission({ admission_time: e.target.value })} /></label>
-              <label>Service *<select required value={admissionForm.department} onChange={(e) => updateAdmission({ department: e.target.value })}>{DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}</select></label>
-              <label>Médecin traitant<select value={admissionForm.attending_clinician_user_id} onChange={(e) => updateAdmission({ attending_clinician_user_id: e.target.value })}><option value="">—</option>{doctors.map((d) => <option key={d.id} value={d.id}>{d.full_name || d.email}</option>)}</select></label>
-              <label>Médecin traitant (texte libre)<input value={admissionForm.attending_physician_name} onChange={(e) => updateAdmission({ attending_physician_name: e.target.value })} /></label>
-              <label>Type admission<select value={admissionForm.admission_type} onChange={(e) => updateAdmission({ admission_type: e.target.value })}>{ADMISSION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
-              <label>Confirmation<select value={admissionForm.confirmation_status} onChange={(e) => updateAdmission({ confirmation_status: e.target.value })}>{ADMISSION_CONFIRMATIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</select></label>
-              <label>Notes<textarea rows={2} value={admissionForm.notes} onChange={(e) => updateAdmission({ notes: e.target.value })} /></label>
-            </div>
+            <fieldset>
+              <legend>Admission</legend>
+              <div className="reception-his-form-row">
+                <label>
+                  N° d&apos;admission
+                  <input readOnly disabled value={lastAdmission?.admission_number || ''} />
+                </label>
+                <label>
+                  Date et heure d&apos;admission
+                  <div className="reception-his-datetime-pair">
+                    <input
+                      required
+                      type="date"
+                      value={admissionForm.admission_date}
+                      onChange={(e) => updateAdmission({ admission_date: e.target.value })}
+                    />
+                    <input
+                      required
+                      type="time"
+                      value={admissionForm.admission_time}
+                      onChange={(e) => updateAdmission({ admission_time: e.target.value })}
+                    />
+                  </div>
+                </label>
+                <label>
+                  Service *
+                  <select required value={admissionForm.department} onChange={(e) => updateAdmission({ department: e.target.value })}>
+                    {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="reception-his-form-row">
+                <label>
+                  Médecin traitant
+                  <select value={admissionForm.attending_clinician_user_id} onChange={(e) => updateAdmission({ attending_clinician_user_id: e.target.value })}>
+                    <option value="">— Sélectionner —</option>
+                    {doctors.map((d) => <option key={d.id} value={d.id}>{d.full_name || d.email}</option>)}
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Ou saisir le nom du médecin"
+                    value={admissionForm.attending_physician_name}
+                    onChange={(e) => updateAdmission({ attending_physician_name: e.target.value })}
+                  />
+                </label>
+                <label>
+                  Type d&apos;admission
+                  <select value={admissionForm.admission_type} onChange={(e) => updateAdmission({ admission_type: e.target.value })}>
+                    {ADMISSION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                  <span className="reception-his-field-hint">Urgence · Consultation externe · Hospitalisation</span>
+                </label>
+                <label>
+                  Confirmation
+                  <select value={admissionForm.confirmation_status} onChange={(e) => updateAdmission({ confirmation_status: e.target.value })}>
+                    {ADMISSION_CONFIRMATIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                  <span className="reception-his-field-hint">Rendez-vous confirmé ou en attente</span>
+                </label>
+              </div>
+              <label className="reception-his-notes-field">
+                Notes
+                <textarea rows={2} value={admissionForm.notes} onChange={(e) => updateAdmission({ notes: e.target.value })} />
+              </label>
+            </fieldset>
             <button type="submit" className="clinical-btn" disabled={loading}>Créer l&apos;admission</button>
           </form>
         </section>
@@ -844,58 +918,140 @@ export default function ReceptionDashboard() {
       {tab === 'billing' && selectedPatient && (
         <section className="reception-his-panel">
           <PatientContextPanel />
-          <div className="clinical-grid">
-            <form className="clinical-card" onSubmit={handleCreateInvoice}>
-              <h2>1) Créer facture</h2>
-              <div className="clinical-form-row">
-                <label>ID patient<input readOnly value={selectedPatient.patient_number || ''} /></label>
-                <label>Service<select value={billingForm.department} onChange={(e) => updateBilling({ department: e.target.value })}>{DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}</select></label>
-                <label>Description<input required value={billingForm.description} onChange={(e) => updateBilling({ description: e.target.value })} /></label>
-                <label>Montant total<input required type="number" min="0" value={billingForm.total_amount_gnf} onChange={(e) => updateBilling({ total_amount_gnf: e.target.value })} /></label>
-              </div>
-              <button type="submit" className="clinical-btn" disabled={loading}>Créer facture</button>
-            </form>
+          <div className="clinical-card reception-his-form-sheet">
+            <h2>Facturation</h2>
 
-            <div className="clinical-card">
-              <h2>2) Facture active</h2>
-              <label>Facture du patient<select value={activeInvoice?.id || ''} onChange={(e) => selectInvoice(e.target.value)}><option value="">—</option>{invoices.map((i) => <option key={i.id} value={i.id}>{i.invoice_number} · {invoiceStatusLabel(i.status)}</option>)}</select></label>
-              {activeInvoice && activeMeta && (
-                <div className="clinical-form-row">
-                  <label>N° facture<input readOnly value={activeInvoice.invoice_number || ''} /></label>
-                  <label>Date facturation<input readOnly value={(activeInvoice.created_at || '').slice(0, 10)} /></label>
-                  <label>Service<input readOnly value={activeInvoice.department || ''} /></label>
-                  <label>Description<input readOnly value={activeInvoice.description || ''} /></label>
-                  <label>Montant total<input readOnly value={formatGNF(activeMeta.total)} /></label>
-                  <label>Montant payé<input readOnly value={formatGNF(activeMeta.paid)} /></label>
-                  <label>Montant reçu<input readOnly value={formatGNF(activeMeta.paid)} /></label>
-                  <label>Reste à payer<input readOnly value={formatGNF(activeMeta.remaining)} /></label>
-                </div>
+            {invoices.length > 0 && (
+              <label className="reception-his-invoice-select">
+                Facture du patient
+                <select value={activeInvoice?.id || ''} onChange={(e) => selectInvoice(e.target.value)}>
+                  <option value="">— Nouvelle facture —</option>
+                  {invoices.map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.invoice_number} · {invoiceStatusLabel(i.status)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            <fieldset>
+              <legend>Facture</legend>
+              <div className="reception-his-form-row">
+                <label>
+                  N° facture
+                  <input readOnly disabled value={activeInvoice?.invoice_number || ''} />
+                </label>
+                <label>
+                  Date de facturation
+                  <input readOnly disabled value={(activeInvoice?.created_at || '').slice(0, 10)} />
+                </label>
+                <label>
+                  Service
+                  {activeInvoice ? (
+                    <input readOnly disabled value={activeInvoice.department || ''} />
+                  ) : (
+                    <select value={billingForm.department} onChange={(e) => updateBilling({ department: e.target.value })}>
+                      {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  )}
+                </label>
+              </div>
+              {!activeInvoice && (
+                <form className="reception-his-inline-create" onSubmit={handleCreateInvoice}>
+                  <div className="reception-his-form-row reception-his-form-row--2">
+                    <label>
+                      Description *
+                      <input required value={billingForm.description} onChange={(e) => updateBilling({ description: e.target.value })} />
+                    </label>
+                    <label>
+                      Montant total *
+                      <input required type="number" min="0" value={billingForm.total_amount_gnf} onChange={(e) => updateBilling({ total_amount_gnf: e.target.value })} />
+                    </label>
+                  </div>
+                  <button type="submit" className="clinical-btn" disabled={loading}>Créer facture</button>
+                </form>
               )}
-            </div>
-          </div>
+            </fieldset>
 
-          <div className="clinical-grid">
-            <form className="clinical-card" onSubmit={handlePayment}>
-              <h2>3) Paiement</h2>
-              <div className="clinical-form-row">
-                <label>Montant à encaisser<input required type="number" min="0" value={paymentForm.amount_gnf} onChange={(e) => updatePayment({ amount_gnf: e.target.value })} /></label>
-                <label>Mode<select value={paymentForm.payment_method} onChange={(e) => updatePayment({ payment_method: e.target.value })}>{PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}</select></label>
-                <label>Référence<input value={paymentForm.reference} onChange={(e) => updatePayment({ reference: e.target.value })} /></label>
-              </div>
-              <button type="submit" className="clinical-btn" disabled={loading || !activeInvoice}>Enregistrer paiement</button>
-            </form>
+            {activeInvoice && activeMeta && (
+              <>
+                <fieldset>
+                  <legend>Paiement</legend>
+                  <div className="reception-his-form-row reception-his-form-row--4">
+                    <label>
+                      Montant total
+                      <input readOnly disabled value={formatGNF(activeMeta.total)} />
+                    </label>
+                    <label>
+                      À payer par le patient
+                      <input readOnly disabled value={formatGNF(activeMeta.total)} />
+                    </label>
+                    <label>
+                      Montant reçu
+                      <input readOnly disabled value={formatGNF(activeMeta.paid)} />
+                    </label>
+                    <label>
+                      Reste à payer
+                      <input readOnly disabled value={formatGNF(activeMeta.remaining)} />
+                    </label>
+                  </div>
+                  <form onSubmit={handlePayment}>
+                    <div className="reception-his-form-row reception-his-form-row--2">
+                      <label>
+                        Montant à encaisser *
+                        <input required type="number" min="0" value={paymentForm.amount_gnf} onChange={(e) => updatePayment({ amount_gnf: e.target.value })} />
+                      </label>
+                      <label>
+                        Référence
+                        <input value={paymentForm.reference} onChange={(e) => updatePayment({ reference: e.target.value })} placeholder="N° transaction, reçu…" />
+                      </label>
+                    </div>
+                    <fieldset className="reception-his-nested-fieldset">
+                      <legend>Mode de paiement</legend>
+                      <PaymentMethodRadios
+                        name="payment_method"
+                        value={paymentForm.payment_method}
+                        onChange={(v) => updatePayment({ payment_method: v })}
+                        methods={PAYMENT_METHODS}
+                      />
+                    </fieldset>
+                    <button type="submit" className="clinical-btn" disabled={loading}>Enregistrer paiement</button>
+                  </form>
+                </fieldset>
 
-            <div className="clinical-card">
-              <h2>4) Historique des paiements</h2>
-              {invoices.length === 0 && <p>Aucune facture pour ce patient.</p>}
-              {invoices.map((inv) => (
-                <div key={inv.id} className="reception-his-invoice-row">
-                  <div><strong>{inv.invoice_number}</strong> · {invoiceStatusLabel(inv.status)} · {formatGNF(inv.paid_amount_gnf || 0)} / {formatGNF(inv.total_amount_gnf || 0)}</div>
-                  <ul>{(inv.payments || []).map((p) => <li key={p.id}>{new Date(p.paid_at).toLocaleString('fr-FR')} · {formatGNF(p.amount_gnf || 0)} · {p.payment_method}</li>)}</ul>
-                  <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => printInvoiceReceipt(inv.id)}>Imprimer reçu</button>
-                </div>
-              ))}
-            </div>
+                <fieldset className="reception-his-payment-history">
+                  <legend>Historique des paiements</legend>
+                  {(activeInvoice.payments || []).length === 0 ? (
+                    <p className="clinical-hint">Aucun paiement enregistré pour cette facture.</p>
+                  ) : (
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Montant</th>
+                          <th>Mode</th>
+                          <th>Référence</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(activeInvoice.payments || []).map((p) => (
+                          <tr key={p.id}>
+                            <td>{new Date(p.paid_at).toLocaleString('fr-FR')}</td>
+                            <td>{formatGNF(p.amount_gnf || 0)}</td>
+                            <td>{methodLabel(PAYMENT_METHODS, p.payment_method)}</td>
+                            <td>{p.reference || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                  <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => printInvoiceReceipt(activeInvoice.id)}>
+                    Imprimer reçu
+                  </button>
+                </fieldset>
+              </>
+            )}
           </div>
         </section>
       )}
@@ -903,40 +1059,137 @@ export default function ReceptionDashboard() {
       {tab === 'refund' && selectedPatient && (
         <section className="reception-his-panel">
           <PatientContextPanel />
-          <div className="clinical-grid">
-            <form className="clinical-card" onSubmit={handleRefund}>
-              <h2>Demande de remboursement</h2>
-              <div className="clinical-form-row">
-                <label>Recherche facture<input type="search" placeholder="N° facture..." value={invoiceSearchQ} onChange={(e) => setInvoiceSearchQ(e.target.value)} /></label>
-                <label>Facture originale<select required value={refundForm.invoice_id} onChange={(e) => { updateRefund({ invoice_id: e.target.value }); selectInvoice(e.target.value); }}><option value="">—</option>{refundInvoices.map((i) => <option key={i.id} value={i.id}>{i.invoice_number} · payé {formatGNF(i.paid_amount_gnf || 0)}</option>)}</select></label>
-                <label>ID patient<input readOnly value={selectedPatient.patient_number || ''} /></label>
-                <label>Service payé<input value={refundForm.service_paid_for} onChange={(e) => updateRefund({ service_paid_for: e.target.value })} /></label>
-                <label>Total payé<input readOnly value={formatGNF(activeInvoice?.paid_amount_gnf || 0)} /></label>
-                <label>Montant consommé<input required type="number" min="0" value={refundForm.amount_consumed_gnf} onChange={(e) => updateRefund({ amount_consumed_gnf: e.target.value })} /></label>
-                <label>Montant à rembourser<input required type="number" min="0" value={refundForm.refund_amount_gnf} onChange={(e) => updateRefund({ refund_amount_gnf: e.target.value })} /></label>
-                <label>Bénéficiaire<input required value={refundForm.recipient_name} onChange={(e) => updateRefund({ recipient_name: e.target.value })} /></label>
-                <label>Tél bénéficiaire<input required value={refundForm.recipient_phone} onChange={(e) => updateRefund({ recipient_phone: e.target.value })} /></label>
-                <label>Lien<input value={refundForm.recipient_relationship} onChange={(e) => updateRefund({ recipient_relationship: e.target.value })} /></label>
-                <label>Mode remboursement<select value={refundForm.refund_method} onChange={(e) => updateRefund({ refund_method: e.target.value })}>{REFUND_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}</select></label>
-                <label>Motif<select value={refundForm.reason} onChange={(e) => updateRefund({ reason: e.target.value })}>{REFUND_REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}</select></label>
-                <label>Notes<textarea rows={2} value={refundForm.reason_notes} onChange={(e) => updateRefund({ reason_notes: e.target.value })} /></label>
-              </div>
+          <div className="clinical-card reception-his-form-sheet">
+            <h2>Remboursement</h2>
+
+            <form onSubmit={handleRefund}>
+              <fieldset>
+                <legend>Demande de remboursement</legend>
+                <div className="reception-his-form-row">
+                  <label>
+                    N° remboursement
+                    <input readOnly disabled value={lastRefund?.refund_number || ''} />
+                  </label>
+                  <label>
+                    Facture originale *
+                    <input
+                      type="search"
+                      placeholder="Rechercher N° facture…"
+                      value={invoiceSearchQ}
+                      onChange={(e) => setInvoiceSearchQ(e.target.value)}
+                    />
+                    <select required value={refundForm.invoice_id} onChange={(e) => { updateRefund({ invoice_id: e.target.value }); selectInvoice(e.target.value); }}>
+                      <option value="">— Sélectionner —</option>
+                      {refundInvoices.map((i) => (
+                        <option key={i.id} value={i.id}>
+                          {i.invoice_number} · payé {formatGNF(i.paid_amount_gnf || 0)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Service payé
+                    <input value={refundForm.service_paid_for} onChange={(e) => updateRefund({ service_paid_for: e.target.value })} />
+                  </label>
+                </div>
+                <div className="reception-his-form-row reception-his-form-row--3">
+                  <label>
+                    Total payé
+                    <input readOnly disabled value={formatGNF(activeInvoice?.paid_amount_gnf || 0)} />
+                  </label>
+                  <label>
+                    Montant consommé *
+                    <input required type="number" min="0" value={refundForm.amount_consumed_gnf} onChange={(e) => updateRefund({ amount_consumed_gnf: e.target.value })} />
+                  </label>
+                  <label>
+                    Montant à rembourser *
+                    <input required type="number" min="0" value={refundForm.refund_amount_gnf} onChange={(e) => updateRefund({ refund_amount_gnf: e.target.value })} />
+                  </label>
+                </div>
+                <div className="reception-his-form-row reception-his-form-row--3">
+                  <label>
+                    Bénéficiaire *
+                    <input required value={refundForm.recipient_name} onChange={(e) => updateRefund({ recipient_name: e.target.value })} />
+                  </label>
+                  <label>
+                    Tél. bénéficiaire *
+                    <input required value={refundForm.recipient_phone} onChange={(e) => updateRefund({ recipient_phone: e.target.value })} />
+                  </label>
+                  <label>
+                    Lien
+                    <input value={refundForm.recipient_relationship} onChange={(e) => updateRefund({ recipient_relationship: e.target.value })} />
+                  </label>
+                </div>
+                <div className="reception-his-form-row reception-his-form-row--2">
+                  <label>
+                    Motif
+                    <select value={refundForm.reason} onChange={(e) => updateRefund({ reason: e.target.value })}>
+                      {REFUND_REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    Notes
+                    <textarea rows={2} value={refundForm.reason_notes} onChange={(e) => updateRefund({ reason_notes: e.target.value })} />
+                  </label>
+                </div>
+                <fieldset className="reception-his-nested-fieldset">
+                  <legend>Mode de remboursement</legend>
+                  <p className="clinical-hint">Indiquez comment le remboursement sera effectué (espèces, Orange Money, virement, etc.)</p>
+                  <PaymentMethodRadios
+                    name="refund_method"
+                    value={refundForm.refund_method}
+                    onChange={(v) => updateRefund({ refund_method: v })}
+                    methods={REFUND_METHODS}
+                  />
+                </fieldset>
+              </fieldset>
               <button type="submit" className="clinical-btn" disabled={loading}>Soumettre remboursement</button>
             </form>
 
-            <div className="clinical-card">
-              <h2>Suivi remboursements (patient)</h2>
-              {filteredRefunds.length === 0 && <p>Aucun remboursement pour ce patient.</p>}
-              {filteredRefunds.map((r) => (
-                <div key={r.id} className="reception-his-invoice-row">
-                  <div><strong>{r.refund_number}</strong> · {refundStatusLabel(r.status)} · {formatGNF(r.refund_amount_gnf || 0)}</div>
-                  <p>Facture {r.invoice_number || '—'} · Motif: {r.reason || '—'}</p>
-                  {r.status === 'pending' && <div className="reception-his-refund-actions"><button type="button" className="clinical-btn" onClick={() => updateRefundStatus(r.id, 'approved')}>Approuver</button><button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => updateRefundStatus(r.id, 'rejected')}>Rejeter</button></div>}
-                  {r.status === 'approved' && <button type="button" className="clinical-btn" onClick={() => updateRefundStatus(r.id, 'paid')}>Marquer payé</button>}
-                  {r.status === 'paid' && <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => printRefundReceipt(r.id)}>Imprimer reçu</button>}
-                </div>
-              ))}
-            </div>
+            <fieldset className="reception-his-payment-history">
+              <legend>Historique des remboursements</legend>
+              {filteredRefunds.length === 0 ? (
+                <p className="clinical-hint">Aucun remboursement pour ce patient.</p>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>N° remboursement</th>
+                      <th>Facture</th>
+                      <th>Montant</th>
+                      <th>Mode</th>
+                      <th>Statut</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRefunds.map((r) => (
+                      <tr key={r.id}>
+                        <td>{r.refund_number}</td>
+                        <td>{r.invoice_number || '—'}</td>
+                        <td>{formatGNF(r.refund_amount_gnf || 0)}</td>
+                        <td>{methodLabel(REFUND_METHODS, r.refund_method)}</td>
+                        <td>{refundStatusLabel(r.status)}</td>
+                        <td>
+                          {r.status === 'pending' && (
+                            <div className="reception-his-refund-actions">
+                              <button type="button" className="clinical-btn" onClick={() => updateRefundStatus(r.id, 'approved')}>Approuver</button>
+                              <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => updateRefundStatus(r.id, 'rejected')}>Rejeter</button>
+                            </div>
+                          )}
+                          {r.status === 'approved' && (
+                            <button type="button" className="clinical-btn" onClick={() => updateRefundStatus(r.id, 'paid')}>Marquer payé</button>
+                          )}
+                          {r.status === 'paid' && (
+                            <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => printRefundReceipt(r.id)}>Imprimer reçu</button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </fieldset>
           </div>
         </section>
       )}

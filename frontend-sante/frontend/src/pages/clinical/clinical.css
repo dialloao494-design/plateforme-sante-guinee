@@ -1025,3 +1025,147 @@
   font-size: 0.9rem;
 }
 
+.reception-his-form-sheet h2 {
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+}
+
+.reception-his-form-sheet fieldset {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  margin: 0 0 1.25rem;
+}
+
+.reception-his-form-sheet legend {
+  font-weight: 700;
+  padding: 0 0.4rem;
+}
+
+.reception-his-nested-fieldset {
+  margin-top: 1rem;
+  background: #f8fafc;
+}
+
+.reception-his-form-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.reception-his-form-row--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reception-his-form-row--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.reception-his-form-row--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.reception-his-form-row label,
+.reception-his-invoice-select,
+.reception-his-notes-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.reception-his-form-row input,
+.reception-his-form-row select,
+.reception-his-form-row textarea,
+.reception-his-invoice-select select,
+.reception-his-notes-field textarea {
+  font-weight: 400;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #94a3b8;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.reception-his-form-row input:disabled,
+.reception-his-form-row input[readonly] {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.reception-his-datetime-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.reception-his-field-hint {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: #64748b;
+}
+
+.reception-his-inline-create {
+  margin-top: 0.5rem;
+}
+
+.reception-his-invoice-select {
+  margin-bottom: 1rem;
+}
+
+.reception-his-payment-methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1.25rem;
+}
+
+.reception-his-payment-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.reception-his-payment-option:has(input:checked) {
+  border-color: #0d9488;
+  background: #f0fdfa;
+}
+
+.reception-his-payment-history table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.reception-his-payment-history th,
+.reception-his-payment-history td {
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem 0.65rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.reception-his-payment-history th {
+  background: #f8fafc;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .reception-his-form-row,
+  .reception-his-form-row--2,
+  .reception-his-form-row--3,
+  .reception-his-form-row--4 {
+    grid-template-columns: 1fr;
+  }
+}
+
