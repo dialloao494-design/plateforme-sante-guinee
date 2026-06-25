@@ -1107,9 +1107,15 @@
   border: 1px solid #cbd5e1;
   border-radius: 4px;
   background: #fff;
-  color: #94a3b8;
+  color: #0f172a;
   font-size: 0.95rem;
   line-height: 1.35;
+}
+
+.reception-his-auto-display--empty {
+  background: #fff;
+  border-color: #e2e8f0;
+  min-height: 2.45rem;
 }
 
 .reception-his-auto-display--filled {
@@ -1117,6 +1123,22 @@
   background: #f0fdfa;
   color: #0f172a;
   font-weight: 700;
+}
+
+.reception-his-readonly-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.reception-his-form-notice {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.9rem;
 }
 
 .reception-his-generated-id {
@@ -1169,6 +1191,7 @@
   font-size: 0.78rem;
   font-weight: 400;
   color: #64748b;
+  line-height: 1.3;
 }
 
 .reception-his-inline-create {

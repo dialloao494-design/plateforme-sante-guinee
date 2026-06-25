@@ -159,13 +159,37 @@ const patientFullName = (patient) => {
   return `${patient.last_name || ''} ${patient.first_name || ''}`.trim();
 };
 
-const AutoIdField = ({ value, emptyLabel = '' }) => (
-  <div
-    className={`reception-his-auto-display${value ? ' reception-his-auto-display--filled' : ''}`}
-    aria-live="polite"
-  >
-    {value || emptyLabel}
+const ReadOnlyDisplay = ({ value, hint }) => (
+  <div className="reception-his-readonly-wrap">
+    <div
+      className={`reception-his-auto-display${value ? ' reception-his-auto-display--filled' : ' reception-his-auto-display--empty'}`}
+      aria-live="polite"
+    >
+      {value || ''}
+    </div>
+    {hint && !value ? <span className="reception-his-field-hint">{hint}</span> : null}
   </div>
+);
+
+const AmountDisplay = ({ amountGnf, hint }) => {
+  const hasAmount = amountGnf != null && amountGnf !== '' && !Number.isNaN(Number(amountGnf));
+  return (
+    <ReadOnlyDisplay
+      value={hasAmount ? formatGNF(Number(amountGnf)) : ''}
+      hint={hint}
+    />
+  );
+};
+
+const DisplayField = ({ label, value, hint }) => (
+  <label>
+    {label}
+    <ReadOnlyDisplay value={value} hint={hint} />
+  </label>
+);
+
+const FormNotice = ({ children }) => (
+  children ? <p className="reception-his-form-notice">{children}</p> : null
 );
 
 const GeneratedIdBanner = ({ label, value }) => {
@@ -688,10 +712,7 @@ export default function ReceptionDashboard() {
                 <li key={p.id}>
                   <button
                     type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      selectPatient(p);
-                    }}
+                    onClick={() => selectPatient(p)}
                   >
                     <strong>{p.last_name} {p.first_name}</strong>
                     <span>ID patient {p.patient_number || '—'} · {p.phone || '—'}</span>
@@ -787,7 +808,7 @@ export default function ReceptionDashboard() {
 
       {tab === 'register' && (
         <section className="reception-his-panel">
-          <form className="clinical-card" onSubmit={handleRegister}>
+          <form className="clinical-card reception-his-form-sheet" onSubmit={handleRegister}>
             <h2>Enregistrement patient</h2>
             <GeneratedIdBanner label="N° dossier patient généré" value={registeredPatient?.patient_number} />
             {registeredPatient && (
@@ -800,13 +821,21 @@ export default function ReceptionDashboard() {
               </div>
             )}
             <fieldset><legend>Identité</legend><div className="clinical-form-row">
-              <label>N° dossier patient<AutoIdField value={registeredPatient?.patient_number || ''} emptyLabel="Généré automatiquement à l'enregistrement" /></label>
-              <label>Date inscription<input required type="date" value={registeredPatient?.registration_date ? String(registeredPatient.registration_date).slice(0, 10) : regForm.registration_date} onChange={(e) => updateReg({ registration_date: e.target.value })} readOnly={Boolean(registeredPatient)} /></label>
+              <DisplayField
+                label="N° dossier patient"
+                value={registeredPatient?.patient_number || ''}
+                hint={registeredPatient?.patient_number ? undefined : 'Généré automatiquement à l\'enregistrement'}
+              />
+              <label>Date inscription<input required type="date" value={regForm.registration_date} onChange={(e) => updateReg({ registration_date: e.target.value })} /></label>
               <label className="reception-his-check"><input type="checkbox" checked={regForm.is_newborn} onChange={(e) => updateReg({ is_newborn: e.target.checked })} />Nouveau-né</label>
               <label>Nom *<input required value={regForm.last_name} onChange={(e) => updateReg({ last_name: e.target.value })} /></label>
               <label>Prénom *<input required value={regForm.first_name} onChange={(e) => updateReg({ first_name: e.target.value })} /></label>
               <label>Date naissance *<input required type="date" value={regForm.date_of_birth} onChange={(e) => updateReg({ date_of_birth: e.target.value })} /></label>
-              <label>Âge<input readOnly value={calcAge(regForm.date_of_birth)} /></label>
+              <DisplayField
+                label="Âge"
+                value={calcAge(regForm.date_of_birth) !== '' ? String(calcAge(regForm.date_of_birth)) : ''}
+                hint={calcAge(regForm.date_of_birth) !== '' ? undefined : 'Calculé depuis la date de naissance'}
+              />
               <label>Sexe *<select required value={regForm.gender} onChange={(e) => updateReg({ gender: e.target.value })}><option value="F">Féminin</option><option value="M">Masculin</option><option value="Autre">Autre</option></select></label>
               <label>État civil<input value={regForm.marital_status} onChange={(e) => updateReg({ marital_status: e.target.value })} /></label>
               <label>Nationalité<input value={regForm.nationality} onChange={(e) => updateReg({ nationality: e.target.value })} /></label>
@@ -851,6 +880,19 @@ export default function ReceptionDashboard() {
               <label>Notes<textarea rows={2} value={regForm.payer_notes} onChange={(e) => updateReg({ payer_notes: e.target.value })} /></label>
             </div></fieldset>
             <button type="submit" className="clinical-btn" disabled={loading}>Enregistrer le patient</button>
+            {registeredPatient && (
+              <button
+                type="button"
+                className="clinical-btn clinical-btn--secondary"
+                onClick={() => {
+                  setRegisteredPatient(null);
+                  setRegForm({ ...EMPTY_REG, registration_date: todayStr });
+                  setMessage('');
+                }}
+              >
+                Nouvel enregistrement
+              </button>
+            )}
           </form>
         </section>
       )}
@@ -860,22 +902,18 @@ export default function ReceptionDashboard() {
           <PatientContextPanel />
           <form className="clinical-card reception-his-form-sheet" onSubmit={handleAdmission}>
             <h2>Admission</h2>
+            <FormNotice>{!selectedPatient ? 'Recherchez et sélectionnez un patient avant de créer une admission.' : null}</FormNotice>
             <GeneratedIdBanner label="N° admission généré" value={lastAdmission?.admission_number} />
             <fieldset>
               <legend>Admission</legend>
               <div className="reception-his-form-row reception-his-form-row--4">
-                <label>
-                  N° d&apos;admission
-                  <AutoIdField value={lastAdmission?.admission_number || ''} emptyLabel="Généré automatiquement à la création" />
-                </label>
-                <label>
-                  N° dossier patient
-                  <AutoIdField value={patientDossier} emptyLabel={selectedPatient ? '' : 'Sélectionnez un patient'} />
-                </label>
-                <label>
-                  Nom et prénom
-                  <AutoIdField value={patientDisplayName} emptyLabel={selectedPatient ? '' : 'Sélectionnez un patient'} />
-                </label>
+                <DisplayField
+                  label="N° d'admission"
+                  value={lastAdmission?.admission_number || ''}
+                  hint={lastAdmission?.admission_number ? undefined : 'Généré automatiquement à la création'}
+                />
+                <DisplayField label="N° dossier patient" value={patientDossier} />
+                <DisplayField label="Nom et prénom" value={patientDisplayName} />
                 <label>
                   Service *
                   <select required value={admissionForm.department} onChange={(e) => updateAdmission({ department: e.target.value })}>
@@ -905,7 +943,11 @@ export default function ReceptionDashboard() {
                   Médecin traitant
                   <select value={admissionForm.attending_clinician_user_id} onChange={(e) => updateAdmission({ attending_clinician_user_id: e.target.value })}>
                     <option value="">— Sélectionner —</option>
-                    {doctors.map((d) => <option key={d.id} value={d.id}>{d.full_name || d.email}</option>)}
+                    {doctors.map((d) => (
+                      <option key={d.user_id || d.id} value={d.user_id || d.id}>
+                        {d.name || d.full_name || d.email}
+                      </option>
+                    ))}
                   </select>
                   <input
                     type="text"
@@ -945,6 +987,7 @@ export default function ReceptionDashboard() {
           <PatientContextPanel />
           <div className="clinical-card reception-his-form-sheet">
             <h2>Facturation</h2>
+            <FormNotice>{!selectedPatient ? 'Recherchez et sélectionnez un patient avant de facturer.' : null}</FormNotice>
 
             {selectedPatient && invoices.length > 0 && (
               <label className="reception-his-invoice-select">
@@ -963,28 +1006,20 @@ export default function ReceptionDashboard() {
             <fieldset>
               <legend>Facture</legend>
               <div className="reception-his-form-row reception-his-form-row--4">
-                <label>
-                  N° facture
-                  <AutoIdField value={activeInvoice?.invoice_number || ''} emptyLabel="Généré à la création de la facture" />
-                </label>
-                <label>
-                  N° dossier patient
-                  <AutoIdField value={patientDossier} emptyLabel={selectedPatient ? '' : 'Sélectionnez un patient'} />
-                </label>
-                <label>
-                  Nom et prénom
-                  <AutoIdField value={patientDisplayName} emptyLabel={selectedPatient ? '' : 'Sélectionnez un patient'} />
-                </label>
-                <label>
-                  Date de facturation
-                  <AutoIdField value={(activeInvoice?.created_at || '').slice(0, 10)} />
-                </label>
+                <DisplayField
+                  label="N° facture"
+                  value={activeInvoice?.invoice_number || ''}
+                  hint={activeInvoice?.invoice_number ? undefined : 'Généré à la création de la facture'}
+                />
+                <DisplayField label="N° dossier patient" value={patientDossier} />
+                <DisplayField label="Nom et prénom" value={patientDisplayName} />
+                <DisplayField label="Date de facturation" value={(activeInvoice?.created_at || '').slice(0, 10)} />
               </div>
               <div className="reception-his-form-row">
                 <label>
                   Service concerné
                   {activeInvoice ? (
-                    <AutoIdField value={activeInvoice.department || ''} />
+                    <ReadOnlyDisplay value={activeInvoice.department || ''} />
                   ) : (
                     <select value={billingForm.department} onChange={(e) => updateBilling({ department: e.target.value })}>
                       {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
@@ -1011,64 +1046,67 @@ export default function ReceptionDashboard() {
 
             <fieldset>
               <legend>Paiement</legend>
+              {!activeInvoice && (
+                <FormNotice>Créez ou sélectionnez une facture pour afficher le récapitulatif de paiement.</FormNotice>
+              )}
               <div className="reception-his-form-row reception-his-form-row--4">
                 <label>
                   Montant total
-                  <input
-                    readOnly
-                    disabled
-                    value={activeMeta ? formatGNF(activeMeta.total) : (billingForm.total_amount_gnf ? formatGNF(Number(billingForm.total_amount_gnf)) : '')}
-                  />
+                  <AmountDisplay amountGnf={activeInvoice ? activeMeta?.total : null} />
                 </label>
                 <label>
                   À payer par le patient
-                  <input readOnly disabled value={activeMeta ? formatGNF(activeMeta.total) : ''} />
+                  <AmountDisplay amountGnf={activeInvoice ? activeMeta?.total : null} />
                 </label>
                 <label>
                   Montant reçu
-                  <input readOnly disabled value={activeMeta ? formatGNF(activeMeta.paid) : ''} />
+                  <AmountDisplay amountGnf={activeInvoice ? (activeMeta?.paid ?? 0) : null} />
                 </label>
                 <label>
                   Reste à payer
-                  <input readOnly disabled value={activeMeta ? formatGNF(activeMeta.remaining) : ''} />
+                  <AmountDisplay amountGnf={activeInvoice ? activeMeta?.remaining : null} />
                 </label>
               </div>
-              <form onSubmit={handlePayment}>
-                <div className="reception-his-form-row reception-his-form-row--2">
-                  <label>
-                    Montant à encaisser *
-                    <input
-                      required
-                      type="number"
-                      min="0"
-                      value={paymentForm.amount_gnf}
-                      onChange={(e) => updatePayment({ amount_gnf: e.target.value })}
-                      disabled={!activeInvoice}
+              {activeInvoice ? (
+                <form onSubmit={handlePayment}>
+                  <div className="reception-his-form-row reception-his-form-row--2">
+                    <label>
+                      Montant à encaisser *
+                      <input
+                        required
+                        type="number"
+                        min="0"
+                        value={paymentForm.amount_gnf}
+                        onChange={(e) => updatePayment({ amount_gnf: e.target.value })}
+                      />
+                    </label>
+                    <label>
+                      Référence
+                      <input
+                        value={paymentForm.reference}
+                        onChange={(e) => updatePayment({ reference: e.target.value })}
+                        placeholder="N° transaction, reçu…"
+                      />
+                    </label>
+                  </div>
+                  <fieldset className="reception-his-nested-fieldset">
+                    <legend>Mode de paiement</legend>
+                    <PaymentMethodRadios
+                      name="payment_method"
+                      value={paymentForm.payment_method}
+                      onChange={(v) => updatePayment({ payment_method: v })}
+                      methods={PAYMENT_METHODS}
                     />
-                  </label>
-                  <label>
-                    Référence
-                    <input
-                      value={paymentForm.reference}
-                      onChange={(e) => updatePayment({ reference: e.target.value })}
-                      placeholder="N° transaction, reçu…"
-                      disabled={!activeInvoice}
-                    />
-                  </label>
-                </div>
-                <fieldset className="reception-his-nested-fieldset">
-                  <legend>Mode de paiement</legend>
-                  <PaymentMethodRadios
-                    name="payment_method"
-                    value={paymentForm.payment_method}
-                    onChange={(v) => updatePayment({ payment_method: v })}
-                    methods={PAYMENT_METHODS}
-                  />
-                </fieldset>
-                <button type="submit" className="clinical-btn" disabled={loading || !activeInvoice || !selectedPatient}>
-                  Enregistrer paiement
-                </button>
-              </form>
+                  </fieldset>
+                  <button type="submit" className="clinical-btn" disabled={loading || !selectedPatient}>
+                    Enregistrer paiement
+                  </button>
+                </form>
+              ) : (
+                <p className="clinical-hint reception-his-patient-hint">
+                  Créez ou sélectionnez une facture pour enregistrer un paiement.
+                </p>
+              )}
             </fieldset>
 
             <fieldset className="reception-his-payment-history">
@@ -1114,24 +1152,20 @@ export default function ReceptionDashboard() {
           <PatientContextPanel />
           <div className="clinical-card reception-his-form-sheet">
             <h2>Remboursement</h2>
+            <FormNotice>{!selectedPatient ? 'Recherchez et sélectionnez un patient avant de demander un remboursement.' : null}</FormNotice>
             <GeneratedIdBanner label="N° remboursement généré" value={lastRefund?.refund_number} />
 
             <form onSubmit={handleRefund}>
               <fieldset>
                 <legend>Demande de remboursement</legend>
                 <div className="reception-his-form-row reception-his-form-row--4">
-                  <label>
-                    N° remboursement
-                    <AutoIdField value={lastRefund?.refund_number || ''} emptyLabel="Généré automatiquement à la soumission" />
-                  </label>
-                  <label>
-                    N° dossier patient
-                    <AutoIdField value={patientDossier} emptyLabel={selectedPatient ? '' : 'Sélectionnez un patient'} />
-                  </label>
-                  <label>
-                    Nom et prénom
-                    <AutoIdField value={patientDisplayName} emptyLabel={selectedPatient ? '' : 'Sélectionnez un patient'} />
-                  </label>
+                  <DisplayField
+                    label="N° remboursement"
+                    value={lastRefund?.refund_number || ''}
+                    hint={lastRefund?.refund_number ? undefined : 'Généré automatiquement à la soumission'}
+                  />
+                  <DisplayField label="N° dossier patient" value={patientDossier} />
+                  <DisplayField label="Nom et prénom" value={patientDisplayName} />
                   <label>
                     Service payé
                     <input value={refundForm.service_paid_for} onChange={(e) => updateRefund({ service_paid_for: e.target.value })} />
@@ -1140,26 +1174,29 @@ export default function ReceptionDashboard() {
                 <div className="reception-his-form-row reception-his-form-row--2">
                   <label>
                     Facture originale *
-                    <input
-                      type="search"
-                      placeholder="Rechercher N° facture…"
-                      value={invoiceSearchQ}
-                      onChange={(e) => setInvoiceSearchQ(e.target.value)}
-                      disabled={!selectedPatient}
-                    />
-                    <select
-                      required
-                      value={refundForm.invoice_id}
-                      onChange={(e) => { updateRefund({ invoice_id: e.target.value }); selectInvoice(e.target.value); }}
-                      disabled={!selectedPatient}
-                    >
-                      <option value="">— Sélectionner —</option>
-                      {refundInvoices.map((i) => (
-                        <option key={i.id} value={i.id}>
-                          {i.invoice_number} · payé {formatGNF(i.paid_amount_gnf || 0)}
-                        </option>
-                      ))}
-                    </select>
+                    <ReadOnlyDisplay value={refundForm.invoice_id && activeInvoice ? (activeInvoice.invoice_number || '') : ''} />
+                    {selectedPatient ? (
+                      <>
+                        <input
+                          type="search"
+                          placeholder="Rechercher N° facture…"
+                          value={invoiceSearchQ}
+                          onChange={(e) => setInvoiceSearchQ(e.target.value)}
+                        />
+                        <select
+                          required
+                          value={refundForm.invoice_id}
+                          onChange={(e) => { updateRefund({ invoice_id: e.target.value }); selectInvoice(e.target.value); }}
+                        >
+                          <option value="">— Sélectionner —</option>
+                          {refundInvoices.map((i) => (
+                            <option key={i.id} value={i.id}>
+                              {i.invoice_number} · payé {formatGNF(i.paid_amount_gnf || 0)}
+                            </option>
+                          ))}
+                        </select>
+                      </>
+                    ) : null}
                   </label>
                   <label>
                     Motif
@@ -1171,7 +1208,7 @@ export default function ReceptionDashboard() {
                 <div className="reception-his-form-row reception-his-form-row--3">
                   <label>
                     Total payé
-                    <input readOnly disabled value={formatGNF(activeInvoice?.paid_amount_gnf || 0)} />
+                    <AmountDisplay amountGnf={refundForm.invoice_id ? (activeInvoice?.paid_amount_gnf ?? 0) : null} />
                   </label>
                   <label>
                     Montant consommé *
