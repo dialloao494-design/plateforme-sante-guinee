@@ -140,6 +140,7 @@ const invoiceStatusLabel = (status) => {
 export default function ReceptionDashboard() {
   const { user } = useAuth();
   const searchRef = useRef(null);
+  const tabSearchRef = useRef(null);
 
   const [tab, setTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
@@ -215,21 +216,28 @@ export default function ReceptionDashboard() {
     clinicalApi.clinicDoctors().then((r) => setDoctors(r.data || [])).catch(() => setDoctors([]));
   }, [loadDashboard]);
 
+  const runPatientSearch = useCallback(async (query) => {
+    const q = (query ?? searchQ).trim();
+    if (!q) {
+      setSearchResults([]);
+      return;
+    }
+    setSearching(true);
+    try {
+      const { data } = await clinicalApi.receptionHisSearch(q);
+      setSearchResults(data || []);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }, [searchQ]);
+
   useEffect(() => {
     if (!searchQ.trim()) return void setSearchResults([]);
-    const t = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const { data } = await clinicalApi.receptionHisSearch(searchQ.trim());
-        setSearchResults(data || []);
-      } catch {
-        setSearchResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 250);
+    const t = setTimeout(() => runPatientSearch(searchQ), 250);
     return () => clearTimeout(t);
-  }, [searchQ]);
+  }, [searchQ, runPatientSearch]);
 
   useEffect(() => {
     if (!selectedPatient?.id || !invoiceSearchQ.trim()) return void setInvoiceSearchHits([]);
@@ -554,6 +562,57 @@ export default function ReceptionDashboard() {
 
   const needPatient = !selectedPatient && (tab === 'admission' || tab === 'billing' || tab === 'refund');
 
+  const patientSearchTitles = {
+    admission: 'Rechercher un patient pour l’admission',
+    billing: 'Rechercher un patient pour la facturation',
+    refund: 'Rechercher un patient pour le remboursement',
+  };
+
+  const PatientSearchPanel = ({ title }) => (
+    <div className="clinical-card reception-his-patient-search">
+      <h3>{title}</h3>
+      <p className="clinical-hint">
+        Saisissez le N° dossier, le nom, le téléphone ou le QR, puis cliquez sur Rechercher.
+        {' '}
+        <span className="reception-his-optional-shortcut">Raccourci optionnel : F3</span>
+      </p>
+      <div className="reception-his-search-inline">
+        <input
+          ref={tabSearchRef}
+          type="search"
+          value={searchQ}
+          onChange={(e) => setSearchQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              runPatientSearch();
+            }
+          }}
+          placeholder="N° dossier, nom, téléphone, QR…"
+          autoComplete="off"
+        />
+        <button type="button" className="clinical-btn" onClick={() => runPatientSearch()} disabled={searching || !searchQ.trim()}>
+          {searching ? 'Recherche…' : 'Rechercher'}
+        </button>
+      </div>
+      {searchResults.length > 0 && (
+        <ul className="reception-his-search-results reception-his-search-results--inline">
+          {searchResults.map((p) => (
+            <li key={p.id}>
+              <button type="button" onClick={() => selectPatient(p)}>
+                <strong>{p.last_name} {p.first_name}</strong>
+                <span>ID patient {p.patient_number || '—'} · {p.phone || '—'} · {p.age} ans</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {searchQ.trim() && !searching && searchResults.length === 0 && (
+        <p className="clinical-hint reception-his-no-results">Aucun patient trouvé.</p>
+      )}
+    </div>
+  );
+
   return (
     <div className="clinical-page reception-his">
       <header className="reception-his-header">
@@ -563,16 +622,32 @@ export default function ReceptionDashboard() {
           <p className="reception-his-session">Session : {user?.full_name || user?.email || 'Utilisateur'}</p>
         </div>
         <div className="reception-his-search">
-          <label htmlFor="patient-search">Recherche patient (F3)</label>
-          <input
-            id="patient-search"
-            ref={searchRef}
-            type="search"
-            placeholder="N° dossier, nom, téléphone, QR…"
-            value={searchQ}
-            onChange={(e) => setSearchQ(e.target.value)}
-            autoComplete="off"
-          />
+          <label htmlFor="patient-search">Recherche patient</label>
+          <div className="reception-his-search-inline">
+            <input
+              id="patient-search"
+              ref={searchRef}
+              type="search"
+              placeholder="N° dossier, nom, téléphone, QR…"
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  runPatientSearch();
+                }
+              }}
+              autoComplete="off"
+            />
+            <button
+              type="button"
+              className="clinical-btn"
+              onClick={() => runPatientSearch()}
+              disabled={searching || !searchQ.trim()}
+            >
+              {searching ? '…' : 'Rechercher'}
+            </button>
+          </div>
           {searching && <span className="reception-his-search-hint">Recherche…</span>}
           {searchResults.length > 0 && (
             <ul className="reception-his-search-results">
@@ -609,9 +684,7 @@ export default function ReceptionDashboard() {
       </nav>
 
       {needPatient && (
-        <div className="clinical-card reception-his-empty-state">
-          Veuillez rechercher d’abord un patient avec F3.
-        </div>
+        <PatientSearchPanel title={patientSearchTitles[tab]} />
       )}
 
       {tab === 'dashboard' && (
@@ -691,7 +764,7 @@ export default function ReceptionDashboard() {
               </div>
             )}
             <fieldset><legend>Identité</legend><div className="clinical-form-row">
-              <label>N° dossier patient<input readOnly value={registeredPatient?.patient_number || 'Généré à l’enregistrement'} /></label>
+              <label>N° dossier patient<input readOnly disabled value={registeredPatient?.patient_number || ''} /></label>
               <label>Date inscription<input readOnly type="date" value={todayStr} /></label>
               <label className="reception-his-check"><input type="checkbox" checked={regForm.is_newborn} onChange={(e) => updateReg({ is_newborn: e.target.checked })} />Nouveau-né</label>
               <label>Nom *<input required value={regForm.last_name} onChange={(e) => updateReg({ last_name: e.target.value })} /></label>

@@ -747,12 +747,55 @@
   margin-bottom: 0.25rem;
 }
 
-.reception-his-search input {
-  width: 100%;
+.reception-his-search-inline {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.reception-his-search-inline input {
+  flex: 1;
+  min-width: 0;
   padding: 0.5rem 0.65rem;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   font-size: 1rem;
+}
+
+.reception-his-search-inline .clinical-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.reception-his-patient-search {
+  margin-bottom: 1.25rem;
+}
+
+.reception-his-patient-search h3 {
+  margin-top: 0;
+}
+
+.reception-his-search-results--inline {
+  position: static;
+  margin-top: 0.75rem;
+  box-shadow: none;
+  border: 1px solid #e2e8f0;
+}
+
+.reception-his-optional-shortcut {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.reception-his-no-results {
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+}
+
+.reception-his-search input:disabled,
+.reception-his-search-inline input:disabled {
+  background: #f8fafc;
+  color: #334155;
 }
 
 .reception-his-search-results {
