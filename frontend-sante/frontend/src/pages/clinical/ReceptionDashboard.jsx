@@ -31,10 +31,10 @@ const PAYMENT_METHODS = [
   { value: 'insurance', label: 'Assurance' },
 ];
 const REFUND_METHODS = [
-  { value: 'orange_money', label: 'Orange Money' },
   { value: 'cash', label: 'Espèces' },
-  { value: 'bank_transfer', label: 'Virement bancaire' },
-  { value: 'card', label: 'Carte bancaire' },
+  { value: 'orange_money', label: 'Orange Money' },
+  { value: 'bank_transfer', label: 'Virement' },
+  { value: 'card', label: 'Carte' },
   { value: 'insurance_adjustment', label: 'Assurance' },
 ];
 const REFUND_REASONS = [
@@ -159,7 +159,6 @@ const PaymentMethodRadios = ({ name, value, onChange, methods }) => (
 export default function ReceptionDashboard() {
   const { user } = useAuth();
   const searchRef = useRef(null);
-  const tabSearchRef = useRef(null);
 
   const [tab, setTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
@@ -379,7 +378,7 @@ export default function ReceptionDashboard() {
 
   const handleAdmission = async (e) => {
     e.preventDefault();
-    if (!selectedPatient?.id) return setError('Veuillez d’abord rechercher un patient avec F3.');
+    if (!selectedPatient?.id) return setError('Recherchez et sélectionnez un patient avant de créer l’admission.');
     setLoading(true);
     setError('');
     setMessage('');
@@ -410,7 +409,7 @@ export default function ReceptionDashboard() {
 
   const handleCreateInvoice = async (e) => {
     e.preventDefault();
-    if (!selectedPatient?.id) return setError('Veuillez d’abord rechercher un patient avec F3.');
+    if (!selectedPatient?.id) return setError('Recherchez et sélectionnez un patient avant de créer l’admission.');
     setLoading(true);
     setError('');
     setMessage('');
@@ -468,7 +467,7 @@ export default function ReceptionDashboard() {
 
   const handleRefund = async (e) => {
     e.preventDefault();
-    if (!selectedPatient?.id) return setError('Veuillez d’abord rechercher un patient avec F3.');
+    if (!selectedPatient?.id) return setError('Recherchez et sélectionnez un patient avant de créer l’admission.');
     if (!refundForm.invoice_id) return setError('Sélectionnez une facture du patient.');
     setLoading(true);
     setError('');
@@ -564,72 +563,25 @@ export default function ReceptionDashboard() {
       }
     : null;
 
-  const PatientContextPanel = () => {
-    if (!selectedPatient) return null;
-    return (
-      <div className="clinical-card reception-his-patient-context">
-        <h3>Contexte patient</h3>
-        <div className="reception-his-patient-context-grid">
-          <div><strong>ID patient</strong><span>{selectedPatient.patient_number || '—'}</span></div>
-          <div><strong>Nom</strong><span>{selectedPatient.last_name || '—'}</span></div>
-          <div><strong>Prénom</strong><span>{selectedPatient.first_name || '—'}</span></div>
-          <div><strong>Téléphone</strong><span>{selectedPatient.phone || '—'}</span></div>
-          <div><strong>Âge</strong><span>{selectedPatient.date_of_birth ? calcAge(selectedPatient.date_of_birth) : selectedPatient.age || '—'}</span></div>
-          <div><strong>Sexe</strong><span>{selectedPatient.gender || '—'}</span></div>
-        </div>
+  const patientDisplayName = selectedPatient
+    ? `${selectedPatient.last_name || ''} ${selectedPatient.first_name || ''}`.trim()
+    : '';
+
+  const PatientContextPanel = () => (
+    <div className="clinical-card reception-his-patient-context">
+      <h3>Patient sélectionné</h3>
+      <div className="reception-his-patient-context-grid">
+        <div><strong>N° dossier</strong><span>{selectedPatient?.patient_number || '—'}</span></div>
+        <div><strong>Nom</strong><span>{selectedPatient?.last_name || '—'}</span></div>
+        <div><strong>Prénom</strong><span>{selectedPatient?.first_name || '—'}</span></div>
+        <div><strong>Téléphone</strong><span>{selectedPatient?.phone || '—'}</span></div>
+        <div><strong>Âge</strong><span>{selectedPatient?.date_of_birth ? calcAge(selectedPatient.date_of_birth) : selectedPatient?.age || '—'}</span></div>
+        <div><strong>Sexe</strong><span>{selectedPatient?.gender || '—'}</span></div>
       </div>
-    );
-  };
-
-  const needPatient = !selectedPatient && (tab === 'admission' || tab === 'billing' || tab === 'refund');
-
-  const patientSearchTitles = {
-    admission: 'Rechercher un patient pour l’admission',
-    billing: 'Rechercher un patient pour la facturation',
-    refund: 'Rechercher un patient pour le remboursement',
-  };
-
-  const PatientSearchPanel = ({ title }) => (
-    <div className="clinical-card reception-his-patient-search">
-      <h3>{title}</h3>
-      <p className="clinical-hint">
-        Saisissez le N° dossier, le nom, le téléphone ou le QR, puis cliquez sur Rechercher.
-        {' '}
-        <span className="reception-his-optional-shortcut">Raccourci optionnel : F3</span>
-      </p>
-      <div className="reception-his-search-inline">
-        <input
-          ref={tabSearchRef}
-          type="search"
-          value={searchQ}
-          onChange={(e) => setSearchQ(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              runPatientSearch();
-            }
-          }}
-          placeholder="N° dossier, nom, téléphone, QR…"
-          autoComplete="off"
-        />
-        <button type="button" className="clinical-btn" onClick={() => runPatientSearch()} disabled={searching || !searchQ.trim()}>
-          {searching ? 'Recherche…' : 'Rechercher'}
-        </button>
-      </div>
-      {searchResults.length > 0 && (
-        <ul className="reception-his-search-results reception-his-search-results--inline">
-          {searchResults.map((p) => (
-            <li key={p.id}>
-              <button type="button" onClick={() => selectPatient(p)}>
-                <strong>{p.last_name} {p.first_name}</strong>
-                <span>ID patient {p.patient_number || '—'} · {p.phone || '—'} · {p.age} ans</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {searchQ.trim() && !searching && searchResults.length === 0 && (
-        <p className="clinical-hint reception-his-no-results">Aucun patient trouvé.</p>
+      {!selectedPatient && (
+        <p className="clinical-hint reception-his-patient-hint">
+          Utilisez la recherche en haut de page pour sélectionner un patient. Les champs ci-dessous restent visibles.
+        </p>
       )}
     </div>
   );
@@ -703,10 +655,6 @@ export default function ReceptionDashboard() {
           </button>
         ))}
       </nav>
-
-      {needPatient && (
-        <PatientSearchPanel title={patientSearchTitles[tab]} />
-      )}
 
       {tab === 'dashboard' && (
         <section className="reception-his-panel">
@@ -840,18 +788,34 @@ export default function ReceptionDashboard() {
         </section>
       )}
 
-      {tab === 'admission' && selectedPatient && (
+      {tab === 'admission' && (
         <section className="reception-his-panel">
           <PatientContextPanel />
           <form className="clinical-card reception-his-form-sheet" onSubmit={handleAdmission}>
             <h2>Admission</h2>
             <fieldset>
               <legend>Admission</legend>
-              <div className="reception-his-form-row">
+              <div className="reception-his-form-row reception-his-form-row--4">
                 <label>
                   N° d&apos;admission
                   <input readOnly disabled value={lastAdmission?.admission_number || ''} />
                 </label>
+                <label>
+                  N° dossier patient
+                  <input readOnly disabled value={selectedPatient?.patient_number || ''} />
+                </label>
+                <label>
+                  Nom et prénom
+                  <input readOnly disabled value={patientDisplayName} />
+                </label>
+                <label>
+                  Service *
+                  <select required value={admissionForm.department} onChange={(e) => updateAdmission({ department: e.target.value })}>
+                    {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="reception-his-form-row">
                 <label>
                   Date et heure d&apos;admission
                   <div className="reception-his-datetime-pair">
@@ -869,14 +833,6 @@ export default function ReceptionDashboard() {
                     />
                   </div>
                 </label>
-                <label>
-                  Service *
-                  <select required value={admissionForm.department} onChange={(e) => updateAdmission({ department: e.target.value })}>
-                    {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </label>
-              </div>
-              <div className="reception-his-form-row">
                 <label>
                   Médecin traitant
                   <select value={admissionForm.attending_clinician_user_id} onChange={(e) => updateAdmission({ attending_clinician_user_id: e.target.value })}>
@@ -897,31 +853,32 @@ export default function ReceptionDashboard() {
                   </select>
                   <span className="reception-his-field-hint">Urgence · Consultation externe · Hospitalisation</span>
                 </label>
+              </div>
+              <div className="reception-his-form-row reception-his-form-row--2">
                 <label>
-                  Confirmation
+                  Confirmation / rendez-vous
                   <select value={admissionForm.confirmation_status} onChange={(e) => updateAdmission({ confirmation_status: e.target.value })}>
                     {ADMISSION_CONFIRMATIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                   </select>
-                  <span className="reception-his-field-hint">Rendez-vous confirmé ou en attente</span>
+                </label>
+                <label className="reception-his-notes-field">
+                  Notes
+                  <textarea rows={2} value={admissionForm.notes} onChange={(e) => updateAdmission({ notes: e.target.value })} />
                 </label>
               </div>
-              <label className="reception-his-notes-field">
-                Notes
-                <textarea rows={2} value={admissionForm.notes} onChange={(e) => updateAdmission({ notes: e.target.value })} />
-              </label>
             </fieldset>
-            <button type="submit" className="clinical-btn" disabled={loading}>Créer l&apos;admission</button>
+            <button type="submit" className="clinical-btn" disabled={loading || !selectedPatient}>Créer l&apos;admission</button>
           </form>
         </section>
       )}
 
-      {tab === 'billing' && selectedPatient && (
+      {tab === 'billing' && (
         <section className="reception-his-panel">
           <PatientContextPanel />
           <div className="clinical-card reception-his-form-sheet">
             <h2>Facturation</h2>
 
-            {invoices.length > 0 && (
+            {selectedPatient && invoices.length > 0 && (
               <label className="reception-his-invoice-select">
                 Facture du patient
                 <select value={activeInvoice?.id || ''} onChange={(e) => selectInvoice(e.target.value)}>
@@ -937,17 +894,21 @@ export default function ReceptionDashboard() {
 
             <fieldset>
               <legend>Facture</legend>
-              <div className="reception-his-form-row">
+              <div className="reception-his-form-row reception-his-form-row--4">
                 <label>
                   N° facture
                   <input readOnly disabled value={activeInvoice?.invoice_number || ''} />
+                </label>
+                <label>
+                  N° dossier patient
+                  <input readOnly disabled value={selectedPatient?.patient_number || ''} />
                 </label>
                 <label>
                   Date de facturation
                   <input readOnly disabled value={(activeInvoice?.created_at || '').slice(0, 10)} />
                 </label>
                 <label>
-                  Service
+                  Service concerné
                   {activeInvoice ? (
                     <input readOnly disabled value={activeInvoice.department || ''} />
                   ) : (
@@ -969,94 +930,112 @@ export default function ReceptionDashboard() {
                       <input required type="number" min="0" value={billingForm.total_amount_gnf} onChange={(e) => updateBilling({ total_amount_gnf: e.target.value })} />
                     </label>
                   </div>
-                  <button type="submit" className="clinical-btn" disabled={loading}>Créer facture</button>
+                  <button type="submit" className="clinical-btn" disabled={loading || !selectedPatient}>Créer facture</button>
                 </form>
               )}
             </fieldset>
 
-            {activeInvoice && activeMeta && (
-              <>
-                <fieldset>
-                  <legend>Paiement</legend>
-                  <div className="reception-his-form-row reception-his-form-row--4">
-                    <label>
-                      Montant total
-                      <input readOnly disabled value={formatGNF(activeMeta.total)} />
-                    </label>
-                    <label>
-                      À payer par le patient
-                      <input readOnly disabled value={formatGNF(activeMeta.total)} />
-                    </label>
-                    <label>
-                      Montant reçu
-                      <input readOnly disabled value={formatGNF(activeMeta.paid)} />
-                    </label>
-                    <label>
-                      Reste à payer
-                      <input readOnly disabled value={formatGNF(activeMeta.remaining)} />
-                    </label>
-                  </div>
-                  <form onSubmit={handlePayment}>
-                    <div className="reception-his-form-row reception-his-form-row--2">
-                      <label>
-                        Montant à encaisser *
-                        <input required type="number" min="0" value={paymentForm.amount_gnf} onChange={(e) => updatePayment({ amount_gnf: e.target.value })} />
-                      </label>
-                      <label>
-                        Référence
-                        <input value={paymentForm.reference} onChange={(e) => updatePayment({ reference: e.target.value })} placeholder="N° transaction, reçu…" />
-                      </label>
-                    </div>
-                    <fieldset className="reception-his-nested-fieldset">
-                      <legend>Mode de paiement</legend>
-                      <PaymentMethodRadios
-                        name="payment_method"
-                        value={paymentForm.payment_method}
-                        onChange={(v) => updatePayment({ payment_method: v })}
-                        methods={PAYMENT_METHODS}
-                      />
-                    </fieldset>
-                    <button type="submit" className="clinical-btn" disabled={loading}>Enregistrer paiement</button>
-                  </form>
+            <fieldset>
+              <legend>Paiement</legend>
+              <div className="reception-his-form-row reception-his-form-row--4">
+                <label>
+                  Montant total
+                  <input
+                    readOnly
+                    disabled
+                    value={activeMeta ? formatGNF(activeMeta.total) : (billingForm.total_amount_gnf ? formatGNF(Number(billingForm.total_amount_gnf)) : '')}
+                  />
+                </label>
+                <label>
+                  À payer par le patient
+                  <input readOnly disabled value={activeMeta ? formatGNF(activeMeta.total) : ''} />
+                </label>
+                <label>
+                  Montant reçu
+                  <input readOnly disabled value={activeMeta ? formatGNF(activeMeta.paid) : ''} />
+                </label>
+                <label>
+                  Reste à payer
+                  <input readOnly disabled value={activeMeta ? formatGNF(activeMeta.remaining) : ''} />
+                </label>
+              </div>
+              <form onSubmit={handlePayment}>
+                <div className="reception-his-form-row reception-his-form-row--2">
+                  <label>
+                    Montant à encaisser *
+                    <input
+                      required
+                      type="number"
+                      min="0"
+                      value={paymentForm.amount_gnf}
+                      onChange={(e) => updatePayment({ amount_gnf: e.target.value })}
+                      disabled={!activeInvoice}
+                    />
+                  </label>
+                  <label>
+                    Référence
+                    <input
+                      value={paymentForm.reference}
+                      onChange={(e) => updatePayment({ reference: e.target.value })}
+                      placeholder="N° transaction, reçu…"
+                      disabled={!activeInvoice}
+                    />
+                  </label>
+                </div>
+                <fieldset className="reception-his-nested-fieldset">
+                  <legend>Mode de paiement</legend>
+                  <PaymentMethodRadios
+                    name="payment_method"
+                    value={paymentForm.payment_method}
+                    onChange={(v) => updatePayment({ payment_method: v })}
+                    methods={PAYMENT_METHODS}
+                  />
                 </fieldset>
+                <button type="submit" className="clinical-btn" disabled={loading || !activeInvoice || !selectedPatient}>
+                  Enregistrer paiement
+                </button>
+              </form>
+            </fieldset>
 
-                <fieldset className="reception-his-payment-history">
-                  <legend>Historique des paiements</legend>
-                  {(activeInvoice.payments || []).length === 0 ? (
-                    <p className="clinical-hint">Aucun paiement enregistré pour cette facture.</p>
+            <fieldset className="reception-his-payment-history">
+              <legend>Historique des paiements</legend>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Montant</th>
+                    <th>Mode</th>
+                    <th>Référence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(activeInvoice?.payments || []).length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="reception-his-empty-row">Aucun paiement enregistré.</td>
+                    </tr>
                   ) : (
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Montant</th>
-                          <th>Mode</th>
-                          <th>Référence</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(activeInvoice.payments || []).map((p) => (
-                          <tr key={p.id}>
-                            <td>{new Date(p.paid_at).toLocaleString('fr-FR')}</td>
-                            <td>{formatGNF(p.amount_gnf || 0)}</td>
-                            <td>{methodLabel(PAYMENT_METHODS, p.payment_method)}</td>
-                            <td>{p.reference || '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    (activeInvoice.payments || []).map((p) => (
+                      <tr key={p.id}>
+                        <td>{new Date(p.paid_at).toLocaleString('fr-FR')}</td>
+                        <td>{formatGNF(p.amount_gnf || 0)}</td>
+                        <td>{methodLabel(PAYMENT_METHODS, p.payment_method)}</td>
+                        <td>{p.reference || '—'}</td>
+                      </tr>
+                    ))
                   )}
-                  <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => printInvoiceReceipt(activeInvoice.id)}>
-                    Imprimer reçu
-                  </button>
-                </fieldset>
-              </>
-            )}
+                </tbody>
+              </table>
+              {activeInvoice && (
+                <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => printInvoiceReceipt(activeInvoice.id)}>
+                  Imprimer reçu
+                </button>
+              )}
+            </fieldset>
           </div>
         </section>
       )}
 
-      {tab === 'refund' && selectedPatient && (
+      {tab === 'refund' && (
         <section className="reception-his-panel">
           <PatientContextPanel />
           <div className="clinical-card reception-his-form-sheet">
@@ -1065,11 +1044,25 @@ export default function ReceptionDashboard() {
             <form onSubmit={handleRefund}>
               <fieldset>
                 <legend>Demande de remboursement</legend>
-                <div className="reception-his-form-row">
+                <div className="reception-his-form-row reception-his-form-row--4">
                   <label>
                     N° remboursement
                     <input readOnly disabled value={lastRefund?.refund_number || ''} />
                   </label>
+                  <label>
+                    N° dossier patient
+                    <input readOnly disabled value={selectedPatient?.patient_number || ''} />
+                  </label>
+                  <label>
+                    Nom et prénom
+                    <input readOnly disabled value={patientDisplayName} />
+                  </label>
+                  <label>
+                    Service payé
+                    <input value={refundForm.service_paid_for} onChange={(e) => updateRefund({ service_paid_for: e.target.value })} />
+                  </label>
+                </div>
+                <div className="reception-his-form-row reception-his-form-row--2">
                   <label>
                     Facture originale *
                     <input
@@ -1077,8 +1070,14 @@ export default function ReceptionDashboard() {
                       placeholder="Rechercher N° facture…"
                       value={invoiceSearchQ}
                       onChange={(e) => setInvoiceSearchQ(e.target.value)}
+                      disabled={!selectedPatient}
                     />
-                    <select required value={refundForm.invoice_id} onChange={(e) => { updateRefund({ invoice_id: e.target.value }); selectInvoice(e.target.value); }}>
+                    <select
+                      required
+                      value={refundForm.invoice_id}
+                      onChange={(e) => { updateRefund({ invoice_id: e.target.value }); selectInvoice(e.target.value); }}
+                      disabled={!selectedPatient}
+                    >
                       <option value="">— Sélectionner —</option>
                       {refundInvoices.map((i) => (
                         <option key={i.id} value={i.id}>
@@ -1088,8 +1087,10 @@ export default function ReceptionDashboard() {
                     </select>
                   </label>
                   <label>
-                    Service payé
-                    <input value={refundForm.service_paid_for} onChange={(e) => updateRefund({ service_paid_for: e.target.value })} />
+                    Motif
+                    <select value={refundForm.reason} onChange={(e) => updateRefund({ reason: e.target.value })}>
+                      {REFUND_REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    </select>
                   </label>
                 </div>
                 <div className="reception-his-form-row reception-his-form-row--3">
@@ -1116,22 +1117,14 @@ export default function ReceptionDashboard() {
                     <input required value={refundForm.recipient_phone} onChange={(e) => updateRefund({ recipient_phone: e.target.value })} />
                   </label>
                   <label>
-                    Lien
+                    Lien avec le patient
                     <input value={refundForm.recipient_relationship} onChange={(e) => updateRefund({ recipient_relationship: e.target.value })} />
                   </label>
                 </div>
-                <div className="reception-his-form-row reception-his-form-row--2">
-                  <label>
-                    Motif
-                    <select value={refundForm.reason} onChange={(e) => updateRefund({ reason: e.target.value })}>
-                      {REFUND_REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-                    </select>
-                  </label>
-                  <label>
-                    Notes
-                    <textarea rows={2} value={refundForm.reason_notes} onChange={(e) => updateRefund({ reason_notes: e.target.value })} />
-                  </label>
-                </div>
+                <label className="reception-his-notes-field">
+                  Notes
+                  <textarea rows={2} value={refundForm.reason_notes} onChange={(e) => updateRefund({ reason_notes: e.target.value })} />
+                </label>
                 <fieldset className="reception-his-nested-fieldset">
                   <legend>Mode de remboursement</legend>
                   <p className="clinical-hint">Indiquez comment le remboursement sera effectué (espèces, Orange Money, virement, etc.)</p>
@@ -1143,27 +1136,29 @@ export default function ReceptionDashboard() {
                   />
                 </fieldset>
               </fieldset>
-              <button type="submit" className="clinical-btn" disabled={loading}>Soumettre remboursement</button>
+              <button type="submit" className="clinical-btn" disabled={loading || !selectedPatient}>Soumettre remboursement</button>
             </form>
 
             <fieldset className="reception-his-payment-history">
               <legend>Historique des remboursements</legend>
-              {filteredRefunds.length === 0 ? (
-                <p className="clinical-hint">Aucun remboursement pour ce patient.</p>
-              ) : (
-                <table>
-                  <thead>
+              <table>
+                <thead>
+                  <tr>
+                    <th>N° remboursement</th>
+                    <th>Facture</th>
+                    <th>Montant</th>
+                    <th>Mode</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRefunds.length === 0 ? (
                     <tr>
-                      <th>N° remboursement</th>
-                      <th>Facture</th>
-                      <th>Montant</th>
-                      <th>Mode</th>
-                      <th>Statut</th>
-                      <th>Actions</th>
+                      <td colSpan={6} className="reception-his-empty-row">Aucun remboursement enregistré.</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredRefunds.map((r) => (
+                  ) : (
+                    filteredRefunds.map((r) => (
                       <tr key={r.id}>
                         <td>{r.refund_number}</td>
                         <td>{r.invoice_number || '—'}</td>
@@ -1185,10 +1180,10 @@ export default function ReceptionDashboard() {
                           )}
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                    ))
+                  )}
+                </tbody>
+              </table>
             </fieldset>
           </div>
         </section>

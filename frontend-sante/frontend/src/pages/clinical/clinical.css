@@ -1169,3 +1169,13 @@
   }
 }
 
+.reception-his-patient-hint {
+  margin: 0.75rem 0 0;
+}
+
+.reception-his-empty-row {
+  text-align: center;
+  color: #64748b;
+  font-style: italic;
+}
+
