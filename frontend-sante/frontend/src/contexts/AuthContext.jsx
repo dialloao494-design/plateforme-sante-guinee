@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api.js';
-import { clearClientAuth } from '../services/httpClient.js';
+import { clearClientAuth, setAuthSessionReady } from '../services/httpClient.js';
 import { invalidateCache } from '../utils/apiCache.js';
 import { touchSessionActivity, getAuthItem, setAuthItem, removeAuthItem, setAuthToken, getAuthToken } from '../utils/authStorage.js';
 import { CACHE_TTL, getCached, setCached, buildCacheKey } from '../utils/apiCache.js';
@@ -134,11 +134,13 @@ export const AuthProvider = ({ children }) => {
   }, [normalizeAndStoreUser]);
 
   const bootstrapSession = useCallback(async () => {
+    setAuthSessionReady(false);
     const storedToken = getAuthToken();
     if (!storedToken) {
       setUser(null);
       setAuthInitError(null);
       setAuthLoading(false);
+      setAuthSessionReady(true);
       return;
     }
 
@@ -161,13 +163,23 @@ export const AuthProvider = ({ children }) => {
       }
       const normalizedUser = normalizeAndStoreUser(data);
       setUser(normalizedUser);
+      setAuthInitError(null);
     } catch (err) {
       logAuthSessionFailure('bootstrap', err);
-      clearClientAuth();
-      setUser(null);
-      setAuthInitError(toBootstrapErrorMessage(err));
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) {
+        clearClientAuth();
+        setUser(null);
+        setAuthInitError(toBootstrapErrorMessage(err));
+      } else {
+        setAuthInitError(toBootstrapErrorMessage(err));
+        if (!cachedProfile) {
+          setUser(null);
+        }
+      }
     } finally {
       setAuthLoading(false);
+      setAuthSessionReady(true);
     }
   }, [normalizeAndStoreUser]);
 
@@ -178,6 +190,24 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     bootstrapSession();
   }, [bootstrapSession]);
+
+  useEffect(() => {
+    const onStorage = (event) => {
+      if (event.key !== 'token' && event.key !== 'access_token') {
+        return;
+      }
+      if (!event.newValue) {
+        setUser(null);
+        setAuthInitError(null);
+        return;
+      }
+      if (!user) {
+        bootstrapSession();
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [bootstrapSession, user]);
 
   const applyLoginToken = useCallback(
     async (loginPayload) => {

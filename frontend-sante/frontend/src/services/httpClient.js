@@ -156,6 +156,17 @@ if (import.meta.env.DEV) {
 
 const PUBLIC_PATHS = ['/auth/login', '/auth/login-json', '/auth/register'];
 
+/** False until AuthProvider finishes the first session bootstrap attempt. */
+let authSessionReady = false;
+
+export function setAuthSessionReady(ready) {
+  authSessionReady = Boolean(ready);
+}
+
+export function isAuthSessionReady() {
+  return authSessionReady;
+}
+
 export function clearClientAuth() {
   if (typeof window === 'undefined') {
     return;
@@ -228,7 +239,6 @@ httpClient.interceptors.request.use(
       if (import.meta.env.DEV) {
         console.warn(`[HTTP] Protected request without token: ${config.url}`);
       }
-      redirectToLogin();
       return Promise.reject(new Error('Missing authentication token'));
     }
 
@@ -278,9 +288,9 @@ httpClient.interceptors.response.use(
       const currentToken = getAuthToken();
       const stillOurSession =
         currentToken && sentAuth === `Bearer ${currentToken}`;
-      if (stillOurSession) {
+      if (stillOurSession && authSessionReady) {
         if (import.meta.env.DEV) {
-          console.warn('[HTTP 401] Clearing tab session and redirecting to login');
+          console.warn('[HTTP 401] Clearing session and redirecting to login');
         }
         clearClientAuth();
         redirectToLogin();

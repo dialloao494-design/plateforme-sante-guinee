@@ -1,4 +1,4 @@
-/** Per-tab auth storage — tokens and role state must not leak across browser tabs. */
+/** Shared auth persistence — survives refresh and works across browser tabs. */
 
 import { invalidateCache } from './apiCache.js';
 
@@ -13,24 +13,32 @@ export const AUTH_STORAGE_KEYS = [
   'session_last_activity',
 ];
 
-function tabStore() {
+function persistStore() {
+  return typeof window !== 'undefined' ? localStorage : null;
+}
+
+function legacyTabStore() {
   return typeof window !== 'undefined' ? sessionStorage : null;
 }
 
 export function getAuthItem(key) {
-  const store = tabStore();
+  const store = persistStore();
   if (!store) {
     return null;
   }
-  const value = store.getItem(key);
-  if (value != null) {
-    return value;
+  try {
+    const value = store.getItem(key);
+    if (value != null) {
+      return value;
+    }
+  } catch {
+    /* ignore */
   }
   try {
-    const legacy = localStorage.getItem(key);
+    const legacy = legacyTabStore()?.getItem(key);
     if (legacy != null) {
       store.setItem(key, legacy);
-      localStorage.removeItem(key);
+      legacyTabStore()?.removeItem(key);
       return legacy;
     }
   } catch {
@@ -40,22 +48,30 @@ export function getAuthItem(key) {
 }
 
 export function setAuthItem(key, value) {
-  const store = tabStore();
+  const store = persistStore();
   if (!store) {
     return;
   }
-  store.setItem(key, value);
   try {
-    localStorage.removeItem(key);
+    store.setItem(key, value);
   } catch {
-    /* purge shared storage so another tab cannot read this session */
+    /* ignore quota errors */
+  }
+  try {
+    legacyTabStore()?.removeItem(key);
+  } catch {
+    /* ignore */
   }
 }
 
 export function removeAuthItem(key) {
-  tabStore()?.removeItem(key);
   try {
-    localStorage.removeItem(key);
+    persistStore()?.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+  try {
+    legacyTabStore()?.removeItem(key);
   } catch {
     /* ignore */
   }
