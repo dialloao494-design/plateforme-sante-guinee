@@ -11,6 +11,7 @@ export const AUTH_STORAGE_KEYS = [
   'password_reset_required',
   'force_password_change',
   'session_last_activity',
+  'sg_auth_profile',
 ];
 
 function persistStore() {

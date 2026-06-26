@@ -14,16 +14,37 @@ import {
 import { useSessionTimeout } from '../hooks/useSessionTimeout.js';
 import SessionTimeoutModal from '../components/SessionTimeoutModal.jsx';
 
-const AUTH_PROFILE_KEY = buildCacheKey('get', '/auth/me', undefined);
+const AUTH_PROFILE_STORAGE_KEY = 'sg_auth_profile';
+
+function authProfileCacheKey() {
+  return buildCacheKey('get', '/auth/me', undefined);
+}
 
 function readCachedProfile() {
-  return getCached(AUTH_PROFILE_KEY, { persist: true });
+  try {
+    const raw = getAuthItem(AUTH_PROFILE_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.id) {
+        return parsed;
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return getCached(authProfileCacheKey(), { persist: true }) ?? null;
 }
 
 function cacheProfile(user) {
-  if (user) {
-    setCached(AUTH_PROFILE_KEY, user, CACHE_TTL.authProfile, { persist: true });
+  if (!user) {
+    return;
   }
+  try {
+    setAuthItem(AUTH_PROFILE_STORAGE_KEY, JSON.stringify(user));
+  } catch {
+    /* ignore */
+  }
+  setCached(authProfileCacheKey(), user, CACHE_TTL.authProfile, { persist: true });
 }
 
 const authDebug = (...args) => {
@@ -157,7 +178,11 @@ export const AuthProvider = ({ children }) => {
     setAuthLoading(true);
 
     try {
-      const data = await withTimeout(authAPI.me(), AUTH_BOOTSTRAP_TIMEOUT_MS, '/auth/me');
+      const data = await withTimeout(
+        authAPI.me({ forceRefresh: true }),
+        AUTH_BOOTSTRAP_TIMEOUT_MS,
+        '/auth/me'
+      );
       if (!data) {
         throw new Error('Profil utilisateur vide');
       }

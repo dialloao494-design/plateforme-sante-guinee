@@ -33,24 +33,24 @@ export function buildCacheKey(method, url, params) {
 
 function readSession(key) {
   if (typeof window === 'undefined') {
-    return null;
+    return undefined;
   }
   try {
     const raw = sessionStorage.getItem(SESSION_PREFIX + key);
     if (!raw) {
-      return null;
+      return undefined;
     }
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed.expiresAt !== 'number') {
-      return null;
+      return undefined;
     }
     if (Date.now() > parsed.expiresAt) {
       sessionStorage.removeItem(SESSION_PREFIX + key);
-      return null;
+      return undefined;
     }
     return parsed.value;
   } catch {
-    return null;
+    return undefined;
   }
 }
 
@@ -77,7 +77,10 @@ export function getCached(key, { persist = false } = {}) {
     memory.delete(key);
   }
   if (persist) {
-    return readSession(key);
+    const sessionValue = readSession(key);
+    if (sessionValue !== undefined) {
+      return sessionValue;
+    }
   }
   return undefined;
 }
