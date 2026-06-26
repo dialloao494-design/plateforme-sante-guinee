@@ -525,13 +525,17 @@ export default function LabDashboard() {
         <>
           <ClinicalStatGrid stats={stats} />
 
-          <section className="reception-his-form-sheet">
-            <h2>Examens biologiques</h2>
+          <div className="lab-his-workflow">
+            <h2 className="lab-his-workflow-title">Examens biologiques</h2>
+
             {!selectedPatient ? (
-              <FormNotice>Recherchez un patient par numéro de dossier ou code QR (enregistré à la réception).</FormNotice>
+              <section className="lab-his-workflow-card">
+                <FormNotice>Recherchez un patient par numéro de dossier ou code QR (enregistré à la réception).</FormNotice>
+              </section>
             ) : (
               <>
-                <div className="reception-his-patient-context">
+                <section className="lab-his-workflow-card lab-his-workflow-card--patient reception-his-patient-context reception-his-patient-context--active">
+                  <h3>Informations patient</h3>
                   <div className="reception-his-form-row reception-his-form-row--4">
                     <DisplayField label="N° dossier" value={selectedPatient.patient_number || String(selectedPatient.id)} />
                     <DisplayField label="Nom" value={selectedPatient.last_name} />
@@ -559,11 +563,11 @@ export default function LabDashboard() {
                   <button type="button" className="clinical-btn clinical-btn--secondary" onClick={clearPatient}>
                     Changer de patient
                   </button>
-                </div>
+                </section>
 
-                <h3>Examens demandés</h3>
-                <div className="reception-his-form-row">
-                  <label className="clinical-field">
+                <section className="lab-his-workflow-card lab-his-workflow-card--exams">
+                  <h3>Examens demandés</h3>
+                  <label className="clinical-field lab-his-workflow-search">
                     Rechercher un examen
                     <input
                       value={testSearchQ}
@@ -571,243 +575,251 @@ export default function LabDashboard() {
                       placeholder="Nom ou catégorie (ex. NFS, Glycémie…)"
                     />
                   </label>
-                </div>
-                <div className="lab-catalog-scroll" style={{ maxHeight: '220px', marginBottom: '0.75rem' }}>
-                  <ul className="lab-catalog-list">
-                    {filteredCatalogTests.slice(0, 40).map((test) => (
-                      <li key={test.code} className="lab-catalog-row">
-                        <label className="lab-catalog-check">
-                          <input
-                            type="checkbox"
-                            checked={!!selectedTests[test.code]}
-                            onChange={() => toggleTest(test.code)}
-                          />
-                          <span>{test.name}</span>
-                          <small style={{ color: '#64748b' }}>{test.category_label}</small>
-                        </label>
-                        <span className="lab-catalog-price-label">{formatGNF(priceEdits[test.code] || 0)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                {selectedTestsList.length > 0 && (
-                  <ul className="lab-his-selected-tests">
-                    {selectedTestsList.map((t) => (
-                      <li key={t.code}>
-                        <span>{t.name}</span>
-                        <span>{formatGNF(priceEdits[t.code] || 0)}</span>
-                        <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => removeTest(t.code)}>
-                          Retirer
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                <h3>Prélèvement</h3>
-                <div className="reception-his-form-row reception-his-form-row--4">
-                  <label>
-                    Date de prélèvement
-                    <input
-                      type="date"
-                      value={sampleForm.collection_date}
-                      onChange={(e) => setSampleForm((p) => ({ ...p, collection_date: e.target.value }))}
-                    />
-                  </label>
-                  <label>
-                    Heure de prélèvement
-                    <input
-                      type="time"
-                      value={sampleForm.collection_time}
-                      onChange={(e) => setSampleForm((p) => ({ ...p, collection_time: e.target.value }))}
-                    />
-                  </label>
-                  <label>
-                    Agent de prélèvement
-                    <input
-                      value={sampleForm.collector}
-                      onChange={(e) => setSampleForm((p) => ({ ...p, collector: e.target.value }))}
-                    />
-                  </label>
-                  <label>
-                    Type d&apos;échantillon
-                    <select
-                      value={sampleForm.sample_type}
-                      onChange={(e) => setSampleForm((p) => ({ ...p, sample_type: e.target.value }))}
-                    >
-                      {SAMPLE_TYPES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
+                  <div className="lab-his-exam-picker-scroll">
+                    <ul className="lab-catalog-list lab-his-exam-picker-list">
+                      {filteredCatalogTests.map((test) => (
+                        <li key={test.code} className="lab-catalog-row lab-his-exam-picker-row">
+                          <label className="lab-catalog-check">
+                            <input
+                              type="checkbox"
+                              checked={!!selectedTests[test.code]}
+                              onChange={() => toggleTest(test.code)}
+                            />
+                            <span className="lab-his-exam-name">{test.name}</span>
+                            <small className="lab-his-exam-category">{test.category_label}</small>
+                          </label>
+                          <span className="lab-his-exam-price">{formatGNF(priceEdits[test.code] || 0)}</span>
+                        </li>
                       ))}
-                    </select>
-                  </label>
-                </div>
+                    </ul>
+                  </div>
+                  {selectedTestsList.length > 0 && (
+                    <>
+                      <p className="lab-his-selected-heading">Examens sélectionnés</p>
+                      <ul className="lab-his-selected-tests">
+                        {selectedTestsList.map((t) => (
+                          <li key={t.code}>
+                            <span>{t.name}</span>
+                            <span className="lab-his-exam-price">{formatGNF(priceEdits[t.code] || 0)}</span>
+                            <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => removeTest(t.code)}>
+                              Retirer
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  <div className="lab-his-billing-totals">
+                    <label>
+                      Sous-total
+                      <AmountDisplay amountGnf={subtotalGnf} />
+                    </label>
+                    <label>
+                      Total
+                      <AmountDisplay amountGnf={subtotalGnf} />
+                    </label>
+                    <label>
+                      Statut paiement
+                      <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}>
+                        <option value="pending">En attente</option>
+                        <option value="paid">Payé</option>
+                      </select>
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    className="clinical-btn lab-his-workflow-action"
+                    onClick={submitRequest}
+                    disabled={loading || selectedTestsList.length === 0}
+                  >
+                    {loading ? 'Enregistrement…' : 'Enregistrer la demande'}
+                  </button>
+                  {patientOrders.length > 0 && (
+                    <div className="lab-his-worklist">
+                      <h4>Commandes du patient</h4>
+                      {patientOrders.map((order) => (
+                        <div
+                          key={order.id}
+                          className={`lab-his-worklist-item${activeOrderId === order.id ? ' lab-his-worklist-item--active' : ''}`}
+                        >
+                          <span>
+                            <strong>{order.test_name}</strong> — {order.status}
+                            {order.price_gnf != null && <> · {formatGNF(order.price_gnf)}</>}
+                          </span>
+                          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => selectOrder(order)}>
+                            Saisir résultats
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
 
-                <div className="lab-his-billing-totals">
-                  <label>
-                    Sous-total
-                    <AmountDisplay amountGnf={subtotalGnf} />
-                  </label>
-                  <label>
-                    Total
-                    <AmountDisplay amountGnf={subtotalGnf} />
-                  </label>
-                  <label>
-                    Statut paiement
-                    <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}>
-                      <option value="pending">En attente</option>
-                      <option value="paid">Payé</option>
-                    </select>
-                  </label>
-                </div>
-
-                <button
-                  type="button"
-                  className="clinical-btn"
-                  onClick={submitRequest}
-                  disabled={loading || selectedTestsList.length === 0}
-                  style={{ marginTop: '1rem' }}
-                >
-                  {loading ? 'Enregistrement…' : 'Enregistrer la demande'}
-                </button>
-
-                {patientOrders.length > 0 && (
-                  <div className="lab-his-worklist">
-                    <h3>Commandes du patient</h3>
-                    {patientOrders.map((order) => (
-                      <div
-                        key={order.id}
-                        className={`lab-his-worklist-item${activeOrderId === order.id ? ' lab-his-worklist-item--active' : ''}`}
+                <section className="lab-his-workflow-card lab-his-workflow-card--sample">
+                  <h3>Prélèvement</h3>
+                  <div className="reception-his-form-row reception-his-form-row--4">
+                    <label>
+                      Date de prélèvement
+                      <input
+                        type="date"
+                        value={sampleForm.collection_date}
+                        onChange={(e) => setSampleForm((p) => ({ ...p, collection_date: e.target.value }))}
+                      />
+                    </label>
+                    <label>
+                      Heure de prélèvement
+                      <input
+                        type="time"
+                        value={sampleForm.collection_time}
+                        onChange={(e) => setSampleForm((p) => ({ ...p, collection_time: e.target.value }))}
+                      />
+                    </label>
+                    <label>
+                      Agent de prélèvement
+                      <input
+                        value={sampleForm.collector}
+                        onChange={(e) => setSampleForm((p) => ({ ...p, collector: e.target.value }))}
+                      />
+                    </label>
+                    <label>
+                      Type d&apos;échantillon
+                      <select
+                        value={sampleForm.sample_type}
+                        onChange={(e) => setSampleForm((p) => ({ ...p, sample_type: e.target.value }))}
                       >
-                        <span>
-                          <strong>{order.test_name}</strong> — {order.status}
-                          {order.price_gnf != null && <> · {formatGNF(order.price_gnf)}</>}
-                        </span>
-                        <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => selectOrder(order)}>
-                          Saisir résultats
-                        </button>
-                      </div>
+                        {SAMPLE_TYPES.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </section>
+
+                <section className="lab-his-workflow-card lab-his-workflow-card--results">
+                  <h3>Résultats</h3>
+                  {activeOrder ? (
+                    <p className="clinical-lead lab-his-active-order">Examen actif : <strong>{activeOrder.test_name}</strong></p>
+                  ) : (
+                    <p className="clinical-lead lab-his-active-order">Sélectionnez une commande pour saisir les résultats.</p>
+                  )}
+                  <div className="lab-his-results-wrap">
+                    <table className="lab-his-results-table">
+                      <thead>
+                        <tr>
+                          <th>Paramètre</th>
+                          <th>Résultat</th>
+                          <th>Valeurs de référence</th>
+                          <th>Unité</th>
+                          <th />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {resultRows.map((row, idx) => (
+                          <tr key={idx}>
+                            <td>
+                              <input
+                                value={row.parameter}
+                                onChange={(e) => updateResultRow(idx, 'parameter', e.target.value)}
+                                placeholder="ex. Glucose"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                value={row.result}
+                                onChange={(e) => updateResultRow(idx, 'result', e.target.value)}
+                                placeholder="Valeur"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                value={row.reference}
+                                onChange={(e) => updateResultRow(idx, 'reference', e.target.value)}
+                                placeholder="0,7 – 1,1 g/L"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                value={row.unit}
+                                onChange={(e) => updateResultRow(idx, 'unit', e.target.value)}
+                                placeholder="g/L"
+                              />
+                            </td>
+                            <td>
+                              <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => removeResultRow(idx)}>
+                                ×
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <button type="button" className="clinical-btn clinical-btn--secondary lab-his-add-row" onClick={addResultRow}>
+                    + Ajouter une ligne
+                  </button>
+                </section>
+
+                <section className="lab-his-workflow-card lab-his-workflow-card--validation">
+                  <h3>Validation</h3>
+                  <div className="reception-his-form-row reception-his-form-row--3">
+                    <label>
+                      Biologiste / technicien
+                      <input
+                        value={validationForm.technician}
+                        onChange={(e) => setValidationForm((p) => ({ ...p, technician: e.target.value }))}
+                      />
+                    </label>
+                    <label>
+                      Date de validation
+                      <input
+                        type="date"
+                        value={validationForm.validation_date}
+                        onChange={(e) => setValidationForm((p) => ({ ...p, validation_date: e.target.value }))}
+                      />
+                    </label>
+                    <label>
+                      Heure de validation
+                      <input
+                        type="time"
+                        value={validationForm.validation_time}
+                        onChange={(e) => setValidationForm((p) => ({ ...p, validation_time: e.target.value }))}
+                      />
+                    </label>
+                  </div>
+                  <div className="lab-his-status-options" role="radiogroup" aria-label="Statut">
+                    {VALIDATION_STATUSES.map((s) => (
+                      <label key={s.value}>
+                        <input
+                          type="radio"
+                          name="lab-status"
+                          checked={validationForm.status === s.value}
+                          onChange={() => setValidationForm((p) => ({ ...p, status: s.value }))}
+                        />
+                        {s.label}
+                      </label>
                     ))}
                   </div>
-                )}
-
-                <h3 style={{ marginTop: '1.5rem' }}>Résultats</h3>
-                {activeOrder && (
-                  <p className="clinical-lead">Examen actif : <strong>{activeOrder.test_name}</strong></p>
-                )}
-                <table className="lab-his-results-table">
-                  <thead>
-                    <tr>
-                      <th>Paramètre</th>
-                      <th>Résultat</th>
-                      <th>Valeurs de référence</th>
-                      <th>Unité</th>
-                      <th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {resultRows.map((row, idx) => (
-                      <tr key={idx}>
-                        <td>
-                          <input
-                            value={row.parameter}
-                            onChange={(e) => updateResultRow(idx, 'parameter', e.target.value)}
-                            placeholder="ex. Glucose"
-                          />
-                        </td>
-                        <td>
-                          <input
-                            value={row.result}
-                            onChange={(e) => updateResultRow(idx, 'result', e.target.value)}
-                            placeholder="Valeur"
-                          />
-                        </td>
-                        <td>
-                          <input
-                            value={row.reference}
-                            onChange={(e) => updateResultRow(idx, 'reference', e.target.value)}
-                            placeholder="0,7 – 1,1 g/L"
-                          />
-                        </td>
-                        <td>
-                          <input
-                            value={row.unit}
-                            onChange={(e) => updateResultRow(idx, 'unit', e.target.value)}
-                            placeholder="g/L"
-                          />
-                        </td>
-                        <td>
-                          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => removeResultRow(idx)}>
-                            ×
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addResultRow} style={{ marginTop: '0.5rem' }}>
-                  + Ajouter une ligne
-                </button>
-
-                <h3 style={{ marginTop: '1.5rem' }}>Validation</h3>
-                <div className="reception-his-form-row reception-his-form-row--3">
-                  <label>
-                    Biologiste / technicien
-                    <input
-                      value={validationForm.technician}
-                      onChange={(e) => setValidationForm((p) => ({ ...p, technician: e.target.value }))}
+                  <label className="lab-his-notes-field">
+                    Observations / notes
+                    <textarea
+                      rows={3}
+                      value={validationForm.observations}
+                      onChange={(e) => setValidationForm((p) => ({ ...p, observations: e.target.value }))}
+                      placeholder="Notes cliniques, commentaires…"
                     />
                   </label>
-                  <label>
-                    Date de validation
-                    <input
-                      type="date"
-                      value={validationForm.validation_date}
-                      onChange={(e) => setValidationForm((p) => ({ ...p, validation_date: e.target.value }))}
-                    />
-                  </label>
-                  <label>
-                    Heure de validation
-                    <input
-                      type="time"
-                      value={validationForm.validation_time}
-                      onChange={(e) => setValidationForm((p) => ({ ...p, validation_time: e.target.value }))}
-                    />
-                  </label>
-                </div>
-                <div className="lab-his-status-options" role="radiogroup" aria-label="Statut">
-                  {VALIDATION_STATUSES.map((s) => (
-                    <label key={s.value}>
-                      <input
-                        type="radio"
-                        name="lab-status"
-                        checked={validationForm.status === s.value}
-                        onChange={() => setValidationForm((p) => ({ ...p, status: s.value }))}
-                      />
-                      {s.label}
-                    </label>
-                  ))}
-                </div>
-                <label style={{ display: 'block', marginTop: '0.75rem' }}>
-                  Observations / notes
-                  <textarea
-                    rows={3}
-                    value={validationForm.observations}
-                    onChange={(e) => setValidationForm((p) => ({ ...p, observations: e.target.value }))}
-                    placeholder="Notes cliniques, commentaires…"
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="clinical-btn"
-                  onClick={submitResults}
-                  disabled={loading || !activeOrder}
-                  style={{ marginTop: '1rem' }}
-                >
-                  {loading ? 'Enregistrement…' : 'Enregistrer les résultats'}
-                </button>
+                  <button
+                    type="button"
+                    className="clinical-btn lab-his-workflow-action"
+                    onClick={submitResults}
+                    disabled={loading || !activeOrder}
+                  >
+                    {loading ? 'Enregistrement…' : 'Enregistrer les résultats'}
+                  </button>
+                </section>
               </>
             )}
-          </section>
+          </div>
         </>
       )}
 
