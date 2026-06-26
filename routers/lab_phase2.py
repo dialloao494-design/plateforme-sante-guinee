@@ -10,10 +10,13 @@ from sqlalchemy.orm import Session
 from core.clinical_access import resolve_clinic_for_user
 from core.roles import user_has_any_role
 from database import get_db
+import models
 from models.user import User
 from schemas.clinical import LabCatalogPricesUpdate, LabOrderResponse, WalkInLabRequestCreate
+from schemas.lab_his import LabPatientOut
 from security import get_current_user
 from services.lab_clinical_service import LabClinicalService
+from services.reception_his_service import ReceptionHisService
 
 router = APIRouter(prefix="/clinical/lab", tags=["Laboratory Phase 2"])
 
@@ -24,6 +27,60 @@ LAB_WRITE = ("lab_technician", "clinic_admin", "admin", "receptionist")
 def _require_role(user: User, allowed: tuple[str, ...]) -> None:
     if not user_has_any_role(user.role, allowed):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Requires one of roles: {list(allowed)}")
+
+
+def _lab_patient_out(patient: models.Patient) -> LabPatientOut:
+    return LabPatientOut(
+        id=patient.id,
+        patient_number=patient.patient_number,
+        qr_token=patient.qr_token,
+        first_name=patient.first_name,
+        last_name=patient.last_name,
+        date_of_birth=patient.date_of_birth,
+        age=patient.age or 0,
+        gender=patient.gender,
+        profession=patient.profession,
+        address=patient.address,
+        city=patient.city,
+        region=patient.region,
+        country=patient.country,
+        phone=patient.phone,
+        quartier=patient.quartier,
+    )
+
+
+@router.get("/patients/search", response_model=List[LabPatientOut])
+def search_lab_patients(
+    q: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, LAB_READ)
+    clinic = resolve_clinic_for_user(db, current_user)
+    patients = ReceptionHisService.search_patients(db, clinic_id=clinic.id, query=q)
+    return [_lab_patient_out(p) for p in patients]
+
+
+@router.get("/patients/{patient_id}", response_model=LabPatientOut)
+def get_lab_patient(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, LAB_READ)
+    clinic = resolve_clinic_for_user(db, current_user)
+    patient = (
+        db.query(models.Patient)
+        .filter(
+            models.Patient.id == patient_id,
+            models.Patient.clinic_id == clinic.id,
+            models.Patient.is_archived.is_(False),
+        )
+        .first()
+    )
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient introuvable")
+    return _lab_patient_out(patient)
 
 
 @router.get("/catalog")

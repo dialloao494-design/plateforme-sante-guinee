@@ -1275,3 +1275,134 @@
   font-style: italic;
 }
 
+/* Laboratory HIS — aligned with Reception */
+.lab-his-page {
+  max-width: 1200px;
+}
+
+.lab-his-selected-tests {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.lab-his-selected-tests li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 0.92rem;
+}
+
+.lab-his-selected-tests li:last-child {
+  border-bottom: none;
+}
+
+.lab-his-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.lab-his-results-table th,
+.lab-his-results-table td {
+  border: 1px solid #e2e8f0;
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+}
+
+.lab-his-results-table th {
+  background: #f0fdfa;
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.lab-his-results-table input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 0.35rem 0.45rem;
+}
+
+.lab-his-status-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-top: 0.35rem;
+}
+
+.lab-his-status-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.lab-his-catalog-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.lab-his-catalog-table th,
+.lab-his-catalog-table td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+}
+
+.lab-his-catalog-table th {
+  background: #f8fafc;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.lab-his-catalog-scroll {
+  max-height: 65vh;
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.lab-his-worklist {
+  margin-top: 1rem;
+}
+
+.lab-his-worklist-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  background: #fff;
+}
+
+.lab-his-worklist-item--active {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.15);
+}
+
+.lab-his-billing-totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-top: 0.75rem;
+  padding: 1rem;
+  background: #f0fdfa;
+  border-radius: 8px;
+  border: 1px solid #99f6e4;
+}
+

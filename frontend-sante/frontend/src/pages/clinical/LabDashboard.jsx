@@ -1,301 +1,349 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
+import { useAuth } from '../../contexts/AuthContext.jsx';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
-import { formatApiError, isPermissionDeniedError } from '../../utils/apiError.js';
+import { formatApiError } from '../../utils/apiError.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
-import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
 import './clinical.css';
 
-const EMPTY_PATIENT_FORM = {
-  patient_id: '',
-  last_name: '',
-  first_name: '',
-  age: '',
-  gender: '',
-  profession: '',
-  quartier: '',
-  phone: '',
+const TABS = [
+  { id: 'workflow', label: 'Tableau de bord Labo', shortcut: '1' },
+  { id: 'catalog', label: 'Catalogue tarifaire', shortcut: '2' },
+];
+
+const SAMPLE_TYPES = ['Sang', 'Urine', 'Selles', 'LCR', 'Écouvillon', 'Autre'];
+const VALIDATION_STATUSES = [
+  { value: 'pending', label: 'En attente' },
+  { value: 'in_progress', label: 'En cours' },
+  { value: 'validated', label: 'Validé' },
+  { value: 'rejected', label: 'Rejeté' },
+];
+
+const ORDER_STATUS_MAP = {
+  pending: 'ordered',
+  in_progress: 'in_analysis',
+  validated: 'completed',
+  rejected: 'cancelled',
 };
 
-const STATUS_LABELS = {
-  ordered: 'En attente',
-  sample_collected: 'Prélèvement',
-  in_analysis: 'En analyse',
-  completed: 'Terminé',
+const EMPTY_RESULT_ROW = { parameter: '', result: '', reference: '', unit: '' };
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const nowTimeStr = () => new Date().toTimeString().slice(0, 5);
+
+const calcAge = (dob) => {
+  if (!dob) return '';
+  const b = new Date(dob);
+  if (Number.isNaN(b.getTime())) return '';
+  const n = new Date();
+  let age = n.getFullYear() - b.getFullYear();
+  const m = n.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && n.getDate() < b.getDate())) age -= 1;
+  return age >= 0 ? String(age) : '';
 };
+
+const qrImageUrl = (token) =>
+  token ? `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(token)}` : '';
+
+const genderLabel = (gender) => {
+  if (gender === 'F') return 'Féminin';
+  if (gender === 'M') return 'Masculin';
+  if (gender === 'Autre') return 'Autre';
+  return gender || '';
+};
+
+const patientFullName = (p) => (p ? `${p.last_name || ''} ${p.first_name || ''}`.trim() : '');
+const patientAge = (p) => {
+  if (!p) return '';
+  if (p.date_of_birth) return calcAge(p.date_of_birth);
+  if (p.age != null && p.age !== '') return String(p.age);
+  return '';
+};
+
+const formatDob = (dob) => {
+  if (!dob) return '';
+  try {
+    return new Date(dob).toLocaleDateString('fr-FR');
+  } catch {
+    return String(dob);
+  }
+};
+
+const ReadOnlyDisplay = ({ value }) => (
+  <div
+    className={`reception-his-auto-display${value ? ' reception-his-auto-display--filled' : ' reception-his-auto-display--empty'}`}
+    aria-live="polite"
+  >
+    {value || ''}
+  </div>
+);
+
+const DisplayField = ({ label, value }) => (
+  <label>
+    {label}
+    <ReadOnlyDisplay value={value} />
+  </label>
+);
+
+const AmountDisplay = ({ amountGnf }) => {
+  const has = amountGnf != null && amountGnf !== '' && !Number.isNaN(Number(amountGnf));
+  return <ReadOnlyDisplay value={has ? formatGNF(Number(amountGnf)) : ''} />;
+};
+
+const FormNotice = ({ children }) =>
+  children ? <p className="reception-his-form-notice">{children}</p> : null;
 
 export default function LabDashboard() {
+  const { user } = useAuth();
+  const searchRef = useRef(null);
+
+  const [tab, setTab] = useState('workflow');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  const [labStats, setLabStats] = useState(null);
   const [orders, setOrders] = useState([]);
-  const [validated, setValidated] = useState([]);
   const [catalogCategories, setCatalogCategories] = useState([]);
   const [catalogMeta, setCatalogMeta] = useState({ total_categories: 0, total_tests: 0 });
   const [priceEdits, setPriceEdits] = useState({});
   const [savingPrices, setSavingPrices] = useState(false);
-  const [tab, setTab] = useState('pending');
-  const [selected, setSelected] = useState(null);
-  const [resultForm, setResultForm] = useState({
-    result_summary: '',
-    reference_range: '',
-    interpretation: '',
+
+  const [searchQ, setSearchQ] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+
+  const [testSearchQ, setTestSearchQ] = useState('');
+  const [selectedTests, setSelectedTests] = useState({});
+  const [sampleForm, setSampleForm] = useState({
+    collection_date: todayStr(),
+    collection_time: nowTimeStr(),
+    collector: '',
+    sample_type: 'Sang',
   });
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [labStats, setLabStats] = useState(null);
-  const [monthlyReport, setMonthlyReport] = useState(null);
-  const [reportMonth, setReportMonth] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  });
-  const [patientSearch, setPatientSearch] = useState('');
-  const [patientMatches, setPatientMatches] = useState([]);
-  const [patientForm, setPatientForm] = useState(EMPTY_PATIENT_FORM);
-  const [requestForm, setRequestForm] = useState({
-    payment_status: 'pending',
-    selectedTests: {},
+  const [paymentStatus, setPaymentStatus] = useState('pending');
+
+  const [activeOrderId, setActiveOrderId] = useState(null);
+  const [resultRows, setResultRows] = useState([{ ...EMPTY_RESULT_ROW }]);
+  const [validationForm, setValidationForm] = useState({
+    technician: '',
+    validation_date: todayStr(),
+    validation_time: nowTimeStr(),
+    status: 'pending',
+    observations: '',
   });
 
+  const [catalogSearchQ, setCatalogSearchQ] = useState('');
+
   const load = useCallback(async () => {
-    const errors = [];
-    const [queueRes, dashRes, catalogRes, validatedRes] = await Promise.allSettled([
+    const [queueRes, dashRes, catalogRes] = await Promise.allSettled([
       clinicalApi.labQueue(),
       clinicalApi.labDashboardStats(),
       clinicalApi.labCatalog(),
-      clinicalApi.labValidatedResults(50),
     ]);
-    if (queueRes.status === 'fulfilled') {
-      setOrders(queueRes.value.data || []);
-    } else {
-      errors.push('examens en cours');
-    }
+    if (queueRes.status === 'fulfilled') setOrders(queueRes.value.data || []);
     if (dashRes.status === 'fulfilled') setLabStats(dashRes.value.data || null);
-    else errors.push('statistiques');
-
     if (catalogRes.status === 'fulfilled') {
       const payload = catalogRes.value.data || {};
-      const categories = payload.categories || [];
-      const tests = payload.tests || [];
-      setCatalogCategories(categories);
+      setCatalogCategories(payload.categories || []);
       setCatalogMeta({
-        total_categories: payload.total_categories || categories.length || 0,
-        total_tests: payload.total_tests || tests.length || 0,
+        total_categories: payload.total_categories || 0,
+        total_tests: payload.total_tests || 0,
       });
       const prices = {};
-      tests.forEach((test) => {
-        prices[test.code] = test.price_gnf ?? '';
+      (payload.tests || []).forEach((t) => {
+        prices[t.code] = t.price_gnf ?? '';
       });
       setPriceEdits(prices);
-    } else {
-      errors.push('catalogue');
-      try {
-        const retry = await clinicalApi.labCatalog();
-        const payload = retry.data || {};
-        const categories = payload.categories || [];
-        const tests = payload.tests || [];
-        if (categories.length) {
-          setCatalogCategories(categories);
-          setCatalogMeta({
-            total_categories: payload.total_categories || categories.length,
-            total_tests: payload.total_tests || tests.length,
-          });
-          const prices = {};
-          tests.forEach((test) => {
-            prices[test.code] = test.price_gnf ?? '';
-          });
-          setPriceEdits(prices);
-          errors.splice(errors.indexOf('catalogue'), 1);
-        }
-      } catch {
-        /* keep catalogue error */
-      }
-    }
-
-    if (validatedRes.status === 'fulfilled') setValidated(validatedRes.value.data || []);
-    else errors.push('résultats validés');
-
-    if (errors.length) {
-      const critical = [queueRes, catalogRes].find((r) => r.status === 'rejected');
-      if (critical) {
-        const reason = critical.reason;
-        if (!isPermissionDeniedError(reason) || queueRes.status === 'rejected') {
-          setError(formatApiError(reason, `Chargement partiel : ${errors.join(', ')}`));
-        } else {
-          setError('');
-        }
-      } else {
-        setError('');
-      }
-    } else {
-      setError('');
     }
   }, []);
 
   useEffect(() => {
-    load();
+    load().catch(() => {});
   }, [load]);
 
-  const loadMonthlyReport = async () => {
-    const [year, month] = reportMonth.split('-').map(Number);
-    try {
-      const { data } = await clinicalApi.labMonthlyReport(year, month);
-      setMonthlyReport(data);
-    } catch (err) {
-      setError(err?.response?.data?.detail || 'Rapport mensuel indisponible');
+  useEffect(() => {
+    if (!searchQ.trim()) {
+      setSearchResults([]);
+      return undefined;
     }
-  };
+    const t = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const { data } = await clinicalApi.labPatientSearch(searchQ.trim());
+        setSearchResults(data || []);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [searchQ]);
 
   useEffect(() => {
-    if (tab === 'report') {
-      loadMonthlyReport();
+    const onKey = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === 'F3') {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+      const hit = TABS.find((t) => t.shortcut === e.key);
+      if (hit) setTab(hit.id);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    if (user?.full_name && !validationForm.technician) {
+      setValidationForm((p) => ({ ...p, technician: user.full_name }));
     }
-  }, [tab, reportMonth]);
+    if (user?.full_name && !sampleForm.collector) {
+      setSampleForm((p) => ({ ...p, collector: user.full_name }));
+    }
+  }, [user?.full_name, validationForm.technician, sampleForm.collector]);
 
   const catalog = useMemo(
-    () => catalogCategories.flatMap((cat) => cat.tests || []),
+    () => catalogCategories.flatMap((c) => (c.tests || []).map((t) => ({ ...t, category_label: c.label }))),
     [catalogCategories]
   );
 
+  const filteredCatalogTests = useMemo(() => {
+    const q = testSearchQ.trim().toLowerCase();
+    if (!q) return catalog;
+    return catalog.filter(
+      (t) =>
+        t.name?.toLowerCase().includes(q) ||
+        t.code?.toLowerCase().includes(q) ||
+        t.category_label?.toLowerCase().includes(q)
+    );
+  }, [catalog, testSearchQ]);
+
   const selectedTestsList = useMemo(
-    () => catalog.filter((t) => requestForm.selectedTests[t.code]),
-    [catalog, requestForm.selectedTests]
+    () => catalog.filter((t) => selectedTests[t.code]),
+    [catalog, selectedTests]
   );
 
-  const totalSelectedPrice = useMemo(
-    () => selectedTestsList.reduce((sum, t) => {
-      const raw = priceEdits[t.code];
-      const price = raw === '' || raw == null ? 0 : Number(raw);
-      return sum + (Number.isFinite(price) ? price : 0);
-    }, 0),
+  const subtotalGnf = useMemo(
+    () =>
+      selectedTestsList.reduce((sum, t) => {
+        const raw = priceEdits[t.code];
+        const price = raw === '' || raw == null ? 0 : Number(raw);
+        return sum + (Number.isFinite(price) ? price : 0);
+      }, 0),
     [selectedTestsList, priceEdits]
   );
 
-  const applyPatient = (patient) => {
-    if (!patient) return;
-    setPatientForm({
-      patient_id: String(patient.id),
-      last_name: patient.last_name || '',
-      first_name: patient.first_name || '',
-      age: patient.age != null ? String(patient.age) : '',
-      gender: patient.gender || '',
-      profession: patient.profession || '',
-      quartier: patient.quartier || patient.address || '',
-      phone: patient.phone || '',
-    });
-  };
+  const patientOrders = useMemo(() => {
+    if (!selectedPatient?.id) return [];
+    return orders.filter((o) => o.patient_id === selectedPatient.id);
+  }, [orders, selectedPatient?.id]);
 
-  const updatePatientField = (field, value) => {
-    setPatientForm((prev) => ({ ...prev, [field]: value }));
-  };
+  const activeOrder = useMemo(
+    () => patientOrders.find((o) => o.id === activeOrderId) || null,
+    [patientOrders, activeOrderId]
+  );
 
-  const loadPatientById = async (rawId) => {
-    const id = String(rawId || '').trim();
-    if (!id) {
-      return;
-    }
+  const catalogTableRows = useMemo(() => {
+    const q = catalogSearchQ.trim().toLowerCase();
+    if (!q) return catalog;
+    return catalog.filter(
+      (t) =>
+        t.name?.toLowerCase().includes(q) ||
+        t.code?.toLowerCase().includes(q) ||
+        t.category_label?.toLowerCase().includes(q)
+    );
+  }, [catalog, catalogSearchQ]);
+
+  const selectPatient = async (p) => {
+    if (!p?.id) return;
+    let patient = p;
     try {
-      const { data } = await clinicalApi.searchPatients(id);
-      const match = (data || []).find((p) => String(p.id) === id) || (data || [])[0];
-      if (match) {
-        applyPatient(match);
-        setError('');
-      }
-    } catch (err) {
-      if (!isPermissionDeniedError(err)) {
-        setError(formatApiError(err, 'Chargement patient impossible'));
-      }
+      const { data } = await clinicalApi.labGetPatient(p.id);
+      if (data?.id) patient = data;
+    } catch {
+      /* keep search payload */
     }
+    setSelectedPatient(patient);
+    setSearchQ('');
+    setSearchResults([]);
+    setActiveOrderId(null);
+    setMessage(`Patient sélectionné : ${patientFullName(patient)} · N° ${patient.patient_number || patient.id}`);
+    setError('');
   };
 
-  const searchPatients = async () => {
-    const query = patientSearch.trim();
-    if (query.length < 1) return;
-    try {
-      const { data } = await clinicalApi.searchPatients(query);
-      setPatientMatches(data || []);
-      if ((data || []).length === 1) {
-        applyPatient(data[0]);
-        setError('');
-      }
-    } catch (err) {
-      setError(formatApiError(err, 'Recherche impossible'));
-    }
-  };
-
-  const resolvePatientId = async () => {
-    const existingId = Number(patientForm.patient_id);
-    if (Number.isFinite(existingId) && existingId > 0) {
-      return existingId;
-    }
-    if (!patientForm.first_name.trim() || !patientForm.last_name.trim()) {
-      throw new Error('Nom et prénom requis pour enregistrer le patient');
-    }
-    const age = Number(patientForm.age);
-    const { data } = await clinicalApi.intakePatient({
-      first_name: patientForm.first_name.trim(),
-      last_name: patientForm.last_name.trim(),
-      age: Number.isFinite(age) ? age : 0,
-      gender: patientForm.gender || 'other',
-      phone: patientForm.phone.trim() || null,
-      profession: patientForm.profession.trim() || null,
-      quartier: patientForm.quartier.trim() || null,
-      mother_name: patientForm.last_name.trim(),
-      visit_destination: 'Laboratoire',
-    });
-    applyPatient(data);
-    return data.id;
-  };
-
-  const setPriceForTest = (code, value) => {
-    setPriceEdits((prev) => ({ ...prev, [code]: value }));
-  };
-
-  const saveCatalogPrices = async () => {
-    const items = catalog.map((test) => {
-      const raw = priceEdits[test.code];
-      if (raw === '' || raw == null) {
-        return { code: test.code, price_gnf: null };
-      }
-      const parsed = Number(raw);
-      return { code: test.code, price_gnf: Number.isFinite(parsed) ? parsed : null };
-    });
-    setSavingPrices(true);
-    try {
-      const { data } = await clinicalApi.updateLabCatalogPrices(items);
-      setCatalogCategories(data.categories || []);
-      setCatalogMeta({
-        total_categories: data.total_categories || 0,
-        total_tests: data.total_tests || 0,
-      });
-      const prices = {};
-      (data.tests || []).forEach((test) => {
-        prices[test.code] = test.price_gnf ?? '';
-      });
-      setPriceEdits(prices);
-      setMessage(`Tarifs enregistrés — ${data.total_tests} examens · ${data.total_categories} catégories`);
-    } catch (err) {
-      setError(formatApiError(err, 'Enregistrement des tarifs impossible'));
-    } finally {
-      setSavingPrices(false);
-    }
+  const clearPatient = () => {
+    setSelectedPatient(null);
+    setSelectedTests({});
+    setActiveOrderId(null);
+    setResultRows([{ ...EMPTY_RESULT_ROW }]);
   };
 
   const toggleTest = (code) => {
-    setRequestForm((prev) => ({
-      ...prev,
-      selectedTests: { ...prev.selectedTests, [code]: !prev.selectedTests[code] },
+    setSelectedTests((prev) => ({ ...prev, [code]: !prev[code] }));
+  };
+
+  const removeTest = (code) => {
+    setSelectedTests((prev) => {
+      const next = { ...prev };
+      delete next[code];
+      return next;
+    });
+  };
+
+  const addResultRow = () => setResultRows((rows) => [...rows, { ...EMPTY_RESULT_ROW }]);
+  const updateResultRow = (idx, field, value) => {
+    setResultRows((rows) => rows.map((r, i) => (i === idx ? { ...r, [field]: value } : r)));
+  };
+  const removeResultRow = (idx) => {
+    setResultRows((rows) => (rows.length <= 1 ? rows : rows.filter((_, i) => i !== idx)));
+  };
+
+  const selectOrder = (order) => {
+    setActiveOrderId(order.id);
+    setResultRows([{ ...EMPTY_RESULT_ROW, parameter: order.test_name || '' }]);
+    const status =
+      order.status === 'completed'
+        ? 'validated'
+        : order.status === 'in_analysis'
+          ? 'in_progress'
+          : order.status === 'cancelled'
+            ? 'rejected'
+            : 'pending';
+    setValidationForm((p) => ({
+      ...p,
+      status,
+      validation_date: todayStr(),
+      validation_time: nowTimeStr(),
     }));
   };
 
-  const submitWalkIn = async (e) => {
+  const submitRequest = async (e) => {
     e.preventDefault();
-    if (selectedTestsList.length === 0) {
-      setError('Sélectionnez au moins un examen du catalogue');
+    if (!selectedPatient?.id) {
+      setError('Recherchez et sélectionnez un patient enregistré à la réception.');
       return;
     }
+    if (selectedTestsList.length === 0) {
+      setError('Sélectionnez au moins un examen.');
+      return;
+    }
+    setLoading(true);
+    setError('');
     try {
-      const patientId = await resolvePatientId();
-      await clinicalApi.createWalkInLabOrders({
-        patient_id: patientId,
-        payment_status: requestForm.payment_status,
+      const sampleMeta = JSON.stringify({
+        collection_date: sampleForm.collection_date,
+        collection_time: sampleForm.collection_time,
+        collector: sampleForm.collector,
+        sample_type: sampleForm.sample_type,
+      });
+      const { data } = await clinicalApi.createWalkInLabOrders({
+        patient_id: selectedPatient.id,
+        payment_status: paymentStatus,
+        clinical_notes: sampleMeta,
         tests: selectedTestsList.map((t) => {
           const raw = priceEdits[t.code];
           const parsed = raw === '' || raw == null ? null : Number(raw);
@@ -306,353 +354,523 @@ export default function LabDashboard() {
           };
         }),
       });
-      setMessage(`${selectedTestsList.length} examen(s) enregistré(s) — total ${formatGNF(totalSelectedPrice)}`);
-      setRequestForm({ payment_status: 'pending', selectedTests: {} });
-      setPatientForm(EMPTY_PATIENT_FORM);
-      setPatientMatches([]);
-      setPatientSearch('');
-      load();
-      setTab('pending');
+      setMessage(
+        `${data?.length || selectedTestsList.length} examen(s) enregistré(s) — total ${formatGNF(subtotalGnf)}`
+      );
+      setSelectedTests({});
+      if (data?.[0]?.id) setActiveOrderId(data[0].id);
+      await load();
     } catch (err) {
-      setError(formatApiError(err, 'Création demande impossible'));
+      setError(formatApiError(err, 'Enregistrement de la demande impossible'));
+    } finally {
+      setLoading(false);
     }
   };
 
-  const updateStatus = async (id, status) => {
+  const submitResults = async (e) => {
+    e.preventDefault();
+    if (!activeOrder) {
+      setError('Sélectionnez une commande en cours pour saisir les résultats.');
+      return;
+    }
+    const filledRows = resultRows.filter((r) => r.parameter.trim() || r.result.trim());
+    if (filledRows.length === 0) {
+      setError('Ajoutez au moins une ligne de résultat.');
+      return;
+    }
+    setLoading(true);
+    setError('');
     try {
-      await clinicalApi.updateLabOrder(id, { status });
-      setMessage(`Commande #${id} → ${STATUS_LABELS[status] || status}`);
-      load();
+      const summary = filledRows.map((r) => `${r.parameter}: ${r.result}${r.unit ? ` ${r.unit}` : ''}`).join(' · ');
+      const refs = filledRows
+        .filter((r) => r.reference)
+        .map((r) => `${r.parameter} (${r.reference})`)
+        .join('; ');
+      const payload = {
+        result_summary: summary,
+        result_data: JSON.stringify({ rows: filledRows, validation: validationForm }),
+        reference_range: refs || null,
+        interpretation: validationForm.observations || null,
+      };
+      const orderStatus = ORDER_STATUS_MAP[validationForm.status] || 'in_analysis';
+      if (orderStatus !== activeOrder.status) {
+        await clinicalApi.updateLabOrder(activeOrder.id, { status: orderStatus });
+      }
+      if (validationForm.status === 'validated') {
+        const { data: result } = await clinicalApi.recordLabResult(activeOrder.id, payload);
+        await clinicalApi.validateLabResult(result.id);
+        setMessage(`Résultats validés pour ${activeOrder.test_name}`);
+      } else if (validationForm.status === 'rejected') {
+        await clinicalApi.updateLabOrder(activeOrder.id, { status: 'cancelled' });
+        setMessage(`Examen rejeté : ${activeOrder.test_name}`);
+      } else {
+        await clinicalApi.recordLabResult(activeOrder.id, payload);
+        setMessage(`Résultats enregistrés pour ${activeOrder.test_name}`);
+      }
+      setResultRows([{ ...EMPTY_RESULT_ROW }]);
+      setActiveOrderId(null);
+      await load();
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Mise à jour impossible');
+      setError(formatApiError(err, 'Enregistrement des résultats impossible'));
+    } finally {
+      setLoading(false);
     }
   };
 
-  const submitResult = async () => {
-    if (!selected) return;
+  const saveCatalogPrices = async () => {
+    setSavingPrices(true);
     try {
-      const { data } = await clinicalApi.recordLabResult(selected.id, resultForm);
-      await clinicalApi.validateLabResult(data.id);
-      setMessage(`Résultat validé pour ${selected.test_name}`);
-      setSelected(null);
-      setResultForm({ result_summary: '', reference_range: '', interpretation: '' });
-      load();
+      const items = catalog.map((test) => {
+        const raw = priceEdits[test.code];
+        if (raw === '' || raw == null) return { code: test.code, price_gnf: null };
+        const parsed = Number(raw);
+        return { code: test.code, price_gnf: Number.isFinite(parsed) ? parsed : null };
+      });
+      const { data } = await clinicalApi.updateLabCatalogPrices(items);
+      setCatalogCategories(data.categories || []);
+      setCatalogMeta({
+        total_categories: data.total_categories || 0,
+        total_tests: data.total_tests || 0,
+      });
+      const prices = {};
+      (data.tests || []).forEach((t) => {
+        prices[t.code] = t.price_gnf ?? '';
+      });
+      setPriceEdits(prices);
+      setMessage(`Catalogue mis à jour — ${data.total_tests} examens`);
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Saisie résultat impossible');
+      setError(formatApiError(err, 'Enregistrement des tarifs impossible'));
+    } finally {
+      setSavingPrices(false);
     }
   };
 
   const stats = labStats
     ? [
-        { label: 'Examens en attente', value: labStats.pending_exams ?? labStats.pending_results, variant: 'warning' },
+        { label: 'En attente', value: labStats.pending_exams ?? labStats.pending_results ?? 0, variant: 'warning' },
         { label: 'En prélèvement', value: labStats.in_sampling ?? 0, variant: 'accent' },
         { label: 'En analyse', value: labStats.in_analysis ?? 0, variant: 'accent' },
         { label: 'Validés aujourd\'hui', value: labStats.validated_today ?? 0, variant: 'success' },
         { label: 'Recettes du jour', value: formatGNF(labStats.daily_revenue_gnf || 0), variant: 'success' },
         { label: 'Recettes du mois', value: formatGNF(labStats.monthly_revenue_gnf || 0) },
       ]
-    : [
-        { label: 'Examens en cours', value: orders.length, variant: 'accent' },
-        { label: 'En prélèvement', value: orders.filter((o) => o.status === 'sample_collected').length },
-        { label: 'En analyse', value: orders.filter((o) => o.status === 'in_analysis').length, variant: 'warning' },
-        { label: 'Résultats validés', value: validated.length, variant: 'success' },
-      ];
-
-  const renderOrderRow = (order) => (
-    <li key={order.id}>
-      <strong>{order.test_name}</strong> ({order.test_code})
-      <br />
-      {order.patient_first_name} {order.patient_last_name} · {order.patient_age} ans · {order.patient_gender}
-      {order.patient_profession && <> · {order.patient_profession}</>}
-      {order.patient_quartier && <> · {order.patient_quartier}</>}
-      {order.patient_phone && <> · {order.patient_phone}</>}
-      <br />
-      {order.price_gnf != null && <>Prix : {formatGNF(order.price_gnf)} · </>}
-      Paiement : <span className="clinical-badge">{order.payment_status || '—'}</span>
-      {' · '}
-      Prélèvement : <span className="clinical-badge">{STATUS_LABELS[order.status] || order.status}</span>
-      {order.result_status && (
-        <> · Résultat : <span className="clinical-badge">{order.result_status}</span></>
-      )}
-      {order.validated_at && (
-        <> · Validé {new Date(order.validated_at).toLocaleString('fr-FR')}</>
-      )}
-      {order.technician_name && <> · Tech. {order.technician_name}</>}
-      <div className="clinical-actions">
-        {order.status === 'ordered' && (
-          <button type="button" className="clinical-btn secondary" onClick={() => updateStatus(order.id, 'sample_collected')}>Prélèvement</button>
-        )}
-        {order.status === 'sample_collected' && (
-          <button type="button" className="clinical-btn secondary" onClick={() => updateStatus(order.id, 'in_analysis')}>En analyse</button>
-        )}
-        <button type="button" className="clinical-btn" onClick={() => setSelected(order)}>Saisir résultat</button>
-      </div>
-    </li>
-  );
+    : [{ label: 'Examens en cours', value: orders.length, variant: 'accent' }];
 
   return (
-    <div className="clinical-page">
-      <h1>Tableau de bord — Laboratoire</h1>
-      <p className="clinical-lead">Demandes d&apos;examens, catalogue tarifé, prélèvement, résultats et rapports.</p>
-      {error && (
-        <div className="clinical-retry-bar">
-          <p>{String(error)}</p>
-          <button type="button" className="clinical-btn" onClick={load}>Réessayer</button>
+    <div className="clinical-page reception-his lab-his-page">
+      <header className="reception-his-header">
+        <div>
+          <p className="reception-his-eyebrow">Plateforme Santé · Guinée</p>
+          <h1>Tableau de bord — Laboratoire</h1>
+          <p className="clinical-lead">
+            Examens biologiques, prélèvement, résultats et catalogue tarifaire — {user?.clinic_name || 'Clinique'}
+          </p>
         </div>
-      )}
-      {message && <p className="clinical-success">{message}</p>}
+        <div className="reception-his-search">
+          <label htmlFor="lab-patient-search">
+            Recherche patient <span className="reception-his-optional-shortcut">(F3)</span>
+          </label>
+          <div className="reception-his-search-inline">
+            <input
+              id="lab-patient-search"
+              ref={searchRef}
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              placeholder="N° dossier, QR code, nom ou téléphone"
+              autoComplete="off"
+            />
+            {searching && <span className="reception-his-optional-shortcut">…</span>}
+          </div>
+          {searchResults.length > 0 && (
+            <ul className="reception-his-search-results" role="listbox">
+              {searchResults.map((p) => (
+                <li key={p.id}>
+                  <button type="button" onClick={() => selectPatient(p)}>
+                    <strong>{p.last_name} {p.first_name}</strong>
+                    <span>
+                      N° {p.patient_number || p.id}
+                      {p.phone ? ` · ${p.phone}` : ''}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {searchQ.trim() && !searching && searchResults.length === 0 && (
+            <p className="reception-his-no-results">Aucun patient trouvé.</p>
+          )}
+        </div>
+      </header>
 
-      <ClinicalStatGrid stats={stats} />
+      {error && <p className="clinical-message clinical-message--err" role="alert">{error}</p>}
+      {message && <p className="clinical-message clinical-message--ok" role="status">{message}</p>}
 
-      <DepartmentQueuePanel department="lab" title="File de visite — Laboratoire" />
-
-      <div className="clinical-tabs" role="tablist">
-        {[
-          ['pending', `En cours (${orders.length})`],
-          ['new', 'Nouvelle demande'],
-          ['validated', `Validés (${validated.length})`],
-          ['report', 'Rapport mensuel'],
-        ].map(([key, label]) => (
-          <button key={key} type="button" className={`clinical-tab${tab === key ? ' active' : ''}`} onClick={() => setTab(key)}>
-            {label}
+      <nav className="reception-his-tabs" role="tablist" aria-label="Sections laboratoire">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            className={`reception-his-tab${tab === t.id ? ' reception-his-tab--active' : ''}`}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+            <kbd>{t.shortcut}</kbd>
           </button>
         ))}
-      </div>
+      </nav>
 
-      {tab === 'pending' && (
-        <div className="clinical-grid">
-          <section className="clinical-card">
-            <h2>Examens en cours</h2>
-            <ul className="clinical-list">
-              {orders.map(renderOrderRow)}
-              {orders.length === 0 && <li>Aucun examen en cours.</li>}
-            </ul>
-          </section>
-          {selected && (
-            <section className="clinical-card">
-              <h2>Saisie résultat — {selected.test_name}</h2>
-              <p>{selected.patient_name}</p>
-              <div className="clinical-field">
-                <label>Résumé</label>
-                <textarea rows={3} value={resultForm.result_summary} onChange={(e) => setResultForm({ ...resultForm, result_summary: e.target.value })} required />
-              </div>
-              <div className="clinical-field">
-                <label>Valeurs de référence</label>
-                <input value={resultForm.reference_range} onChange={(e) => setResultForm({ ...resultForm, reference_range: e.target.value })} />
-              </div>
-              <div className="clinical-field">
-                <label>Interprétation</label>
-                <textarea rows={2} value={resultForm.interpretation} onChange={(e) => setResultForm({ ...resultForm, interpretation: e.target.value })} />
-              </div>
-              <button type="button" className="clinical-btn" onClick={submitResult}>Valider le résultat</button>
-            </section>
-          )}
-        </div>
-      )}
+      {tab === 'workflow' && (
+        <>
+          <ClinicalStatGrid stats={stats} />
 
-      {tab === 'new' && (
-        <section className="clinical-card lab-request-card">
-          <h2>Nouvelle demande laboratoire</h2>
-          <p className="clinical-lead">
-            Catalogue AASMA — {catalogMeta.total_categories} catégories · {catalogMeta.total_tests} examens
-          </p>
-          <form onSubmit={submitWalkIn}>
-            <div className="clinical-card lab-patient-panel">
-              <h3>Informations patient</h3>
-              <div className="clinical-form-row">
-                <div className="clinical-field">
-                  <label>Rechercher patient</label>
-                  <div className="lab-inline-actions">
-                    <input value={patientSearch} onChange={(e) => setPatientSearch(e.target.value)} placeholder="Nom, téléphone ou ID" />
-                    <button type="button" className="clinical-btn secondary" onClick={searchPatients}>Rechercher</button>
+          <section className="reception-his-form-sheet">
+            <h2>Examens biologiques</h2>
+            {!selectedPatient ? (
+              <FormNotice>Recherchez un patient par numéro de dossier ou code QR (enregistré à la réception).</FormNotice>
+            ) : (
+              <>
+                <div className="reception-his-patient-context">
+                  <div className="reception-his-form-row reception-his-form-row--4">
+                    <DisplayField label="N° dossier" value={selectedPatient.patient_number || String(selectedPatient.id)} />
+                    <DisplayField label="Nom" value={selectedPatient.last_name} />
+                    <DisplayField label="Prénom" value={selectedPatient.first_name} />
+                    <DisplayField label="Date de naissance" value={formatDob(selectedPatient.date_of_birth)} />
                   </div>
-                  {patientMatches.length > 1 && (
-                    <ul className="clinical-list">
-                      {patientMatches.map((p) => (
-                        <li key={p.id}>
-                          <button type="button" className="clinical-btn secondary" onClick={() => applyPatient(p)}>
-                            {p.first_name} {p.last_name} #{p.id} {p.phone ? `· ${p.phone}` : ''}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                  <div className="reception-his-form-row reception-his-form-row--4">
+                    <DisplayField label="Âge" value={patientAge(selectedPatient)} />
+                    <DisplayField label="Sexe" value={genderLabel(selectedPatient.gender)} />
+                    <DisplayField label="Profession" value={selectedPatient.profession} />
+                    <DisplayField label="Téléphone" value={selectedPatient.phone} />
+                  </div>
+                  <div className="reception-his-form-row reception-his-form-row--4">
+                    <DisplayField label="Adresse" value={selectedPatient.address || selectedPatient.quartier} />
+                    <DisplayField label="Ville" value={selectedPatient.city} />
+                    <DisplayField label="Région" value={selectedPatient.region} />
+                    <DisplayField label="Pays" value={selectedPatient.country} />
+                  </div>
+                  {selectedPatient.qr_token && (
+                    <div className="reception-his-qr-block">
+                      <img src={qrImageUrl(selectedPatient.qr_token)} alt="QR patient" width={120} height={120} />
+                      <DisplayField label="Code QR" value={selectedPatient.qr_token} />
+                    </div>
                   )}
+                  <button type="button" className="clinical-btn clinical-btn--secondary" onClick={clearPatient}>
+                    Changer de patient
+                  </button>
                 </div>
-              </div>
-              <div className="clinical-form-row lab-patient-grid">
-                <div className="clinical-field">
-                  <label>ID Patient</label>
-                  <input
-                    value={patientForm.patient_id}
-                    onChange={(e) => updatePatientField('patient_id', e.target.value)}
-                    onBlur={() => loadPatientById(patientForm.patient_id)}
-                    placeholder="Optionnel si nouveau patient"
-                  />
-                </div>
-                <div className="clinical-field">
-                  <label>Nom</label>
-                  <input
-                    value={patientForm.last_name}
-                    onChange={(e) => updatePatientField('last_name', e.target.value)}
-                    placeholder="Nom de famille"
-                  />
-                </div>
-                <div className="clinical-field">
-                  <label>Prénom</label>
-                  <input
-                    value={patientForm.first_name}
-                    onChange={(e) => updatePatientField('first_name', e.target.value)}
-                    placeholder="Prénom"
-                  />
-                </div>
-                <div className="clinical-field">
-                  <label>Âge</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="130"
-                    value={patientForm.age}
-                    onChange={(e) => updatePatientField('age', e.target.value)}
-                    placeholder="Âge"
-                  />
-                </div>
-                <div className="clinical-field">
-                  <label>Sexe</label>
-                  <select
-                    value={patientForm.gender}
-                    onChange={(e) => updatePatientField('gender', e.target.value)}
-                  >
-                    <option value="">—</option>
-                    <option value="M">Masculin</option>
-                    <option value="F">Féminin</option>
-                    <option value="other">Autre</option>
-                  </select>
-                </div>
-                <div className="clinical-field">
-                  <label>Profession</label>
-                  <input
-                    value={patientForm.profession}
-                    onChange={(e) => updatePatientField('profession', e.target.value)}
-                    placeholder="Profession"
-                  />
-                </div>
-                <div className="clinical-field">
-                  <label>Quartier</label>
-                  <input
-                    value={patientForm.quartier}
-                    onChange={(e) => updatePatientField('quartier', e.target.value)}
-                    placeholder="Quartier / résidence"
-                  />
-                </div>
-                <div className="clinical-field">
-                  <label>Téléphone</label>
-                  <input
-                    value={patientForm.phone}
-                    onChange={(e) => updatePatientField('phone', e.target.value)}
-                    placeholder="Numéro de téléphone"
-                  />
-                </div>
-              </div>
-            </div>
 
-            <div className="clinical-field">
-              <label>Statut paiement</label>
-              <select value={requestForm.payment_status} onChange={(e) => setRequestForm({ ...requestForm, payment_status: e.target.value })}>
-                <option value="pending">En attente</option>
-                <option value="paid">Payé</option>
-              </select>
-            </div>
+                <h3>Examens demandés</h3>
+                <div className="reception-his-form-row">
+                  <label className="clinical-field">
+                    Rechercher un examen
+                    <input
+                      value={testSearchQ}
+                      onChange={(e) => setTestSearchQ(e.target.value)}
+                      placeholder="Nom ou catégorie (ex. NFS, Glycémie…)"
+                    />
+                  </label>
+                </div>
+                <div className="lab-catalog-scroll" style={{ maxHeight: '220px', marginBottom: '0.75rem' }}>
+                  <ul className="lab-catalog-list">
+                    {filteredCatalogTests.slice(0, 40).map((test) => (
+                      <li key={test.code} className="lab-catalog-row">
+                        <label className="lab-catalog-check">
+                          <input
+                            type="checkbox"
+                            checked={!!selectedTests[test.code]}
+                            onChange={() => toggleTest(test.code)}
+                          />
+                          <span>{test.name}</span>
+                          <small style={{ color: '#64748b' }}>{test.category_label}</small>
+                        </label>
+                        <span className="lab-catalog-price-label">{formatGNF(priceEdits[test.code] || 0)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {selectedTestsList.length > 0 && (
+                  <ul className="lab-his-selected-tests">
+                    {selectedTestsList.map((t) => (
+                      <li key={t.code}>
+                        <span>{t.name}</span>
+                        <span>{formatGNF(priceEdits[t.code] || 0)}</span>
+                        <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => removeTest(t.code)}>
+                          Retirer
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
-            <div className="lab-catalog-toolbar">
-              <h3>Examens par catégorie</h3>
-              <button type="button" className="clinical-btn secondary" onClick={saveCatalogPrices} disabled={savingPrices || catalog.length === 0}>
-                {savingPrices ? 'Enregistrement…' : 'Enregistrer les tarifs'}
-              </button>
-            </div>
+                <h3>Prélèvement</h3>
+                <div className="reception-his-form-row reception-his-form-row--4">
+                  <label>
+                    Date de prélèvement
+                    <input
+                      type="date"
+                      value={sampleForm.collection_date}
+                      onChange={(e) => setSampleForm((p) => ({ ...p, collection_date: e.target.value }))}
+                    />
+                  </label>
+                  <label>
+                    Heure de prélèvement
+                    <input
+                      type="time"
+                      value={sampleForm.collection_time}
+                      onChange={(e) => setSampleForm((p) => ({ ...p, collection_time: e.target.value }))}
+                    />
+                  </label>
+                  <label>
+                    Agent de prélèvement
+                    <input
+                      value={sampleForm.collector}
+                      onChange={(e) => setSampleForm((p) => ({ ...p, collector: e.target.value }))}
+                    />
+                  </label>
+                  <label>
+                    Type d&apos;échantillon
+                    <select
+                      value={sampleForm.sample_type}
+                      onChange={(e) => setSampleForm((p) => ({ ...p, sample_type: e.target.value }))}
+                    >
+                      {SAMPLE_TYPES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
 
-            {catalogCategories.map((category) => (
-              <section key={category.key} className="lab-catalog-category">
-                <h4>{category.label}</h4>
-                <ul className="lab-catalog-list">
-                  {(category.tests || []).map((test) => (
-                    <li key={test.code} className="lab-catalog-row">
-                      <label className="lab-catalog-check">
-                        <input
-                          type="checkbox"
-                          checked={!!requestForm.selectedTests[test.code]}
-                          onChange={() => toggleTest(test.code)}
-                        />
-                        <span>{test.name}</span>
-                      </label>
-                      <div className="lab-catalog-price">
-                        <input
-                          type="number"
-                          min="0"
-                          step="500"
-                          placeholder="Prix GNF"
-                          value={priceEdits[test.code] ?? ''}
-                          onChange={(e) => setPriceForTest(test.code, e.target.value)}
-                        />
-                        <span className="lab-catalog-price-label">GNF</span>
+                <div className="lab-his-billing-totals">
+                  <label>
+                    Sous-total
+                    <AmountDisplay amountGnf={subtotalGnf} />
+                  </label>
+                  <label>
+                    Total
+                    <AmountDisplay amountGnf={subtotalGnf} />
+                  </label>
+                  <label>
+                    Statut paiement
+                    <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}>
+                      <option value="pending">En attente</option>
+                      <option value="paid">Payé</option>
+                    </select>
+                  </label>
+                </div>
+
+                <button
+                  type="button"
+                  className="clinical-btn"
+                  onClick={submitRequest}
+                  disabled={loading || selectedTestsList.length === 0}
+                  style={{ marginTop: '1rem' }}
+                >
+                  {loading ? 'Enregistrement…' : 'Enregistrer la demande'}
+                </button>
+
+                {patientOrders.length > 0 && (
+                  <div className="lab-his-worklist">
+                    <h3>Commandes du patient</h3>
+                    {patientOrders.map((order) => (
+                      <div
+                        key={order.id}
+                        className={`lab-his-worklist-item${activeOrderId === order.id ? ' lab-his-worklist-item--active' : ''}`}
+                      >
+                        <span>
+                          <strong>{order.test_name}</strong> — {order.status}
+                          {order.price_gnf != null && <> · {formatGNF(order.price_gnf)}</>}
+                        </span>
+                        <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => selectOrder(order)}>
+                          Saisir résultats
+                        </button>
                       </div>
-                    </li>
+                    ))}
+                  </div>
+                )}
+
+                <h3 style={{ marginTop: '1.5rem' }}>Résultats</h3>
+                {activeOrder && (
+                  <p className="clinical-lead">Examen actif : <strong>{activeOrder.test_name}</strong></p>
+                )}
+                <table className="lab-his-results-table">
+                  <thead>
+                    <tr>
+                      <th>Paramètre</th>
+                      <th>Résultat</th>
+                      <th>Valeurs de référence</th>
+                      <th>Unité</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resultRows.map((row, idx) => (
+                      <tr key={idx}>
+                        <td>
+                          <input
+                            value={row.parameter}
+                            onChange={(e) => updateResultRow(idx, 'parameter', e.target.value)}
+                            placeholder="ex. Glucose"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            value={row.result}
+                            onChange={(e) => updateResultRow(idx, 'result', e.target.value)}
+                            placeholder="Valeur"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            value={row.reference}
+                            onChange={(e) => updateResultRow(idx, 'reference', e.target.value)}
+                            placeholder="0,7 – 1,1 g/L"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            value={row.unit}
+                            onChange={(e) => updateResultRow(idx, 'unit', e.target.value)}
+                            placeholder="g/L"
+                          />
+                        </td>
+                        <td>
+                          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => removeResultRow(idx)}>
+                            ×
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addResultRow} style={{ marginTop: '0.5rem' }}>
+                  + Ajouter une ligne
+                </button>
+
+                <h3 style={{ marginTop: '1.5rem' }}>Validation</h3>
+                <div className="reception-his-form-row reception-his-form-row--3">
+                  <label>
+                    Biologiste / technicien
+                    <input
+                      value={validationForm.technician}
+                      onChange={(e) => setValidationForm((p) => ({ ...p, technician: e.target.value }))}
+                    />
+                  </label>
+                  <label>
+                    Date de validation
+                    <input
+                      type="date"
+                      value={validationForm.validation_date}
+                      onChange={(e) => setValidationForm((p) => ({ ...p, validation_date: e.target.value }))}
+                    />
+                  </label>
+                  <label>
+                    Heure de validation
+                    <input
+                      type="time"
+                      value={validationForm.validation_time}
+                      onChange={(e) => setValidationForm((p) => ({ ...p, validation_time: e.target.value }))}
+                    />
+                  </label>
+                </div>
+                <div className="lab-his-status-options" role="radiogroup" aria-label="Statut">
+                  {VALIDATION_STATUSES.map((s) => (
+                    <label key={s.value}>
+                      <input
+                        type="radio"
+                        name="lab-status"
+                        checked={validationForm.status === s.value}
+                        onChange={() => setValidationForm((p) => ({ ...p, status: s.value }))}
+                      />
+                      {s.label}
+                    </label>
                   ))}
-                </ul>
-              </section>
-            ))}
-
-            <p><strong>Total sélectionné : {formatGNF(totalSelectedPrice)}</strong></p>
-            <button type="submit" className="clinical-btn">Enregistrer la demande</button>
-          </form>
-        </section>
+                </div>
+                <label style={{ display: 'block', marginTop: '0.75rem' }}>
+                  Observations / notes
+                  <textarea
+                    rows={3}
+                    value={validationForm.observations}
+                    onChange={(e) => setValidationForm((p) => ({ ...p, observations: e.target.value }))}
+                    placeholder="Notes cliniques, commentaires…"
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="clinical-btn"
+                  onClick={submitResults}
+                  disabled={loading || !activeOrder}
+                  style={{ marginTop: '1rem' }}
+                >
+                  {loading ? 'Enregistrement…' : 'Enregistrer les résultats'}
+                </button>
+              </>
+            )}
+          </section>
+        </>
       )}
 
-      {tab === 'validated' && (
-        <section className="clinical-card">
-          <h2>Résultats validés</h2>
-          <ul className="clinical-list">
-            {validated.length === 0 && <li>Aucun résultat validé.</li>}
-            {validated.map((item) => (
-              <li key={item.id}>
-                <strong>{item.test_name}</strong> ({item.test_code})
-                <br />
-                {item.patient_name}
-                {item.price_gnf != null && <> · {formatGNF(item.price_gnf)}</>}
-                {item.payment_status && <> · Paiement {item.payment_status}</>}
-                <br />
-                {item.result_summary && <span className="clinical-lead">{item.result_summary}</span>}
-                <br />
-                {item.validated_at && new Date(item.validated_at).toLocaleString('fr-FR')}
-                {item.technician_name && <> · {item.technician_name}</>}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {tab === 'report' && (
-        <section className="clinical-card">
-          <div className="clinical-revenue-header">
-            <h2>Rapport mensuel laboratoire</h2>
-            <input type="month" value={reportMonth} onChange={(e) => setReportMonth(e.target.value)} />
-          </div>
-          {monthlyReport && (
-            <>
-              <p>
-                {monthlyReport.total_tests} examens · {monthlyReport.completed} terminés · Recettes {formatGNF(monthlyReport.total_revenue_gnf || 0)}
+      {tab === 'catalog' && (
+        <section className="reception-his-form-sheet">
+          <div className="lab-catalog-toolbar">
+            <div>
+              <h2>Catalogue tarifaire laboratoire</h2>
+              <p className="clinical-lead">
+                {catalogMeta.total_categories} catégories · {catalogMeta.total_tests} analyses (GNF)
               </p>
-              <ul className="clinical-list">
-                {(monthlyReport.register_entries || []).map((row) => (
-                  <li key={row.order_id}>
-                    <strong>{row.test_name}</strong> — {row.patient?.first_name} {row.patient?.last_name}
-                    {row.price_gnf != null && <> · {formatGNF(row.price_gnf)}</>}
-                    {' · '}{row.payment_status || '—'}
-                    {row.validated_at && <> · Validé {new Date(row.validated_at).toLocaleString('fr-FR')}</>}
-                  </li>
+            </div>
+            <button
+              type="button"
+              className="clinical-btn"
+              onClick={saveCatalogPrices}
+              disabled={savingPrices || catalog.length === 0}
+            >
+              {savingPrices ? 'Enregistrement…' : 'Enregistrer les tarifs'}
+            </button>
+          </div>
+          <label className="clinical-field">
+            Rechercher une analyse
+            <input
+              value={catalogSearchQ}
+              onChange={(e) => setCatalogSearchQ(e.target.value)}
+              placeholder="Nom, code ou catégorie…"
+            />
+          </label>
+          <div className="lab-his-catalog-scroll">
+            <table className="lab-his-catalog-table">
+              <thead>
+                <tr>
+                  <th>Analyse</th>
+                  <th>Catégorie</th>
+                  <th>Prix (GNF)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {catalogTableRows.map((test) => (
+                  <tr key={test.code}>
+                    <td>{test.name}</td>
+                    <td>{test.category_label}</td>
+                    <td>
+                      <input
+                        type="number"
+                        min="0"
+                        step="500"
+                        value={priceEdits[test.code] ?? ''}
+                        onChange={(e) => setPriceEdits((p) => ({ ...p, [test.code]: e.target.value }))}
+                        style={{ width: '120px' }}
+                      />
+                    </td>
+                  </tr>
                 ))}
-              </ul>
-            </>
-          )}
+                {catalogTableRows.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="reception-his-empty-row">Aucune analyse trouvée.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
     </div>
