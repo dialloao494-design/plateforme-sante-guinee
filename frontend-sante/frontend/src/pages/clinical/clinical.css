@@ -1091,9 +1091,20 @@
   font-size: 0.95rem;
 }
 
+.reception-his-patient-context:not(.reception-his-patient-context--active) {
+  border: 1px dashed #fcd34d;
+  background: #fffbeb;
+}
+
 .reception-his-patient-context--active {
   border-color: #0d9488;
   background: #f0fdfa;
+}
+
+.reception-his-patient-context-grid span:empty::after {
+  content: '—';
+  color: #cbd5e1;
+  font-weight: 400;
 }
 
 .reception-his-value-filled {

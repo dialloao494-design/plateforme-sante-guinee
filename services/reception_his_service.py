@@ -292,6 +292,8 @@ class ReceptionHisService:
         if payload.confirmation_status:
             label = "Confirmée" if payload.confirmation_status == "confirmed" else "En attente"
             notes_parts.append(f"Confirmation: {label}")
+        if payload.attending_physician_name and not payload.attending_clinician_user_id:
+            notes_parts.append(f"Médecin: {payload.attending_physician_name.strip()}")
         if payload.notes:
             notes_parts.append(payload.notes.strip())
         combined_notes = "\n".join(notes_parts) if notes_parts else None
@@ -308,7 +310,7 @@ class ReceptionHisService:
             admission_type=payload.admission_type,
             status=status,
             attending_clinician_user_id=payload.attending_clinician_user_id,
-            notes=combined_notes or payload.attending_physician_name,
+            notes=combined_notes,
             admitted_by_user_id=actor.id,
             admitted_at=admitted_at,
         )
@@ -337,8 +339,12 @@ class ReceptionHisService:
         client_ip: str | None = None,
     ) -> models.Invoice:
         from core.tenant import assert_patient_in_clinic
+        from datetime import time
 
         assert_patient_in_clinic(db, patient_id=payload.patient_id, clinic_id=clinic_id)
+        issued_at = datetime.utcnow()
+        if payload.billing_date:
+            issued_at = datetime.combine(payload.billing_date, time.min)
         invoice = models.Invoice(
             clinic_id=clinic_id,
             patient_id=payload.patient_id,
@@ -347,7 +353,7 @@ class ReceptionHisService:
             status="issued",
             total_amount_gnf=payload.total_amount_gnf,
             paid_amount_gnf=0,
-            issued_at=datetime.utcnow(),
+            issued_at=issued_at,
             created_by_user_id=actor.id,
         )
         db.add(invoice)

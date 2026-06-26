@@ -140,6 +140,7 @@ class ReceptionInvoiceCreate(BaseModel):
     department: str = Field(..., min_length=1, max_length=128)
     description: str = Field(..., min_length=1)
     total_amount_gnf: int = Field(..., ge=0)
+    billing_date: Optional[date] = None
 
 
 class ReceptionPaymentCreate(BaseModel):

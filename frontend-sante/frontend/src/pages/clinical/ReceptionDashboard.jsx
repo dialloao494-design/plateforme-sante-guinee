@@ -33,8 +33,8 @@ const PAYMENT_METHODS = [
 const REFUND_METHODS = [
   { value: 'cash', label: 'Espèces' },
   { value: 'orange_money', label: 'Orange Money' },
-  { value: 'bank_transfer', label: 'Virement' },
-  { value: 'card', label: 'Carte' },
+  { value: 'bank_transfer', label: 'Virement bancaire' },
+  { value: 'card', label: 'Carte bancaire' },
   { value: 'insurance_adjustment', label: 'Assurance' },
 ];
 const REFUND_REASONS = [
@@ -45,6 +45,17 @@ const REFUND_REASONS = [
 ];
 
 const todayStr = new Date().toISOString().slice(0, 10);
+
+const FIELD_HINTS = {
+  patientId: 'Le numéro dossier sera généré automatiquement après enregistrement.',
+  admissionNumber: 'Généré automatiquement après création de l\'admission.',
+  invoiceNumber: 'Généré automatiquement après création de la facture.',
+  refundNumber: 'Généré automatiquement après soumission.',
+  age: 'Calculé automatiquement à partir de la date de naissance.',
+};
+
+const PATIENT_REQUIRED_NOTICE = 'Veuillez rechercher et sélectionner un patient.';
+const INVOICE_PAYMENT_NOTICE = 'Créez ou sélectionnez une facture pour afficher le récapitulatif de paiement.';
 
 const EMPTY_REG = {
   is_newborn: false,
@@ -94,7 +105,7 @@ const EMPTY_ADMISSION = {
   notes: '',
 };
 
-const EMPTY_BILLING = { department: 'Consultation externe', description: '', total_amount_gnf: '' };
+const EMPTY_BILLING = { billing_date: todayStr, department: 'Consultation externe', description: '', total_amount_gnf: '' };
 const EMPTY_PAYMENT = { amount_gnf: '', payment_method: 'orange_money', reference: '' };
 const EMPTY_REFUND = {
   invoice_id: '',
@@ -256,7 +267,18 @@ export default function ReceptionDashboard() {
   const updateAdmission = (v) => setAdmissionForm((p) => ({ ...p, ...v }));
   const updateBilling = (v) => setBillingForm((p) => ({ ...p, ...v }));
   const updatePayment = (v) => setPaymentForm((p) => ({ ...p, ...v }));
-  const updateRefund = (v) => setRefundForm((p) => ({ ...p, ...v }));
+  const updateRefund = (v) => setRefundForm((p) => {
+    const next = { ...p, ...v };
+    if ('amount_consumed_gnf' in v && next.invoice_id) {
+      const inv = invoices.find((item) => String(item.id) === String(next.invoice_id));
+      const paid = Number(inv?.paid_amount_gnf || 0);
+      const consumed = Number(next.amount_consumed_gnf || 0);
+      if (next.amount_consumed_gnf !== '') {
+        next.refund_amount_gnf = String(Math.max(0, paid - consumed));
+      }
+    }
+    return next;
+  });
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -504,6 +526,7 @@ export default function ReceptionDashboard() {
         department: billingForm.department,
         description: billingForm.description.trim(),
         total_amount_gnf: Number(billingForm.total_amount_gnf || 0),
+        billing_date: billingForm.billing_date || undefined,
       });
       setActiveInvoice(data || null);
       setPaymentForm((prev) => ({ ...prev, amount_gnf: String(data?.remaining_balance_gnf ?? data?.total_amount_gnf ?? '') }));
@@ -523,7 +546,8 @@ export default function ReceptionDashboard() {
     updateRefund({
       invoice_id: inv ? String(inv.id) : '',
       service_paid_for: inv?.department || '',
-      refund_amount_gnf: String(inv?.paid_amount_gnf ?? ''),
+      amount_consumed_gnf: '',
+      refund_amount_gnf: '',
     });
   };
 
@@ -663,9 +687,7 @@ export default function ReceptionDashboard() {
         <div><strong>Sexe</strong><span className={selectedPatient?.gender ? 'reception-his-value-filled' : ''}>{genderLabel(selectedPatient?.gender)}</span></div>
       </div>
       {!selectedPatient && (
-        <p className="clinical-hint reception-his-patient-hint">
-          Utilisez la recherche en haut de page pour sélectionner un patient.
-        </p>
+        <FormNotice>{PATIENT_REQUIRED_NOTICE}</FormNotice>
       )}
     </div>
   );
@@ -824,7 +846,7 @@ export default function ReceptionDashboard() {
               <DisplayField
                 label="N° dossier patient"
                 value={registeredPatient?.patient_number || ''}
-                hint={registeredPatient?.patient_number ? undefined : 'Généré automatiquement à l\'enregistrement'}
+                hint={registeredPatient?.patient_number ? undefined : FIELD_HINTS.patientId}
               />
               <label>Date inscription<input required type="date" value={regForm.registration_date} onChange={(e) => updateReg({ registration_date: e.target.value })} /></label>
               <label className="reception-his-check"><input type="checkbox" checked={regForm.is_newborn} onChange={(e) => updateReg({ is_newborn: e.target.checked })} />Nouveau-né</label>
@@ -834,7 +856,7 @@ export default function ReceptionDashboard() {
               <DisplayField
                 label="Âge"
                 value={calcAge(regForm.date_of_birth) !== '' ? String(calcAge(regForm.date_of_birth)) : ''}
-                hint={calcAge(regForm.date_of_birth) !== '' ? undefined : 'Calculé depuis la date de naissance'}
+                hint={calcAge(regForm.date_of_birth) !== '' ? undefined : FIELD_HINTS.age}
               />
               <label>Sexe *<select required value={regForm.gender} onChange={(e) => updateReg({ gender: e.target.value })}><option value="F">Féminin</option><option value="M">Masculin</option><option value="Autre">Autre</option></select></label>
               <label>État civil<input value={regForm.marital_status} onChange={(e) => updateReg({ marital_status: e.target.value })} /></label>
@@ -902,7 +924,7 @@ export default function ReceptionDashboard() {
           <PatientContextPanel />
           <form className="clinical-card reception-his-form-sheet" onSubmit={handleAdmission}>
             <h2>Admission</h2>
-            <FormNotice>{!selectedPatient ? 'Recherchez et sélectionnez un patient avant de créer une admission.' : null}</FormNotice>
+            <FormNotice>{!selectedPatient ? PATIENT_REQUIRED_NOTICE : null}</FormNotice>
             <GeneratedIdBanner label="N° admission généré" value={lastAdmission?.admission_number} />
             <fieldset>
               <legend>Admission</legend>
@@ -910,7 +932,7 @@ export default function ReceptionDashboard() {
                 <DisplayField
                   label="N° d'admission"
                   value={lastAdmission?.admission_number || ''}
-                  hint={lastAdmission?.admission_number ? undefined : 'Généré automatiquement à la création'}
+                  hint={lastAdmission?.admission_number ? undefined : FIELD_HINTS.admissionNumber}
                 />
                 <DisplayField label="N° dossier patient" value={patientDossier} />
                 <DisplayField label="Nom et prénom" value={patientDisplayName} />
@@ -987,7 +1009,7 @@ export default function ReceptionDashboard() {
           <PatientContextPanel />
           <div className="clinical-card reception-his-form-sheet">
             <h2>Facturation</h2>
-            <FormNotice>{!selectedPatient ? 'Recherchez et sélectionnez un patient avant de facturer.' : null}</FormNotice>
+            <FormNotice>{!selectedPatient ? PATIENT_REQUIRED_NOTICE : null}</FormNotice>
 
             {selectedPatient && invoices.length > 0 && (
               <label className="reception-his-invoice-select">
@@ -1009,11 +1031,23 @@ export default function ReceptionDashboard() {
                 <DisplayField
                   label="N° facture"
                   value={activeInvoice?.invoice_number || ''}
-                  hint={activeInvoice?.invoice_number ? undefined : 'Généré à la création de la facture'}
+                  hint={activeInvoice?.invoice_number ? undefined : FIELD_HINTS.invoiceNumber}
                 />
                 <DisplayField label="N° dossier patient" value={patientDossier} />
                 <DisplayField label="Nom et prénom" value={patientDisplayName} />
-                <DisplayField label="Date de facturation" value={(activeInvoice?.created_at || '').slice(0, 10)} />
+                <label>
+                  Date de facturation
+                  {activeInvoice ? (
+                    <ReadOnlyDisplay value={(activeInvoice.issued_at || activeInvoice.created_at || '').slice(0, 10)} />
+                  ) : (
+                    <input
+                      required
+                      type="date"
+                      value={billingForm.billing_date}
+                      onChange={(e) => updateBilling({ billing_date: e.target.value })}
+                    />
+                  )}
+                </label>
               </div>
               <div className="reception-his-form-row">
                 <label>
@@ -1047,7 +1081,7 @@ export default function ReceptionDashboard() {
             <fieldset>
               <legend>Paiement</legend>
               {!activeInvoice && (
-                <FormNotice>Créez ou sélectionnez une facture pour afficher le récapitulatif de paiement.</FormNotice>
+                <FormNotice>{INVOICE_PAYMENT_NOTICE}</FormNotice>
               )}
               <div className="reception-his-form-row reception-his-form-row--4">
                 <label>
@@ -1103,9 +1137,7 @@ export default function ReceptionDashboard() {
                   </button>
                 </form>
               ) : (
-                <p className="clinical-hint reception-his-patient-hint">
-                  Créez ou sélectionnez une facture pour enregistrer un paiement.
-                </p>
+                <FormNotice>{INVOICE_PAYMENT_NOTICE}</FormNotice>
               )}
             </fieldset>
 
@@ -1152,7 +1184,7 @@ export default function ReceptionDashboard() {
           <PatientContextPanel />
           <div className="clinical-card reception-his-form-sheet">
             <h2>Remboursement</h2>
-            <FormNotice>{!selectedPatient ? 'Recherchez et sélectionnez un patient avant de demander un remboursement.' : null}</FormNotice>
+            <FormNotice>{!selectedPatient ? PATIENT_REQUIRED_NOTICE : null}</FormNotice>
             <GeneratedIdBanner label="N° remboursement généré" value={lastRefund?.refund_number} />
 
             <form onSubmit={handleRefund}>
@@ -1162,7 +1194,7 @@ export default function ReceptionDashboard() {
                   <DisplayField
                     label="N° remboursement"
                     value={lastRefund?.refund_number || ''}
-                    hint={lastRefund?.refund_number ? undefined : 'Généré automatiquement à la soumission'}
+                    hint={lastRefund?.refund_number ? undefined : FIELD_HINTS.refundNumber}
                   />
                   <DisplayField label="N° dossier patient" value={patientDossier} />
                   <DisplayField label="Nom et prénom" value={patientDisplayName} />
