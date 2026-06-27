@@ -2,6 +2,163 @@
   max-width: 1280px;
 }
 
+/* Pharmacy HIS dashboard */
+.pharmacy-his-page {
+  max-width: 1100px;
+}
+
+.pharmacy-his-header {
+  margin-bottom: 1rem;
+}
+
+.pharmacy-his-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.15rem 1.25rem 1.35rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.pharmacy-his-card h2 {
+  margin: 0 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  color: #0f766e;
+  font-size: 1.1rem;
+}
+
+.pharmacy-his-card--patient {
+  border-color: #0d9488;
+  background: #f0fdfa;
+}
+
+.pharmacy-his-card--billing {
+  border-color: #6366f1;
+  background: #fafafa;
+}
+
+.pharmacy-his-search-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.pharmacy-his-search-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+.pharmacy-his-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 0.75rem;
+}
+
+.pharmacy-his-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.pharmacy-his-table th,
+.pharmacy-his-table td {
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.pharmacy-his-table th {
+  background: #f0fdfa;
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.pharmacy-his-table input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 0.35rem 0.45rem;
+}
+
+.pharmacy-his-total-cell {
+  font-weight: 700;
+  color: #0f766e;
+  white-space: nowrap;
+}
+
+.pharmacy-his-foot-label {
+  text-align: right;
+  font-weight: 700;
+}
+
+.pharmacy-his-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.pharmacy-his-billing-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #ecfdf5;
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+}
+
+.pharmacy-his-billing-summary label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.pharmacy-his-payment-fieldset {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  margin: 0 0 0.5rem;
+}
+
+.pharmacy-his-payment-fieldset legend {
+  font-weight: 700;
+  padding: 0 0.35rem;
+}
+
+.pharmacy-his-receipt-print {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .pharmacy-his-receipt-print,
+  .pharmacy-his-receipt-print * {
+    visibility: visible;
+  }
+
+  .pharmacy-his-receipt-print {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 1rem;
+  }
+}
+
 .pharmacy-header {
   display: flex;
   flex-wrap: wrap;

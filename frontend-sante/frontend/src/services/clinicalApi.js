@@ -179,6 +179,11 @@ const clinicalApi = {
   // Pharmacy
   pharmacyQueue: (opts = {}) =>
     httpClient.get('/clinical/pharmacy/orders', { params: opts.scope ? { scope: opts.scope } : {} }),
+  pharmacyPatientSearch: (q) => httpClient.get('/clinical/pharmacy/patients/search', { params: { q } }),
+  pharmacyGetPatient: (patientId) => httpClient.get(`/clinical/pharmacy/patients/${patientId}`),
+  createPharmacyServiceRequest: (data) => httpClient.post('/clinical/pharmacy/service-requests', data),
+  payPharmacyServiceCharge: (chargeId, data) =>
+    httpClient.post(`/clinical/pharmacy/charges/${chargeId}/pay`, data),
   updatePharmacyOrder: (id, data) => {
     invalidateApiCache('/clinical/pharmacy/');
     return httpClient.patch(`/clinical/pharmacy/orders/${id}`, data);
