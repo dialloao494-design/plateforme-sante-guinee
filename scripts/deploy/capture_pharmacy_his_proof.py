@@ -35,7 +35,7 @@ def main() -> None:
         page.click("button.login-submit")
         page.wait_for_function("() => !window.location.pathname.includes('/login')", timeout=120000)
         page.goto(f"{FRONTEND}/clinical/pharmacy", wait_until="networkidle", timeout=120000)
-        page.wait_for_selector("h1", has_text="Tableau de bord Pharmacie", timeout=60000)
+        page.wait_for_selector("h1:has-text('Tableau de bord Pharmacie')", timeout=60000)
 
         shot1 = OUT / "01-empty-search.png"
         page.screenshot(path=str(shot1), full_page=True)
