@@ -2,9 +2,93 @@
   max-width: 1280px;
 }
 
-/* Pharmacy HIS dashboard */
+/* Pharmacy HIS dashboard — paper workflow (aligned with Lab / Reception) */
 .pharmacy-his-page {
   max-width: 1100px;
+}
+
+.pharmacy-his-workflow {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.pharmacy-his-workflow-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.15rem 1.25rem 1.35rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.pharmacy-his-workflow-card h3 {
+  margin: 0 0 1rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid #e2e8f0;
+  color: #0f766e;
+  font-size: 1.05rem;
+}
+
+.pharmacy-his-workflow-card--patient {
+  background: #f8fafc;
+}
+
+.pharmacy-his-workflow-card--patient.reception-his-patient-context--active {
+  background: #f0fdfa;
+  border-color: #0d9488;
+}
+
+.pharmacy-his-workflow-card--billing {
+  background: #fafafa;
+  border-color: #cbd5e1;
+}
+
+.pharmacy-his-search-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  align-items: stretch;
+}
+
+.pharmacy-his-search-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.pharmacy-his-search-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.pharmacy-his-search-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.pharmacy-his-primary-action {
+  min-width: 220px;
+}
+
+.pharmacy-his-row-remove {
+  min-width: 2rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.pharmacy-his-table-empty {
+  height: 2.5rem;
+  background: #f8fafc;
+}
+
+.pharmacy-his-table--billing td {
+  background: #fff;
 }
 
 .pharmacy-his-header {
