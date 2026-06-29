@@ -283,14 +283,14 @@ httpClient.interceptors.response.use(
       console.error(`[HTTP ${statusCode}] ${url}:`, message);
     }
 
-    if (error?.response?.status === 401) {
+    if (error?.response?.status === 401 || error?.response?.status === 403) {
       const sentAuth = String(config?.headers?.Authorization || '');
       const currentToken = getAuthToken();
       const stillOurSession =
         currentToken && sentAuth === `Bearer ${currentToken}`;
       if (stillOurSession && authSessionReady) {
         if (import.meta.env.DEV) {
-          console.warn('[HTTP 401] Clearing session and redirecting to login');
+          console.warn(`[HTTP ${statusCode}] Clearing tab session and redirecting to login`);
         }
         clearClientAuth();
         redirectToLogin();

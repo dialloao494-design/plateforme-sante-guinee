@@ -1,4 +1,4 @@
-/** Shared auth persistence — survives refresh and works across browser tabs. */
+/** Per-tab auth persistence — sessionStorage isolates each browser tab. */
 
 import { invalidateCache } from './apiCache.js';
 
@@ -14,65 +14,86 @@ export const AUTH_STORAGE_KEYS = [
   'sg_auth_profile',
 ];
 
-function persistStore() {
-  return typeof window !== 'undefined' ? localStorage : null;
-}
-
-function legacyTabStore() {
+function tabStore() {
   return typeof window !== 'undefined' ? sessionStorage : null;
 }
 
+function legacySharedStore() {
+  return typeof window !== 'undefined' ? localStorage : null;
+}
+
+let legacyMigrated = false;
+
+/** One-time copy from legacy shared localStorage when this tab has no session yet. */
+function migrateLegacyAuthOnce() {
+  if (legacyMigrated) {
+    return;
+  }
+  legacyMigrated = true;
+  const tab = tabStore();
+  const legacy = legacySharedStore();
+  if (!tab || !legacy) {
+    return;
+  }
+  const hasTabToken = tab.getItem('token') || tab.getItem('access_token');
+  if (hasTabToken) {
+    return;
+  }
+  for (const key of AUTH_STORAGE_KEYS) {
+    try {
+      const value = legacy.getItem(key);
+      if (value != null) {
+        tab.setItem(key, value);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/** Remove shared localStorage auth keys so they cannot overwrite other tabs on migration. */
+export function clearLegacySharedAuth() {
+  const legacy = legacySharedStore();
+  if (!legacy) {
+    return;
+  }
+  for (const key of AUTH_STORAGE_KEYS) {
+    try {
+      legacy.removeItem(key);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 export function getAuthItem(key) {
-  const store = persistStore();
-  if (!store) {
+  migrateLegacyAuthOnce();
+  const tab = tabStore();
+  if (!tab) {
     return null;
   }
   try {
-    const value = store.getItem(key);
-    if (value != null) {
-      return value;
-    }
+    return tab.getItem(key);
   } catch {
-    /* ignore */
+    return null;
   }
-  try {
-    const legacy = legacyTabStore()?.getItem(key);
-    if (legacy != null) {
-      store.setItem(key, legacy);
-      legacyTabStore()?.removeItem(key);
-      return legacy;
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
 }
 
 export function setAuthItem(key, value) {
-  const store = persistStore();
-  if (!store) {
+  const tab = tabStore();
+  if (!tab) {
     return;
   }
   try {
-    store.setItem(key, value);
+    tab.setItem(key, value);
   } catch {
     /* ignore quota errors */
-  }
-  try {
-    legacyTabStore()?.removeItem(key);
-  } catch {
-    /* ignore */
   }
 }
 
 export function removeAuthItem(key) {
   try {
-    persistStore()?.removeItem(key);
-  } catch {
-    /* ignore */
-  }
-  try {
-    legacyTabStore()?.removeItem(key);
+    tabStore()?.removeItem(key);
   } catch {
     /* ignore */
   }
@@ -96,6 +117,7 @@ export function touchSessionActivity() {
   setAuthItem('session_last_activity', String(Date.now()));
 }
 
+/** Clear auth for the current tab only. */
 export function clearAllClientStorage() {
   if (typeof window === 'undefined') {
     return;

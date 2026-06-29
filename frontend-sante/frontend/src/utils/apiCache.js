@@ -21,8 +21,6 @@ export function buildCacheKey(method, url, params) {
       uid =
         sessionStorage.getItem('user_id') ||
         sessionStorage.getItem('user_role') ||
-        localStorage.getItem('user_id') ||
-        localStorage.getItem('user_role') ||
         '';
     } catch {
       uid = '';

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api.js';
 import { clearClientAuth, setAuthSessionReady } from '../services/httpClient.js';
 import { invalidateCache } from '../utils/apiCache.js';
-import { touchSessionActivity, getAuthItem, setAuthItem, removeAuthItem, setAuthToken, getAuthToken } from '../utils/authStorage.js';
+import { touchSessionActivity, getAuthItem, setAuthItem, removeAuthItem, setAuthToken, getAuthToken, clearLegacySharedAuth } from '../utils/authStorage.js';
 import { CACHE_TTL, getCached, setCached, buildCacheKey } from '../utils/apiCache.js';
 import {
   AUTH_BOOTSTRAP_TIMEOUT_MS,
@@ -17,7 +17,8 @@ import SessionTimeoutModal from '../components/SessionTimeoutModal.jsx';
 const AUTH_PROFILE_STORAGE_KEY = 'sg_auth_profile';
 
 function authProfileCacheKey() {
-  return buildCacheKey('get', '/auth/me', undefined);
+  const uid = getAuthItem('user_id') || '0';
+  return buildCacheKey('get', '/auth/me', { uid });
 }
 
 function readCachedProfile() {
@@ -189,6 +190,7 @@ export const AuthProvider = ({ children }) => {
       const normalizedUser = normalizeAndStoreUser(data);
       setUser(normalizedUser);
       setAuthInitError(null);
+      clearLegacySharedAuth();
     } catch (err) {
       logAuthSessionFailure('bootstrap', err);
       const status = err?.response?.status;
@@ -216,24 +218,6 @@ export const AuthProvider = ({ children }) => {
     bootstrapSession();
   }, [bootstrapSession]);
 
-  useEffect(() => {
-    const onStorage = (event) => {
-      if (event.key !== 'token' && event.key !== 'access_token') {
-        return;
-      }
-      if (!event.newValue) {
-        setUser(null);
-        setAuthInitError(null);
-        return;
-      }
-      if (!user) {
-        bootstrapSession();
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, [bootstrapSession, user]);
-
   const applyLoginToken = useCallback(
     async (loginPayload) => {
       authDebug('applyLoginToken: start');
@@ -251,6 +235,7 @@ export const AuthProvider = ({ children }) => {
       invalidateCache();
       invalidateCache('/auth/me');
       setAuthToken(access_token);
+      clearLegacySharedAuth();
       authDebug('applyLoginToken: token stored', Boolean(access_token));
 
       const meResponse = await withTimeout(

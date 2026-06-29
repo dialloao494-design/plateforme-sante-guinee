@@ -35,7 +35,7 @@ def login(page, email: str, password: str) -> None:
 def token_present(page) -> bool:
     return bool(
         page.evaluate(
-            "() => Boolean(localStorage.getItem('token') || localStorage.getItem('access_token'))"
+            "() => Boolean(sessionStorage.getItem('token') || sessionStorage.getItem('access_token'))"
         )
     )
 
