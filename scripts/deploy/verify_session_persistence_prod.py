@@ -40,6 +40,15 @@ def token_present(page) -> bool:
     )
 
 
+def tab_state(page) -> dict:
+    return page.evaluate(
+        """() => ({
+            path: window.location.pathname,
+            token: Boolean(sessionStorage.getItem('token') || sessionStorage.getItem('access_token')),
+        })"""
+    )
+
+
 def still_authenticated(page, expected_path: str) -> tuple[bool, str]:
     path = page.evaluate("() => window.location.pathname")
     body = page.locator("body").inner_text(timeout=5000)
@@ -83,9 +92,15 @@ def main() -> int:
 
             tab2 = ctx.new_page()
             tab2.goto(f"{FRONTEND}{home}", wait_until="networkidle", timeout=120000)
-            ok_tab2, detail_tab2 = still_authenticated(tab2, home)
+            tab2_state = tab_state(tab2)
+            ok_tab2 = not tab2_state["token"] and "/login" in tab2_state["path"]
             results.append(
-                {"role": role, "test": "second_tab", "pass": ok_tab2, "detail": detail_tab2}
+                {
+                    "role": role,
+                    "test": "second_tab_isolated",
+                    "pass": ok_tab2,
+                    "detail": f"path={tab2_state['path']} token={tab2_state['token']}",
+                }
             )
 
             ok_tab1, detail_tab1 = still_authenticated(page, home)
