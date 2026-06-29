@@ -1,0 +1,23 @@
+.print-clinic-header {
+  text-align: center;
+  margin: 0 0 1rem;
+  padding: 0.25rem 0 0.75rem;
+}
+
+.print-clinic-header__logo {
+  width: 140px;
+  max-width: 160px;
+  height: auto;
+  display: inline-block;
+  object-fit: contain;
+}
+
+.print-clinic-header__name {
+  margin: 0.55rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.35;
+  text-transform: uppercase;
+  color: #1e293b;
+}

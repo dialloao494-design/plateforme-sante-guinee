@@ -223,6 +223,25 @@
   display: none;
 }
 
+.pharmacy-his-receipt-print h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+  text-align: center;
+}
+
+.pharmacy-his-receipt-print table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+}
+
+.pharmacy-his-receipt-print th,
+.pharmacy-his-receipt-print td {
+  border: 1px solid #cbd5e1;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.9rem;
+}
+
 @media print {
   body * {
     visibility: hidden;

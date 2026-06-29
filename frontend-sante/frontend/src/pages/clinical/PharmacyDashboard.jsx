@@ -3,6 +3,7 @@ import clinicalApi from '../../services/clinicalApi';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
 import { formatApiError } from '../../utils/apiError.js';
+import PrintClinicHeader from '../../components/print/PrintClinicHeader.jsx';
 import './clinical.css';
 import './pharmacy.css';
 
@@ -595,6 +596,7 @@ export default function PharmacyDashboard() {
       </div>
 
       <div className="pharmacy-his-receipt-print" ref={receiptRef}>
+        <PrintClinicHeader />
         <h2>Reçu pharmacie</h2>
         <p>{user?.clinic_name || 'Clinique'}</p>
         {selectedPatient && (

@@ -3,31 +3,114 @@
 from __future__ import annotations
 
 from io import BytesIO
+from pathlib import Path
+
+CLINIC_PRINT_NAME = "POLYCLINIQUE MÉDICO-CHIRURGICALE AASMA"
+LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "branding" / "aasma-clinic-logo.png"
+LOGO_DISPLAY_WIDTH = 140  # points (~140 px at 72 dpi)
+PAGE_WIDTH = 595
+PAGE_HEIGHT = 842
 
 
 def _escape_pdf_text(text: str) -> str:
-    return text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+    safe = text.encode("latin-1", errors="replace").decode("latin-1")
+    return safe.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+
+def _jpeg_dimensions(data: bytes) -> tuple[int, int]:
+    i = 2
+    while i < len(data) - 8:
+        if data[i] != 0xFF:
+            i += 1
+            continue
+        marker = data[i + 1]
+        if marker in (
+            0xC0,
+            0xC1,
+            0xC2,
+            0xC3,
+            0xC5,
+            0xC6,
+            0xC7,
+            0xC9,
+            0xCA,
+            0xCB,
+            0xCD,
+            0xCE,
+            0xCF,
+        ):
+            height = (data[i + 5] << 8) + data[i + 6]
+            width = (data[i + 7] << 8) + data[i + 8]
+            return width, height
+        if marker in (0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0x01):
+            i += 2
+            continue
+        seg_len = (data[i + 2] << 8) + data[i + 3]
+        i += 2 + seg_len
+    raise ValueError("Could not read JPEG dimensions")
+
+
+def _centered_x(text: str, font_size: float) -> float:
+    approx_char = font_size * 0.52
+    return max(36.0, (PAGE_WIDTH - len(text) * approx_char) / 2)
+
+
+def _build_pdf_stream(title: str, lines: list[str], logo_bytes: bytes, logo_w: int, logo_h: int) -> bytes:
+    display_w = LOGO_DISPLAY_WIDTH
+    display_h = max(1, int(logo_h * display_w / logo_w))
+    margin_top = 32
+    logo_x = (PAGE_WIDTH - display_w) / 2
+    logo_y = PAGE_HEIGHT - margin_top - display_h
+    name_y = logo_y - 16
+    title_y = name_y - 24
+    line_y = title_y - 8
+
+    parts = [
+        "q",
+        f"{display_w} 0 0 {display_h} {logo_x:.2f} {logo_y:.2f} cm",
+        "/Im1 Do",
+        "Q",
+        "BT",
+        "/F1 9 Tf",
+        f"1 0 0 1 {_centered_x(CLINIC_PRINT_NAME, 9):.2f} {name_y:.2f} Tm",
+        f"({_escape_pdf_text(CLINIC_PRINT_NAME)}) Tj",
+        "/F1 12 Tf",
+        f"1 0 0 1 50 {title_y:.2f} Tm",
+        f"({_escape_pdf_text(title)}) Tj",
+    ]
+
+    y = line_y
+    for line in lines:
+        y -= 16
+        if y < 48:
+            break
+        parts.append("0 -16 Td")
+        parts.append(f"({_escape_pdf_text(line)}) Tj")
+
+    parts.append("ET")
+    return "\n".join(parts).encode("latin-1", errors="replace")
 
 
 def build_simple_pdf(title: str, lines: list[str]) -> bytes:
-    """Minimal PDF generator — no external dependencies."""
-    content_lines = ["BT", "/F1 12 Tf", "50 780 Td", f"({ _escape_pdf_text(title) }) Tj"]
-    y = 760
-    for line in lines:
-        y -= 16
-        if y < 50:
-            break
-        content_lines.append(f"0 -16 Td ({_escape_pdf_text(line)}) Tj")
-    content_lines.append("ET")
-    stream = "\n".join(content_lines)
-    stream_bytes = stream.encode("latin-1", errors="replace")
+    """Minimal PDF generator with centered clinic logo header."""
+    logo_bytes = LOGO_PATH.read_bytes()
+    logo_w, logo_h = _jpeg_dimensions(logo_bytes)
+    stream_bytes = _build_pdf_stream(title, lines, logo_bytes, logo_w, logo_h)
+
+    img_obj = (
+        f"6 0 obj<< /Type /XObject /Subtype /Image /Width {logo_w} /Height {logo_h} "
+        f"/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {len(logo_bytes)} >>"
+        f"stream\n".encode()
+        + logo_bytes
+        + b"\nendstream endobj\n"
+    )
 
     objects: list[bytes] = []
     objects.append(b"1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n")
     objects.append(b"2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj\n")
     objects.append(
         b"3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
-        b"/Contents 4 0 R /Resources<< /Font<< /F1 5 0 R >> >> >>endobj\n"
+        b"/Contents 4 0 R /Resources<< /Font<< /F1 5 0 R >> /XObject<< /Im1 6 0 R >> >> >>endobj\n"
     )
     objects.append(
         f"4 0 obj<< /Length {len(stream_bytes)} >>stream\n".encode()
@@ -35,11 +118,12 @@ def build_simple_pdf(title: str, lines: list[str]) -> bytes:
         + b"\nendstream endobj\n"
     )
     objects.append(b"5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj\n")
+    objects.append(img_obj)
 
     buf = BytesIO()
     buf.write(b"%PDF-1.4\n")
     offsets = [0]
-    for i, obj in enumerate(objects, start=1):
+    for obj in objects:
         offsets.append(buf.tell())
         buf.write(obj)
     xref_pos = buf.tell()
