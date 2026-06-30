@@ -4,8 +4,15 @@ import { useAuth } from '../../contexts/AuthContext.jsx';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
 import { formatApiError } from '../../utils/apiError.js';
 import PrintClinicHeader from '../../components/print/PrintClinicHeader.jsx';
+import PharmacyMedicationAutocomplete from './PharmacyMedicationAutocomplete.jsx';
+import PharmacyStockTab from './PharmacyStockTab.jsx';
 import './clinical.css';
 import './pharmacy.css';
+
+const TABS = [
+  { id: 'workflow', label: 'Dispensation' },
+  { id: 'stock', label: 'Stock' },
+];
 
 const PAYMENT_METHODS = [
   { value: 'cash', label: 'Espèces' },
@@ -18,6 +25,7 @@ const PAYMENT_METHODS = [
 const PATIENT_NOTICE = 'Recherchez et sélectionnez un patient enregistré à la réception.';
 const BILLING_NOTICE = 'Enregistrez la demande de service pour activer la facturation.';
 const INITIAL_ROW_COUNT = 4;
+const EMPTY_PAYMENT = { amount_gnf: '', payment_method: 'orange_money', reference: '' };
 
 const newLineId = () => `line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -26,6 +34,7 @@ const emptyLine = () => ({
   designation: '',
   quantity: '',
   unit_price_gnf: '',
+  inventory_item_id: null,
 });
 
 const initialLines = () => Array.from({ length: INITIAL_ROW_COUNT }, () => emptyLine());
@@ -58,6 +67,8 @@ const patientAddress = (patient) => {
   if (!patient) return '';
   return [patient.address || patient.quartier, patient.city, patient.region].filter(Boolean).join(', ');
 };
+
+const methodLabel = (value) => PAYMENT_METHODS.find((m) => m.value === value)?.label || value || '—';
 
 const ReadOnlyDisplay = ({ value }) => (
   <div
@@ -107,21 +118,15 @@ const lineTotal = (line) => {
   return qty * unit;
 };
 
-const SearchIcon = () => (
-  <svg className="pharmacy-his-search-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-    <path
-      fillRule="evenodd"
-      d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-      clipRule="evenodd"
-    />
-  </svg>
-);
+const formatPrintDate = (d = new Date()) => d.toLocaleDateString('fr-FR');
+const formatPrintTime = (d = new Date()) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
 export default function PharmacyDashboard() {
   const { user } = useAuth();
   const searchRef = useRef(null);
   const receiptRef = useRef(null);
 
+  const [tab, setTab] = useState('workflow');
   const [searchQ, setSearchQ] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -129,22 +134,13 @@ export default function PharmacyDashboard() {
 
   const [lines, setLines] = useState(initialLines);
   const [savedRequest, setSavedRequest] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [amountReceived, setAmountReceived] = useState('');
+  const [paymentForm, setPaymentForm] = useState(EMPTY_PAYMENT);
   const [exemptionPercent, setExemptionPercent] = useState('0');
 
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-
-  const inventoryByName = useMemo(() => {
-    const map = new Map();
-    inventory.forEach((item) => {
-      if (item.medication_name) map.set(item.medication_name.toLowerCase(), item);
-    });
-    return map;
-  }, [inventory]);
 
   useEffect(() => {
     clinicalApi.pharmacyInventory().then((r) => setInventory(r.data || [])).catch(() => {});
@@ -165,7 +161,7 @@ export default function PharmacyDashboard() {
       } finally {
         setSearching(false);
       }
-    }, 250);
+    }, 200);
     return () => clearTimeout(t);
   }, [searchQ]);
 
@@ -196,12 +192,9 @@ export default function PharmacyDashboard() {
     ? Number(savedRequest.total_gnf || 0)
     : Math.max(0, billingSubtotal - billingExemptionAmount);
   const billingReady = Boolean(savedRequest?.charge_id);
-  const receivedNum = Number(amountReceived);
-  const remaining = billingReady && Number.isFinite(receivedNum)
-    ? Math.max(0, billingTotal - receivedNum)
-    : billingReady
-      ? billingTotal
-      : '';
+  const paymentRows = savedRequest?.payments || [];
+  const totalPaid = savedRequest?.paid_amount_gnf ?? paymentRows.reduce((s, p) => s + Number(p.amount_gnf || 0), 0);
+  const remaining = billingReady ? Math.max(0, billingTotal - totalPaid) : '';
 
   const selectPatient = async (p) => {
     if (!p?.id) return;
@@ -216,7 +209,7 @@ export default function PharmacyDashboard() {
     setSearchQ('');
     setSearchResults([]);
     setSavedRequest(null);
-    setAmountReceived('');
+    setPaymentForm(EMPTY_PAYMENT);
     setLines(initialLines());
     setError('');
     setMessage(`Patient sélectionné : ${patient.last_name} ${patient.first_name}`);
@@ -225,41 +218,22 @@ export default function PharmacyDashboard() {
   const clearPatient = () => {
     setSelectedPatient(null);
     setSavedRequest(null);
-    setAmountReceived('');
+    setPaymentForm(EMPTY_PAYMENT);
     setLines(initialLines());
     setMessage('');
     setError('');
   };
 
-  const runSearch = async () => {
-    const q = searchQ.trim();
-    if (!q) return;
-    setSearching(true);
-    try {
-      const { data } = await clinicalApi.pharmacyPatientSearch(q);
-      setSearchResults(data || []);
-      if ((data || []).length === 1) selectPatient(data[0]);
-    } catch (err) {
-      setError(formatApiError(err, 'Recherche impossible'));
-    } finally {
-      setSearching(false);
-    }
+  const updateLine = (id, patch) => {
+    setLines((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
   };
 
-  const updateLine = (id, field, value) => {
-    setLines((rows) =>
-      rows.map((row) => {
-        if (row.id !== id) return row;
-        const next = { ...row, [field]: value };
-        if (field === 'designation') {
-          const hit = inventoryByName.get(String(value).trim().toLowerCase());
-          if (hit?.unit_price_gnf != null && hit.unit_price_gnf !== '') {
-            next.unit_price_gnf = String(hit.unit_price_gnf);
-          }
-        }
-        return next;
-      })
-    );
+  const selectStockItem = (lineId, item) => {
+    updateLine(lineId, {
+      designation: item.medication_name,
+      unit_price_gnf: String(item.unit_price_gnf ?? ''),
+      inventory_item_id: item.id,
+    });
   };
 
   const addLine = () => setLines((rows) => [...rows, emptyLine()]);
@@ -278,6 +252,7 @@ export default function PharmacyDashboard() {
         product_name: l.designation.trim(),
         quantity: Number(l.quantity) || 1,
         unit_price_gnf: Number(l.unit_price_gnf) || 0,
+        inventory_item_id: l.inventory_item_id || undefined,
       }));
     if (items.length === 0) {
       setError('Ajoutez au moins un produit.');
@@ -291,7 +266,7 @@ export default function PharmacyDashboard() {
         items,
       });
       setSavedRequest(data);
-      setAmountReceived(String(data.subtotal_gnf || data.total_gnf || requestTotal));
+      setPaymentForm({ ...EMPTY_PAYMENT, amount_gnf: String(Math.max(0, billingTotal - totalPaid) || data.total_gnf || '') });
       setMessage('Demande de service enregistrée.');
     } catch (err) {
       setError(formatApiError(err, 'Enregistrement impossible'));
@@ -300,29 +275,34 @@ export default function PharmacyDashboard() {
     }
   };
 
-  const billPatient = async () => {
+  const addPayment = async () => {
     if (!savedRequest?.charge_id) {
       setError('Enregistrez d\'abord la demande de service.');
       return;
     }
-    const received = Number(amountReceived);
-    const netDue = Math.max(0, billingSubtotal - Math.round(billingSubtotal * Number(exemptionPercent || 0) / 100));
-    if (!Number.isFinite(received) || received < netDue) {
-      setError('Montant reçu insuffisant.');
+    const amount = Number(paymentForm.amount_gnf);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError('Saisissez un montant de paiement valide.');
       return;
     }
     setLoading(true);
     setError('');
     try {
-      const { data } = await clinicalApi.payPharmacyServiceCharge(savedRequest.charge_id, {
-        payment_method: paymentMethod,
-        amount_received_gnf: received,
-        exemption_percent: Number(exemptionPercent || 0),
-      });
+      const payload = {
+        payment_method: paymentForm.payment_method,
+        amount_gnf: amount,
+        reference: paymentForm.reference || undefined,
+      };
+      if ((savedRequest.payments || []).length === 0) {
+        payload.exemption_percent = Number(exemptionPercent || 0);
+      }
+      const { data } = await clinicalApi.addPharmacyChargePayment(savedRequest.charge_id, payload);
       setSavedRequest(data);
-      setMessage('Paiement enregistré.');
+      setPaymentForm(EMPTY_PAYMENT);
+      setMessage(data.payment_status === 'paid' ? 'Paiement complet — stock mis à jour.' : 'Paiement enregistré.');
+      clinicalApi.pharmacyInventory().then((r) => setInventory(r.data || [])).catch(() => {});
     } catch (err) {
-      setError(formatApiError(err, 'Facturation impossible'));
+      setError(formatApiError(err, 'Paiement impossible'));
     } finally {
       setLoading(false);
     }
@@ -344,6 +324,8 @@ export default function PharmacyDashboard() {
           total_gnf: lineTotal(l),
         }));
 
+  const printNow = new Date();
+
   return (
     <div className="clinical-page reception-his pharmacy-his-page">
       <header className="reception-his-header">
@@ -351,296 +333,342 @@ export default function PharmacyDashboard() {
           <p className="reception-his-eyebrow">Plateforme Santé · Guinée</p>
           <h1>Tableau de bord Pharmacie</h1>
           <p className="clinical-lead">
-            Dispensation · Demande de service · Facturation — {user?.clinic_name || 'Clinique'}
+            Dispensation · Stock · Facturation — {user?.clinic_name || 'Clinique'}
           </p>
           <p className="reception-his-session">Session : {user?.full_name || user?.email || 'Utilisateur'}</p>
         </div>
       </header>
 
-      {selectedPatient && (
-        <div className="reception-his-selected">
-          Patient actif : <strong>{selectedPatient.last_name} {selectedPatient.first_name}</strong> · N° dossier{' '}
-          <strong>{selectedPatient.patient_number || selectedPatient.id}</strong>
-          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={clearPatient}>
-            Effacer
+      <nav className="pharmacy-tabs" role="tablist" aria-label="Sections pharmacie">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            className={`pharmacy-tab${tab === t.id ? ' active' : ''}`}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
           </button>
-        </div>
-      )}
+        ))}
+      </nav>
 
       {error && <p className="clinical-message clinical-message--err" role="alert">{error}</p>}
       {message && <p className="clinical-message clinical-message--ok" role="status">{message}</p>}
 
-      <div className="pharmacy-his-workflow">
-        <section className="pharmacy-his-workflow-card">
-          <h3>Recherche patient</h3>
-          <label htmlFor="pharmacy-patient-search">
-            Nom / ID / Téléphone / Code QR <span className="reception-his-optional-shortcut">(F3)</span>
-          </label>
-          <div className="pharmacy-his-search-row">
-            <input
-              id="pharmacy-patient-search"
-              ref={searchRef}
-              type="search"
-              value={searchQ}
-              onChange={(e) => setSearchQ(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), runSearch())}
-              autoComplete="off"
-            />
-            <button
-              type="button"
-              className="clinical-btn pharmacy-his-search-btn"
-              onClick={runSearch}
-              disabled={searching || !searchQ.trim()}
-              aria-label="Rechercher"
+      {tab === 'stock' && (
+        <PharmacyStockTab onInventoryChange={setInventory} />
+      )}
+
+      {tab === 'workflow' && (
+        <>
+          {selectedPatient && (
+            <div className="reception-his-selected">
+              Patient actif : <strong>{selectedPatient.last_name} {selectedPatient.first_name}</strong> · N° dossier{' '}
+              <strong>{selectedPatient.patient_number || selectedPatient.id}</strong>
+              <button type="button" className="clinical-btn clinical-btn--secondary" onClick={clearPatient}>
+                Effacer
+              </button>
+            </div>
+          )}
+
+          <div className="pharmacy-his-workflow">
+            <section className="pharmacy-his-workflow-card">
+              <h3>Recherche patient</h3>
+              <label htmlFor="pharmacy-patient-search">
+                N° dossier, nom, téléphone ou code QR <span className="reception-his-optional-shortcut">(F3)</span>
+              </label>
+              <div className="pharmacy-his-search-row pharmacy-his-search-row--auto">
+                <input
+                  id="pharmacy-patient-search"
+                  ref={searchRef}
+                  type="search"
+                  value={searchQ}
+                  onChange={(e) => setSearchQ(e.target.value)}
+                  autoComplete="off"
+                  placeholder="Tapez pour rechercher…"
+                />
+                {searching && <span className="reception-his-optional-shortcut">…</span>}
+              </div>
+              {searchResults.length > 0 && (
+                <ul className="reception-his-search-results reception-his-search-results--inline" role="listbox">
+                  {searchResults.map((p) => (
+                    <li key={p.id}>
+                      <button type="button" onClick={() => selectPatient(p)}>
+                        <strong>{p.last_name} {p.first_name}</strong>
+                        <span>N° {p.patient_number || p.id}{p.phone ? ` · ${p.phone}` : ''}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {searchQ.trim() && !searching && searchResults.length === 0 && (
+                <p className="reception-his-no-results">Aucun patient trouvé.</p>
+              )}
+            </section>
+
+            <section
+              className={`pharmacy-his-workflow-card pharmacy-his-workflow-card--patient reception-his-patient-context${selectedPatient ? ' reception-his-patient-context--active' : ''}`}
             >
-              <SearchIcon />
-              {searching ? '…' : 'Rechercher'}
-            </button>
-          </div>
-          {searchResults.length > 0 && (
-            <ul className="reception-his-search-results reception-his-search-results--inline" role="listbox">
-              {searchResults.map((p) => (
-                <li key={p.id}>
-                  <button type="button" onClick={() => selectPatient(p)}>
-                    <strong>{p.last_name} {p.first_name}</strong>
-                    <span>N° {p.patient_number || p.id}{p.phone ? ` · ${p.phone}` : ''}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {searchQ.trim() && !searching && searchResults.length === 0 && (
-            <p className="reception-his-no-results">Aucun patient trouvé.</p>
-          )}
-        </section>
+              <h3>Informations patient</h3>
+              {!selectedPatient && <FormNotice>{PATIENT_NOTICE}</FormNotice>}
+              <div className="reception-his-form-row reception-his-form-row--4">
+                <DisplayField label="N° dossier" value={selectedPatient?.patient_number || (selectedPatient ? String(selectedPatient.id) : '')} />
+                <DisplayField label="Nom" value={selectedPatient?.last_name} />
+                <DisplayField label="Prénom" value={selectedPatient?.first_name} />
+                <DisplayField label="Âge" value={patientAge(selectedPatient)} />
+              </div>
+              <div className="reception-his-form-row reception-his-form-row--3">
+                <DisplayField label="Sexe" value={genderLabel(selectedPatient?.gender)} />
+                <DisplayField label="Téléphone" value={selectedPatient?.phone} />
+                <DisplayField label="Adresse" value={patientAddress(selectedPatient)} />
+              </div>
+            </section>
 
-        <section
-          className={`pharmacy-his-workflow-card pharmacy-his-workflow-card--patient reception-his-patient-context${selectedPatient ? ' reception-his-patient-context--active' : ''}`}
-        >
-          <h3>Informations patient</h3>
-          {!selectedPatient && <FormNotice>{PATIENT_NOTICE}</FormNotice>}
-          <div className="reception-his-form-row reception-his-form-row--4">
-            <DisplayField label="N° dossier" value={selectedPatient?.patient_number || (selectedPatient ? String(selectedPatient.id) : '')} />
-            <DisplayField label="Nom" value={selectedPatient?.last_name} />
-            <DisplayField label="Prénom" value={selectedPatient?.first_name} />
-            <DisplayField label="Âge" value={patientAge(selectedPatient)} />
-          </div>
-          <div className="reception-his-form-row reception-his-form-row--3">
-            <DisplayField label="Sexe" value={genderLabel(selectedPatient?.gender)} />
-            <DisplayField label="Téléphone" value={selectedPatient?.phone} />
-            <DisplayField label="Adresse" value={patientAddress(selectedPatient)} />
-          </div>
-        </section>
+            <section className="pharmacy-his-workflow-card">
+              <h3>Demande de service</h3>
+              {!selectedPatient && <FormNotice>{PATIENT_NOTICE}</FormNotice>}
+              <div className="pharmacy-his-table-wrap">
+                <table className="pharmacy-his-table">
+                  <thead>
+                    <tr>
+                      <th>Produit / Désignation</th>
+                      <th>Quantité</th>
+                      <th>Prix unitaire</th>
+                      <th>Total</th>
+                      <th aria-label="Actions" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lines.map((line) => (
+                      <tr key={line.id}>
+                        <td>
+                          <PharmacyMedicationAutocomplete
+                            value={line.designation}
+                            onChange={(v) => updateLine(line.id, { designation: v, inventory_item_id: null })}
+                            onSelectItem={(item) => selectStockItem(line.id, item)}
+                            disabled={!selectedPatient}
+                            inventory={inventory}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min="1"
+                            value={line.quantity}
+                            onChange={(e) => updateLine(line.id, { quantity: e.target.value })}
+                            disabled={!selectedPatient}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min="0"
+                            step="500"
+                            value={line.unit_price_gnf}
+                            onChange={(e) => updateLine(line.id, { unit_price_gnf: e.target.value })}
+                            disabled={!selectedPatient}
+                          />
+                        </td>
+                        <td className="pharmacy-his-total-cell">{formatGNF(lineTotal(line))}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="clinical-btn clinical-btn--secondary pharmacy-his-row-remove"
+                            onClick={() => removeLine(line.id)}
+                            disabled={!selectedPatient}
+                            aria-label="Supprimer la ligne"
+                          >
+                            ×
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={3} className="pharmacy-his-foot-label">Total</td>
+                      <td colSpan={2} className="pharmacy-his-total-cell">{formatGNF(requestTotal)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <div className="pharmacy-his-actions">
+                <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addLine} disabled={!selectedPatient}>
+                  + Ligne
+                </button>
+                <button
+                  type="button"
+                  className="clinical-btn pharmacy-his-primary-action"
+                  onClick={submitRequest}
+                  disabled={loading || !selectedPatient}
+                >
+                  {loading ? 'Enregistrement…' : 'Enregistrer la demande de service'}
+                </button>
+              </div>
+            </section>
 
-        <section className="pharmacy-his-workflow-card">
-          <h3>Demande de service</h3>
-          {!selectedPatient && <FormNotice>{PATIENT_NOTICE}</FormNotice>}
-          <div className="pharmacy-his-table-wrap">
-            <table className="pharmacy-his-table">
-              <thead>
-                <tr>
-                  <th>Produit / Désignation</th>
-                  <th>Quantité</th>
-                  <th>Prix unitaire</th>
-                  <th>Total</th>
-                  <th aria-label="Actions" />
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map((line) => (
-                  <tr key={line.id}>
-                    <td>
-                      <input
-                        list="pharmacy-inventory-list"
-                        value={line.designation}
-                        onChange={(e) => updateLine(line.id, 'designation', e.target.value)}
-                        disabled={!selectedPatient}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="number"
-                        min="1"
-                        value={line.quantity}
-                        onChange={(e) => updateLine(line.id, 'quantity', e.target.value)}
-                        disabled={!selectedPatient}
-                      />
-                    </td>
-                    <td>
+            <section className="pharmacy-his-workflow-card pharmacy-his-workflow-card--billing">
+              <h3>Facturation</h3>
+              {!billingReady && <FormNotice>{BILLING_NOTICE}</FormNotice>}
+              <div className="pharmacy-his-table-wrap">
+                <table className="pharmacy-his-table pharmacy-his-table--billing">
+                  <thead>
+                    <tr>
+                      <th>Produit</th>
+                      <th>Description</th>
+                      <th>Qté</th>
+                      <th>Prix U</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {billingLines.length > 0 ? (
+                      billingLines.map((row, idx) => (
+                        <tr key={`${row.product_name}-${idx}`}>
+                          <td>{row.product_name}</td>
+                          <td>{row.product_name}</td>
+                          <td>{row.quantity}</td>
+                          <td>{formatGNF(row.unit_price_gnf)}</td>
+                          <td className="pharmacy-his-total-cell">{formatGNF(row.total_gnf ?? row.quantity * row.unit_price_gnf)}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="pharmacy-his-table-empty" />
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <fieldset className="reception-his-nested-fieldset">
+                <legend>Récapitulatif paiement</legend>
+                <div className="pharmacy-his-billing-summary">
+                  <label>
+                    Montant total
+                    <AmountDisplay amountGnf={billingReady ? billingSubtotal : ''} />
+                  </label>
+                  <label>
+                    Exemption (%)
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={savedRequest?.payment_status === 'paid' ? String(savedRequest.exemption_percent || 0) : exemptionPercent}
+                      onChange={(e) => setExemptionPercent(e.target.value)}
+                      disabled={!billingReady || savedRequest?.payment_status === 'paid' || paymentRows.length > 0}
+                    />
+                  </label>
+                  <label>
+                    Montant exemption
+                    <AmountDisplay amountGnf={billingReady ? billingExemptionAmount : ''} />
+                  </label>
+                  <label>
+                    Nouveau total
+                    <AmountDisplay amountGnf={billingReady ? billingTotal : ''} />
+                  </label>
+                  <label>
+                    Total payé
+                    <AmountDisplay amountGnf={billingReady ? totalPaid : ''} />
+                  </label>
+                  <label>
+                    Reste à payer
+                    <AmountDisplay amountGnf={billingReady ? remaining : ''} />
+                  </label>
+                </div>
+              </fieldset>
+
+              {billingReady && savedRequest?.payment_status !== 'paid' && (
+                <fieldset className="reception-his-nested-fieldset">
+                  <legend>Ajouter un paiement</legend>
+                  <div className="reception-his-form-row reception-his-form-row--3">
+                    <label>
+                      Montant
                       <input
                         type="number"
                         min="0"
-                        step="500"
-                        value={line.unit_price_gnf}
-                        onChange={(e) => updateLine(line.id, 'unit_price_gnf', e.target.value)}
-                        disabled={!selectedPatient}
+                        value={paymentForm.amount_gnf}
+                        onChange={(e) => setPaymentForm((p) => ({ ...p, amount_gnf: e.target.value }))}
                       />
-                    </td>
-                    <td className="pharmacy-his-total-cell">{formatGNF(lineTotal(line))}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className="clinical-btn clinical-btn--secondary pharmacy-his-row-remove"
-                        onClick={() => removeLine(line.id)}
-                        disabled={!selectedPatient}
-                        aria-label="Supprimer la ligne"
-                      >
-                        ×
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={3} className="pharmacy-his-foot-label">Total</td>
-                  <td colSpan={2} className="pharmacy-his-total-cell">{formatGNF(requestTotal)}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-          <datalist id="pharmacy-inventory-list">
-            {inventory.map((item) => (
-              <option key={item.id} value={item.medication_name} />
-            ))}
-          </datalist>
-          <div className="pharmacy-his-actions">
-            <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addLine} disabled={!selectedPatient}>
-              + Ligne
-            </button>
-            <button
-              type="button"
-              className="clinical-btn pharmacy-his-primary-action"
-              onClick={submitRequest}
-              disabled={loading || !selectedPatient}
-            >
-              {loading ? 'Enregistrement…' : 'Enregistrer la demande de service'}
-            </button>
-          </div>
-        </section>
+                    </label>
+                    <label>
+                      Référence
+                      <input
+                        value={paymentForm.reference}
+                        onChange={(e) => setPaymentForm((p) => ({ ...p, reference: e.target.value }))}
+                      />
+                    </label>
+                  </div>
+                  <PaymentMethodRadios
+                    name="pharmacy-split-payment"
+                    value={paymentForm.payment_method}
+                    onChange={(v) => setPaymentForm((p) => ({ ...p, payment_method: v }))}
+                    methods={PAYMENT_METHODS}
+                    disabled={false}
+                  />
+                  <button type="button" className="clinical-btn pharmacy-his-primary-action" onClick={addPayment} disabled={loading}>
+                    {loading ? 'Enregistrement…' : 'Enregistrer le paiement'}
+                  </button>
+                </fieldset>
+              )}
 
-        <section className="pharmacy-his-workflow-card pharmacy-his-workflow-card--billing">
-          <h3>Facturation</h3>
-          {!billingReady && <FormNotice>{BILLING_NOTICE}</FormNotice>}
-          <div className="pharmacy-his-table-wrap">
-            <table className="pharmacy-his-table pharmacy-his-table--billing">
-              <thead>
-                <tr>
-                  <th>Désignation</th>
-                  <th>Qté</th>
-                  <th>Prix U</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {billingLines.length > 0 ? (
-                  billingLines.map((row, idx) => (
-                    <tr key={`${row.product_name}-${idx}`}>
-                      <td>{row.product_name}</td>
-                      <td>{row.quantity}</td>
-                      <td>{formatGNF(row.unit_price_gnf)}</td>
-                      <td className="pharmacy-his-total-cell">{formatGNF(row.total_gnf)}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="pharmacy-his-table-empty" />
-                  </tr>
-                )}
-              </tbody>
-            </table>
+              {paymentRows.length > 0 && (
+                <fieldset className="reception-his-payment-history">
+                  <legend>Paiements enregistrés</legend>
+                  <table className="pharmacy-his-table">
+                    <thead>
+                      <tr>
+                        <th>Mode</th>
+                        <th>Montant</th>
+                        <th>Référence</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paymentRows.map((p) => (
+                        <tr key={p.id}>
+                          <td>{methodLabel(p.payment_method)}</td>
+                          <td>{formatGNF(p.amount_gnf)}</td>
+                          <td>{p.reference || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </fieldset>
+              )}
+
+              <div className="pharmacy-his-actions">
+                <button
+                  type="button"
+                  className="clinical-btn clinical-btn--secondary"
+                  onClick={printReceipt}
+                  disabled={!billingReady}
+                >
+                  Imprimer reçu
+                </button>
+              </div>
+            </section>
           </div>
-
-          <fieldset className="reception-his-nested-fieldset">
-            <legend>Récapitulatif paiement</legend>
-            <div className="pharmacy-his-billing-summary">
-              <label>
-                Montant total
-                <AmountDisplay amountGnf={billingReady ? billingSubtotal : ''} />
-              </label>
-              <label>
-                Montant reçu
-                <input
-                  type="number"
-                  min="0"
-                  value={amountReceived}
-                  onChange={(e) => setAmountReceived(e.target.value)}
-                  disabled={!billingReady || savedRequest?.payment_status === 'paid'}
-                />
-              </label>
-              <label>
-                Exemption (%)
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={savedRequest?.payment_status === 'paid' ? String(savedRequest.exemption_percent || 0) : exemptionPercent}
-                  onChange={(e) => setExemptionPercent(e.target.value)}
-                  disabled={!billingReady || savedRequest?.payment_status === 'paid'}
-                />
-              </label>
-              <label>
-                Montant exemption
-                <AmountDisplay amountGnf={billingReady ? billingExemptionAmount : ''} />
-              </label>
-              <label>
-                Nouveau total
-                <AmountDisplay amountGnf={billingReady ? billingTotal : ''} />
-              </label>
-              <label>
-                Reste à payer
-                <AmountDisplay amountGnf={billingReady ? remaining : ''} />
-              </label>
-            </div>
-          </fieldset>
-
-          <fieldset className="reception-his-nested-fieldset">
-            <legend>Mode de paiement</legend>
-            <PaymentMethodRadios
-              name="pharmacy-payment"
-              value={paymentMethod}
-              onChange={setPaymentMethod}
-              methods={PAYMENT_METHODS}
-              disabled={!billingReady || savedRequest?.payment_status === 'paid'}
-            />
-          </fieldset>
-
-          <div className="pharmacy-his-actions">
-            <button
-              type="button"
-              className="clinical-btn pharmacy-his-primary-action"
-              onClick={billPatient}
-              disabled={loading || !billingReady || savedRequest?.payment_status === 'paid'}
-            >
-              Facturer le patient
-            </button>
-            <button
-              type="button"
-              className="clinical-btn clinical-btn--secondary"
-              onClick={printReceipt}
-              disabled={!billingReady}
-            >
-              Imprimer reçu
-            </button>
-          </div>
-        </section>
-      </div>
+        </>
+      )}
 
       <div className="pharmacy-his-receipt-print" ref={receiptRef}>
         <PrintClinicHeader />
         <h2>Reçu pharmacie</h2>
-        <p>{user?.clinic_name || 'Clinique'}</p>
         {selectedPatient && (
-          <p>
+          <p className="pharmacy-his-print-patient">
             {selectedPatient.last_name} {selectedPatient.first_name} · N°{' '}
             {selectedPatient.patient_number || selectedPatient.id}
           </p>
         )}
-        <table>
+        <table className="pharmacy-his-print-table">
           <thead>
             <tr>
-              <th>Désignation</th>
+              <th>Produit</th>
+              <th>Description</th>
               <th>Qté</th>
+              <th>Prix U</th>
               <th>Total</th>
             </tr>
           </thead>
@@ -648,26 +676,41 @@ export default function PharmacyDashboard() {
             {billingLines.map((row, idx) => (
               <tr key={idx}>
                 <td>{row.product_name}</td>
+                <td>{row.product_name}</td>
                 <td>{row.quantity}</td>
-                <td>{formatGNF(row.total_gnf)}</td>
+                <td>{formatGNF(row.unit_price_gnf)}</td>
+                <td>{formatGNF(row.total_gnf ?? row.quantity * row.unit_price_gnf)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <p><strong>Total : {formatGNF(billingSubtotal)}</strong></p>
-        <p>Exemption : {appliedExemptionPercent}% · {formatGNF(billingExemptionAmount)}</p>
-        <p><strong>Nouveau total : {formatGNF(billingTotal)}</strong></p>
-        <p>Montant reçu : {formatGNF(savedRequest?.paid_amount_gnf || amountReceived || 0)}</p>
-        <p>Reste à payer : {formatGNF(remaining || 0)}</p>
-        {savedRequest?.payment_status === 'paid' && (
-          <p>
-            Payé · {PAYMENT_METHODS.find((m) => m.value === savedRequest.payment_method)?.label || savedRequest.payment_method}
-          </p>
+        <div className="pharmacy-his-print-totals">
+          <p><strong>Montant total :</strong> {formatGNF(billingSubtotal)}</p>
+          <p><strong>Exemption :</strong> {appliedExemptionPercent}% · {formatGNF(billingExemptionAmount)}</p>
+          <p><strong>Nouveau total :</strong> {formatGNF(billingTotal)}</p>
+          <p><strong>Montant reçu :</strong> {formatGNF(totalPaid)}</p>
+          <p><strong>Reste à payer :</strong> {formatGNF(remaining || 0)}</p>
+        </div>
+        {paymentRows.length > 0 && (
+          <div className="pharmacy-his-print-payments">
+            <p><strong>Modes de paiement</strong></p>
+            <ul>
+              {paymentRows.map((p) => (
+                <li key={p.id}>
+                  {methodLabel(p.payment_method)} … {formatGNF(p.amount_gnf)}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         <p className="pharmacy-his-print-footer">
-          Imprimé par : {user?.full_name || user?.email || '—'}
+          Imprimé par :
           <br />
-          {new Date().toLocaleString('fr-FR')}
+          {user?.full_name || user?.email || '—'}
+          <br />
+          {formatPrintDate(printNow)}
+          <br />
+          {formatPrintTime(printNow)}
           <br />
           Page 1 sur 1
         </p>

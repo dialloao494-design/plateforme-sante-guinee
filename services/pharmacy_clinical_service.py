@@ -11,9 +11,10 @@ from sqlalchemy.orm import Session, joinedload
 
 import models
 from models.user import User
-from schemas.pharmacy_his import PharmacyChargePaymentCreate, PharmacyServiceRequestCreate
+from schemas.pharmacy_his import PharmacyChargePaymentCreate, PharmacyChargePaymentLegacyCreate, PharmacyServiceRequestCreate
 from services.clinic_billing_service import ClinicBillingService
 from services.clinical_register_utils import patient_snapshot
+from services.pharmacy_inventory_service import PharmacyInventoryService
 
 
 class PharmacyClinicalService:
@@ -194,6 +195,19 @@ class PharmacyClinicalService:
         )
 
     @staticmethod
+    def _payment_rows(charge: models.ClinicCharge) -> list[dict]:
+        return [
+            {
+                "id": p.id,
+                "amount_gnf": p.amount_gnf,
+                "payment_method": p.payment_method,
+                "reference": p.reference,
+                "created_at": p.created_at.isoformat() if p.created_at else None,
+            }
+            for p in sorted(charge.payments or [], key=lambda x: x.created_at or datetime.min)
+        ]
+
+    @staticmethod
     def serialize_service_request(db: Session, order: models.PharmacyOrder) -> dict:
         charge = PharmacyClinicalService._charge_for_order(db, order)
         lines = PharmacyClinicalService._line_items_from_order(order)
@@ -203,7 +217,13 @@ class PharmacyClinicalService:
         exemption_percent = float(charge.exemption_percent or 0) if charge else 0
         exemption_amount = int(charge.exemption_amount_gnf or 0) if charge else 0
         total = int(charge.amount_gnf) if charge else subtotal
-        paid = total if charge and charge.payment_status == "paid" else 0
+        paid = int(charge.paid_amount_gnf or 0) if charge else 0
+        if charge and charge.payment_status == "paid" and paid == 0:
+            paid = total
+        payments = PharmacyClinicalService._payment_rows(charge) if charge else []
+        primary_method = charge.payment_method if charge else None
+        if not primary_method and payments:
+            primary_method = payments[-1]["payment_method"]
         return {
             "order_id": order.id,
             "charge_id": charge.id if charge else None,
@@ -215,7 +235,8 @@ class PharmacyClinicalService:
             "paid_amount_gnf": paid,
             "remaining_gnf": max(0, total - paid),
             "payment_status": charge.payment_status if charge else "pending",
-            "payment_method": charge.payment_method if charge else None,
+            "payment_method": primary_method,
+            "payments": payments,
             "items": lines,
         }
 
@@ -241,6 +262,7 @@ class PharmacyClinicalService:
                     "quantity": int(item.quantity),
                     "unit_price_gnf": int(item.unit_price_gnf),
                     "total_gnf": line_total,
+                    "inventory_item_id": item.inventory_item_id,
                 }
             )
         if total <= 0:
@@ -292,46 +314,13 @@ class PharmacyClinicalService:
         return PharmacyClinicalService.serialize_service_request(db, order)
 
     @staticmethod
-    def pay_service_charge(
+    def _finalize_dispense(
         db: Session,
         *,
         clinic_id: int,
-        charge_id: int,
-        payload: PharmacyChargePaymentCreate,
+        charge: models.ClinicCharge,
         actor: User,
-    ) -> dict:
-        charge = (
-            db.query(models.ClinicCharge)
-            .filter(
-                models.ClinicCharge.id == charge_id,
-                models.ClinicCharge.clinic_id == clinic_id,
-                models.ClinicCharge.charge_type == "pharmacy",
-            )
-            .first()
-        )
-        if not charge:
-            raise HTTPException(status_code=404, detail="Facture pharmacie introuvable")
-        subtotal = int(charge.subtotal_amount_gnf or charge.amount_gnf)
-        exemption_percent = float(payload.exemption_percent or 0)
-        exemption_amount = int(subtotal * exemption_percent / 100)
-        net_total = max(0, subtotal - exemption_amount)
-        if payload.amount_received_gnf < net_total:
-            raise HTTPException(
-                status_code=400,
-                detail="Montant reçu insuffisant pour finaliser le paiement",
-            )
-        charge.subtotal_amount_gnf = subtotal
-        charge.exemption_percent = int(round(exemption_percent))
-        charge.exemption_amount_gnf = exemption_amount
-        charge.amount_gnf = net_total
-        db.flush()
-        ClinicBillingService.record_payment(
-            db,
-            charge_id=charge.id,
-            clinic_id=clinic_id,
-            user=actor,
-            payment_method=payload.payment_method,
-        )
+    ) -> models.PharmacyOrder | None:
         order = (
             db.query(models.PharmacyOrder)
             .filter(
@@ -344,19 +333,143 @@ class PharmacyClinicalService:
             order.status = "dispensed"
             order.dispensed_at = datetime.utcnow()
             order.prepared_by_user_id = actor.id
-            db.commit()
-            db.refresh(order)
-        db.refresh(charge)
+            lines = PharmacyClinicalService._line_items_from_order(order)
+            PharmacyInventoryService.deduct_for_lines(db, clinic_id=clinic_id, lines=lines)
+        return order
+
+    @staticmethod
+    def add_charge_payment(
+        db: Session,
+        *,
+        clinic_id: int,
+        charge_id: int,
+        payload: PharmacyChargePaymentCreate,
+        actor: User,
+    ) -> dict:
+        charge = (
+            db.query(models.ClinicCharge)
+            .options(joinedload(models.ClinicCharge.payments))
+            .filter(
+                models.ClinicCharge.id == charge_id,
+                models.ClinicCharge.clinic_id == clinic_id,
+                models.ClinicCharge.charge_type == "pharmacy",
+            )
+            .first()
+        )
+        if not charge:
+            raise HTTPException(status_code=404, detail="Facture pharmacie introuvable")
+        if charge.payment_status == "paid":
+            raise HTTPException(status_code=400, detail="Facture déjà soldée")
+
+        subtotal = int(charge.subtotal_amount_gnf or charge.amount_gnf)
+        if payload.exemption_percent is not None and not charge.payments:
+            exemption_percent = float(payload.exemption_percent)
+            exemption_amount = int(subtotal * exemption_percent / 100)
+            charge.exemption_percent = int(round(exemption_percent))
+            charge.exemption_amount_gnf = exemption_amount
+            charge.amount_gnf = max(0, subtotal - exemption_amount)
+            db.flush()
+
+        net_total = int(charge.amount_gnf)
+        paid_so_far = int(charge.paid_amount_gnf or 0)
+        remaining = max(0, net_total - paid_so_far)
+        if remaining <= 0:
+            raise HTTPException(status_code=400, detail="Facture déjà soldée")
+        if payload.amount_gnf > remaining:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Montant supérieur au reste à payer ({remaining} GNF)",
+            )
+
+        payment = models.ClinicChargePayment(
+            charge_id=charge.id,
+            amount_gnf=int(payload.amount_gnf),
+            payment_method=payload.payment_method,
+            reference=payload.reference,
+            recorded_by_user_id=actor.id,
+        )
+        db.add(payment)
+        charge.paid_amount_gnf = paid_so_far + int(payload.amount_gnf)
+        charge.payment_method = payload.payment_method
+        charge.recorded_by_user_id = actor.id
+        remaining_after = max(0, net_total - charge.paid_amount_gnf)
+        if remaining_after <= 0:
+            charge.payment_status = "paid"
+            charge.paid_at = datetime.utcnow()
+            db.flush()
+            PharmacyClinicalService._finalize_dispense(
+                db, clinic_id=clinic_id, charge=charge, actor=actor
+            )
+        db.commit()
+        charge = (
+            db.query(models.ClinicCharge)
+            .options(joinedload(models.ClinicCharge.payments))
+            .filter(models.ClinicCharge.id == charge.id)
+            .first()
+        )
+        order = (
+            db.query(models.PharmacyOrder)
+            .filter(
+                models.PharmacyOrder.clinic_id == clinic_id,
+                models.PharmacyOrder.id == charge.source_id,
+            )
+            .first()
+        )
         if not order:
             return {
                 "order_id": charge.source_id,
                 "charge_id": charge.id,
                 "patient_id": charge.patient_id,
+                "subtotal_gnf": subtotal,
+                "exemption_percent": float(charge.exemption_percent or 0),
+                "exemption_amount_gnf": int(charge.exemption_amount_gnf or 0),
                 "total_gnf": charge.amount_gnf,
-                "paid_amount_gnf": charge.amount_gnf,
-                "remaining_gnf": 0,
+                "paid_amount_gnf": charge.paid_amount_gnf,
+                "remaining_gnf": max(0, charge.amount_gnf - charge.paid_amount_gnf),
                 "payment_status": charge.payment_status,
                 "payment_method": charge.payment_method,
+                "payments": PharmacyClinicalService._payment_rows(charge),
                 "items": [],
             }
+        db.refresh(order)
         return PharmacyClinicalService.serialize_service_request(db, order)
+
+    @staticmethod
+    def pay_service_charge(
+        db: Session,
+        *,
+        clinic_id: int,
+        charge_id: int,
+        payload: PharmacyChargePaymentLegacyCreate,
+        actor: User,
+    ) -> dict:
+        """Legacy single-shot payment — delegates to add_charge_payment."""
+        subtotal_charge = (
+            db.query(models.ClinicCharge)
+            .filter(
+                models.ClinicCharge.id == charge_id,
+                models.ClinicCharge.clinic_id == clinic_id,
+            )
+            .first()
+        )
+        if not subtotal_charge:
+            raise HTTPException(status_code=404, detail="Facture pharmacie introuvable")
+        subtotal = int(subtotal_charge.subtotal_amount_gnf or subtotal_charge.amount_gnf)
+        exemption_percent = float(payload.exemption_percent or 0)
+        net_total = max(0, subtotal - int(subtotal * exemption_percent / 100))
+        if payload.amount_received_gnf < net_total:
+            raise HTTPException(
+                status_code=400,
+                detail="Montant reçu insuffisant pour finaliser le paiement",
+            )
+        return PharmacyClinicalService.add_charge_payment(
+            db,
+            clinic_id=clinic_id,
+            charge_id=charge_id,
+            payload=PharmacyChargePaymentCreate(
+                payment_method=payload.payment_method,
+                amount_gnf=net_total,
+                exemption_percent=exemption_percent,
+            ),
+            actor=actor,
+        )

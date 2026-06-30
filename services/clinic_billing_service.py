@@ -111,6 +111,7 @@ class ClinicBillingService:
             source_type="pharmacy_order",
             source_id=pharmacy_order_id,
             description=f"Pharmacie — {medications}",
+            subtotal_amount_gnf=amount_gnf,
             amount_gnf=amount_gnf,
             payment_status="pending",
         )

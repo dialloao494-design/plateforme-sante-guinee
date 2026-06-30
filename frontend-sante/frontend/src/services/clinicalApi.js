@@ -275,11 +275,24 @@ const clinicalApi = {
 
   // Pharmacy inventory
   pharmacyInventory: () => httpClient.get('/clinical/pharmacy/inventory'),
+  pharmacyInventorySearch: (q) => httpClient.get('/clinical/pharmacy/inventory/search', { params: { q } }),
   upsertPharmacyInventory: (data) => {
     invalidateApiCache('/clinical/pharmacy/inventory');
     return httpClient.post('/clinical/pharmacy/inventory', data);
   },
+  updatePharmacyInventoryItem: (id, data) => {
+    invalidateApiCache('/clinical/pharmacy/inventory');
+    return httpClient.put(`/clinical/pharmacy/inventory/${id}`, data);
+  },
+  deletePharmacyInventoryItem: (id) => {
+    invalidateApiCache('/clinical/pharmacy/inventory');
+    return httpClient.delete(`/clinical/pharmacy/inventory/${id}`);
+  },
   adjustPharmacyInventory: (id, data) => httpClient.patch(`/clinical/pharmacy/inventory/${id}`, data),
+  addPharmacyChargePayment: (chargeId, data) =>
+    httpClient.post(`/clinical/pharmacy/charges/${chargeId}/payments`, data),
+  pharmacyChargeReceiptUrl: (chargeId) =>
+    `${httpClient.defaults.baseURL}/clinical/pharmacy/charges/${chargeId}/receipt`,
 
   // Bed / room management
   updateHospitalRoom: (roomId, data) => httpClient.patch(`/clinical/hospitalization/rooms/${roomId}`, data),

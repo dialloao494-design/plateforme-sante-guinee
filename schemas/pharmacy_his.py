@@ -33,6 +33,7 @@ class PharmacyServiceLineItem(BaseModel):
     product_name: str = Field(..., min_length=1, max_length=255)
     quantity: int = Field(..., ge=1)
     unit_price_gnf: int = Field(..., ge=0)
+    inventory_item_id: Optional[int] = None
 
 
 class PharmacyServiceRequestCreate(BaseModel):
@@ -46,6 +47,15 @@ class PharmacyServiceLineOut(BaseModel):
     quantity: int
     unit_price_gnf: int
     total_gnf: int
+    inventory_item_id: Optional[int] = None
+
+
+class PharmacyPaymentOut(BaseModel):
+    id: int
+    amount_gnf: int
+    payment_method: str
+    reference: Optional[str] = None
+    created_at: Optional[str] = None
 
 
 class PharmacyServiceRequestResponse(BaseModel):
@@ -60,10 +70,18 @@ class PharmacyServiceRequestResponse(BaseModel):
     remaining_gnf: int
     payment_status: str
     payment_method: Optional[str] = None
+    payments: list[PharmacyPaymentOut] = []
     items: list[PharmacyServiceLineOut]
 
 
 class PharmacyChargePaymentCreate(BaseModel):
+    payment_method: str = Field(..., min_length=1, max_length=32)
+    amount_gnf: int = Field(..., ge=1)
+    reference: Optional[str] = Field(None, max_length=128)
+    exemption_percent: Optional[float] = Field(None, ge=0, le=100)
+
+
+class PharmacyChargePaymentLegacyCreate(BaseModel):
     payment_method: str = Field(..., min_length=1, max_length=32)
     amount_received_gnf: int = Field(..., ge=0)
     exemption_percent: float = Field(0, ge=0, le=100)

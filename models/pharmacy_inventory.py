@@ -18,6 +18,7 @@ class PharmacyInventoryItem(Base):
     quantity = Column(Integer, nullable=False, default=0)
     reorder_level = Column(Integer, nullable=False, default=10)
     unit_price_gnf = Column(Integer, nullable=False, default=25_000)
+    purchase_price_gnf = Column(Integer, nullable=True)
     batch_number = Column(String(64), nullable=True)
     expiry_date = Column(Date, nullable=True)
     supplier = Column(String(128), nullable=True)

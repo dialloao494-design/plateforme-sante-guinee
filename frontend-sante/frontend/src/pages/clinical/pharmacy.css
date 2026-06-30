@@ -552,3 +552,111 @@
   font-size: 0.9rem;
   padding: 1rem 0;
 }
+
+.pharmacy-his-search-row--auto {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pharmacy-his-search-row--auto input {
+  flex: 1;
+}
+
+.pharmacy-med-search {
+  position: relative;
+}
+
+.pharmacy-med-search input {
+  width: 100%;
+}
+
+.pharmacy-med-search-results {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: calc(100% + 2px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.pharmacy-med-search-results li button {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.pharmacy-med-search-results li button:hover {
+  background: #f0fdfa;
+}
+
+.pharmacy-med-search-results li span {
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.pharmacy-stock-form {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.pharmacy-stock-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.pharmacy-stock-row--low td {
+  background: #fffbeb;
+}
+
+.pharmacy-stock-row--out td {
+  background: #fef2f2;
+}
+
+.pharmacy-his-print-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+}
+
+.pharmacy-his-print-table th,
+.pharmacy-his-print-table td {
+  border: 1px solid #334155;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.pharmacy-his-print-totals,
+.pharmacy-his-print-payments {
+  margin: 0.75rem 0;
+  font-size: 0.92rem;
+}
+
+.pharmacy-his-print-payments ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.pharmacy-his-print-footer {
+  margin-top: 1.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #cbd5e1;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}

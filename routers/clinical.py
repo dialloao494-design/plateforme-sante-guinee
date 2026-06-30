@@ -65,6 +65,7 @@ from schemas.clinical import (
 from schemas.pharmacy_inventory import (
     PharmacyInventoryAdjust,
     PharmacyInventoryItemResponse,
+    PharmacyInventoryUpdate,
     PharmacyInventoryUpsert,
 )
 from security import get_current_user, hash_password, validate_password
@@ -899,6 +900,7 @@ def _inventory_response(item: models.PharmacyInventoryItem) -> PharmacyInventory
         quantity=item.quantity,
         reorder_level=item.reorder_level,
         unit_price_gnf=item.unit_price_gnf,
+        purchase_price_gnf=item.purchase_price_gnf,
         low_stock=item.quantity <= item.reorder_level,
         out_of_stock=item.quantity <= 0,
         batch_number=item.batch_number,
@@ -1019,11 +1021,60 @@ def pharmacy_inventory_upsert(
         quantity=body.quantity,
         reorder_level=body.reorder_level,
         unit_price_gnf=body.unit_price_gnf,
+        purchase_price_gnf=body.purchase_price_gnf,
         batch_number=body.batch_number,
         expiry_date=body.expiry_date,
         supplier=body.supplier,
     )
     return _inventory_response(item)
+
+
+@router.get("/pharmacy/inventory/search", response_model=List[PharmacyInventoryItemResponse])
+def pharmacy_inventory_search(
+    q: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from services.pharmacy_inventory_service import PharmacyInventoryService
+
+    assert_role(current_user, PHARMACY_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    items = PharmacyInventoryService.search_items(db, clinic_id=clinic.id, query=q)
+    return [_inventory_response(i) for i in items]
+
+
+@router.put("/pharmacy/inventory/{item_id}", response_model=PharmacyInventoryItemResponse)
+def pharmacy_inventory_update(
+    item_id: int,
+    body: PharmacyInventoryUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from services.pharmacy_inventory_service import PharmacyInventoryService
+
+    assert_role(current_user, PHARMACY_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    item = PharmacyInventoryService.update_item(
+        db,
+        clinic_id=clinic.id,
+        item_id=item_id,
+        **body.model_dump(exclude_unset=True),
+    )
+    return _inventory_response(item)
+
+
+@router.delete("/pharmacy/inventory/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+def pharmacy_inventory_delete(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from services.pharmacy_inventory_service import PharmacyInventoryService
+
+    assert_role(current_user, PHARMACY_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    PharmacyInventoryService.delete_item(db, clinic_id=clinic.id, item_id=item_id)
+    return None
 
 
 @router.patch("/pharmacy/inventory/{item_id}", response_model=PharmacyInventoryItemResponse)

@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from typing import List, Optional
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from fastapi.responses import Response
+from sqlalchemy.orm import Session, joinedload
 
 import models
 from core.clinical_access import resolve_clinic_for_user
@@ -15,6 +18,7 @@ from models.user import User
 from schemas.clinical import DoctorMedicineDeliveryCreate, DoctorMedicineDeliveryResponse
 from schemas.pharmacy_his import (
     PharmacyChargePaymentCreate,
+    PharmacyChargePaymentLegacyCreate,
     PharmacyPatientOut,
     PharmacyServiceRequestCreate,
     PharmacyServiceRequestResponse,
@@ -105,7 +109,7 @@ def create_pharmacy_service_request(
 @router.post("/charges/{charge_id}/pay", response_model=PharmacyServiceRequestResponse)
 def pay_pharmacy_service_charge(
     charge_id: int,
-    body: PharmacyChargePaymentCreate,
+    body: PharmacyChargePaymentLegacyCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -117,6 +121,99 @@ def pay_pharmacy_service_charge(
         charge_id=charge_id,
         payload=body,
         actor=current_user,
+    )
+
+
+@router.post("/charges/{charge_id}/payments", response_model=PharmacyServiceRequestResponse)
+def add_pharmacy_charge_payment(
+    charge_id: int,
+    body: PharmacyChargePaymentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, PHARMACY_WRITE)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return PharmacyClinicalService.add_charge_payment(
+        db,
+        clinic_id=clinic.id,
+        charge_id=charge_id,
+        payload=body,
+        actor=current_user,
+    )
+
+
+@router.get("/charges/{charge_id}/receipt")
+def pharmacy_charge_receipt(
+    charge_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from services.pdf_service import invoice_pdf
+
+    _require_role(current_user, PHARMACY_READ)
+    clinic = resolve_clinic_for_user(db, current_user)
+    charge = (
+        db.query(models.ClinicCharge)
+        .options(joinedload(models.ClinicCharge.payments), joinedload(models.ClinicCharge.patient))
+        .filter(
+            models.ClinicCharge.id == charge_id,
+            models.ClinicCharge.clinic_id == clinic.id,
+            models.ClinicCharge.charge_type == "pharmacy",
+        )
+        .first()
+    )
+    if not charge:
+        raise HTTPException(status_code=404, detail="Facture pharmacie introuvable")
+    order = (
+        db.query(models.PharmacyOrder)
+        .filter(
+            models.PharmacyOrder.clinic_id == clinic.id,
+            models.PharmacyOrder.id == charge.source_id,
+        )
+        .first()
+    )
+    lines = PharmacyClinicalService._line_items_from_order(order) if order else []
+    items = [
+        {
+            "description": l.get("product_name", "—"),
+            "quantity": l.get("quantity", 1),
+            "unit_price_gnf": l.get("unit_price_gnf", 0),
+            "amount_gnf": l.get("total_gnf", 0),
+        }
+        for l in lines
+    ]
+    method_labels = {
+        "cash": "Espèces",
+        "orange_money": "Orange Money",
+        "bank_transfer": "Virement",
+        "card": "Carte bancaire",
+        "insurance": "Assurance",
+    }
+    payment_lines = []
+    for p in charge.payments or []:
+        label = method_labels.get(p.payment_method, p.payment_method)
+        payment_lines.append(f"{label} … {p.amount_gnf:,} GNF".replace(",", " "))
+    patient_name = "—"
+    if charge.patient:
+        patient_name = f"{charge.patient.last_name} {charge.patient.first_name}".strip()
+    now = datetime.utcnow()
+    pdf_bytes = invoice_pdf(
+        f"PHARM-{charge.id}",
+        patient_name,
+        items,
+        subtotal=int(charge.subtotal_amount_gnf or charge.amount_gnf),
+        exemption_percent=float(charge.exemption_percent or 0),
+        exemption_amount=int(charge.exemption_amount_gnf or 0),
+        total=int(charge.amount_gnf),
+        paid=int(charge.paid_amount_gnf or 0),
+        payment_methods=payment_lines,
+        printed_by=current_user.full_name or current_user.email or "—",
+        printed_at=now.strftime("%d/%m/%Y %H:%M"),
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="recu-pharmacie-{charge.id}.pdf"'},
     )
 
 

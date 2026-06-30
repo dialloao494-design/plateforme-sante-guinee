@@ -37,6 +37,7 @@ class ClinicCharge(Base):
 
     recorded_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     paid_at = Column(DateTime, nullable=True)
+    paid_amount_gnf = Column(Integer, nullable=False, default=0)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -46,3 +47,4 @@ class ClinicCharge(Base):
     visit = relationship("ClinicalVisit", back_populates="charges")
     invoice = relationship("Invoice", foreign_keys=[invoice_id])
     invoice_item = relationship("InvoiceItem", back_populates="clinic_charge", uselist=False)
+    payments = relationship("ClinicChargePayment", back_populates="charge", cascade="all, delete-orphan")
