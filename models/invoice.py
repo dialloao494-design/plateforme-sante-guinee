@@ -19,6 +19,9 @@ class Invoice(Base):
     department = Column(String(128), nullable=True, index=True)
     status = Column(String(32), nullable=False, default="draft", index=True)
     # draft | issued | partially_paid | paid | cancelled
+    subtotal_amount_gnf = Column(Integer, nullable=False, default=0)
+    exemption_percent = Column(Integer, nullable=False, default=0)
+    exemption_amount_gnf = Column(Integer, nullable=False, default=0)
     total_amount_gnf = Column(Integer, nullable=False, default=0)
     paid_amount_gnf = Column(Integer, nullable=False, default=0)
     notes = Column(Text, nullable=True)

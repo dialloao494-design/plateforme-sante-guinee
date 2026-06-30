@@ -1577,3 +1577,64 @@
   }
 }
 
+.reception-his-multi-service {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.reception-his-multi-service-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.reception-his-multi-service-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.35rem 0.75rem;
+}
+
+.reception-his-billing-quick-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.reception-his-billing-lines {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.9rem;
+}
+
+.reception-his-billing-lines th,
+.reception-his-billing-lines td {
+  border: 1px solid #e2e8f0;
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+}
+
+.reception-his-lab-search-results {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  max-height: 200px;
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.reception-his-lab-search-results button {
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.65rem;
+  border: none;
+  background: #fff;
+  cursor: pointer;
+}
+
+.reception-his-lab-search-results button:hover {
+  background: #f0fdfa;
+}
+

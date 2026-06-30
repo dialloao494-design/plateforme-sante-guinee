@@ -112,12 +112,19 @@ class ReceptionAdmissionCreate(BaseModel):
     patient_id: int
     admission_date: date
     admission_time: Optional[time] = None
-    department: str = Field(..., min_length=1, max_length=128)
+    department: Optional[str] = Field(None, max_length=128)
+    services: List[str] = Field(default_factory=list)
     attending_clinician_user_id: Optional[int] = None
     attending_physician_name: Optional[str] = None
     admission_type: Literal["emergency", "outpatient", "hospitalization"]
     confirmation_status: Optional[Literal["confirmed", "pending"]] = None
     notes: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _require_service(self):
+        if self.services or (self.department and self.department.strip()):
+            return self
+        raise ValueError("Sélectionnez au moins un service")
 
 
 class ReceptionAdmissionResponse(BaseModel):
@@ -126,6 +133,7 @@ class ReceptionAdmissionResponse(BaseModel):
     patient_id: int
     patient_name: Optional[str] = None
     department: Optional[str] = None
+    services: List[str] = []
     admission_type: Optional[str] = None
     status: str
     admitted_at: Optional[datetime] = None
@@ -135,12 +143,43 @@ class ReceptionAdmissionResponse(BaseModel):
         from_attributes = True
 
 
+class ReceptionInvoiceLineItem(BaseModel):
+    charge_type: str = Field(..., min_length=1, max_length=32)
+    description: str = Field(..., min_length=1)
+    quantity: int = Field(1, ge=1)
+    unit_price_gnf: int = Field(..., ge=0)
+    source_type: Optional[str] = "reception"
+    source_ref: Optional[str] = None
+
+
 class ReceptionInvoiceCreate(BaseModel):
     patient_id: int
     department: str = Field(..., min_length=1, max_length=128)
-    description: str = Field(..., min_length=1)
-    total_amount_gnf: int = Field(..., ge=0)
+    description: Optional[str] = None
+    total_amount_gnf: Optional[int] = Field(None, ge=0)
+    items: Optional[List[ReceptionInvoiceLineItem]] = None
+    exemption_percent: float = Field(0, ge=0, le=100)
     billing_date: Optional[date] = None
+
+    @model_validator(mode="after")
+    def _require_lines_or_legacy(self):
+        if self.items:
+            return self
+        if self.description and self.total_amount_gnf is not None:
+            return self
+        raise ValueError("Fournir items[] ou description + total_amount_gnf")
+
+
+class InvoiceItemOut(BaseModel):
+    id: int
+    charge_type: str
+    description: str
+    quantity: int
+    unit_price_gnf: int
+    amount_gnf: int
+
+    class Config:
+        from_attributes = True
 
 
 class ReceptionPaymentCreate(BaseModel):
@@ -167,11 +206,15 @@ class ReceptionInvoiceResponse(BaseModel):
     patient_name: Optional[str] = None
     department: Optional[str] = None
     status: str
+    subtotal_amount_gnf: int = 0
+    exemption_percent: float = 0
+    exemption_amount_gnf: int = 0
     total_amount_gnf: int
     paid_amount_gnf: int
     remaining_balance_gnf: int
     issued_at: Optional[datetime] = None
     description: Optional[str] = None
+    items: List[InvoiceItemOut] = []
     payments: List[PaymentRecordOut] = []
 
     class Config:

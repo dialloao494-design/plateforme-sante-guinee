@@ -5,7 +5,8 @@ from __future__ import annotations
 from io import BytesIO
 from pathlib import Path
 
-CLINIC_PRINT_NAME = "POLYCLINIQUE MÉDICO-CHIRURGICALE AASMA"
+CLINIC_PRINT_NAME = "CHFM – POLYCLINIQUE AASMA"
+CLINIC_PRINT_NAME_FULL = "POLYCLINIQUE MÉDICO-CHIRURGICALE AASMA"
 LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "branding" / "aasma-clinic-logo.png"
 LOGO_DISPLAY_WIDTH = 140  # points (~140 px at 72 dpi)
 PAGE_WIDTH = 595
@@ -139,17 +140,69 @@ def build_simple_pdf(title: str, lines: list[str]) -> bytes:
     return buf.getvalue()
 
 
-def invoice_pdf(invoice_number: str, patient_name: str, items: list[dict], total: int, paid: int) -> bytes:
+def _gnf(amount: int) -> str:
+    return f"{int(amount):,} GNF".replace(",", " ")
+
+
+def invoice_pdf(
+    invoice_number: str,
+    patient_name: str,
+    items: list[dict],
+    *,
+    subtotal: int,
+    exemption_percent: float = 0,
+    exemption_amount: int = 0,
+    total: int,
+    paid: int,
+    payment_methods: list[str] | None = None,
+    printed_by: str = "",
+    printed_at: str = "",
+) -> bytes:
+    remaining = max(0, total - paid)
     lines = [
         f"Patient: {patient_name}",
         f"Facture: {invoice_number}",
         "",
-        "Détail:",
+        "Produit / Service          Qté   Prix U        Total",
+        "--------------------------------------------------------",
     ]
     for item in items:
-        lines.append(f"- {item['description']}: {item['amount_gnf']:,} GNF".replace(",", " "))
-    lines.extend(["", f"Total: {total:,} GNF".replace(",", " "), f"Payé: {paid:,} GNF".replace(",", " ")])
-    return build_simple_pdf("FACTURE — Plateforme Santé Guinée", lines)
+        desc = str(item.get("description", "—"))[:26]
+        qty = int(item.get("quantity") or 1)
+        unit = int(item.get("unit_price_gnf") or item.get("amount_gnf") or 0)
+        amt = int(item.get("amount_gnf") or qty * unit)
+        lines.append(f"{desc:<26} {qty:>3} {_gnf(unit):>12} {_gnf(amt):>12}")
+    lines.extend(
+        [
+            "",
+            "Récapitulatif paiement",
+            f"Montant total: {_gnf(subtotal)}",
+            f"Exemption (%): {exemption_percent:.0f}%",
+            f"Montant exemption: {_gnf(exemption_amount)}",
+            f"Nouveau total: {_gnf(total)}",
+            f"Montant reçu: {_gnf(paid)}",
+            f"Reste à payer: {_gnf(remaining)}",
+            f"Mode(s) de paiement: {', '.join(payment_methods or []) or '—'}",
+            "",
+            f"Imprimé par: {printed_by or '—'}",
+            printed_at or "",
+            "Page 1 sur 1",
+        ]
+    )
+    return build_simple_pdf("FACTURE", lines)
+
+
+def invoice_pdf_legacy(invoice_number: str, patient_name: str, items: list[dict], total: int, paid: int) -> bytes:
+    """Backward-compatible wrapper."""
+    subtotal = sum(int(i.get("amount_gnf") or 0) for i in items) or total
+    return invoice_pdf(
+        invoice_number,
+        patient_name,
+        items,
+        subtotal=subtotal,
+        total=total,
+        paid=paid,
+    )
 
 
 def discharge_pdf(patient_name: str, summary: dict) -> bytes:
@@ -177,7 +230,7 @@ def imaging_report_pdf(patient_name: str, order: dict, result: dict) -> bytes:
         f"Conclusion: {result.get('impression') or '—'}",
         f"Recommandations: {result.get('recommendations') or '—'}",
     ]
-    return build_simple_pdf("COMPTE-RENDU IMAGERIE — Plateforme Santé Guinée", lines)
+    return build_simple_pdf("COMPTE-RENDU IMAGERIE MÉDICALE", lines)
 
 
 def lab_result_pdf(patient_name: str, result: dict) -> bytes:
@@ -190,7 +243,7 @@ def lab_result_pdf(patient_name: str, result: dict) -> bytes:
         f"Interprétation: {result.get('interpretation') or '—'}",
         f"Validé le: {result.get('validated_at') or '—'}",
     ]
-    return build_simple_pdf("RÉSULTAT LABORATOIRE — Plateforme Santé Guinée", lines)
+    return build_simple_pdf("RÉSULTAT LABORATOIRE", lines)
 
 
 def clinical_report_pdf(summary: dict) -> bytes:

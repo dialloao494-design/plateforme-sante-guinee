@@ -302,11 +302,17 @@ class ReceptionHisService:
         if payload.admission_type == "emergency":
             status = "in_care"
 
+        services = [s.strip() for s in (payload.services or []) if s and str(s).strip()]
+        if not services and payload.department:
+            services = [payload.department.strip()]
+        department_label = ", ".join(services)
+
         admission = models.Admission(
             clinic_id=clinic_id,
             patient_id=payload.patient_id,
             admission_number=_admission_number(db, clinic_id),
-            department=payload.department.strip(),
+            department=department_label,
+            services_json=json.dumps(services, ensure_ascii=False),
             admission_type=payload.admission_type,
             status=status,
             attending_clinician_user_id=payload.attending_clinician_user_id,
@@ -345,30 +351,67 @@ class ReceptionHisService:
         issued_at = datetime.utcnow()
         if payload.billing_date:
             issued_at = datetime.combine(payload.billing_date, time.min)
+
+        line_payloads = []
+        if payload.items:
+            for row in payload.items:
+                amt = int(row.quantity) * int(row.unit_price_gnf)
+                line_payloads.append(
+                    {
+                        "charge_type": row.charge_type,
+                        "description": row.description.strip(),
+                        "quantity": int(row.quantity),
+                        "unit_price_gnf": int(row.unit_price_gnf),
+                        "amount_gnf": amt,
+                        "source_type": row.source_type or "reception",
+                    }
+                )
+        else:
+            total = int(payload.total_amount_gnf or 0)
+            line_payloads.append(
+                {
+                    "charge_type": "procedure",
+                    "description": (payload.description or "").strip(),
+                    "quantity": 1,
+                    "unit_price_gnf": total,
+                    "amount_gnf": total,
+                    "source_type": "reception",
+                }
+            )
+
+        subtotal = sum(int(l["amount_gnf"]) for l in line_payloads)
+        exemption_percent = float(payload.exemption_percent or 0)
+        exemption_amount = int(subtotal * exemption_percent / 100)
+        net_total = max(0, subtotal - exemption_amount)
+
         invoice = models.Invoice(
             clinic_id=clinic_id,
             patient_id=payload.patient_id,
             invoice_number=_invoice_number(db, clinic_id),
             department=payload.department.strip(),
             status="issued",
-            total_amount_gnf=payload.total_amount_gnf,
+            subtotal_amount_gnf=subtotal,
+            exemption_percent=int(round(exemption_percent)),
+            exemption_amount_gnf=exemption_amount,
+            total_amount_gnf=net_total,
             paid_amount_gnf=0,
             issued_at=issued_at,
             created_by_user_id=actor.id,
         )
         db.add(invoice)
         db.flush()
-        item = models.InvoiceItem(
-            invoice_id=invoice.id,
-            charge_type="procedure",
-            source_type="reception",
-            source_id=invoice.id,
-            description=payload.description.strip(),
-            quantity=1,
-            unit_price_gnf=payload.total_amount_gnf,
-            amount_gnf=payload.total_amount_gnf,
-        )
-        db.add(item)
+        for idx, line in enumerate(line_payloads):
+            item = models.InvoiceItem(
+                invoice_id=invoice.id,
+                charge_type=line["charge_type"],
+                source_type=line["source_type"],
+                source_id=invoice.id * 1000 + idx,
+                description=line["description"],
+                quantity=line["quantity"],
+                unit_price_gnf=line["unit_price_gnf"],
+                amount_gnf=line["amount_gnf"],
+            )
+            db.add(item)
         db.commit()
         db.refresh(invoice)
         log_cis(

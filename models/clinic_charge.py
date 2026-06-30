@@ -22,6 +22,9 @@ class ClinicCharge(Base):
     source_id = Column(Integer, nullable=False, index=True)
 
     description = Column(Text, nullable=False)
+    subtotal_amount_gnf = Column(Integer, nullable=True)
+    exemption_percent = Column(Integer, nullable=False, default=0)
+    exemption_amount_gnf = Column(Integer, nullable=False, default=0)
     amount_gnf = Column(Integer, nullable=False, default=0)
 
     payment_status = Column(String(32), default="pending", nullable=False, index=True)

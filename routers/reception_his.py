@@ -31,6 +31,7 @@ from schemas.reception_his import (
     RefundResponse,
     RefundStatusUpdate,
     PaymentRecordOut,
+    InvoiceItemOut,
 )
 from security import get_current_user
 from services.reception_his_service import ReceptionHisService
@@ -73,6 +74,20 @@ def _invoice_out(invoice: models.Invoice) -> ReceptionInvoiceResponse:
         status = "partially_paid"
     elif status == "issued" and invoice.paid_amount_gnf == 0:
         status = "unpaid"
+    items_out = [
+        InvoiceItemOut(
+            id=i.id,
+            charge_type=i.charge_type,
+            description=i.description,
+            quantity=i.quantity,
+            unit_price_gnf=i.unit_price_gnf,
+            amount_gnf=i.amount_gnf,
+        )
+        for i in (invoice.items or [])
+    ]
+    subtotal = int(getattr(invoice, "subtotal_amount_gnf", None) or invoice.total_amount_gnf or 0)
+    exemption_percent = float(getattr(invoice, "exemption_percent", None) or 0)
+    exemption_amount = int(getattr(invoice, "exemption_amount_gnf", None) or 0)
     return ReceptionInvoiceResponse(
         id=invoice.id,
         invoice_number=invoice.invoice_number,
@@ -80,11 +95,15 @@ def _invoice_out(invoice: models.Invoice) -> ReceptionInvoiceResponse:
         patient_name=patient_name,
         department=invoice.department,
         status=status,
+        subtotal_amount_gnf=subtotal,
+        exemption_percent=exemption_percent,
+        exemption_amount_gnf=exemption_amount,
         total_amount_gnf=invoice.total_amount_gnf,
         paid_amount_gnf=invoice.paid_amount_gnf,
         remaining_balance_gnf=remaining,
         issued_at=invoice.issued_at,
         description=description,
+        items=items_out,
         payments=payments,
     )
 
@@ -116,6 +135,49 @@ def _refund_out(refund: models.ClinicRefund) -> RefundResponse:
         approved_at=refund.approved_at,
         paid_at=refund.paid_at,
     )
+
+
+@router.get("/billing-catalog")
+def billing_catalog(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Consultation, imaging and lab tariffs for reception billing."""
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    from data.aasma_billing_catalog import (
+        ADMISSION_SERVICES,
+        CONSULTATION_SERVICES,
+        IMAGING_EXAMINATIONS,
+        BILLING_DEPARTMENTS,
+    )
+
+    lab_tests = []
+    try:
+        from services.lab_clinical_service import LabClinicalService
+
+        catalog = LabClinicalService.catalog_payload(db, clinic_id=clinic.id)
+        for cat in catalog.get("categories") or []:
+            for test in cat.get("tests") or []:
+                lab_tests.append(
+                    {
+                        "code": test.get("code"),
+                        "name": test.get("name"),
+                        "category": cat.get("label"),
+                        "price_gnf": test.get("price_gnf"),
+                        "charge_type": "laboratory",
+                    }
+                )
+    except Exception:
+        lab_tests = []
+
+    return {
+        "admission_services": ADMISSION_SERVICES,
+        "consultation_services": CONSULTATION_SERVICES,
+        "imaging_examinations": IMAGING_EXAMINATIONS,
+        "billing_departments": BILLING_DEPARTMENTS,
+        "lab_tests": lab_tests,
+    }
 
 
 @router.get("/dashboard", response_model=ReceptionDashboardStats)
@@ -233,12 +295,23 @@ def create_admission(
     )
     patient = db.query(models.Patient).filter(models.Patient.id == admission.patient_id).first()
     patient_name = f"{patient.first_name} {patient.last_name}".strip() if patient else None
+    import json
+
+    services = []
+    if admission.services_json:
+        try:
+            services = json.loads(admission.services_json)
+        except (TypeError, json.JSONDecodeError):
+            services = []
+    if not services and admission.department:
+        services = [s.strip() for s in admission.department.split(",") if s.strip()]
     return ReceptionAdmissionResponse(
         id=admission.id,
         admission_number=admission.admission_number,
         patient_id=admission.patient_id,
         patient_name=patient_name,
         department=admission.department,
+        services=services,
         admission_type=admission.admission_type,
         status=admission.status,
         admitted_at=admission.admitted_at,
@@ -415,14 +488,36 @@ def print_receipt(
         from fastapi import HTTPException
 
         raise HTTPException(status_code=404, detail="Facture introuvable")
+    from datetime import datetime
+
     from services.pdf_service import invoice_pdf as build_invoice_pdf
 
     patient_name = (
         f"{invoice.patient.first_name} {invoice.patient.last_name}".strip() if invoice.patient else "—"
     )
-    items = [{"description": i.description, "amount_gnf": i.amount_gnf} for i in (invoice.items or [])]
+    items = [
+        {
+            "description": i.description,
+            "quantity": i.quantity,
+            "unit_price_gnf": i.unit_price_gnf,
+            "amount_gnf": i.amount_gnf,
+        }
+        for i in (invoice.items or [])
+    ]
+    methods = list({p.payment_method for p in (invoice.payments or []) if p.payment_method})
+    subtotal = int(getattr(invoice, "subtotal_amount_gnf", None) or invoice.total_amount_gnf or 0)
     pdf_bytes = build_invoice_pdf(
-        invoice.invoice_number, patient_name, items, invoice.total_amount_gnf, invoice.paid_amount_gnf
+        invoice.invoice_number,
+        patient_name,
+        items,
+        subtotal=subtotal,
+        exemption_percent=float(getattr(invoice, "exemption_percent", None) or 0),
+        exemption_amount=int(getattr(invoice, "exemption_amount_gnf", None) or 0),
+        total=invoice.total_amount_gnf,
+        paid=invoice.paid_amount_gnf,
+        payment_methods=methods,
+        printed_by=(current_user.full_name or current_user.email or "—"),
+        printed_at=datetime.now().strftime("%d/%m/%Y %H:%M"),
     )
     return Response(
         content=pdf_bytes,

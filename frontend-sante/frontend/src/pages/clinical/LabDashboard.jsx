@@ -8,7 +8,6 @@ import './clinical.css';
 
 const TABS = [
   { id: 'workflow', label: 'Tableau de bord Labo', shortcut: '1' },
-  { id: 'catalog', label: 'Catalogue tarifaire', shortcut: '2' },
 ];
 
 const SAMPLE_TYPES = ['Sang', 'Urine', 'Selles', 'LCR', 'Écouvillon', 'Autre'];
@@ -463,8 +462,9 @@ export default function LabDashboard() {
           <p className="reception-his-eyebrow">Plateforme Santé · Guinée</p>
           <h1>Tableau de bord — Laboratoire</h1>
           <p className="clinical-lead">
-            Examens biologiques, prélèvement, résultats et catalogue tarifaire — {user?.clinic_name || 'Clinique'}
+            Examens biologiques, prélèvement et résultats — {user?.clinic_name || 'Clinique'}
           </p>
+          <p className="clinical-hint">Le catalogue tarifaire est géré à la Réception (onglet Facturation).</p>
         </div>
         <div className="reception-his-search">
           <label htmlFor="lab-patient-search">
@@ -825,64 +825,9 @@ export default function LabDashboard() {
 
       {tab === 'catalog' && (
         <section className="reception-his-form-sheet">
-          <div className="lab-catalog-toolbar">
-            <div>
-              <h2>Catalogue tarifaire laboratoire</h2>
-              <p className="clinical-lead">
-                {catalogMeta.total_categories} catégories · {catalogMeta.total_tests} analyses (GNF)
-              </p>
-            </div>
-            <button
-              type="button"
-              className="clinical-btn"
-              onClick={saveCatalogPrices}
-              disabled={savingPrices || catalog.length === 0}
-            >
-              {savingPrices ? 'Enregistrement…' : 'Enregistrer les tarifs'}
-            </button>
-          </div>
-          <label className="clinical-field">
-            Rechercher une analyse
-            <input
-              value={catalogSearchQ}
-              onChange={(e) => setCatalogSearchQ(e.target.value)}
-              placeholder="Nom, code ou catégorie…"
-            />
-          </label>
-          <div className="lab-his-catalog-scroll">
-            <table className="lab-his-catalog-table">
-              <thead>
-                <tr>
-                  <th>Analyse</th>
-                  <th>Catégorie</th>
-                  <th>Prix (GNF)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {catalogTableRows.map((test) => (
-                  <tr key={test.code}>
-                    <td>{test.name}</td>
-                    <td>{test.category_label}</td>
-                    <td>
-                      <input
-                        type="number"
-                        min="0"
-                        step="500"
-                        value={priceEdits[test.code] ?? ''}
-                        onChange={(e) => setPriceEdits((p) => ({ ...p, [test.code]: e.target.value }))}
-                        style={{ width: '120px' }}
-                      />
-                    </td>
-                  </tr>
-                ))}
-                {catalogTableRows.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="reception-his-empty-row">Aucune analyse trouvée.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <p className="clinical-hint">
+            Le catalogue tarifaire laboratoire a été déplacé vers le module Réception → onglet Facturation.
+          </p>
         </section>
       )}
     </div>

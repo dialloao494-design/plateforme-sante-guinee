@@ -1190,6 +1190,7 @@ def ensure_reception_his_schema(engine: Engine) -> None:
         for col, col_type in (
             ("department", "VARCHAR(128)"),
             ("admission_type", "VARCHAR(32)"),
+            ("services_json", "TEXT"),
         ):
             if col not in cols:
                 try:
@@ -1201,13 +1202,34 @@ def ensure_reception_his_schema(engine: Engine) -> None:
 
     if "invoices" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("invoices")}
-        if "department" not in cols:
-            try:
-                with engine.begin() as conn:
-                    conn.execute(text("ALTER TABLE invoices ADD COLUMN department VARCHAR(128)"))
-                logger.info("Added invoices.department")
-            except Exception as exc:
-                logger.warning("invoices.department migration skipped: %s", exc)
+        for col, col_type in (
+            ("department", "VARCHAR(128)"),
+            ("subtotal_amount_gnf", "INTEGER DEFAULT 0"),
+            ("exemption_percent", "INTEGER DEFAULT 0"),
+            ("exemption_amount_gnf", "INTEGER DEFAULT 0"),
+        ):
+            if col not in cols:
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE invoices ADD COLUMN {col} {col_type}"))
+                    logger.info("Added invoices.%s", col)
+                except Exception as exc:
+                    logger.warning("invoices.%s migration skipped: %s", col, exc)
+
+    if "clinic_charges" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("clinic_charges")}
+        for col, col_type in (
+            ("subtotal_amount_gnf", "INTEGER"),
+            ("exemption_percent", "INTEGER DEFAULT 0"),
+            ("exemption_amount_gnf", "INTEGER DEFAULT 0"),
+        ):
+            if col not in cols:
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE clinic_charges ADD COLUMN {col} {col_type}"))
+                    logger.info("Added clinic_charges.%s", col)
+                except Exception as exc:
+                    logger.warning("clinic_charges.%s migration skipped: %s", col, exc)
 
     if "clinic_refunds" not in insp.get_table_names():
         stmt = f"""

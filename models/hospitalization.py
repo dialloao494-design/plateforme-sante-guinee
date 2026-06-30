@@ -52,6 +52,7 @@ class Admission(Base):
     consultation_id = Column(Integer, ForeignKey("consultations.id"), nullable=True, index=True)
     admission_number = Column(String(32), nullable=False, unique=True, index=True)
     department = Column(String(128), nullable=True, index=True)
+    services_json = Column(Text, nullable=True)
     admission_type = Column(String(32), nullable=True, index=True)
     # emergency | outpatient | hospitalization
     status = Column(String(32), nullable=False, default="pending", index=True)

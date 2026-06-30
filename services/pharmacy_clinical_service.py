@@ -197,12 +197,20 @@ class PharmacyClinicalService:
     def serialize_service_request(db: Session, order: models.PharmacyOrder) -> dict:
         charge = PharmacyClinicalService._charge_for_order(db, order)
         lines = PharmacyClinicalService._line_items_from_order(order)
-        total = charge.amount_gnf if charge else sum(int(l.get("total_gnf") or 0) for l in lines)
-        paid = charge.amount_gnf if charge and charge.payment_status == "paid" else 0
+        subtotal = int(charge.subtotal_amount_gnf or charge.amount_gnf) if charge else sum(
+            int(l.get("total_gnf") or 0) for l in lines
+        )
+        exemption_percent = float(charge.exemption_percent or 0) if charge else 0
+        exemption_amount = int(charge.exemption_amount_gnf or 0) if charge else 0
+        total = int(charge.amount_gnf) if charge else subtotal
+        paid = total if charge and charge.payment_status == "paid" else 0
         return {
             "order_id": order.id,
             "charge_id": charge.id if charge else None,
             "patient_id": order.patient_id,
+            "subtotal_gnf": subtotal,
+            "exemption_percent": exemption_percent,
+            "exemption_amount_gnf": exemption_amount,
             "total_gnf": total,
             "paid_amount_gnf": paid,
             "remaining_gnf": max(0, total - paid),
@@ -303,11 +311,20 @@ class PharmacyClinicalService:
         )
         if not charge:
             raise HTTPException(status_code=404, detail="Facture pharmacie introuvable")
-        if payload.amount_received_gnf < charge.amount_gnf:
+        subtotal = int(charge.subtotal_amount_gnf or charge.amount_gnf)
+        exemption_percent = float(payload.exemption_percent or 0)
+        exemption_amount = int(subtotal * exemption_percent / 100)
+        net_total = max(0, subtotal - exemption_amount)
+        if payload.amount_received_gnf < net_total:
             raise HTTPException(
                 status_code=400,
                 detail="Montant reçu insuffisant pour finaliser le paiement",
             )
+        charge.subtotal_amount_gnf = subtotal
+        charge.exemption_percent = int(round(exemption_percent))
+        charge.exemption_amount_gnf = exemption_amount
+        charge.amount_gnf = net_total
+        db.flush()
         ClinicBillingService.record_payment(
             db,
             charge_id=charge.id,

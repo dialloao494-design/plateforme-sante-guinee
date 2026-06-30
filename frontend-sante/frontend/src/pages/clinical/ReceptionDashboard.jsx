@@ -13,7 +13,23 @@ const TABS = [
   { id: 'refund', label: 'Remboursement', shortcut: '5' },
 ];
 
-const DEPARTMENTS = ['Urgences', 'Consultation externe', 'Laboratoire', 'Pharmacie', 'Hospitalisation', 'Radiologie'];
+const DEFAULT_ADMISSION_SERVICES = [
+  'Consultation urgences',
+  'Consultation spécialisée',
+  'Consultation externe',
+  'Laboratoire',
+  'Pharmacie',
+  'Hospitalisation',
+  'Imagerie médicale',
+];
+const DEFAULT_BILLING_DEPARTMENTS = [
+  'Consultation externe',
+  'Laboratoire',
+  'Pharmacie',
+  'Hospitalisation',
+  'Imagerie médicale',
+  'Urgences',
+];
 const ADMISSION_TYPES = [
   { value: 'emergency', label: 'Urgence' },
   { value: 'outpatient', label: 'Consultation externe' },
@@ -97,7 +113,7 @@ const EMPTY_REG = {
 const EMPTY_ADMISSION = {
   admission_date: todayStr,
   admission_time: new Date().toTimeString().slice(0, 5),
-  department: 'Consultation externe',
+  services: ['Consultation externe'],
   admission_type: 'outpatient',
   attending_clinician_user_id: '',
   attending_physician_name: '',
@@ -105,7 +121,11 @@ const EMPTY_ADMISSION = {
   notes: '',
 };
 
-const EMPTY_BILLING = { billing_date: todayStr, department: 'Consultation externe', description: '', total_amount_gnf: '' };
+const EMPTY_BILLING = {
+  billing_date: todayStr,
+  department: 'Consultation externe',
+  exemption_percent: '0',
+};
 const EMPTY_PAYMENT = { amount_gnf: '', payment_method: 'orange_money', reference: '' };
 const EMPTY_REFUND = {
   invoice_id: '',
@@ -262,6 +282,9 @@ export default function ReceptionDashboard() {
 
   const [invoiceSearchQ, setInvoiceSearchQ] = useState('');
   const [invoiceSearchHits, setInvoiceSearchHits] = useState([]);
+  const [billingCatalog, setBillingCatalog] = useState(null);
+  const [billingLineItems, setBillingLineItems] = useState([]);
+  const [labSearchQ, setLabSearchQ] = useState('');
 
   const updateReg = (v) => setRegForm((p) => ({ ...p, ...v }));
   const updateAdmission = (v) => setAdmissionForm((p) => ({ ...p, ...v }));
@@ -318,6 +341,7 @@ export default function ReceptionDashboard() {
   useEffect(() => {
     loadDashboard();
     clinicalApi.clinicDoctors().then((r) => setDoctors(r.data || [])).catch(() => setDoctors([]));
+    clinicalApi.receptionHisBillingCatalog().then((r) => setBillingCatalog(r.data || null)).catch(() => setBillingCatalog(null));
   }, [loadDashboard]);
 
   const runPatientSearch = useCallback(async (query) => {
@@ -490,11 +514,14 @@ export default function ReceptionDashboard() {
     setError('');
     setMessage('');
     try {
+      const services = (admissionForm.services || []).filter(Boolean);
+      if (!services.length) return setError('Sélectionnez au moins un service.');
       const { data } = await clinicalApi.receptionHisCreateAdmission({
         patient_id: selectedPatient.id,
         admission_date: admissionForm.admission_date,
         admission_time: `${admissionForm.admission_time}:00`,
-        department: admissionForm.department,
+        services,
+        department: services[0],
         admission_type: admissionForm.admission_type,
         attending_clinician_user_id: admissionForm.attending_clinician_user_id
           ? Number(admissionForm.attending_clinician_user_id)
@@ -516,7 +543,8 @@ export default function ReceptionDashboard() {
 
   const handleCreateInvoice = async (e) => {
     e.preventDefault();
-    if (!selectedPatient?.id) return setError('Recherchez et sélectionnez un patient avant de créer l’admission.');
+    if (!selectedPatient?.id) return setError('Recherchez et sélectionnez un patient avant de créer la facture.');
+    if (billingLineItems.length === 0) return setError('Ajoutez au moins une prestation à la facture.');
     setLoading(true);
     setError('');
     setMessage('');
@@ -524,11 +552,18 @@ export default function ReceptionDashboard() {
       const { data } = await clinicalApi.receptionHisCreateInvoice({
         patient_id: selectedPatient.id,
         department: billingForm.department,
-        description: billingForm.description.trim(),
-        total_amount_gnf: Number(billingForm.total_amount_gnf || 0),
+        items: billingLineItems.map((l) => ({
+          charge_type: l.charge_type,
+          description: l.description,
+          quantity: Number(l.quantity || 1),
+          unit_price_gnf: Number(l.unit_price_gnf || 0),
+          source_type: l.source_type || 'reception',
+        })),
+        exemption_percent: Number(billingForm.exemption_percent || 0),
         billing_date: billingForm.billing_date || undefined,
       });
       setActiveInvoice(data || null);
+      setBillingLineItems([]);
       setPaymentForm((prev) => ({ ...prev, amount_gnf: String(data?.remaining_balance_gnf ?? data?.total_amount_gnf ?? '') }));
       setMessage(`Facture créée · N° facture ${data?.invoice_number || '—'}`);
       await Promise.all([loadInvoices(selectedPatient.id), loadDashboard()]);
@@ -657,6 +692,33 @@ export default function ReceptionDashboard() {
     return refunds.filter((r) => Number(r.patient_id) === Number(selectedPatient.id));
   }, [refunds, selectedPatient?.id]);
 
+  const admissionServices = billingCatalog?.admission_services?.map((s) => s.label) || DEFAULT_ADMISSION_SERVICES;
+  const billingDepartments = billingCatalog?.billing_departments || DEFAULT_BILLING_DEPARTMENTS;
+
+  const addBillingLine = (line) => {
+    setBillingLineItems((prev) => [...prev, { id: `line-${Date.now()}-${Math.random()}`, ...line }]);
+  };
+
+  const removeBillingLine = (id) => setBillingLineItems((prev) => prev.filter((l) => l.id !== id));
+
+  const billingSubtotal = useMemo(
+    () => billingLineItems.reduce((sum, l) => sum + Number(l.quantity || 1) * Number(l.unit_price_gnf || 0), 0),
+    [billingLineItems]
+  );
+
+  const draftExemptionPercent = Number(billingForm.exemption_percent || 0);
+  const draftExemptionAmount = Math.round(billingSubtotal * draftExemptionPercent / 100);
+  const draftNetTotal = Math.max(0, billingSubtotal - draftExemptionAmount);
+
+  const filteredLabTests = useMemo(() => {
+    const tests = billingCatalog?.lab_tests || [];
+    const q = labSearchQ.trim().toLowerCase();
+    if (!q) return tests.slice(0, 40);
+    return tests.filter(
+      (t) => String(t.name || '').toLowerCase().includes(q) || String(t.code || '').toLowerCase().includes(q)
+    ).slice(0, 40);
+  }, [billingCatalog, labSearchQ]);
+
   const refundInvoices = useMemo(() => {
     if (!invoiceSearchQ.trim()) return invoices;
     const q = invoiceSearchQ.trim().toLowerCase();
@@ -666,6 +728,9 @@ export default function ReceptionDashboard() {
 
   const activeMeta = activeInvoice
     ? {
+        subtotal: Number(activeInvoice.subtotal_amount_gnf ?? activeInvoice.total_amount_gnf ?? 0),
+        exemptionPercent: Number(activeInvoice.exemption_percent || 0),
+        exemptionAmount: Number(activeInvoice.exemption_amount_gnf || 0),
         total: Number(activeInvoice.total_amount_gnf || 0),
         paid: Number(activeInvoice.paid_amount_gnf || 0),
         remaining: Number(activeInvoice.remaining_balance_gnf || 0),
@@ -936,12 +1001,28 @@ export default function ReceptionDashboard() {
                 />
                 <DisplayField label="N° dossier patient" value={patientDossier} />
                 <DisplayField label="Nom et prénom" value={patientDisplayName} />
-                <label>
-                  Service *
-                  <select required value={admissionForm.department} onChange={(e) => updateAdmission({ department: e.target.value })}>
-                    {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </label>
+                <div className="reception-his-multi-service">
+                  <span className="reception-his-multi-service-label">Services *</span>
+                  <div className="reception-his-multi-service-grid">
+                    {admissionServices.map((svc) => (
+                      <label key={svc} className="reception-his-check">
+                        <input
+                          type="checkbox"
+                          checked={(admissionForm.services || []).includes(svc)}
+                          onChange={() => {
+                            const current = admissionForm.services || [];
+                            updateAdmission({
+                              services: current.includes(svc)
+                                ? current.filter((s) => s !== svc)
+                                : [...current, svc],
+                            });
+                          }}
+                        />
+                        {svc}
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
               <div className="reception-his-form-row">
                 <label>
@@ -1056,25 +1137,157 @@ export default function ReceptionDashboard() {
                     <ReadOnlyDisplay value={activeInvoice.department || ''} />
                   ) : (
                     <select value={billingForm.department} onChange={(e) => updateBilling({ department: e.target.value })}>
-                      {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                      {billingDepartments.map((d) => <option key={d} value={d}>{d}</option>)}
                     </select>
                   )}
                 </label>
               </div>
               {!activeInvoice && (
                 <form className="reception-his-inline-create" onSubmit={handleCreateInvoice}>
-                  <div className="reception-his-form-row reception-his-form-row--2">
+                  <fieldset className="reception-his-nested-fieldset">
+                    <legend>Ajouter des prestations</legend>
+                    <div className="reception-his-billing-quick-add">
+                      {(billingCatalog?.consultation_services || []).map((svc) => (
+                        <button
+                          key={svc.code}
+                          type="button"
+                          className="clinical-btn clinical-btn--secondary"
+                          onClick={() => addBillingLine({
+                            charge_type: svc.charge_type,
+                            description: svc.label,
+                            quantity: 1,
+                            unit_price_gnf: svc.price_gnf,
+                          })}
+                        >
+                          + {svc.label}
+                        </button>
+                      ))}
+                      {(billingCatalog?.imaging_examinations || []).map((exam) => (
+                        <button
+                          key={exam.code}
+                          type="button"
+                          className="clinical-btn clinical-btn--secondary"
+                          onClick={() => addBillingLine({
+                            charge_type: 'radiology',
+                            description: exam.label,
+                            quantity: 1,
+                            unit_price_gnf: exam.price_gnf,
+                          })}
+                        >
+                          + {exam.label}
+                        </button>
+                      ))}
+                    </div>
                     <label>
-                      Description *
-                      <input required value={billingForm.description} onChange={(e) => updateBilling({ description: e.target.value })} />
+                      Rechercher examen laboratoire
+                      <input
+                        type="search"
+                        value={labSearchQ}
+                        onChange={(e) => setLabSearchQ(e.target.value)}
+                        placeholder="Nom ou code analyse…"
+                      />
+                    </label>
+                    {filteredLabTests.length > 0 && (
+                      <ul className="reception-his-lab-search-results">
+                        {filteredLabTests.map((test) => (
+                          <li key={test.code}>
+                            <button
+                              type="button"
+                              onClick={() => addBillingLine({
+                                charge_type: 'laboratory',
+                                description: `${test.name} (${test.code})`,
+                                quantity: 1,
+                                unit_price_gnf: test.price_gnf || 0,
+                              })}
+                            >
+                              {test.name} · {formatGNF(test.price_gnf || 0)}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </fieldset>
+                  <table className="reception-his-billing-lines">
+                    <thead>
+                      <tr>
+                        <th>Produit / Service</th>
+                        <th>Qté</th>
+                        <th>Prix U</th>
+                        <th>Total</th>
+                        <th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {billingLineItems.length === 0 ? (
+                        <tr><td colSpan={5} className="reception-his-empty-row">Aucune prestation ajoutée.</td></tr>
+                      ) : (
+                        billingLineItems.map((line) => (
+                          <tr key={line.id}>
+                            <td>{line.description}</td>
+                            <td>{line.quantity}</td>
+                            <td>{formatGNF(line.unit_price_gnf)}</td>
+                            <td>{formatGNF(Number(line.quantity || 1) * Number(line.unit_price_gnf || 0))}</td>
+                            <td>
+                              <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => removeBillingLine(line.id)}>Retirer</button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                  <div className="reception-his-form-row reception-his-form-row--3">
+                    <label>
+                      Montant total
+                      <AmountDisplay amountGnf={billingSubtotal || null} />
                     </label>
                     <label>
-                      Montant total *
-                      <input required type="number" min="0" value={billingForm.total_amount_gnf} onChange={(e) => updateBilling({ total_amount_gnf: e.target.value })} />
+                      Exemption (%)
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={billingForm.exemption_percent}
+                        onChange={(e) => updateBilling({ exemption_percent: e.target.value })}
+                      />
+                    </label>
+                    <label>
+                      Montant exemption
+                      <AmountDisplay amountGnf={draftExemptionAmount || null} />
                     </label>
                   </div>
-                  <button type="submit" className="clinical-btn" disabled={loading || !selectedPatient}>Créer facture</button>
+                  <div className="reception-his-form-row reception-his-form-row--2">
+                    <label>
+                      Nouveau total
+                      <AmountDisplay amountGnf={draftNetTotal || null} />
+                    </label>
+                  </div>
+                  <button type="submit" className="clinical-btn" disabled={loading || !selectedPatient || billingLineItems.length === 0}>
+                    Créer facture
+                  </button>
                 </form>
+              )}
+              {activeInvoice && (activeInvoice.items || []).length > 0 && (
+                <table className="reception-his-billing-lines">
+                  <thead>
+                    <tr>
+                      <th>Produit / Service</th>
+                      <th>Qté</th>
+                      <th>Prix U</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(activeInvoice.items || []).map((item) => (
+                      <tr key={item.id}>
+                        <td>{item.description}</td>
+                        <td>{item.quantity}</td>
+                        <td>{formatGNF(item.unit_price_gnf)}</td>
+                        <td>{formatGNF(item.amount_gnf)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
             </fieldset>
 
@@ -1086,12 +1299,22 @@ export default function ReceptionDashboard() {
               <div className="reception-his-form-row reception-his-form-row--4">
                 <label>
                   Montant total
-                  <AmountDisplay amountGnf={activeInvoice ? activeMeta?.total : null} />
+                  <AmountDisplay amountGnf={activeInvoice ? activeMeta?.subtotal : (billingSubtotal || null)} />
                 </label>
                 <label>
-                  À payer par le patient
-                  <AmountDisplay amountGnf={activeInvoice ? activeMeta?.total : null} />
+                  Exemption (%)
+                  <ReadOnlyDisplay value={activeInvoice ? `${activeMeta?.exemptionPercent || 0}` : String(billingForm.exemption_percent || 0)} />
                 </label>
+                <label>
+                  Montant exemption
+                  <AmountDisplay amountGnf={activeInvoice ? activeMeta?.exemptionAmount : (draftExemptionAmount || null)} />
+                </label>
+                <label>
+                  Nouveau total
+                  <AmountDisplay amountGnf={activeInvoice ? activeMeta?.total : (draftNetTotal || null)} />
+                </label>
+              </div>
+              <div className="reception-his-form-row reception-his-form-row--3">
                 <label>
                   Montant reçu
                   <AmountDisplay amountGnf={activeInvoice ? (activeMeta?.paid ?? 0) : null} />

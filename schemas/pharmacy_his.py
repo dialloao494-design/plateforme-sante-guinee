@@ -52,6 +52,9 @@ class PharmacyServiceRequestResponse(BaseModel):
     order_id: int
     charge_id: int
     patient_id: int
+    subtotal_gnf: int = 0
+    exemption_percent: float = 0
+    exemption_amount_gnf: int = 0
     total_gnf: int
     paid_amount_gnf: int = 0
     remaining_gnf: int
@@ -63,3 +66,4 @@ class PharmacyServiceRequestResponse(BaseModel):
 class PharmacyChargePaymentCreate(BaseModel):
     payment_method: str = Field(..., min_length=1, max_length=32)
     amount_received_gnf: int = Field(..., ge=0)
+    exemption_percent: float = Field(0, ge=0, le=100)

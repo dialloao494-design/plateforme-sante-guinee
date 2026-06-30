@@ -131,6 +131,7 @@ export default function PharmacyDashboard() {
   const [savedRequest, setSavedRequest] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [amountReceived, setAmountReceived] = useState('');
+  const [exemptionPercent, setExemptionPercent] = useState('0');
 
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -184,7 +185,16 @@ export default function PharmacyDashboard() {
     [lines]
   );
 
-  const billingTotal = savedRequest?.total_gnf ?? requestTotal;
+  const billingSubtotal = savedRequest?.subtotal_gnf ?? savedRequest?.total_gnf ?? requestTotal;
+  const appliedExemptionPercent = savedRequest?.payment_status === 'paid'
+    ? Number(savedRequest.exemption_percent || 0)
+    : Number(exemptionPercent || 0);
+  const billingExemptionAmount = savedRequest?.payment_status === 'paid'
+    ? Number(savedRequest.exemption_amount_gnf || 0)
+    : Math.round(billingSubtotal * appliedExemptionPercent / 100);
+  const billingTotal = savedRequest?.payment_status === 'paid'
+    ? Number(savedRequest.total_gnf || 0)
+    : Math.max(0, billingSubtotal - billingExemptionAmount);
   const billingReady = Boolean(savedRequest?.charge_id);
   const receivedNum = Number(amountReceived);
   const remaining = billingReady && Number.isFinite(receivedNum)
@@ -281,7 +291,7 @@ export default function PharmacyDashboard() {
         items,
       });
       setSavedRequest(data);
-      setAmountReceived(String(data.total_gnf || requestTotal));
+      setAmountReceived(String(data.subtotal_gnf || data.total_gnf || requestTotal));
       setMessage('Demande de service enregistrée.');
     } catch (err) {
       setError(formatApiError(err, 'Enregistrement impossible'));
@@ -296,7 +306,8 @@ export default function PharmacyDashboard() {
       return;
     }
     const received = Number(amountReceived);
-    if (!Number.isFinite(received) || received < billingTotal) {
+    const netDue = Math.max(0, billingSubtotal - Math.round(billingSubtotal * Number(exemptionPercent || 0) / 100));
+    if (!Number.isFinite(received) || received < netDue) {
       setError('Montant reçu insuffisant.');
       return;
     }
@@ -306,6 +317,7 @@ export default function PharmacyDashboard() {
       const { data } = await clinicalApi.payPharmacyServiceCharge(savedRequest.charge_id, {
         payment_method: paymentMethod,
         amount_received_gnf: received,
+        exemption_percent: Number(exemptionPercent || 0),
       });
       setSavedRequest(data);
       setMessage('Paiement enregistré.');
@@ -544,7 +556,7 @@ export default function PharmacyDashboard() {
             <div className="pharmacy-his-billing-summary">
               <label>
                 Montant total
-                <AmountDisplay amountGnf={billingReady ? billingTotal : ''} />
+                <AmountDisplay amountGnf={billingReady ? billingSubtotal : ''} />
               </label>
               <label>
                 Montant reçu
@@ -555,6 +567,25 @@ export default function PharmacyDashboard() {
                   onChange={(e) => setAmountReceived(e.target.value)}
                   disabled={!billingReady || savedRequest?.payment_status === 'paid'}
                 />
+              </label>
+              <label>
+                Exemption (%)
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={savedRequest?.payment_status === 'paid' ? String(savedRequest.exemption_percent || 0) : exemptionPercent}
+                  onChange={(e) => setExemptionPercent(e.target.value)}
+                  disabled={!billingReady || savedRequest?.payment_status === 'paid'}
+                />
+              </label>
+              <label>
+                Montant exemption
+                <AmountDisplay amountGnf={billingReady ? billingExemptionAmount : ''} />
+              </label>
+              <label>
+                Nouveau total
+                <AmountDisplay amountGnf={billingReady ? billingTotal : ''} />
               </label>
               <label>
                 Reste à payer
@@ -623,12 +654,23 @@ export default function PharmacyDashboard() {
             ))}
           </tbody>
         </table>
-        <p><strong>Total : {formatGNF(billingTotal)}</strong></p>
+        <p><strong>Total : {formatGNF(billingSubtotal)}</strong></p>
+        <p>Exemption : {appliedExemptionPercent}% · {formatGNF(billingExemptionAmount)}</p>
+        <p><strong>Nouveau total : {formatGNF(billingTotal)}</strong></p>
+        <p>Montant reçu : {formatGNF(savedRequest?.paid_amount_gnf || amountReceived || 0)}</p>
+        <p>Reste à payer : {formatGNF(remaining || 0)}</p>
         {savedRequest?.payment_status === 'paid' && (
           <p>
             Payé · {PAYMENT_METHODS.find((m) => m.value === savedRequest.payment_method)?.label || savedRequest.payment_method}
           </p>
         )}
+        <p className="pharmacy-his-print-footer">
+          Imprimé par : {user?.full_name || user?.email || '—'}
+          <br />
+          {new Date().toLocaleString('fr-FR')}
+          <br />
+          Page 1 sur 1
+        </p>
       </div>
     </div>
   );

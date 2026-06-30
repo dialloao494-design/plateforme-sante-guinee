@@ -21,7 +21,7 @@ export default function RadiologyDashboard() {
       setOrders(data || []);
       setError('');
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Radiologie indisponible');
+      setError(err?.response?.data?.detail || 'Imagerie médicale indisponible');
     }
   }, []);
 
@@ -78,7 +78,7 @@ export default function RadiologyDashboard() {
   return (
     <div className="clinical-page">
       <header className="clinical-header">
-        <h1>Radiologie</h1>
+        <h1>Imagerie médicale</h1>
         <p>RX, échographie, scanner — prescription à validation médecin.</p>
       </header>
       {error && <div className="clinical-alert clinical-alert--error">{String(error)}</div>}

@@ -106,6 +106,7 @@ const clinicalApi = {
       cacheTtlMs: 15000,
       forceRefresh: opts.forceRefresh,
     }),
+  receptionHisBillingCatalog: () => httpClient.get('/clinical/reception/his/billing-catalog'),
   receptionHisSearch: (q) => httpClient.get('/clinical/reception/his/patients/search', { params: { q } }),
   receptionHisGetPatient: (patientId) => httpClient.get(`/clinical/reception/his/patients/${patientId}`),
   receptionHisCheckDuplicates: (data) =>
