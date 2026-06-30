@@ -3,6 +3,7 @@ import clinicalApi from '../../services/clinicalApi';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
 import { formatApiError } from '../../utils/apiError.js';
+import SplitPaymentForm, { createInitialPaymentLines } from './SplitPaymentForm.jsx';
 import './clinical.css';
 
 const TABS = [
@@ -126,7 +127,6 @@ const EMPTY_BILLING = {
   department: 'Consultation externe',
   exemption_percent: '0',
 };
-const EMPTY_PAYMENT = { amount_gnf: '', payment_method: 'orange_money', reference: '' };
 const EMPTY_REFUND = {
   invoice_id: '',
   service_paid_for: '',
@@ -277,7 +277,7 @@ export default function ReceptionDashboard() {
   const [regForm, setRegForm] = useState(EMPTY_REG);
   const [admissionForm, setAdmissionForm] = useState(EMPTY_ADMISSION);
   const [billingForm, setBillingForm] = useState(EMPTY_BILLING);
-  const [paymentForm, setPaymentForm] = useState(EMPTY_PAYMENT);
+  const [paymentLines, setPaymentLines] = useState(() => createInitialPaymentLines());
   const [refundForm, setRefundForm] = useState(EMPTY_REFUND);
 
   const [invoiceSearchQ, setInvoiceSearchQ] = useState('');
@@ -289,7 +289,9 @@ export default function ReceptionDashboard() {
   const updateReg = (v) => setRegForm((p) => ({ ...p, ...v }));
   const updateAdmission = (v) => setAdmissionForm((p) => ({ ...p, ...v }));
   const updateBilling = (v) => setBillingForm((p) => ({ ...p, ...v }));
-  const updatePayment = (v) => setPaymentForm((p) => ({ ...p, ...v }));
+  const resetPaymentLines = (remainingBalance = '') => {
+    setPaymentLines(createInitialPaymentLines(remainingBalance));
+  };
   const updateRefund = (v) => setRefundForm((p) => {
     const next = { ...p, ...v };
     if ('amount_consumed_gnf' in v && next.invoice_id) {
@@ -564,7 +566,7 @@ export default function ReceptionDashboard() {
       });
       setActiveInvoice(data || null);
       setBillingLineItems([]);
-      setPaymentForm((prev) => ({ ...prev, amount_gnf: String(data?.remaining_balance_gnf ?? data?.total_amount_gnf ?? '') }));
+      resetPaymentLines(data?.remaining_balance_gnf ?? data?.total_amount_gnf ?? '');
       setMessage(`Facture créée · N° facture ${data?.invoice_number || '—'}`);
       await Promise.all([loadInvoices(selectedPatient.id), loadDashboard()]);
     } catch (err) {
@@ -577,7 +579,7 @@ export default function ReceptionDashboard() {
   const selectInvoice = (id) => {
     const inv = invoices.find((item) => String(item.id) === String(id));
     setActiveInvoice(inv || null);
-    updatePayment({ amount_gnf: String(inv?.remaining_balance_gnf ?? '') });
+    resetPaymentLines(inv?.remaining_balance_gnf ?? '');
     updateRefund({
       invoice_id: inv ? String(inv.id) : '',
       service_paid_for: inv?.department || '',
@@ -586,24 +588,40 @@ export default function ReceptionDashboard() {
     });
   };
 
-  const handlePayment = async (e) => {
-    e.preventDefault();
+  const handlePayment = async (lines) => {
     if (!activeInvoice?.id) return setError('Sélectionnez une facture du patient.');
     setLoading(true);
     setError('');
     setMessage('');
     try {
-      const { data } = await clinicalApi.receptionHisAddPayment(activeInvoice.id, {
-        amount_gnf: Number(paymentForm.amount_gnf || 0),
-        payment_method: paymentForm.payment_method,
-        reference: paymentForm.reference || undefined,
-      });
-      setMessage(`Paiement enregistré · reste ${formatGNF(data?.remaining_balance_gnf || 0)}`);
-      updatePayment({ amount_gnf: String(data?.remaining_balance_gnf ?? '') });
-      setActiveInvoice(data || null);
+      let latest = activeInvoice;
+      for (const line of lines) {
+        const { data } = await clinicalApi.receptionHisAddPayment(activeInvoice.id, {
+          amount_gnf: Number(line.amount_gnf || 0),
+          payment_method: line.payment_method,
+          reference: line.reference || undefined,
+        });
+        latest = data || latest;
+      }
+      const count = lines.length;
+      setMessage(
+        `${count} paiement${count > 1 ? 's' : ''} enregistré${count > 1 ? 's' : ''} · reste ${formatGNF(latest?.remaining_balance_gnf || 0)}`,
+      );
+      resetPaymentLines(latest?.remaining_balance_gnf ?? '');
+      setActiveInvoice(latest || null);
       await Promise.all([loadInvoices(selectedPatient?.id), loadDashboard()]);
     } catch (err) {
       setError(formatApiError(err, 'Enregistrement du paiement impossible'));
+      try {
+        const { data } = await clinicalApi.receptionHisGetInvoice(activeInvoice.id);
+        if (data) {
+          setActiveInvoice(data);
+          resetPaymentLines(data.remaining_balance_gnf ?? '');
+          await loadInvoices(selectedPatient?.id);
+        }
+      } catch {
+        // Keep the original error if refresh fails.
+      }
     } finally {
       setLoading(false);
     }
@@ -1325,40 +1343,17 @@ export default function ReceptionDashboard() {
                 </label>
               </div>
               {activeInvoice ? (
-                <form onSubmit={handlePayment}>
-                  <div className="reception-his-form-row reception-his-form-row--2">
-                    <label>
-                      Montant à encaisser *
-                      <input
-                        required
-                        type="number"
-                        min="0"
-                        value={paymentForm.amount_gnf}
-                        onChange={(e) => updatePayment({ amount_gnf: e.target.value })}
-                      />
-                    </label>
-                    <label>
-                      Référence
-                      <input
-                        value={paymentForm.reference}
-                        onChange={(e) => updatePayment({ reference: e.target.value })}
-                        placeholder="N° transaction, reçu…"
-                      />
-                    </label>
-                  </div>
-                  <fieldset className="reception-his-nested-fieldset">
-                    <legend>Mode de paiement</legend>
-                    <PaymentMethodRadios
-                      name="payment_method"
-                      value={paymentForm.payment_method}
-                      onChange={(v) => updatePayment({ payment_method: v })}
-                      methods={PAYMENT_METHODS}
-                    />
-                  </fieldset>
-                  <button type="submit" className="clinical-btn" disabled={loading || !selectedPatient}>
-                    Enregistrer paiement
-                  </button>
-                </form>
+                <SplitPaymentForm
+                  lines={paymentLines}
+                  onChange={setPaymentLines}
+                  methods={PAYMENT_METHODS}
+                  invoiceTotal={activeMeta?.total ?? 0}
+                  alreadyPaid={activeMeta?.paid ?? 0}
+                  remainingBalance={activeMeta?.remaining ?? 0}
+                  loading={loading}
+                  disabled={!selectedPatient}
+                  onSubmit={handlePayment}
+                />
               ) : (
                 <FormNotice>{INVOICE_PAYMENT_NOTICE}</FormNotice>
               )}

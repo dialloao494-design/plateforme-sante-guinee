@@ -1259,6 +1259,69 @@
   background: #f0fdfa;
 }
 
+.reception-split-payment {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.reception-split-payment__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.reception-split-payment__summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.reception-split-payment__summary-item span {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.reception-split-payment__summary-item strong {
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.reception-split-payment__remaining--due {
+  color: #b45309;
+}
+
+.reception-split-payment__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.reception-split-payment__line {
+  margin: 0;
+}
+
+.reception-split-payment__remove {
+  margin-top: 0.5rem;
+}
+
+.reception-split-payment__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.reception-split-payment__validation {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
 .reception-his-payment-history table {
   width: 100%;
   border-collapse: collapse;

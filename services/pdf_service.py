@@ -144,6 +144,25 @@ def _gnf(amount: int) -> str:
     return f"{int(amount):,} GNF".replace(",", " ")
 
 
+PAYMENT_METHOD_LABELS = {
+    "cash": "Espèces",
+    "orange_money": "Orange Money",
+    "bank_transfer": "Virement bancaire",
+    "card": "Carte bancaire",
+    "insurance": "Assurance",
+    "mtn": "MTN MoMo",
+}
+
+
+def _payment_method_label(method: str) -> str:
+    return PAYMENT_METHOD_LABELS.get(method, method.replace("_", " ").title())
+
+
+def _payment_breakdown_line(label: str, amount: int, width: int = 40) -> str:
+    dots = max(2, width - len(label) - len(_gnf(amount)))
+    return f"{label}{'.' * dots}{_gnf(amount)}"
+
+
 def invoice_pdf(
     invoice_number: str,
     patient_name: str,
@@ -155,6 +174,7 @@ def invoice_pdf(
     total: int,
     paid: int,
     payment_methods: list[str] | None = None,
+    payment_lines: list[dict] | None = None,
     printed_by: str = "",
     printed_at: str = "",
 ) -> bytes:
@@ -180,9 +200,31 @@ def invoice_pdf(
             f"Exemption (%): {exemption_percent:.0f}%",
             f"Montant exemption: {_gnf(exemption_amount)}",
             f"Nouveau total: {_gnf(total)}",
-            f"Montant reçu: {_gnf(paid)}",
-            f"Reste à payer: {_gnf(remaining)}",
-            f"Mode(s) de paiement: {', '.join(payment_methods or []) or '—'}",
+        ]
+    )
+    if payment_lines:
+        lines.append("")
+        lines.append("Détail des paiements")
+        for entry in payment_lines:
+            label = _payment_method_label(str(entry.get("payment_method") or "—"))
+            amount = int(entry.get("amount_gnf") or 0)
+            lines.append(_payment_breakdown_line(label, amount))
+            reference = entry.get("reference")
+            if reference:
+                lines.append(f"  Réf.: {reference}")
+        lines.append("")
+        lines.append(_payment_breakdown_line("Total payé", paid))
+        lines.append(_payment_breakdown_line("Reste à payer", remaining))
+    else:
+        lines.extend(
+            [
+                f"Montant reçu: {_gnf(paid)}",
+                f"Reste à payer: {_gnf(remaining)}",
+                f"Mode(s) de paiement: {', '.join(payment_methods or []) or '—'}",
+            ]
+        )
+    lines.extend(
+        [
             "",
             f"Imprimé par: {printed_by or '—'}",
             printed_at or "",

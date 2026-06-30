@@ -505,6 +505,15 @@ def print_receipt(
         for i in (invoice.items or [])
     ]
     methods = list({p.payment_method for p in (invoice.payments or []) if p.payment_method})
+    payment_lines = [
+        {
+            "payment_method": p.payment_method,
+            "amount_gnf": p.amount_gnf,
+            "reference": p.reference,
+        }
+        for p in sorted(invoice.payments or [], key=lambda x: x.paid_at)
+        if p.payment_method
+    ]
     subtotal = int(getattr(invoice, "subtotal_amount_gnf", None) or invoice.total_amount_gnf or 0)
     pdf_bytes = build_invoice_pdf(
         invoice.invoice_number,
@@ -516,6 +525,7 @@ def print_receipt(
         total=invoice.total_amount_gnf,
         paid=invoice.paid_amount_gnf,
         payment_methods=methods,
+        payment_lines=payment_lines or None,
         printed_by=(current_user.full_name or current_user.email or "—"),
         printed_at=datetime.now().strftime("%d/%m/%Y %H:%M"),
     )
