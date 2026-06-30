@@ -127,6 +127,8 @@ const EMPTY_BILLING = {
   exemption_percent: '0',
 };
 const EMPTY_PAYMENT = { amount_gnf: '', payment_method: 'orange_money', reference: '' };
+const newPaymentLineId = () => `pay-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+const emptyPaymentLine = () => ({ id: newPaymentLineId(), amount_gnf: '', payment_method: 'orange_money', reference: '' });
 const EMPTY_REFUND = {
   invoice_id: '',
   service_paid_for: '',
@@ -278,6 +280,8 @@ export default function ReceptionDashboard() {
   const [admissionForm, setAdmissionForm] = useState(EMPTY_ADMISSION);
   const [billingForm, setBillingForm] = useState(EMPTY_BILLING);
   const [paymentForm, setPaymentForm] = useState(EMPTY_PAYMENT);
+  const [paymentLines, setPaymentLines] = useState([emptyPaymentLine()]);
+  const [selectedSpecialty, setSelectedSpecialty] = useState('');
   const [refundForm, setRefundForm] = useState(EMPTY_REFUND);
 
   const [invoiceSearchQ, setInvoiceSearchQ] = useState('');
@@ -290,6 +294,32 @@ export default function ReceptionDashboard() {
   const updateAdmission = (v) => setAdmissionForm((p) => ({ ...p, ...v }));
   const updateBilling = (v) => setBillingForm((p) => ({ ...p, ...v }));
   const updatePayment = (v) => setPaymentForm((p) => ({ ...p, ...v }));
+  const updatePaymentLine = (id, patch) =>
+    setPaymentLines((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  const addPaymentLine = () => setPaymentLines((rows) => [...rows, emptyPaymentLine()]);
+  const removePaymentLine = (id) =>
+    setPaymentLines((rows) => (rows.length <= 1 ? rows : rows.filter((r) => r.id !== id)));
+
+  const specializedSpecialties = billingCatalog?.specialized_specialties || [];
+
+  const addSpecializedConsultation = () => {
+    if (!selectedSpecialty) {
+      setError('Sélectionnez une spécialité pour la consultation spécialisée.');
+      return;
+    }
+    const spec = specializedSpecialties.find((s) => s.code === selectedSpecialty);
+    const svc = (billingCatalog?.consultation_services || []).find((c) => c.code === 'specialized_consultation');
+    if (!spec || !svc) return;
+    addBillingLine({
+      charge_type: svc.charge_type,
+      description: `Consultation spécialisée — ${spec.label}`,
+      quantity: 1,
+      unit_price_gnf: svc.price_gnf,
+    });
+    updateBilling({ department: `Consultation spécialisée — ${spec.label}` });
+    setSelectedSpecialty('');
+    setError('');
+  };
   const updateRefund = (v) => setRefundForm((p) => {
     const next = { ...p, ...v };
     if ('amount_consumed_gnf' in v && next.invoice_id) {
@@ -589,18 +619,25 @@ export default function ReceptionDashboard() {
   const handlePayment = async (e) => {
     e.preventDefault();
     if (!activeInvoice?.id) return setError('Sélectionnez une facture du patient.');
+    const lines = paymentLines.filter((l) => Number(l.amount_gnf) > 0);
+    if (lines.length === 0) return setError('Ajoutez au moins une ligne de paiement avec un montant.');
     setLoading(true);
     setError('');
     setMessage('');
     try {
-      const { data } = await clinicalApi.receptionHisAddPayment(activeInvoice.id, {
-        amount_gnf: Number(paymentForm.amount_gnf || 0),
-        payment_method: paymentForm.payment_method,
-        reference: paymentForm.reference || undefined,
-      });
-      setMessage(`Paiement enregistré · reste ${formatGNF(data?.remaining_balance_gnf || 0)}`);
-      updatePayment({ amount_gnf: String(data?.remaining_balance_gnf ?? '') });
-      setActiveInvoice(data || null);
+      let lastData = activeInvoice;
+      for (const line of lines) {
+        const { data } = await clinicalApi.receptionHisAddPayment(activeInvoice.id, {
+          amount_gnf: Number(line.amount_gnf),
+          payment_method: line.payment_method,
+          reference: line.reference || undefined,
+        });
+        lastData = data || lastData;
+        if ((data?.remaining_balance_gnf ?? 1) <= 0) break;
+      }
+      setMessage(`Paiement(s) enregistré(s) · reste ${formatGNF(lastData?.remaining_balance_gnf || 0)}`);
+      setPaymentLines([emptyPaymentLine()]);
+      setActiveInvoice(lastData || null);
       await Promise.all([loadInvoices(selectedPatient?.id), loadDashboard()]);
     } catch (err) {
       setError(formatApiError(err, 'Enregistrement du paiement impossible'));
@@ -1148,20 +1185,38 @@ export default function ReceptionDashboard() {
                     <legend>Ajouter des prestations</legend>
                     <div className="reception-his-billing-quick-add">
                       {(billingCatalog?.consultation_services || []).map((svc) => (
-                        <button
-                          key={svc.code}
-                          type="button"
-                          className="clinical-btn clinical-btn--secondary"
-                          onClick={() => addBillingLine({
-                            charge_type: svc.charge_type,
-                            description: svc.label,
-                            quantity: 1,
-                            unit_price_gnf: svc.price_gnf,
-                          })}
-                        >
-                          + {svc.label}
-                        </button>
+                        svc.code === 'specialized_consultation' ? null : (
+                          <button
+                            key={svc.code}
+                            type="button"
+                            className="clinical-btn clinical-btn--secondary"
+                            onClick={() => addBillingLine({
+                              charge_type: svc.charge_type,
+                              description: svc.label,
+                              quantity: 1,
+                              unit_price_gnf: svc.price_gnf,
+                            })}
+                          >
+                            + {svc.label}
+                          </button>
+                        )
                       ))}
+                      {specializedSpecialties.length > 0 && (
+                        <div className="reception-his-specialty-picker">
+                          <label>
+                            Consultation spécialisée — spécialité
+                            <select value={selectedSpecialty} onChange={(e) => setSelectedSpecialty(e.target.value)}>
+                              <option value="">Choisir une spécialité…</option>
+                              {specializedSpecialties.map((spec) => (
+                                <option key={spec.code} value={spec.code}>{spec.label}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addSpecializedConsultation}>
+                            + Consultation spécialisée
+                          </button>
+                        </div>
+                      )}
                       {(billingCatalog?.imaging_examinations || []).map((exam) => (
                         <button
                           key={exam.code}
@@ -1326,38 +1381,62 @@ export default function ReceptionDashboard() {
               </div>
               {activeInvoice ? (
                 <form onSubmit={handlePayment}>
-                  <div className="reception-his-form-row reception-his-form-row--2">
-                    <label>
-                      Montant à encaisser *
-                      <input
-                        required
-                        type="number"
-                        min="0"
-                        value={paymentForm.amount_gnf}
-                        onChange={(e) => updatePayment({ amount_gnf: e.target.value })}
-                      />
-                    </label>
-                    <label>
-                      Référence
-                      <input
-                        value={paymentForm.reference}
-                        onChange={(e) => updatePayment({ reference: e.target.value })}
-                        placeholder="N° transaction, reçu…"
-                      />
-                    </label>
+                  <p className="clinical-hint">Ajoutez une ou plusieurs lignes de paiement (Orange Money, Espèces, Virement, Assurance…).</p>
+                  <table className="reception-his-billing-lines">
+                    <thead>
+                      <tr>
+                        <th>Mode de paiement</th>
+                        <th>Montant (GNF)</th>
+                        <th>Référence</th>
+                        <th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paymentLines.map((line) => (
+                        <tr key={line.id}>
+                          <td>
+                            <select
+                              value={line.payment_method}
+                              onChange={(e) => updatePaymentLine(line.id, { payment_method: e.target.value })}
+                            >
+                              {PAYMENT_METHODS.map((m) => (
+                                <option key={m.value} value={m.value}>{m.label}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              value={line.amount_gnf}
+                              onChange={(e) => updatePaymentLine(line.id, { amount_gnf: e.target.value })}
+                              placeholder="Montant"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              value={line.reference}
+                              onChange={(e) => updatePaymentLine(line.id, { reference: e.target.value })}
+                              placeholder="N° transaction…"
+                            />
+                          </td>
+                          <td>
+                            <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => removePaymentLine(line.id)}>
+                              ×
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="pharmacy-his-actions">
+                    <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addPaymentLine}>
+                      + Ligne de paiement
+                    </button>
+                    <button type="submit" className="clinical-btn" disabled={loading || !selectedPatient}>
+                      Enregistrer le(s) paiement(s)
+                    </button>
                   </div>
-                  <fieldset className="reception-his-nested-fieldset">
-                    <legend>Mode de paiement</legend>
-                    <PaymentMethodRadios
-                      name="payment_method"
-                      value={paymentForm.payment_method}
-                      onChange={(v) => updatePayment({ payment_method: v })}
-                      methods={PAYMENT_METHODS}
-                    />
-                  </fieldset>
-                  <button type="submit" className="clinical-btn" disabled={loading || !selectedPatient}>
-                    Enregistrer paiement
-                  </button>
                 </form>
               ) : (
                 <FormNotice>{INVOICE_PAYMENT_NOTICE}</FormNotice>

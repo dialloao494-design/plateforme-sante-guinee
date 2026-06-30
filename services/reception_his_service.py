@@ -245,6 +245,22 @@ class ReceptionHisService:
         if by_qr:
             return [by_qr]
         pattern = f"%{q}%"
+        if " " in q:
+            parts = [p for p in q.split() if p.strip()]
+            if len(parts) >= 2:
+                first_pat = f"%{parts[0]}%"
+                last_pat = f"%{parts[-1]}%"
+                combo = (
+                    base.filter(
+                        models.Patient.first_name.ilike(first_pat),
+                        models.Patient.last_name.ilike(last_pat),
+                    )
+                    .order_by(models.Patient.last_name, models.Patient.first_name)
+                    .limit(limit)
+                    .all()
+                )
+                if combo:
+                    return combo
         return (
             base.filter(
                 models.Patient.first_name.ilike(pattern)

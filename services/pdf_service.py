@@ -155,8 +155,11 @@ def invoice_pdf(
     total: int,
     paid: int,
     payment_methods: list[str] | None = None,
+    payment_details: list[dict] | None = None,
     printed_by: str = "",
     printed_at: str = "",
+    printed_date: str = "",
+    printed_time: str = "",
 ) -> bytes:
     remaining = max(0, total - paid)
     lines = [
@@ -167,10 +170,10 @@ def invoice_pdf(
         "--------------------------------------------------------",
     ]
     for item in items:
-        desc = str(item.get("description", "—"))[:26]
+        desc = str(item.get("description", item.get("product_name", "—")))[:26]
         qty = int(item.get("quantity") or 1)
         unit = int(item.get("unit_price_gnf") or item.get("amount_gnf") or 0)
-        amt = int(item.get("amount_gnf") or qty * unit)
+        amt = int(item.get("amount_gnf") or item.get("total_gnf") or qty * unit)
         lines.append(f"{desc:<26} {qty:>3} {_gnf(unit):>12} {_gnf(amt):>12}")
     lines.extend(
         [
@@ -182,10 +185,34 @@ def invoice_pdf(
             f"Nouveau total: {_gnf(total)}",
             f"Montant reçu: {_gnf(paid)}",
             f"Reste à payer: {_gnf(remaining)}",
-            f"Mode(s) de paiement: {', '.join(payment_methods or []) or '—'}",
+        ]
+    )
+    if payment_details:
+        lines.append("")
+        lines.append("Détail des paiements")
+        method_labels = {
+            "cash": "Espèces",
+            "orange_money": "Orange Money",
+            "bank_transfer": "Virement bancaire",
+            "card": "Carte bancaire",
+            "insurance": "Assurance",
+        }
+        for pay in payment_details:
+            label = pay.get("label") or method_labels.get(pay.get("method", ""), pay.get("method", "—"))
+            amount = int(pay.get("amount_gnf") or 0)
+            dots = max(1, 28 - len(label))
+            lines.append(f"{label}{'.' * dots}{_gnf(amount).replace(' GNF', '')}")
+    elif payment_methods:
+        lines.append(f"Mode(s) de paiement: {', '.join(payment_methods)}")
+    footer_date = printed_date or (printed_at.split(" ")[0] if printed_at and " " in printed_at else printed_at)
+    footer_time = printed_time or (printed_at.split(" ")[-1] if printed_at and " " in printed_at else "")
+    lines.extend(
+        [
             "",
-            f"Imprimé par: {printed_by or '—'}",
-            printed_at or "",
+            "Imprimé par:",
+            printed_by or "—",
+            footer_date or "—",
+            footer_time or "—",
             "Page 1 sur 1",
         ]
     )

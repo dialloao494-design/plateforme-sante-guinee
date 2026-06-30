@@ -189,10 +189,14 @@ def pharmacy_charge_receipt(
         "card": "Carte bancaire",
         "insurance": "Assurance",
     }
-    payment_lines = []
-    for p in charge.payments or []:
-        label = method_labels.get(p.payment_method, p.payment_method)
-        payment_lines.append(f"{label} … {p.amount_gnf:,} GNF".replace(",", " "))
+    payment_details = [
+        {
+            "method": p.payment_method,
+            "label": method_labels.get(p.payment_method, p.payment_method),
+            "amount_gnf": p.amount_gnf,
+        }
+        for p in (charge.payments or [])
+    ]
     patient_name = "—"
     if charge.patient:
         patient_name = f"{charge.patient.last_name} {charge.patient.first_name}".strip()
@@ -206,9 +210,10 @@ def pharmacy_charge_receipt(
         exemption_amount=int(charge.exemption_amount_gnf or 0),
         total=int(charge.amount_gnf),
         paid=int(charge.paid_amount_gnf or 0),
-        payment_methods=payment_lines,
+        payment_details=payment_details,
         printed_by=current_user.full_name or current_user.email or "—",
-        printed_at=now.strftime("%d/%m/%Y %H:%M"),
+        printed_date=now.strftime("%d/%m/%Y"),
+        printed_time=now.strftime("%H:%M"),
     )
     return Response(
         content=pdf_bytes,

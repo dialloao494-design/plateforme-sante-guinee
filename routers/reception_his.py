@@ -150,6 +150,7 @@ def billing_catalog(
         CONSULTATION_SERVICES,
         IMAGING_EXAMINATIONS,
         BILLING_DEPARTMENTS,
+        SPECIALIZED_SPECIALTIES,
     )
 
     lab_tests = []
@@ -174,6 +175,7 @@ def billing_catalog(
     return {
         "admission_services": ADMISSION_SERVICES,
         "consultation_services": CONSULTATION_SERVICES,
+        "specialized_specialties": SPECIALIZED_SPECIALTIES,
         "imaging_examinations": IMAGING_EXAMINATIONS,
         "billing_departments": BILLING_DEPARTMENTS,
         "lab_tests": lab_tests,
@@ -505,7 +507,23 @@ def print_receipt(
         for i in (invoice.items or [])
     ]
     methods = list({p.payment_method for p in (invoice.payments or []) if p.payment_method})
+    method_labels = {
+        "cash": "Espèces",
+        "orange_money": "Orange Money",
+        "bank_transfer": "Virement bancaire",
+        "card": "Carte bancaire",
+        "insurance": "Assurance",
+    }
+    payment_details = [
+        {
+            "method": p.payment_method,
+            "label": method_labels.get(p.payment_method, p.payment_method),
+            "amount_gnf": p.amount_gnf,
+        }
+        for p in (invoice.payments or [])
+    ]
     subtotal = int(getattr(invoice, "subtotal_amount_gnf", None) or invoice.total_amount_gnf or 0)
+    now = datetime.now()
     pdf_bytes = build_invoice_pdf(
         invoice.invoice_number,
         patient_name,
@@ -516,8 +534,10 @@ def print_receipt(
         total=invoice.total_amount_gnf,
         paid=invoice.paid_amount_gnf,
         payment_methods=methods,
+        payment_details=payment_details,
         printed_by=(current_user.full_name or current_user.email or "—"),
-        printed_at=datetime.now().strftime("%d/%m/%Y %H:%M"),
+        printed_date=now.strftime("%d/%m/%Y"),
+        printed_time=now.strftime("%H:%M"),
     )
     return Response(
         content=pdf_bytes,

@@ -16,10 +16,22 @@ ADMISSION_SERVICES = [
 # Billable consultation types (default prices in GNF)
 CONSULTATION_SERVICES = [
     {"code": "emergency_consultation", "label": "Consultation urgences", "charge_type": "consultation", "price_gnf": 150_000},
-    {"code": "specialized_consultation", "label": "Consultation spécialisée", "charge_type": "consultation", "price_gnf": 200_000},
+    {"code": "specialized_consultation", "label": "Consultation spécialisée", "charge_type": "consultation", "price_gnf": 200_000, "requires_specialty": True},
     {"code": "outpatient_consultation", "label": "Consultation externe", "charge_type": "consultation", "price_gnf": 100_000},
     {"code": "hospitalization", "label": "Hospitalisation (forfait journalier)", "charge_type": "hospitalization", "price_gnf": 350_000},
     {"code": "emergency_care", "label": "Urgences", "charge_type": "procedure", "price_gnf": 175_000},
+]
+
+SPECIALIZED_SPECIALTIES = [
+    {"code": "pediatrics", "label": "Pédiatrie"},
+    {"code": "pediatric_surgery", "label": "Chirurgie pédiatrique"},
+    {"code": "plastic_reconstructive_cosmetic_burn", "label": "Chirurgie plastique, reconstructrice, esthétique et des brûlures"},
+    {"code": "gynecology_obstetrics", "label": "Gynécologie & Obstétrique"},
+    {"code": "digestive_visceral_surgery", "label": "Chirurgie digestive & viscérale"},
+    {"code": "internal_medicine", "label": "Médecine interne"},
+    {"code": "infectious_tropical", "label": "Maladies infectieuses & tropicales"},
+    {"code": "neurosurgery", "label": "Neurochirurgie"},
+    {"code": "orthopedic_trauma", "label": "Chirurgie orthopédique & traumatologique"},
 ]
 
 # Medical imaging examinations — configurable prices

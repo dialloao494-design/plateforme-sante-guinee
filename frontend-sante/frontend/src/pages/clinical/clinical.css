@@ -1700,6 +1700,30 @@
   margin-bottom: 0.75rem;
 }
 
+.reception-his-specialty-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+  width: 100%;
+  padding: 0.65rem 0;
+}
+
+.reception-his-specialty-picker label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: min(100%, 320px);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.reception-his-specialty-picker select {
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
 .reception-his-billing-lines {
   width: 100%;
   border-collapse: collapse;

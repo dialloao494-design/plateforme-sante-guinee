@@ -130,6 +130,7 @@ export default function PharmacyDashboard() {
   const [searchQ, setSearchQ] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
   const [selectedPatient, setSelectedPatient] = useState(null);
 
   const [lines, setLines] = useState(initialLines);
@@ -149,19 +150,25 @@ export default function PharmacyDashboard() {
   useEffect(() => {
     if (!searchQ.trim()) {
       setSearchResults([]);
+      setSearchError('');
       return undefined;
     }
     const t = setTimeout(async () => {
       setSearching(true);
+      setSearchError('');
       try {
         const { data } = await clinicalApi.pharmacyPatientSearch(searchQ.trim());
         setSearchResults(data || []);
-      } catch {
+        if (!(data || []).length) {
+          setSearchError('Aucun patient trouvé.');
+        }
+      } catch (err) {
         setSearchResults([]);
+        setSearchError(formatApiError(err, 'Recherche patient impossible'));
       } finally {
         setSearching(false);
       }
-    }, 200);
+    }, 250);
     return () => clearTimeout(t);
   }, [searchQ]);
 
@@ -203,16 +210,23 @@ export default function PharmacyDashboard() {
       const { data } = await clinicalApi.pharmacyGetPatient(p.id);
       if (data?.id) patient = data;
     } catch {
-      /* keep search hit */
+      try {
+        const { data } = await clinicalApi.pharmacyPatientSearch(String(p.patient_number || p.id));
+        const hit = (data || []).find((row) => row.id === p.id) || data?.[0];
+        if (hit?.id) patient = hit;
+      } catch {
+        /* keep search hit */
+      }
     }
     setSelectedPatient(patient);
     setSearchQ('');
     setSearchResults([]);
+    setSearchError('');
     setSavedRequest(null);
     setPaymentForm(EMPTY_PAYMENT);
     setLines(initialLines());
     setError('');
-    setMessage(`Patient sélectionné : ${patient.last_name} ${patient.first_name}`);
+    setMessage(`Patient sélectionné : ${patient.last_name} ${patient.first_name} · N° ${patient.patient_number || patient.id}`);
   };
 
   const clearPatient = () => {
@@ -313,6 +327,19 @@ export default function PharmacyDashboard() {
     window.print();
   };
 
+  const printReceiptPdf = async () => {
+    if (!savedRequest?.charge_id) return;
+    try {
+      const { downloadAuthenticatedPdf } = await import('../../utils/downloadPdf.js');
+      await downloadAuthenticatedPdf(
+        `/clinical/pharmacy/charges/${savedRequest.charge_id}/receipt`,
+        `recu-pharmacie-${savedRequest.charge_id}.pdf`
+      );
+    } catch {
+      setError('Impossible d\'imprimer le reçu PDF.');
+    }
+  };
+
   const billingLines = savedRequest?.items?.length
     ? savedRequest.items
     : lines
@@ -383,13 +410,13 @@ export default function PharmacyDashboard() {
                 <input
                   id="pharmacy-patient-search"
                   ref={searchRef}
-                  type="search"
+                  type="text"
                   value={searchQ}
                   onChange={(e) => setSearchQ(e.target.value)}
                   autoComplete="off"
-                  placeholder="Tapez pour rechercher…"
+                  placeholder="N° dossier, nom, téléphone ou code QR…"
                 />
-                {searching && <span className="reception-his-optional-shortcut">…</span>}
+                {searching && <span className="reception-his-optional-shortcut">Recherche…</span>}
               </div>
               {searchResults.length > 0 && (
                 <ul className="reception-his-search-results reception-his-search-results--inline" role="listbox">
@@ -403,8 +430,8 @@ export default function PharmacyDashboard() {
                   ))}
                 </ul>
               )}
-              {searchQ.trim() && !searching && searchResults.length === 0 && (
-                <p className="reception-his-no-results">Aucun patient trouvé.</p>
+              {searchError && !searching && (
+                <p className="reception-his-no-results">{searchError}</p>
               )}
             </section>
 
@@ -646,6 +673,14 @@ export default function PharmacyDashboard() {
                   disabled={!billingReady}
                 >
                   Imprimer reçu
+                </button>
+                <button
+                  type="button"
+                  className="clinical-btn clinical-btn--secondary"
+                  onClick={printReceiptPdf}
+                  disabled={!billingReady}
+                >
+                  Imprimer PDF (AASMA)
                 </button>
               </div>
             </section>
