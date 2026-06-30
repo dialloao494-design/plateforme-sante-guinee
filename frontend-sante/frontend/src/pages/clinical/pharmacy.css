@@ -59,6 +59,12 @@
   min-width: 0;
 }
 
+/* Keep patient search dropdown above the next workflow card */
+.pharmacy-his-workflow-card:has(.reception-his-search-results--inline) {
+  position: relative;
+  z-index: 30;
+}
+
 .pharmacy-his-search-btn {
   display: inline-flex;
   align-items: center;
