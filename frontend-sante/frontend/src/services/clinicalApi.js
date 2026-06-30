@@ -173,6 +173,8 @@ const clinicalApi = {
 
   // Lab
   labQueue: () => httpClient.get('/clinical/lab/orders'),
+  labQueueByStatus: (bucket) => httpClient.get('/clinical/lab/queue/by-status', { params: { bucket } }),
+  labServiceRequests: (patientId) => httpClient.get(`/clinical/lab/patients/${patientId}/service-requests`),
   updateLabOrder: (id, data) => httpClient.patch(`/clinical/lab/orders/${id}`, data),
   recordLabResult: (orderId, data) => httpClient.post(`/clinical/lab/orders/${orderId}/results`, data),
   validateLabResult: (resultId) => httpClient.post(`/clinical/lab/results/${resultId}/validate`),

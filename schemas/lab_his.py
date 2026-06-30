@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel
@@ -27,3 +27,22 @@ class LabPatientOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class LabServiceRequestOut(BaseModel):
+    id: str
+    exam_name: str
+    payment_status: str
+    requested_at: Optional[datetime] = None
+    requested_by: Optional[str] = None
+    lab_order_id: Optional[int] = None
+
+
+class LabQueueRowOut(BaseModel):
+    patient_id: int
+    patient_number: Optional[str] = None
+    last_name: str
+    first_name: str
+    exams: str
+    status: str
+    date_time: Optional[datetime] = None

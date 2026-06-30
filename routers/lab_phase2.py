@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -13,7 +13,7 @@ from database import get_db
 import models
 from models.user import User
 from schemas.clinical import LabCatalogPricesUpdate, LabOrderResponse, WalkInLabRequestCreate
-from schemas.lab_his import LabPatientOut
+from schemas.lab_his import LabPatientOut, LabQueueRowOut, LabServiceRequestOut
 from security import get_current_user
 from services.lab_clinical_service import LabClinicalService
 from services.reception_his_service import ReceptionHisService
@@ -124,6 +124,32 @@ def lab_dashboard(db: Session = Depends(get_db), current_user: User = Depends(ge
     _require_role(current_user, LAB_READ)
     clinic = resolve_clinic_for_user(db, current_user)
     return LabClinicalService.dashboard_stats(db, clinic_id=clinic.id)
+
+
+@router.get("/queue/by-status", response_model=List[LabQueueRowOut])
+def lab_queue_by_status(
+    bucket: Literal["pending", "sampling", "analysis", "validated_today"] = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, LAB_READ)
+    clinic = resolve_clinic_for_user(db, current_user)
+    rows = LabClinicalService.list_queue_by_bucket(db, clinic_id=clinic.id, bucket=bucket)
+    return [LabQueueRowOut(**row) for row in rows]
+
+
+@router.get("/patients/{patient_id}/service-requests", response_model=List[LabServiceRequestOut])
+def lab_patient_service_requests(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, LAB_READ)
+    clinic = resolve_clinic_for_user(db, current_user)
+    rows = LabClinicalService.list_patient_service_requests(
+        db, clinic_id=clinic.id, patient_id=patient_id, actor=current_user
+    )
+    return [LabServiceRequestOut(**row) for row in rows]
 
 
 @router.get("/reports/monthly")

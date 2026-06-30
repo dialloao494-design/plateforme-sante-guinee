@@ -228,6 +228,29 @@
   padding: 0.85rem 1rem;
 }
 
+.clinical-stat-card--clickable {
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.clinical-stat-card--clickable:hover {
+  border-color: #94a3b8;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.clinical-stat-card--clickable:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 2px;
+}
+
+.clinical-stat-card--active {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.18);
+}
+
 .clinical-stat-card--success {
   background: #ecfdf5;
   border-color: #a7f3d0;
@@ -1552,6 +1575,82 @@
   font-weight: 400;
   resize: vertical;
   min-height: 4.5rem;
+}
+
+.lab-his-queue-panel {
+  margin: 0 0 1.25rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.lab-his-queue-panel h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.lab-his-queue-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.lab-his-queue-table th,
+.lab-his-queue-table td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.lab-his-queue-table th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #334155;
+}
+
+.lab-his-service-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.lab-his-service-table th,
+.lab-his-service-table td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.lab-his-service-table th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #334155;
+}
+
+.lab-his-pay-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.lab-his-pay-badge--paid {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.lab-his-pay-badge--validated {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.lab-his-pay-badge--pending {
+  background: #fef3c7;
+  color: #b45309;
 }
 
 .lab-his-workflow .lab-his-worklist {

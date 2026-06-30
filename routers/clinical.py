@@ -498,7 +498,17 @@ def clinic_doctors(
         .order_by(models.Doctor.last_name)
         .all()
     )
-    return [{"id": d.id, "name": d.name, "specialty": d.specialty} for d in doctors]
+    return [
+        {
+            "id": d.user_id,
+            "doctor_id": d.id,
+            "user_id": d.user_id,
+            "name": d.name,
+            "full_name": d.full_name,
+            "specialty": d.specialty,
+        }
+        for d in doctors
+    ]
 
 
 @router.get("/reception/follow-ups", response_model=mh_schemas.FollowUpReceptionSummary)

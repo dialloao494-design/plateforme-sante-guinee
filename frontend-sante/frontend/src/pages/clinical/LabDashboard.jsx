@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import { useAuth } from '../../contexts/AuthContext.jsx';
-import { formatGNF } from '../../utils/appointmentPresentation.js';
 import { formatApiError } from '../../utils/apiError.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import './clinical.css';
@@ -9,6 +8,20 @@ import './clinical.css';
 const TABS = [
   { id: 'workflow', label: 'Tableau de bord Labo', shortcut: '1' },
 ];
+
+const STAT_BUCKETS = [
+  { key: 'pending', label: 'En attente', variant: 'warning', statKey: 'pending_exams', fallbackKey: 'pending_results' },
+  { key: 'sampling', label: 'En prélèvement', variant: 'accent', statKey: 'in_sampling' },
+  { key: 'analysis', label: 'En analyse', variant: 'accent', statKey: 'in_analysis' },
+  { key: 'validated_today', label: 'Validés aujourd\'hui', variant: 'success', statKey: 'validated_today' },
+];
+
+const BUCKET_TITLES = {
+  pending: 'Patients en attente',
+  sampling: 'Patients en prélèvement',
+  analysis: 'Patients en analyse',
+  validated_today: 'Examens validés aujourd\'hui',
+};
 
 const SAMPLE_TYPES = ['Sang', 'Urine', 'Selles', 'LCR', 'Écouvillon', 'Autre'];
 const VALIDATION_STATUSES = [
@@ -68,6 +81,21 @@ const formatDob = (dob) => {
   }
 };
 
+const formatDateTime = (value) => {
+  if (!value) return '—';
+  try {
+    return new Date(value).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+  } catch {
+    return String(value);
+  }
+};
+
+const paymentBadgeClass = (status) => {
+  if (status === 'Validé') return 'lab-his-pay-badge lab-his-pay-badge--validated';
+  if (status === 'Payé') return 'lab-his-pay-badge lab-his-pay-badge--paid';
+  return 'lab-his-pay-badge lab-his-pay-badge--pending';
+};
+
 const ReadOnlyDisplay = ({ value }) => (
   <div
     className={`reception-his-auto-display${value ? ' reception-his-auto-display--filled' : ' reception-his-auto-display--empty'}`}
@@ -84,11 +112,6 @@ const DisplayField = ({ label, value }) => (
   </label>
 );
 
-const AmountDisplay = ({ amountGnf }) => {
-  const has = amountGnf != null && amountGnf !== '' && !Number.isNaN(Number(amountGnf));
-  return <ReadOnlyDisplay value={has ? formatGNF(Number(amountGnf)) : ''} />;
-};
-
 const FormNotice = ({ children }) =>
   children ? <p className="reception-his-form-notice">{children}</p> : null;
 
@@ -103,25 +126,22 @@ export default function LabDashboard() {
 
   const [labStats, setLabStats] = useState(null);
   const [orders, setOrders] = useState([]);
-  const [catalogCategories, setCatalogCategories] = useState([]);
-  const [catalogMeta, setCatalogMeta] = useState({ total_categories: 0, total_tests: 0 });
-  const [priceEdits, setPriceEdits] = useState({});
-  const [savingPrices, setSavingPrices] = useState(false);
+  const [activeStatBucket, setActiveStatBucket] = useState(null);
+  const [queueRows, setQueueRows] = useState([]);
+  const [loadingQueue, setLoadingQueue] = useState(false);
 
   const [searchQ, setSearchQ] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const [serviceRequests, setServiceRequests] = useState([]);
 
-  const [testSearchQ, setTestSearchQ] = useState('');
-  const [selectedTests, setSelectedTests] = useState({});
   const [sampleForm, setSampleForm] = useState({
     collection_date: todayStr(),
     collection_time: nowTimeStr(),
     collector: '',
     sample_type: 'Sang',
   });
-  const [paymentStatus, setPaymentStatus] = useState('pending');
 
   const [activeOrderId, setActiveOrderId] = useState(null);
   const [resultRows, setResultRows] = useState([{ ...EMPTY_RESULT_ROW }]);
@@ -133,29 +153,13 @@ export default function LabDashboard() {
     observations: '',
   });
 
-  const [catalogSearchQ, setCatalogSearchQ] = useState('');
-
   const load = useCallback(async () => {
-    const [queueRes, dashRes, catalogRes] = await Promise.allSettled([
+    const [queueRes, dashRes] = await Promise.allSettled([
       clinicalApi.labQueue(),
       clinicalApi.labDashboardStats(),
-      clinicalApi.labCatalog(),
     ]);
     if (queueRes.status === 'fulfilled') setOrders(queueRes.value.data || []);
     if (dashRes.status === 'fulfilled') setLabStats(dashRes.value.data || null);
-    if (catalogRes.status === 'fulfilled') {
-      const payload = catalogRes.value.data || {};
-      setCatalogCategories(payload.categories || []);
-      setCatalogMeta({
-        total_categories: payload.total_categories || 0,
-        total_tests: payload.total_tests || 0,
-      });
-      const prices = {};
-      (payload.tests || []).forEach((t) => {
-        prices[t.code] = t.price_gnf ?? '';
-      });
-      setPriceEdits(prices);
-    }
   }, []);
 
   useEffect(() => {
@@ -205,36 +209,24 @@ export default function LabDashboard() {
     }
   }, [user?.full_name, validationForm.technician, sampleForm.collector]);
 
-  const catalog = useMemo(
-    () => catalogCategories.flatMap((c) => (c.tests || []).map((t) => ({ ...t, category_label: c.label }))),
-    [catalogCategories]
-  );
-
-  const filteredCatalogTests = useMemo(() => {
-    const q = testSearchQ.trim().toLowerCase();
-    if (!q) return catalog;
-    return catalog.filter(
-      (t) =>
-        t.name?.toLowerCase().includes(q) ||
-        t.code?.toLowerCase().includes(q) ||
-        t.category_label?.toLowerCase().includes(q)
-    );
-  }, [catalog, testSearchQ]);
-
-  const selectedTestsList = useMemo(
-    () => catalog.filter((t) => selectedTests[t.code]),
-    [catalog, selectedTests]
-  );
-
-  const subtotalGnf = useMemo(
-    () =>
-      selectedTestsList.reduce((sum, t) => {
-        const raw = priceEdits[t.code];
-        const price = raw === '' || raw == null ? 0 : Number(raw);
-        return sum + (Number.isFinite(price) ? price : 0);
-      }, 0),
-    [selectedTestsList, priceEdits]
-  );
+  useEffect(() => {
+    if (!selectedPatient?.id) {
+      setServiceRequests([]);
+      return undefined;
+    }
+    let cancelled = false;
+    clinicalApi
+      .labServiceRequests(selectedPatient.id)
+      .then(({ data }) => {
+        if (!cancelled) setServiceRequests(data || []);
+      })
+      .catch(() => {
+        if (!cancelled) setServiceRequests([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPatient?.id]);
 
   const patientOrders = useMemo(() => {
     if (!selectedPatient?.id) return [];
@@ -246,16 +238,37 @@ export default function LabDashboard() {
     [patientOrders, activeOrderId]
   );
 
-  const catalogTableRows = useMemo(() => {
-    const q = catalogSearchQ.trim().toLowerCase();
-    if (!q) return catalog;
-    return catalog.filter(
-      (t) =>
-        t.name?.toLowerCase().includes(q) ||
-        t.code?.toLowerCase().includes(q) ||
-        t.category_label?.toLowerCase().includes(q)
-    );
-  }, [catalog, catalogSearchQ]);
+  const stats = useMemo(() => {
+    if (!labStats) {
+      return [{ key: 'pending', label: 'Examens en cours', value: orders.length, variant: 'accent' }];
+    }
+    return STAT_BUCKETS.map((bucket) => ({
+      key: bucket.key,
+      label: bucket.label,
+      variant: bucket.variant,
+      value: labStats[bucket.statKey] ?? (bucket.fallbackKey ? labStats[bucket.fallbackKey] : 0) ?? 0,
+    }));
+  }, [labStats, orders.length]);
+
+  const loadQueueBucket = async (bucket) => {
+    if (activeStatBucket === bucket) {
+      setActiveStatBucket(null);
+      setQueueRows([]);
+      return;
+    }
+    setActiveStatBucket(bucket);
+    setLoadingQueue(true);
+    setError('');
+    try {
+      const { data } = await clinicalApi.labQueueByStatus(bucket);
+      setQueueRows(data || []);
+    } catch (err) {
+      setQueueRows([]);
+      setError(formatApiError(err, 'Impossible de charger la file d\'attente'));
+    } finally {
+      setLoadingQueue(false);
+    }
+  };
 
   const selectPatient = async (p) => {
     if (!p?.id) return;
@@ -276,21 +289,14 @@ export default function LabDashboard() {
 
   const clearPatient = () => {
     setSelectedPatient(null);
-    setSelectedTests({});
+    setServiceRequests([]);
     setActiveOrderId(null);
     setResultRows([{ ...EMPTY_RESULT_ROW }]);
   };
 
-  const toggleTest = (code) => {
-    setSelectedTests((prev) => ({ ...prev, [code]: !prev[code] }));
-  };
-
-  const removeTest = (code) => {
-    setSelectedTests((prev) => {
-      const next = { ...prev };
-      delete next[code];
-      return next;
-    });
+  const selectOrderById = (orderId) => {
+    const order = orders.find((o) => o.id === orderId) || patientOrders.find((o) => o.id === orderId);
+    if (order) selectOrder(order);
   };
 
   const addResultRow = () => setResultRows((rows) => [...rows, { ...EMPTY_RESULT_ROW }]);
@@ -318,52 +324,6 @@ export default function LabDashboard() {
       validation_date: todayStr(),
       validation_time: nowTimeStr(),
     }));
-  };
-
-  const submitRequest = async (e) => {
-    e.preventDefault();
-    if (!selectedPatient?.id) {
-      setError('Recherchez et sélectionnez un patient enregistré à la réception.');
-      return;
-    }
-    if (selectedTestsList.length === 0) {
-      setError('Sélectionnez au moins un examen.');
-      return;
-    }
-    setLoading(true);
-    setError('');
-    try {
-      const sampleMeta = JSON.stringify({
-        collection_date: sampleForm.collection_date,
-        collection_time: sampleForm.collection_time,
-        collector: sampleForm.collector,
-        sample_type: sampleForm.sample_type,
-      });
-      const { data } = await clinicalApi.createWalkInLabOrders({
-        patient_id: selectedPatient.id,
-        payment_status: paymentStatus,
-        clinical_notes: sampleMeta,
-        tests: selectedTestsList.map((t) => {
-          const raw = priceEdits[t.code];
-          const parsed = raw === '' || raw == null ? null : Number(raw);
-          return {
-            test_code: t.code,
-            test_name: t.name,
-            price_gnf: Number.isFinite(parsed) ? parsed : null,
-          };
-        }),
-      });
-      setMessage(
-        `${data?.length || selectedTestsList.length} examen(s) enregistré(s) — total ${formatGNF(subtotalGnf)}`
-      );
-      setSelectedTests({});
-      if (data?.[0]?.id) setActiveOrderId(data[0].id);
-      await load();
-    } catch (err) {
-      setError(formatApiError(err, 'Enregistrement de la demande impossible'));
-    } finally {
-      setLoading(false);
-    }
   };
 
   const submitResults = async (e) => {
@@ -415,45 +375,6 @@ export default function LabDashboard() {
       setLoading(false);
     }
   };
-
-  const saveCatalogPrices = async () => {
-    setSavingPrices(true);
-    try {
-      const items = catalog.map((test) => {
-        const raw = priceEdits[test.code];
-        if (raw === '' || raw == null) return { code: test.code, price_gnf: null };
-        const parsed = Number(raw);
-        return { code: test.code, price_gnf: Number.isFinite(parsed) ? parsed : null };
-      });
-      const { data } = await clinicalApi.updateLabCatalogPrices(items);
-      setCatalogCategories(data.categories || []);
-      setCatalogMeta({
-        total_categories: data.total_categories || 0,
-        total_tests: data.total_tests || 0,
-      });
-      const prices = {};
-      (data.tests || []).forEach((t) => {
-        prices[t.code] = t.price_gnf ?? '';
-      });
-      setPriceEdits(prices);
-      setMessage(`Catalogue mis à jour — ${data.total_tests} examens`);
-    } catch (err) {
-      setError(formatApiError(err, 'Enregistrement des tarifs impossible'));
-    } finally {
-      setSavingPrices(false);
-    }
-  };
-
-  const stats = labStats
-    ? [
-        { label: 'En attente', value: labStats.pending_exams ?? labStats.pending_results ?? 0, variant: 'warning' },
-        { label: 'En prélèvement', value: labStats.in_sampling ?? 0, variant: 'accent' },
-        { label: 'En analyse', value: labStats.in_analysis ?? 0, variant: 'accent' },
-        { label: 'Validés aujourd\'hui', value: labStats.validated_today ?? 0, variant: 'success' },
-        { label: 'Recettes du jour', value: formatGNF(labStats.daily_revenue_gnf || 0), variant: 'success' },
-        { label: 'Recettes du mois', value: formatGNF(labStats.monthly_revenue_gnf || 0) },
-      ]
-    : [{ label: 'Examens en cours', value: orders.length, variant: 'accent' }];
 
   return (
     <div className="clinical-page reception-his lab-his-page">
@@ -523,7 +444,45 @@ export default function LabDashboard() {
 
       {tab === 'workflow' && (
         <>
-          <ClinicalStatGrid stats={stats} />
+          <ClinicalStatGrid stats={stats} onStatClick={loadQueueBucket} activeKey={activeStatBucket} />
+
+          {activeStatBucket && (
+            <section className="lab-his-queue-panel" aria-live="polite">
+              <h3>{BUCKET_TITLES[activeStatBucket] || 'File d\'attente'}</h3>
+              {loadingQueue ? (
+                <p className="clinical-hint">Chargement…</p>
+              ) : queueRows.length === 0 ? (
+                <p className="clinical-hint">Aucun patient dans cette file.</p>
+              ) : (
+                <div className="lab-his-results-wrap">
+                  <table className="lab-his-queue-table">
+                    <thead>
+                      <tr>
+                        <th>N° dossier</th>
+                        <th>Nom</th>
+                        <th>Prénom</th>
+                        <th>Examens / services demandés</th>
+                        <th>Statut</th>
+                        <th>Date / heure</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {queueRows.map((row) => (
+                        <tr key={`${row.patient_id}-${row.date_time || row.exams}`}>
+                          <td>{row.patient_number || row.patient_id}</td>
+                          <td>{row.last_name}</td>
+                          <td>{row.first_name}</td>
+                          <td>{row.exams}</td>
+                          <td>{row.status}</td>
+                          <td>{formatDateTime(row.date_time)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          )}
 
           <div className="lab-his-workflow">
             <h2 className="lab-his-workflow-title">Examens biologiques</h2>
@@ -566,77 +525,55 @@ export default function LabDashboard() {
                 </section>
 
                 <section className="lab-his-workflow-card lab-his-workflow-card--exams">
-                  <h3>Examens demandés</h3>
-                  <label className="clinical-field lab-his-workflow-search">
-                    Rechercher un examen
-                    <input
-                      value={testSearchQ}
-                      onChange={(e) => setTestSearchQ(e.target.value)}
-                      placeholder="Nom ou catégorie (ex. NFS, Glycémie…)"
-                    />
-                  </label>
-                  <div className="lab-his-exam-picker-scroll">
-                    <ul className="lab-catalog-list lab-his-exam-picker-list">
-                      {filteredCatalogTests.map((test) => (
-                        <li key={test.code} className="lab-catalog-row lab-his-exam-picker-row">
-                          <label className="lab-catalog-check">
-                            <input
-                              type="checkbox"
-                              checked={!!selectedTests[test.code]}
-                              onChange={() => toggleTest(test.code)}
-                            />
-                            <span className="lab-his-exam-name">{test.name}</span>
-                            <small className="lab-his-exam-category">{test.category_label}</small>
-                          </label>
-                          <span className="lab-his-exam-price">{formatGNF(priceEdits[test.code] || 0)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  {selectedTestsList.length > 0 && (
-                    <>
-                      <p className="lab-his-selected-heading">Examens sélectionnés</p>
-                      <ul className="lab-his-selected-tests">
-                        {selectedTestsList.map((t) => (
-                          <li key={t.code}>
-                            <span>{t.name}</span>
-                            <span className="lab-his-exam-price">{formatGNF(priceEdits[t.code] || 0)}</span>
-                            <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => removeTest(t.code)}>
-                              Retirer
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
+                  <h3>Demandes de service</h3>
+                  <p className="clinical-hint">
+                    Examens facturés et validés par la Réception — le laboratoire ne crée ni ne modifie les tarifs.
+                  </p>
+                  {serviceRequests.length === 0 ? (
+                    <FormNotice>Aucune demande de service laboratoire pour ce patient.</FormNotice>
+                  ) : (
+                    <div className="lab-his-results-wrap">
+                      <table className="lab-his-service-table">
+                        <thead>
+                          <tr>
+                            <th>Examen demandé</th>
+                            <th>Statut paiement / validation</th>
+                            <th>Date de demande</th>
+                            <th>Demandé par</th>
+                            <th />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {serviceRequests.map((req) => (
+                            <tr key={req.id}>
+                              <td>{req.exam_name}</td>
+                              <td>
+                                <span className={paymentBadgeClass(req.payment_status)}>{req.payment_status}</span>
+                              </td>
+                              <td>{formatDateTime(req.requested_at)}</td>
+                              <td>{req.requested_by || 'Réception'}</td>
+                              <td>
+                                {req.lab_order_id ? (
+                                  <button
+                                    type="button"
+                                    className="clinical-btn clinical-btn--secondary"
+                                    onClick={() => selectOrderById(req.lab_order_id)}
+                                  >
+                                    Saisir résultats
+                                  </button>
+                                ) : (
+                                  <span className="clinical-hint">En attente de paiement</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
-                  <div className="lab-his-billing-totals">
-                    <label>
-                      Sous-total
-                      <AmountDisplay amountGnf={subtotalGnf} />
-                    </label>
-                    <label>
-                      Total
-                      <AmountDisplay amountGnf={subtotalGnf} />
-                    </label>
-                    <label>
-                      Statut paiement
-                      <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}>
-                        <option value="pending">En attente</option>
-                        <option value="paid">Payé</option>
-                      </select>
-                    </label>
-                  </div>
-                  <button
-                    type="button"
-                    className="clinical-btn lab-his-workflow-action"
-                    onClick={submitRequest}
-                    disabled={loading || selectedTestsList.length === 0}
-                  >
-                    {loading ? 'Enregistrement…' : 'Enregistrer la demande'}
-                  </button>
                   {patientOrders.length > 0 && (
                     <div className="lab-his-worklist">
-                      <h4>Commandes du patient</h4>
+                      <h4>Commandes en cours</h4>
                       {patientOrders.map((order) => (
                         <div
                           key={order.id}
@@ -644,7 +581,6 @@ export default function LabDashboard() {
                         >
                           <span>
                             <strong>{order.test_name}</strong> — {order.status}
-                            {order.price_gnf != null && <> · {formatGNF(order.price_gnf)}</>}
                           </span>
                           <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => selectOrder(order)}>
                             Saisir résultats
@@ -821,14 +757,6 @@ export default function LabDashboard() {
             )}
           </div>
         </>
-      )}
-
-      {tab === 'catalog' && (
-        <section className="reception-his-form-sheet">
-          <p className="clinical-hint">
-            Le catalogue tarifaire laboratoire a été déplacé vers le module Réception → onglet Facturation.
-          </p>
-        </section>
       )}
     </div>
   );

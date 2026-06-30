@@ -418,6 +418,232 @@ class LabClinicalService:
         }
 
     @staticmethod
+    def _order_status_label(status: str) -> str:
+        mapping = {
+            "ordered": "En attente",
+            "sample_collected": "En prélèvement",
+            "in_analysis": "En analyse",
+            "completed": "Validé",
+            "cancelled": "Annulé",
+        }
+        return mapping.get(status or "", status or "—")
+
+    @staticmethod
+    def _invoice_payment_label(invoice: models.Invoice) -> str:
+        if invoice.status == "paid" or (invoice.paid_amount_gnf or 0) >= (invoice.total_amount_gnf or 0):
+            return "Payé"
+        if (invoice.paid_amount_gnf or 0) > 0:
+            return "Payé"
+        return "En attente"
+
+    @staticmethod
+    def _parse_test_from_description(description: str) -> tuple[str, str]:
+        text = (description or "").strip()
+        if "(" in text and text.endswith(")"):
+            name, _, tail = text.rpartition("(")
+            code = tail.rstrip(")").strip()
+            if code:
+                return name.strip() or text, code
+        return text, text[:64] or "LAB"
+
+    @staticmethod
+    def _find_order_for_invoice_item(
+        db: Session, *, clinic_id: int, patient_id: int, description: str
+    ) -> models.LabOrder | None:
+        test_name, test_code = LabClinicalService._parse_test_from_description(description)
+        return (
+            db.query(models.LabOrder)
+            .filter(
+                models.LabOrder.clinic_id == clinic_id,
+                models.LabOrder.patient_id == patient_id,
+                models.LabOrder.deleted_at.is_(None),
+                models.LabOrder.test_code == test_code,
+            )
+            .order_by(models.LabOrder.created_at.desc())
+            .first()
+        ) or (
+            db.query(models.LabOrder)
+            .filter(
+                models.LabOrder.clinic_id == clinic_id,
+                models.LabOrder.patient_id == patient_id,
+                models.LabOrder.deleted_at.is_(None),
+                models.LabOrder.test_name == test_name,
+            )
+            .order_by(models.LabOrder.created_at.desc())
+            .first()
+        )
+
+    @staticmethod
+    def _ensure_lab_order_from_invoice_item(
+        db: Session,
+        *,
+        clinic_id: int,
+        patient_id: int,
+        item: models.InvoiceItem,
+        invoice: models.Invoice,
+        actor: User | None = None,
+    ) -> models.LabOrder | None:
+        if LabClinicalService._invoice_payment_label(invoice) == "En attente":
+            return None
+        existing = LabClinicalService._find_order_for_invoice_item(
+            db, clinic_id=clinic_id, patient_id=patient_id, description=item.description
+        )
+        if existing:
+            return existing
+        test_name, test_code = LabClinicalService._parse_test_from_description(item.description)
+        consultation, doctor = LabClinicalService._ensure_walk_in_consultation(
+            db, clinic_id=clinic_id, patient_id=patient_id
+        )
+        order = models.LabOrder(
+            clinic_id=clinic_id,
+            consultation_id=consultation.id,
+            patient_id=patient_id,
+            ordered_by_user_id=invoice.created_by_user_id or (actor.id if actor else doctor.user_id),
+            doctor_id=doctor.id,
+            test_code=test_code,
+            test_name=test_name,
+            priority="routine",
+            clinical_notes=f'{{"reception_invoice_id": {invoice.id}, "invoice_item_id": {item.id}}}',
+            status="ordered",
+        )
+        db.add(order)
+        db.flush()
+        return order
+
+    @staticmethod
+    def list_patient_service_requests(
+        db: Session, *, clinic_id: int, patient_id: int, actor: User | None = None
+    ) -> list[dict]:
+        from core.tenant import assert_patient_in_clinic
+
+        assert_patient_in_clinic(db, patient_id=patient_id, clinic_id=clinic_id)
+        items = (
+            db.query(models.InvoiceItem)
+            .join(models.Invoice)
+            .options(joinedload(models.InvoiceItem.invoice))
+            .filter(
+                models.Invoice.clinic_id == clinic_id,
+                models.Invoice.patient_id == patient_id,
+                models.InvoiceItem.charge_type == "laboratory",
+            )
+            .order_by(models.Invoice.issued_at.desc(), models.InvoiceItem.id.desc())
+            .all()
+        )
+        out: list[dict] = []
+        for item in items:
+            invoice = item.invoice
+            if not invoice:
+                continue
+            order = LabClinicalService._ensure_lab_order_from_invoice_item(
+                db, clinic_id=clinic_id, patient_id=patient_id, item=item, invoice=invoice, actor=actor
+            )
+            creator = (
+                db.query(User).filter(User.id == invoice.created_by_user_id).first()
+                if invoice.created_by_user_id
+                else None
+            )
+            result = (
+                db.query(models.LabResult)
+                .filter(models.LabResult.lab_order_id == order.id)
+                .first()
+                if order
+                else None
+            )
+            if result and result.status == "validated":
+                pay_label = "Validé"
+            else:
+                pay_label = LabClinicalService._invoice_payment_label(invoice)
+            out.append(
+                {
+                    "id": f"inv-{item.id}",
+                    "exam_name": item.description,
+                    "payment_status": pay_label,
+                    "requested_at": invoice.issued_at or invoice.created_at,
+                    "requested_by": (creator.full_name or creator.email) if creator else "Réception",
+                    "lab_order_id": order.id if order else None,
+                }
+            )
+        db.commit()
+        return out
+
+    @staticmethod
+    def list_queue_by_bucket(db: Session, *, clinic_id: int, bucket: str) -> list[dict]:
+        today_start = datetime.combine(date.today(), time.min)
+        base = (
+            db.query(models.LabOrder)
+            .options(joinedload(models.LabOrder.patient))
+            .filter(
+                models.LabOrder.clinic_id == clinic_id,
+                models.LabOrder.deleted_at.is_(None),
+            )
+        )
+        if bucket == "pending":
+            orders = base.filter(models.LabOrder.status == "ordered").order_by(models.LabOrder.created_at.asc()).all()
+        elif bucket == "sampling":
+            orders = base.filter(models.LabOrder.status == "sample_collected").order_by(models.LabOrder.created_at.asc()).all()
+        elif bucket == "analysis":
+            orders = base.filter(models.LabOrder.status == "in_analysis").order_by(models.LabOrder.created_at.asc()).all()
+        elif bucket == "validated_today":
+            results = (
+                db.query(models.LabResult)
+                .join(models.LabOrder)
+                .options(joinedload(models.LabResult.lab_order).joinedload(models.LabOrder.patient))
+                .filter(
+                    models.LabOrder.clinic_id == clinic_id,
+                    models.LabResult.status == "validated",
+                    models.LabResult.validated_at >= today_start,
+                )
+                .order_by(models.LabResult.validated_at.desc())
+                .all()
+            )
+            orders = [r.lab_order for r in results if r.lab_order]
+        else:
+            raise HTTPException(status_code=400, detail="Statut inconnu")
+
+        grouped: dict[int, dict] = {}
+        for order in orders:
+            if not order or not order.patient:
+                continue
+            patient = order.patient
+            row = grouped.get(order.patient_id)
+            exam = order.test_name or order.test_code or "—"
+            ts = order.created_at
+            if bucket == "validated_today":
+                result = (
+                    db.query(models.LabResult)
+                    .filter(models.LabResult.lab_order_id == order.id, models.LabResult.status == "validated")
+                    .order_by(models.LabResult.validated_at.desc())
+                    .first()
+                )
+                if result and result.validated_at:
+                    ts = result.validated_at
+            if not row:
+                grouped[order.patient_id] = {
+                    "patient_id": order.patient_id,
+                    "patient_number": patient.patient_number,
+                    "last_name": patient.last_name,
+                    "first_name": patient.first_name,
+                    "exams": [exam],
+                    "status": LabClinicalService._order_status_label(order.status),
+                    "date_time": ts,
+                }
+            else:
+                if exam not in row["exams"]:
+                    row["exams"].append(exam)
+                if ts and (not row["date_time"] or ts > row["date_time"]):
+                    row["date_time"] = ts
+        rows = []
+        for row in grouped.values():
+            rows.append(
+                {
+                    **row,
+                    "exams": ", ".join(row["exams"]),
+                }
+            )
+        rows.sort(key=lambda r: r.get("date_time") or datetime.min, reverse=True)
+        return rows
+
+    @staticmethod
     def list_validated_results(db: Session, *, clinic_id: int, limit: int = 100) -> list[models.LabResult]:
         return (
             db.query(models.LabResult)
