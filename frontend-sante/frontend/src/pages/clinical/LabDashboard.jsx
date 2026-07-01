@@ -23,7 +23,14 @@ const BUCKET_TITLES = {
   validated_today: 'Examens validés aujourd\'hui',
 };
 
-const SAMPLE_TYPES = ['Sang', 'Urine', 'Selles', 'LCR', 'Écouvillon', 'Autre'];
+const SAMPLE_TYPES = [
+  { code: 'blood', label: 'Sang' },
+  { code: 'urine', label: 'Urine' },
+  { code: 'stool', label: 'Selles' },
+  { code: 'lcr', label: 'LCR' },
+  { code: 'swab', label: 'Écouvillon' },
+  { code: 'other', label: 'Autre' },
+];
 const VALIDATION_STATUSES = [
   { value: 'pending', label: 'En attente' },
   { value: 'in_progress', label: 'En cours' },
@@ -140,8 +147,9 @@ export default function LabDashboard() {
     collection_date: todayStr(),
     collection_time: nowTimeStr(),
     collector: '',
-    sample_type: 'Sang',
   });
+  const [sampleTypes, setSampleTypes] = useState([]);
+  const [sampleOther, setSampleOther] = useState('');
 
   const [activeOrderId, setActiveOrderId] = useState(null);
   const [resultRows, setResultRows] = useState([{ ...EMPTY_RESULT_ROW }]);
@@ -217,8 +225,11 @@ export default function LabDashboard() {
     let cancelled = false;
     clinicalApi
       .labServiceRequests(selectedPatient.id)
-      .then(({ data }) => {
-        if (!cancelled) setServiceRequests(data || []);
+      .then(async ({ data }) => {
+        if (!cancelled) {
+          setServiceRequests(data || []);
+          await load();
+        }
       })
       .catch(() => {
         if (!cancelled) setServiceRequests([]);
@@ -233,10 +244,21 @@ export default function LabDashboard() {
     return orders.filter((o) => o.patient_id === selectedPatient.id);
   }, [orders, selectedPatient?.id]);
 
-  const activeOrder = useMemo(
-    () => patientOrders.find((o) => o.id === activeOrderId) || null,
-    [patientOrders, activeOrderId]
-  );
+  const activeOrder = useMemo(() => {
+    if (!activeOrderId) return null;
+    const fromQueue = orders.find((o) => o.id === activeOrderId);
+    if (fromQueue) return fromQueue;
+    const req = serviceRequests.find((r) => r.lab_order_id === activeOrderId);
+    if (req) {
+      return {
+        id: activeOrderId,
+        test_name: req.exam_name,
+        status: 'ordered',
+        patient_id: selectedPatient?.id,
+      };
+    }
+    return null;
+  }, [orders, activeOrderId, serviceRequests, selectedPatient?.id]);
 
   const stats = useMemo(() => {
     if (!labStats) {
@@ -294,9 +316,64 @@ export default function LabDashboard() {
     setResultRows([{ ...EMPTY_RESULT_ROW }]);
   };
 
-  const selectOrderById = (orderId) => {
-    const order = orders.find((o) => o.id === orderId) || patientOrders.find((o) => o.id === orderId);
-    if (order) selectOrder(order);
+  const selectOrderById = async (orderId) => {
+    let order = orders.find((o) => o.id === orderId) || patientOrders.find((o) => o.id === orderId);
+    if (!order) {
+      await load();
+      order = orders.find((o) => o.id === orderId);
+    }
+    if (!order) {
+      const req = serviceRequests.find((r) => r.lab_order_id === orderId);
+      if (req) {
+        order = { id: orderId, test_name: req.exam_name, status: 'ordered', patient_id: selectedPatient?.id };
+      }
+    }
+    if (order) {
+      selectOrder(order);
+    } else {
+      setError('Commande laboratoire introuvable. Réessayez après actualisation.');
+    }
+  };
+
+  const toggleSampleType = (code) => {
+    setSampleTypes((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
+  };
+
+  const buildSampleNotes = () => JSON.stringify({
+    sample_types: sampleTypes.map((c) => SAMPLE_TYPES.find((s) => s.code === c)?.label || c),
+    sample_other: sampleTypes.includes('other') ? sampleOther.trim() : '',
+    collection_date: sampleForm.collection_date,
+    collection_time: sampleForm.collection_time,
+    collector: sampleForm.collector,
+  });
+
+  const saveSampleCollection = async () => {
+    if (!activeOrder?.id) {
+      setError('Sélectionnez une commande avant d\'enregistrer le prélèvement.');
+      return;
+    }
+    if (sampleTypes.length === 0) {
+      setError('Sélectionnez au moins un type d\'échantillon.');
+      return;
+    }
+    if (sampleTypes.includes('other') && !sampleOther.trim()) {
+      setError('Précisez le type d\'échantillon « Autre ».');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await clinicalApi.updateLabOrder(activeOrder.id, {
+        status: 'sample_collected',
+        clinical_notes: buildSampleNotes(),
+      });
+      setMessage('Prélèvement enregistré.');
+      await load();
+    } catch (err) {
+      setError(formatApiError(err, 'Enregistrement du prélèvement impossible'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const addResultRow = () => setResultRows((rows) => [...rows, { ...EMPTY_RESULT_ROW }]);
@@ -355,6 +432,9 @@ export default function LabDashboard() {
       if (orderStatus !== activeOrder.status) {
         await clinicalApi.updateLabOrder(activeOrder.id, { status: orderStatus });
       }
+      if (sampleTypes.length > 0) {
+        await clinicalApi.updateLabOrder(activeOrder.id, { clinical_notes: buildSampleNotes() });
+      }
       if (validationForm.status === 'validated') {
         const { data: result } = await clinicalApi.recordLabResult(activeOrder.id, payload);
         await clinicalApi.validateLabResult(result.id);
@@ -369,6 +449,10 @@ export default function LabDashboard() {
       setResultRows([{ ...EMPTY_RESULT_ROW }]);
       setActiveOrderId(null);
       await load();
+      if (selectedPatient?.id) {
+        const { data } = await clinicalApi.labServiceRequests(selectedPatient.id);
+        setServiceRequests(data || []);
+      }
     } catch (err) {
       setError(formatApiError(err, 'Enregistrement des résultats impossible'));
     } finally {
@@ -617,18 +701,40 @@ export default function LabDashboard() {
                         onChange={(e) => setSampleForm((p) => ({ ...p, collector: e.target.value }))}
                       />
                     </label>
-                    <label>
-                      Type d&apos;échantillon
-                      <select
-                        value={sampleForm.sample_type}
-                        onChange={(e) => setSampleForm((p) => ({ ...p, sample_type: e.target.value }))}
-                      >
-                        {SAMPLE_TYPES.map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                    </label>
                   </div>
+                  <fieldset className="lab-his-sample-types">
+                    <legend>Types d&apos;échantillon</legend>
+                    <div className="lab-his-sample-checkboxes" role="group" aria-label="Types d'échantillon">
+                      {SAMPLE_TYPES.map((s) => (
+                        <label key={s.code} className="lab-his-sample-check">
+                          <input
+                            type="checkbox"
+                            checked={sampleTypes.includes(s.code)}
+                            onChange={() => toggleSampleType(s.code)}
+                          />
+                          {s.label}
+                        </label>
+                      ))}
+                    </div>
+                    {sampleTypes.includes('other') && (
+                      <label className="lab-his-sample-other">
+                        Autre échantillon
+                        <input
+                          value={sampleOther}
+                          onChange={(e) => setSampleOther(e.target.value)}
+                          placeholder="ex. Liquide pleural, Liquide ascitique, Salive…"
+                        />
+                      </label>
+                    )}
+                  </fieldset>
+                  <button
+                    type="button"
+                    className="clinical-btn clinical-btn--secondary"
+                    onClick={saveSampleCollection}
+                    disabled={loading || !activeOrder}
+                  >
+                    {loading ? 'Enregistrement…' : 'Enregistrer le prélèvement'}
+                  </button>
                 </section>
 
                 <section className="lab-his-workflow-card lab-his-workflow-card--results">

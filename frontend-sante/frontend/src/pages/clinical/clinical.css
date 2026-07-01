@@ -1761,3 +1761,34 @@
   background: #f0fdfa;
 }
 
+.lab-his-sample-types {
+  margin-top: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+}
+
+.lab-his-sample-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.lab-his-sample-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.92rem;
+}
+
+.lab-his-sample-other {
+  display: block;
+  margin-top: 0.75rem;
+}
+
+.lab-his-sample-other input {
+  width: 100%;
+  margin-top: 0.35rem;
+}
+

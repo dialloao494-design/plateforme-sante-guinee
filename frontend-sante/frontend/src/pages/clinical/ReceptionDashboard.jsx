@@ -282,6 +282,7 @@ export default function ReceptionDashboard() {
   const [paymentForm, setPaymentForm] = useState(EMPTY_PAYMENT);
   const [paymentLines, setPaymentLines] = useState([emptyPaymentLine()]);
   const [selectedSpecialty, setSelectedSpecialty] = useState('');
+  const [selectedImaging, setSelectedImaging] = useState('');
   const [refundForm, setRefundForm] = useState(EMPTY_REFUND);
 
   const [invoiceSearchQ, setInvoiceSearchQ] = useState('');
@@ -319,6 +320,31 @@ export default function ReceptionDashboard() {
     updateBilling({ department: `Consultation spécialisée — ${spec.label}` });
     setSelectedSpecialty('');
     setError('');
+  };
+
+  const imagingExaminations = billingCatalog?.imaging_examinations || [];
+
+  const addImagingExam = () => {
+    if (!selectedImaging) {
+      setError('Sélectionnez un examen d\'imagerie médicale.');
+      return;
+    }
+    const exam = imagingExaminations.find((e) => e.code === selectedImaging);
+    if (!exam) return;
+    addBillingLine({
+      charge_type: 'radiology',
+      description: exam.label,
+      quantity: 1,
+      unit_price_gnf: exam.price_gnf,
+    });
+    updateBilling({ department: 'Imagerie médicale' });
+    setSelectedImaging('');
+    setError('');
+  };
+
+  const prefillPaymentLines = (remaining) => {
+    const amt = Number(remaining) || 0;
+    setPaymentLines([{ ...emptyPaymentLine(), amount_gnf: amt > 0 ? String(amt) : '' }]);
   };
   const updateRefund = (v) => setRefundForm((p) => {
     const next = { ...p, ...v };
@@ -594,7 +620,7 @@ export default function ReceptionDashboard() {
       });
       setActiveInvoice(data || null);
       setBillingLineItems([]);
-      setPaymentForm((prev) => ({ ...prev, amount_gnf: String(data?.remaining_balance_gnf ?? data?.total_amount_gnf ?? '') }));
+      prefillPaymentLines(data?.remaining_balance_gnf ?? data?.total_amount_gnf ?? 0);
       setMessage(`Facture créée · N° facture ${data?.invoice_number || '—'}`);
       await Promise.all([loadInvoices(selectedPatient.id), loadDashboard()]);
     } catch (err) {
@@ -607,7 +633,7 @@ export default function ReceptionDashboard() {
   const selectInvoice = (id) => {
     const inv = invoices.find((item) => String(item.id) === String(id));
     setActiveInvoice(inv || null);
-    updatePayment({ amount_gnf: String(inv?.remaining_balance_gnf ?? '') });
+    prefillPaymentLines(inv?.remaining_balance_gnf ?? 0);
     updateRefund({
       invoice_id: inv ? String(inv.id) : '',
       service_paid_for: inv?.department || '',
@@ -621,6 +647,11 @@ export default function ReceptionDashboard() {
     if (!activeInvoice?.id) return setError('Sélectionnez une facture du patient.');
     const lines = paymentLines.filter((l) => Number(l.amount_gnf) > 0);
     if (lines.length === 0) return setError('Ajoutez au moins une ligne de paiement avec un montant.');
+    const draftTotal = lines.reduce((s, l) => s + Number(l.amount_gnf), 0);
+    const remaining = Number(activeInvoice.remaining_balance_gnf ?? 0);
+    if (draftTotal > remaining) {
+      return setError(`Le total des paiements (${formatGNF(draftTotal)}) dépasse le reste à payer (${formatGNF(remaining)}).`);
+    }
     setLoading(true);
     setError('');
     setMessage('');
@@ -633,10 +664,9 @@ export default function ReceptionDashboard() {
           reference: line.reference || undefined,
         });
         lastData = data || lastData;
-        if ((data?.remaining_balance_gnf ?? 1) <= 0) break;
       }
       setMessage(`Paiement(s) enregistré(s) · reste ${formatGNF(lastData?.remaining_balance_gnf || 0)}`);
-      setPaymentLines([emptyPaymentLine()]);
+      prefillPaymentLines(lastData?.remaining_balance_gnf ?? 0);
       setActiveInvoice(lastData || null);
       await Promise.all([loadInvoices(selectedPatient?.id), loadDashboard()]);
     } catch (err) {
@@ -773,6 +803,12 @@ export default function ReceptionDashboard() {
         remaining: Number(activeInvoice.remaining_balance_gnf || 0),
       }
     : null;
+
+  const draftPaymentTotal = useMemo(
+    () => paymentLines.reduce((s, l) => s + (Number(l.amount_gnf) || 0), 0),
+    [paymentLines]
+  );
+  const draftRemainingAfterPay = activeMeta ? Math.max(0, activeMeta.remaining - draftPaymentTotal) : null;
 
   const patientDossier = selectedPatient?.patient_number || '';
   const patientDisplayName = patientFullName(selectedPatient);
@@ -1217,21 +1253,22 @@ export default function ReceptionDashboard() {
                           </button>
                         </div>
                       )}
-                      {(billingCatalog?.imaging_examinations || []).map((exam) => (
-                        <button
-                          key={exam.code}
-                          type="button"
-                          className="clinical-btn clinical-btn--secondary"
-                          onClick={() => addBillingLine({
-                            charge_type: 'radiology',
-                            description: exam.label,
-                            quantity: 1,
-                            unit_price_gnf: exam.price_gnf,
-                          })}
-                        >
-                          + {exam.label}
-                        </button>
-                      ))}
+                      {imagingExaminations.length > 0 && (
+                        <div className="reception-his-specialty-picker">
+                          <label>
+                            Imagerie médicale — examen
+                            <select value={selectedImaging} onChange={(e) => setSelectedImaging(e.target.value)}>
+                              <option value="">Choisir un examen…</option>
+                              {imagingExaminations.map((exam) => (
+                                <option key={exam.code} value={exam.code}>{exam.label} · {formatGNF(exam.price_gnf)}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addImagingExam}>
+                            + Imagerie médicale
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <label>
                       Rechercher examen laboratoire
@@ -1378,6 +1415,18 @@ export default function ReceptionDashboard() {
                   Reste à payer
                   <AmountDisplay amountGnf={activeInvoice ? activeMeta?.remaining : null} />
                 </label>
+                {activeInvoice && draftPaymentTotal > 0 && (
+                  <>
+                    <label>
+                      Total saisi (lignes)
+                      <AmountDisplay amountGnf={draftPaymentTotal} />
+                    </label>
+                    <label>
+                      Reste après saisie
+                      <AmountDisplay amountGnf={draftRemainingAfterPay} />
+                    </label>
+                  </>
+                )}
               </div>
               {activeInvoice ? (
                 <form onSubmit={handlePayment}>

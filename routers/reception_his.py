@@ -497,6 +497,9 @@ def print_receipt(
     patient_name = (
         f"{invoice.patient.first_name} {invoice.patient.last_name}".strip() if invoice.patient else "—"
     )
+    patient_file = ""
+    if invoice.patient:
+        patient_file = invoice.patient.patient_number or str(invoice.patient.id)
     items = [
         {
             "description": i.description,
@@ -538,6 +541,7 @@ def print_receipt(
         printed_by=printed_by_label(current_user),
         printed_date=now.strftime("%d/%m/%Y"),
         printed_time=now.strftime("%H:%M"),
+        patient_file_number=patient_file,
     )
     return Response(
         content=pdf_bytes,

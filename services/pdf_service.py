@@ -210,63 +210,33 @@ def invoice_pdf(
     printed_at: str = "",
     printed_date: str = "",
     printed_time: str = "",
+    patient_file_number: str = "",
+    document_title: str = "FACTURE",
 ) -> bytes:
-    remaining = max(0, total - paid)
-    lines = [
-        f"Patient: {patient_name}",
-        f"Facture: {invoice_number}",
-        "",
-        "Produit / Service          Qté   Prix U        Total",
-        "--------------------------------------------------------",
-    ]
-    for item in items:
-        desc = str(item.get("description", item.get("product_name", "—")))[:26]
-        qty = int(item.get("quantity") or 1)
-        unit = int(item.get("unit_price_gnf") or item.get("amount_gnf") or 0)
-        amt = int(item.get("amount_gnf") or item.get("total_gnf") or qty * unit)
-        lines.append(f"{desc:<26} {qty:>3} {_gnf(unit):>12} {_gnf(amt):>12}")
-    lines.extend(
-        [
-            "",
-            "Récapitulatif paiement",
-            f"Montant total: {_gnf(subtotal)}",
-            f"Exemption (%): {exemption_percent:.0f}%",
-            f"Montant exemption: {_gnf(exemption_amount)}",
-            f"Nouveau total: {_gnf(total)}",
-            f"Montant reçu: {_gnf(paid)}",
-            f"Reste à payer: {_gnf(remaining)}",
-        ]
-    )
-    if payment_details:
-        lines.append("")
-        lines.append("Détail des paiements")
-        method_labels = {
-            "cash": "Espèces",
-            "orange_money": "Orange Money",
-            "bank_transfer": "Virement bancaire",
-            "card": "Carte bancaire",
-            "insurance": "Assurance",
-        }
-        for pay in payment_details:
-            label = pay.get("label") or method_labels.get(pay.get("method", ""), pay.get("method", "—"))
-            amount = int(pay.get("amount_gnf") or 0)
-            dots = max(1, 28 - len(label))
-            lines.append(f"{label}{'.' * dots}{_gnf(amount).replace(' GNF', '')}")
-    elif payment_methods:
-        lines.append(f"Mode(s) de paiement: {', '.join(payment_methods)}")
+    from services.invoice_pdf_builder import build_hospital_invoice_pdf
+
     footer_date = printed_date or (printed_at.split(" ")[0] if printed_at and " " in printed_at else printed_at)
     footer_time = printed_time or (printed_at.split(" ")[-1] if printed_at and " " in printed_at else "")
-    lines.extend(
-        [
-            "",
-            "Imprimé par:",
-            printed_by or "—",
-            footer_date or "—",
-            footer_time or "—",
-            "Page 1 sur 1",
+    if not payment_details and payment_methods:
+        payment_details = [
+            {"method": m, "label": m, "amount_gnf": 0} for m in payment_methods
         ]
+    return build_hospital_invoice_pdf(
+        invoice_number=invoice_number,
+        patient_name=patient_name,
+        patient_file_number=patient_file_number,
+        items=items,
+        subtotal=subtotal,
+        exemption_percent=exemption_percent,
+        exemption_amount=exemption_amount,
+        total=total,
+        paid=paid,
+        payment_details=payment_details,
+        printed_by=printed_by,
+        printed_date=footer_date,
+        printed_time=footer_time,
+        document_title=document_title,
     )
-    return build_simple_pdf("FACTURE", lines)
 
 
 def invoice_pdf_legacy(invoice_number: str, patient_name: str, items: list[dict], total: int, paid: int) -> bytes:

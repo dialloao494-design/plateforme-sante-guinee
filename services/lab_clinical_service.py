@@ -559,7 +559,7 @@ class LabClinicalService:
                     "exam_name": item.description,
                     "payment_status": pay_label,
                     "requested_at": invoice.issued_at or invoice.created_at,
-                    "requested_by": (creator.full_name or creator.email) if creator else "Réception",
+                    "requested_by": (getattr(creator, "email", None) or "Réception") if creator else "Réception",
                     "lab_order_id": order.id if order else None,
                 }
             )

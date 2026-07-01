@@ -218,7 +218,8 @@ class LabOrderResponse(BaseModel):
 
 
 class LabOrderStatusUpdate(BaseModel):
-    status: str
+    status: Optional[str] = None
+    clinical_notes: Optional[str] = None
 
 
 class WalkInLabTestItem(BaseModel):

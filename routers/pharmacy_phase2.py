@@ -198,8 +198,10 @@ def pharmacy_charge_receipt(
         for p in (charge.payments or [])
     ]
     patient_name = "—"
+    patient_file = ""
     if charge.patient:
         patient_name = f"{charge.patient.last_name} {charge.patient.first_name}".strip()
+        patient_file = charge.patient.patient_number or str(charge.patient.id)
     now = datetime.utcnow()
     pdf_bytes = invoice_pdf(
         f"PHARM-{charge.id}",
@@ -214,6 +216,8 @@ def pharmacy_charge_receipt(
         printed_by=printed_by_label(current_user),
         printed_date=now.strftime("%d/%m/%Y"),
         printed_time=now.strftime("%H:%M"),
+        patient_file_number=patient_file,
+        document_title="REÇU PHARMACIE",
     )
     return Response(
         content=pdf_bytes,

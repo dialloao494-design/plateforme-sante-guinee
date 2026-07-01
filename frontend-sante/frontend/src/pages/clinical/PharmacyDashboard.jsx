@@ -26,6 +26,8 @@ const PATIENT_NOTICE = 'Recherchez et sélectionnez un patient enregistré à la
 const BILLING_NOTICE = 'Enregistrez la demande de service pour activer la facturation.';
 const INITIAL_ROW_COUNT = 4;
 const EMPTY_PAYMENT = { amount_gnf: '', payment_method: 'orange_money', reference: '' };
+const newPaymentLineId = () => `pay-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+const emptyPaymentLine = () => ({ id: newPaymentLineId(), amount_gnf: '', payment_method: 'orange_money', reference: '' });
 
 const newLineId = () => `line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -111,6 +113,8 @@ const PaymentMethodRadios = ({ name, value, onChange, methods, disabled }) => (
   </div>
 );
 
+// legacy single-payment radios kept for print preview only
+
 const lineTotal = (line) => {
   const qty = Number(line.quantity);
   const unit = Number(line.unit_price_gnf);
@@ -135,7 +139,7 @@ export default function PharmacyDashboard() {
 
   const [lines, setLines] = useState(initialLines);
   const [savedRequest, setSavedRequest] = useState(null);
-  const [paymentForm, setPaymentForm] = useState(EMPTY_PAYMENT);
+  const [paymentLines, setPaymentLines] = useState([emptyPaymentLine()]);
   const [exemptionPercent, setExemptionPercent] = useState('0');
 
   const [inventory, setInventory] = useState([]);
@@ -183,6 +187,16 @@ export default function PharmacyDashboard() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const updatePaymentLine = (id, patch) =>
+    setPaymentLines((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  const addPaymentLine = () => setPaymentLines((rows) => [...rows, emptyPaymentLine()]);
+  const removePaymentLine = (id) =>
+    setPaymentLines((rows) => (rows.length <= 1 ? rows : rows.filter((r) => r.id !== id)));
+  const prefillPharmacyPayments = (amount) => {
+    const n = Number(amount) || 0;
+    setPaymentLines([{ ...emptyPaymentLine(), amount_gnf: n > 0 ? String(n) : '' }]);
+  };
+
   const requestTotal = useMemo(
     () => lines.reduce((sum, line) => sum + lineTotal(line), 0),
     [lines]
@@ -223,7 +237,7 @@ export default function PharmacyDashboard() {
     setSearchResults([]);
     setSearchError('');
     setSavedRequest(null);
-    setPaymentForm(EMPTY_PAYMENT);
+    prefillPharmacyPayments('');
     setLines(initialLines());
     setError('');
     setMessage(`Patient sélectionné : ${patient.last_name} ${patient.first_name} · N° ${patient.patient_number || patient.id}`);
@@ -232,7 +246,7 @@ export default function PharmacyDashboard() {
   const clearPatient = () => {
     setSelectedPatient(null);
     setSavedRequest(null);
-    setPaymentForm(EMPTY_PAYMENT);
+    prefillPharmacyPayments('');
     setLines(initialLines());
     setMessage('');
     setError('');
@@ -280,7 +294,7 @@ export default function PharmacyDashboard() {
         items,
       });
       setSavedRequest(data);
-      setPaymentForm({ ...EMPTY_PAYMENT, amount_gnf: String(Math.max(0, billingTotal - totalPaid) || data.total_gnf || '') });
+      prefillPharmacyPayments(Math.max(0, billingTotal - totalPaid) || data.total_gnf || 0);
       setMessage('Demande de service enregistrée.');
     } catch (err) {
       setError(formatApiError(err, 'Enregistrement impossible'));
@@ -289,31 +303,49 @@ export default function PharmacyDashboard() {
     }
   };
 
-  const addPayment = async () => {
+  const draftPaymentTotal = useMemo(
+    () => paymentLines.reduce((s, l) => s + (Number(l.amount_gnf) || 0), 0),
+    [paymentLines]
+  );
+
+  const addPayment = async (e) => {
+    e?.preventDefault?.();
     if (!savedRequest?.charge_id) {
       setError('Enregistrez d\'abord la demande de service.');
       return;
     }
-    const amount = Number(paymentForm.amount_gnf);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setError('Saisissez un montant de paiement valide.');
+    const lines = paymentLines.filter((l) => Number(l.amount_gnf) > 0);
+    if (lines.length === 0) {
+      setError('Ajoutez au moins une ligne de paiement avec un montant.');
+      return;
+    }
+    const rem = Number(remaining) || 0;
+    const draftTotal = lines.reduce((s, l) => s + Number(l.amount_gnf), 0);
+    if (draftTotal > rem) {
+      setError(`Le total des paiements (${formatGNF(draftTotal)}) dépasse le reste à payer (${formatGNF(rem)}).`);
       return;
     }
     setLoading(true);
     setError('');
     try {
-      const payload = {
-        payment_method: paymentForm.payment_method,
-        amount_gnf: amount,
-        reference: paymentForm.reference || undefined,
-      };
-      if ((savedRequest.payments || []).length === 0) {
-        payload.exemption_percent = Number(exemptionPercent || 0);
+      let lastData = savedRequest;
+      for (let i = 0; i < lines.length; i += 1) {
+        const line = lines[i];
+        const payload = {
+          payment_method: line.payment_method,
+          amount_gnf: Number(line.amount_gnf),
+          reference: line.reference || undefined,
+        };
+        if (i === 0 && (savedRequest.payments || []).length === 0) {
+          payload.exemption_percent = Number(exemptionPercent || 0);
+        }
+        const { data } = await clinicalApi.addPharmacyChargePayment(savedRequest.charge_id, payload);
+        lastData = data || lastData;
       }
-      const { data } = await clinicalApi.addPharmacyChargePayment(savedRequest.charge_id, payload);
-      setSavedRequest(data);
-      setPaymentForm(EMPTY_PAYMENT);
-      setMessage(data.payment_status === 'paid' ? 'Paiement complet — stock mis à jour.' : 'Paiement enregistré.');
+      setSavedRequest(lastData);
+      const newRem = Math.max(0, billingTotal - (lastData?.paid_amount_gnf ?? 0));
+      prefillPharmacyPayments(newRem);
+      setMessage(lastData.payment_status === 'paid' ? 'Paiement complet — stock mis à jour.' : 'Paiement(s) enregistré(s).');
       clinicalApi.pharmacyInventory().then((r) => setInventory(r.data || [])).catch(() => {});
     } catch (err) {
       setError(formatApiError(err, 'Paiement impossible'));
@@ -609,35 +641,60 @@ export default function PharmacyDashboard() {
 
               {billingReady && savedRequest?.payment_status !== 'paid' && (
                 <fieldset className="reception-his-nested-fieldset">
-                  <legend>Ajouter un paiement</legend>
-                  <div className="reception-his-form-row reception-his-form-row--3">
-                    <label>
-                      Montant
-                      <input
-                        type="number"
-                        min="0"
-                        value={paymentForm.amount_gnf}
-                        onChange={(e) => setPaymentForm((p) => ({ ...p, amount_gnf: e.target.value }))}
-                      />
-                    </label>
-                    <label>
-                      Référence
-                      <input
-                        value={paymentForm.reference}
-                        onChange={(e) => setPaymentForm((p) => ({ ...p, reference: e.target.value }))}
-                      />
-                    </label>
+                  <legend>Paiements</legend>
+                  <p className="clinical-hint">Ajoutez une ou plusieurs lignes de paiement.</p>
+                  <table className="reception-his-billing-lines">
+                    <thead>
+                      <tr>
+                        <th>Mode de paiement</th>
+                        <th>Montant (GNF)</th>
+                        <th>Référence</th>
+                        <th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paymentLines.map((line) => (
+                        <tr key={line.id}>
+                          <td>
+                            <select
+                              value={line.payment_method}
+                              onChange={(e) => updatePaymentLine(line.id, { payment_method: e.target.value })}
+                            >
+                              {PAYMENT_METHODS.map((m) => (
+                                <option key={m.value} value={m.value}>{m.label}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              value={line.amount_gnf}
+                              onChange={(e) => updatePaymentLine(line.id, { amount_gnf: e.target.value })}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              value={line.reference}
+                              onChange={(e) => updatePaymentLine(line.id, { reference: e.target.value })}
+                            />
+                          </td>
+                          <td>
+                            <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => removePaymentLine(line.id)}>×</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {draftPaymentTotal > 0 && (
+                    <p className="clinical-hint">Total saisi : {formatGNF(draftPaymentTotal)} · Reste après saisie : {formatGNF(Math.max(0, Number(remaining) - draftPaymentTotal))}</p>
+                  )}
+                  <div className="pharmacy-his-actions">
+                    <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addPaymentLine}>+ Ligne de paiement</button>
+                    <button type="button" className="clinical-btn pharmacy-his-primary-action" onClick={addPayment} disabled={loading}>
+                      {loading ? 'Enregistrement…' : 'Enregistrer le(s) paiement(s)'}
+                    </button>
                   </div>
-                  <PaymentMethodRadios
-                    name="pharmacy-split-payment"
-                    value={paymentForm.payment_method}
-                    onChange={(v) => setPaymentForm((p) => ({ ...p, payment_method: v }))}
-                    methods={PAYMENT_METHODS}
-                    disabled={false}
-                  />
-                  <button type="button" className="clinical-btn pharmacy-his-primary-action" onClick={addPayment} disabled={loading}>
-                    {loading ? 'Enregistrement…' : 'Enregistrer le paiement'}
-                  </button>
                 </fieldset>
               )}
 

@@ -518,8 +518,10 @@ class ClinicalWorkflowService:
         client_ip: str | None = None,
     ) -> models.LabOrder:
         allowed = {"ordered", "sample_collected", "in_analysis", "completed", "cancelled"}
-        if payload.status not in allowed:
+        if payload.status is not None and payload.status not in allowed:
             raise HTTPException(status_code=400, detail=f"Invalid status. Allowed: {sorted(allowed)}")
+        if payload.status is None and payload.clinical_notes is None:
+            raise HTTPException(status_code=400, detail="Fournir status et/ou clinical_notes")
 
         order = (
             db.query(models.LabOrder)
@@ -528,7 +530,10 @@ class ClinicalWorkflowService:
         )
         if not order:
             raise HTTPException(status_code=404, detail="Lab order not found")
-        order.status = payload.status
+        if payload.status is not None:
+            order.status = payload.status
+        if payload.clinical_notes is not None:
+            order.clinical_notes = payload.clinical_notes
         order.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(order)
