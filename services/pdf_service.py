@@ -13,6 +13,20 @@ PAGE_WIDTH = 595
 PAGE_HEIGHT = 842
 
 
+def printed_by_label(user) -> str:
+    """Display name for PDF footers (User ORM has no full_name column)."""
+    if user is None:
+        return "—"
+    name = getattr(user, "full_name", None)
+    if name:
+        return str(name)
+    email = getattr(user, "email", None) or ""
+    if not email:
+        return "—"
+    local = email.split("@", 1)[0]
+    return local.replace(".", " ").replace("_", " ").strip().title() or email
+
+
 def _escape_pdf_text(text: str) -> str:
     safe = text.encode("latin-1", errors="replace").decode("latin-1")
     return safe.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
@@ -92,34 +106,70 @@ def _build_pdf_stream(title: str, lines: list[str], logo_bytes: bytes, logo_w: i
     return "\n".join(parts).encode("latin-1", errors="replace")
 
 
+def _build_pdf_stream_text_only(title: str, lines: list[str]) -> bytes:
+    name_y = PAGE_HEIGHT - 48
+    title_y = name_y - 24
+    line_y = title_y - 8
+    parts = [
+        "BT",
+        "/F1 9 Tf",
+        f"1 0 0 1 {_centered_x(CLINIC_PRINT_NAME, 9):.2f} {name_y:.2f} Tm",
+        f"({_escape_pdf_text(CLINIC_PRINT_NAME)}) Tj",
+        "/F1 12 Tf",
+        f"1 0 0 1 50 {title_y:.2f} Tm",
+        f"({_escape_pdf_text(title)}) Tj",
+    ]
+    y = line_y
+    for line in lines:
+        y -= 16
+        if y < 48:
+            break
+        parts.append("0 -16 Td")
+        parts.append(f"({_escape_pdf_text(line)}) Tj")
+    parts.append("ET")
+    return "\n".join(parts).encode("latin-1", errors="replace")
+
+
 def build_simple_pdf(title: str, lines: list[str]) -> bytes:
     """Minimal PDF generator with centered clinic logo header."""
-    logo_bytes = LOGO_PATH.read_bytes()
-    logo_w, logo_h = _jpeg_dimensions(logo_bytes)
-    stream_bytes = _build_pdf_stream(title, lines, logo_bytes, logo_w, logo_h)
-
-    img_obj = (
-        f"6 0 obj<< /Type /XObject /Subtype /Image /Width {logo_w} /Height {logo_h} "
-        f"/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {len(logo_bytes)} >>"
-        f"stream\n".encode()
-        + logo_bytes
-        + b"\nendstream endobj\n"
-    )
+    use_logo = LOGO_PATH.is_file()
+    if use_logo:
+        logo_bytes = LOGO_PATH.read_bytes()
+        logo_w, logo_h = _jpeg_dimensions(logo_bytes)
+        stream_bytes = _build_pdf_stream(title, lines, logo_bytes, logo_w, logo_h)
+    else:
+        logo_bytes = b""
+        logo_w = logo_h = 0
+        stream_bytes = _build_pdf_stream_text_only(title, lines)
 
     objects: list[bytes] = []
     objects.append(b"1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n")
     objects.append(b"2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj\n")
-    objects.append(
-        b"3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
-        b"/Contents 4 0 R /Resources<< /Font<< /F1 5 0 R >> /XObject<< /Im1 6 0 R >> >> >>endobj\n"
-    )
+    if use_logo:
+        objects.append(
+            b"3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
+            b"/Contents 4 0 R /Resources<< /Font<< /F1 5 0 R >> /XObject<< /Im1 6 0 R >> >> >>endobj\n"
+        )
+    else:
+        objects.append(
+            b"3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
+            b"/Contents 4 0 R /Resources<< /Font<< /F1 5 0 R >> >> >>endobj\n"
+        )
     objects.append(
         f"4 0 obj<< /Length {len(stream_bytes)} >>stream\n".encode()
         + stream_bytes
         + b"\nendstream endobj\n"
     )
     objects.append(b"5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj\n")
-    objects.append(img_obj)
+    if use_logo:
+        img_obj = (
+            f"6 0 obj<< /Type /XObject /Subtype /Image /Width {logo_w} /Height {logo_h} "
+            f"/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {len(logo_bytes)} >>"
+            f"stream\n".encode()
+            + logo_bytes
+            + b"\nendstream endobj\n"
+        )
+        objects.append(img_obj)
 
     buf = BytesIO()
     buf.write(b"%PDF-1.4\n")

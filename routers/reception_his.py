@@ -492,7 +492,7 @@ def print_receipt(
         raise HTTPException(status_code=404, detail="Facture introuvable")
     from datetime import datetime
 
-    from services.pdf_service import invoice_pdf as build_invoice_pdf
+    from services.pdf_service import invoice_pdf as build_invoice_pdf, printed_by_label
 
     patient_name = (
         f"{invoice.patient.first_name} {invoice.patient.last_name}".strip() if invoice.patient else "—"
@@ -535,7 +535,7 @@ def print_receipt(
         paid=invoice.paid_amount_gnf,
         payment_methods=methods,
         payment_details=payment_details,
-        printed_by=(current_user.full_name or current_user.email or "—"),
+        printed_by=printed_by_label(current_user),
         printed_date=now.strftime("%d/%m/%Y"),
         printed_time=now.strftime("%H:%M"),
     )

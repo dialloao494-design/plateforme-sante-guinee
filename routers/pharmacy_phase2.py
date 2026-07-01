@@ -148,7 +148,7 @@ def pharmacy_charge_receipt(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    from services.pdf_service import invoice_pdf
+    from services.pdf_service import invoice_pdf, printed_by_label
 
     _require_role(current_user, PHARMACY_READ)
     clinic = resolve_clinic_for_user(db, current_user)
@@ -211,7 +211,7 @@ def pharmacy_charge_receipt(
         total=int(charge.amount_gnf),
         paid=int(charge.paid_amount_gnf or 0),
         payment_details=payment_details,
-        printed_by=current_user.full_name or current_user.email or "—",
+        printed_by=printed_by_label(current_user),
         printed_date=now.strftime("%d/%m/%Y"),
         printed_time=now.strftime("%H:%M"),
     )
