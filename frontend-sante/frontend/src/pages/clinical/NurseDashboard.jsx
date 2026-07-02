@@ -109,6 +109,7 @@ export default function NurseDashboard() {
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const [assessmentLoading, setAssessmentLoading] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
 
   const bmi = useMemo(() => calcBmi(form.weight_kg, form.height_cm), [form.weight_kg, form.height_cm]);
@@ -143,6 +144,7 @@ export default function NurseDashboard() {
   };
 
   const loadAssessment = async (patientId) => {
+    setAssessmentLoading(true);
     try {
       const { data } = await clinicalApi.nurseGetAssessment(patientId);
       if (!data) {
@@ -169,6 +171,8 @@ export default function NurseDashboard() {
       });
     } catch {
       setForm(EMPTY_FORM);
+    } finally {
+      setAssessmentLoading(false);
     }
   };
 
@@ -178,6 +182,8 @@ export default function NurseDashboard() {
     setSearchQ('');
     setMessage('');
     setError('');
+    setForm(EMPTY_FORM);
+    setAssessmentLoading(true);
     try {
       const { data } = await clinicalApi.receptionHisGetPatient(patient.id);
       setSelectedPatient(data);
@@ -298,6 +304,10 @@ export default function NurseDashboard() {
       {!selectedPatient ? (
         <div className="clinical-card reception-his-empty-state">
           <p>Recherchez un patient pour commencer l&apos;évaluation infirmière.</p>
+        </div>
+      ) : assessmentLoading ? (
+        <div className="clinical-card reception-his-empty-state">
+          <p>Chargement de l&apos;évaluation infirmière…</p>
         </div>
       ) : (
         <form

@@ -67,7 +67,7 @@ def nurse_search_and_select(page, query: str) -> None:
     page.locator('button:has-text("Rechercher")').click()
     page.locator(".reception-his-search-results button").first.wait_for(timeout=30000)
     page.locator(".reception-his-search-results button").first.click()
-    page.wait_for_selector('fieldset:has(legend:has-text("Signes vitaux"))', timeout=20000)
+    page.wait_for_selector('fieldset:has(legend:has-text("Signes vitaux"))', timeout=30000)
 
 
 def unique_appointment_slot() -> datetime:
@@ -129,10 +129,11 @@ def main() -> int:
 
         browser.close()
 
-        search = api("GET", "/clinical/reception/his/patients/search", recep_token, params={"q": PATIENT["last_name"]}).json()
+        search = api("GET", "/clinical/reception/his/patients/search", recep_token, params={"q": patient_number or PATIENT["last_name"]}).json()
         if search:
-            patient_id = search[0]["id"]
-            patient_number = patient_number or search[0].get("patient_number", "")
+            match = next((p for p in search if p.get("patient_number") == patient_number), search[0])
+            patient_id = match["id"]
+            patient_number = patient_number or match.get("patient_number", "")
 
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1400, "height": 900})
@@ -149,12 +150,14 @@ def main() -> int:
             vitals.nth(4).fill("18")
             vitals.nth(5).fill("172")
             vitals.nth(6).fill("68")
+            page.wait_for_timeout(500)
+            bmi_text = page.locator('label:has-text("IMC") .reception-his-auto-display').inner_text()
             page.locator('fieldset:has(legend:has-text("Motif de consultation")) textarea').fill(NURSE_COMPLAINT)
             page.get_by_label("Allergies").fill("Pénicilline")
             page.locator('fieldset:has(legend:has-text("Notes infirmières")) textarea').fill(f"Note infirmière E2E {RUN}")
             page.click('button:has-text("Enregistrer l\'évaluation")')
             page.wait_for_selector("text=Évaluation infirmière enregistrée", timeout=60000)
-            bmi_text = page.locator('label:has-text("IMC") .reception-his-auto-display').inner_text()
+            time.sleep(2)
             report["nurse"].append(("Save nurse assessment", True, ""))
             report["nurse"].append(("BMI auto-calculated", bmi_text.strip() not in ("", "—"), bmi_text))
         except Exception as exc:
@@ -162,6 +165,7 @@ def main() -> int:
         browser.close()
 
     if patient_id:
+        time.sleep(2)
         r = api("GET", f"/clinical/nurse/patients/{patient_id}/assessment", nurse_token)
         assessment = r.json() if r.status_code == 200 else None
         report["doctor"].append(("Nurse assessment API", assessment is not None, str(assessment.get("reason_for_consultation") if assessment else "")))
