@@ -399,6 +399,7 @@ async def startup_event():
             ensure_clinic_lab_tests_table,
             ensure_reception_his_schema,
             ensure_nurse_assessment_schema,
+            ensure_lab_result_reference_range_text,
             run_alembic_upgrade_head,
         )
 
@@ -429,6 +430,7 @@ async def startup_event():
         ensure_clinic_lab_tests_table(engine)
         ensure_reception_his_schema(engine)
         ensure_nurse_assessment_schema(engine)
+        ensure_lab_result_reference_range_text(engine)
 
         from database import SessionLocal
         from services.user_provisioning import bootstrap_initial_admin, bootstrap_platform_owner

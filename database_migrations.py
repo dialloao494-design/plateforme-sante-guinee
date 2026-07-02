@@ -1380,3 +1380,26 @@ def ensure_nurse_assessment_schema(engine: Engine) -> None:
         except Exception as exc:
             logger.warning("nurse_assessments migration failed: %s", exc)
 
+
+def ensure_lab_result_reference_range_text(engine: Engine) -> None:
+    """Hémogramme templates exceed VARCHAR(255) for combined reference ranges."""
+    insp = inspect(engine)
+    if "lab_results" not in insp.get_table_names():
+        return
+    dialect = engine.dialect.name
+    if dialect != "postgresql":
+        return
+    try:
+        col = next(c for c in insp.get_columns("lab_results") if c["name"] == "reference_range")
+        col_type = str(col.get("type", "")).upper()
+        if "TEXT" in col_type or "CHARACTER VARYING" not in col_type and "VARCHAR" not in col_type:
+            return
+    except StopIteration:
+        return
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE lab_results ALTER COLUMN reference_range TYPE TEXT"))
+        logger.info("Widened lab_results.reference_range to TEXT")
+    except Exception as exc:
+        logger.warning("lab_results.reference_range migration skipped: %s", exc)
+

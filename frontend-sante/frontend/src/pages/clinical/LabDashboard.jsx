@@ -440,6 +440,9 @@ export default function LabDashboard() {
         .filter((r) => r.reference)
         .map((r) => `${r.parameter} (${r.reference})`)
         .join('; ');
+      // Full reference values live in result_data.rows; keep reference_range within DB limits.
+      const referenceRange =
+        refs.length > 250 ? `${refs.slice(0, 247)}…` : refs || null;
       const payload = {
         result_summary: summary,
         result_data: JSON.stringify({
@@ -447,7 +450,7 @@ export default function LabDashboard() {
           validation: validationForm,
           template_id: activeTemplateId || detectLabTemplateId(activeOrder.test_name),
         }),
-        reference_range: refs || null,
+        reference_range: referenceRange,
         interpretation: validationForm.observations || null,
       };
       const orderStatus = ORDER_STATUS_MAP[validationForm.status] || 'in_analysis';

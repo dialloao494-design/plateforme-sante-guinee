@@ -17,7 +17,7 @@ class LabResult(Base):
 
     result_summary = Column(Text, nullable=False)
     result_data = Column(Text, nullable=True)  # JSON string for structured values
-    reference_range = Column(String(255), nullable=True)
+    reference_range = Column(Text, nullable=True)
     interpretation = Column(Text, nullable=True)
 
     status = Column(String(16), default="draft", nullable=False, index=True)  # draft | validated

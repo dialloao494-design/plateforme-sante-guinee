@@ -139,8 +139,8 @@ def main() -> int:
         try:
             login_ui(page, *CREDS["nurse"], "/clinical/nurse")
             report["nurse"].append(("Nurse dashboard route", "/clinical/nurse" in page.url, page.url))
-            report["nurse"].append(("Nurse form sections", page.locator('legend:has-text("Signes vitaux")').count() > 0, ""))
             nurse_search_and_select(page, patient_number or PATIENT["last_name"])
+            report["nurse"].append(("Nurse form sections", page.locator('legend:has-text("Signes vitaux")').count() > 0, ""))
             vitals = page.locator('fieldset:has(legend:has-text("Signes vitaux")) input')
             vitals.nth(0).fill("38.2")
             vitals.nth(1).fill("130")
