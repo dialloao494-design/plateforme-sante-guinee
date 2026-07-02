@@ -317,6 +317,8 @@ class ReceptionHisService:
         status = "admitted" if payload.admission_type == "hospitalization" else "pending"
         if payload.admission_type == "emergency":
             status = "in_care"
+        if payload.admission_type == "specialized_consultation":
+            status = "pending"
 
         services = [s.strip() for s in (payload.services or []) if s and str(s).strip()]
         if not services and payload.department:

@@ -869,15 +869,41 @@ def lab_result_pdf_download(
     if not result or result.status != "validated":
         raise HTTPException(status_code=404, detail="Validated lab result not found")
     order = result.lab_order
-    patient_name = f"{order.patient.first_name} {order.patient.last_name}".strip() if order.patient else "—"
+    patient = order.patient if order else None
+    patient_name = f"{patient.first_name} {patient.last_name}".strip() if patient else "—"
+    patient_file = str(getattr(patient, "patient_number", None) or getattr(patient, "id", "") or "")
+    template_id = None
+    technician = ""
+    validated_date = ""
+    validated_time = ""
+    if result.result_data:
+        import json
+
+        try:
+            payload = json.loads(result.result_data)
+            template_id = payload.get("template_id")
+            validation = payload.get("validation") or {}
+            technician = str(validation.get("technician") or "")
+            validated_date = str(validation.get("validation_date") or "")
+            validated_time = str(validation.get("validation_time") or "")
+        except (json.JSONDecodeError, TypeError):
+            pass
+    if not validated_date and result.validated_at:
+        validated_date = str(result.validated_at.date())
     pdf_bytes = lab_result_pdf(
         patient_name,
         {
             "test_name": order.test_name,
             "test_code": order.test_code,
+            "patient_file_number": patient_file,
+            "template_id": template_id,
+            "result_data": result.result_data,
             "result_summary": result.result_summary,
             "reference_range": result.reference_range,
             "interpretation": result.interpretation,
+            "technician": technician,
+            "validated_date": validated_date,
+            "validated_time": validated_time,
             "validated_at": str(result.validated_at or ""),
         },
     )

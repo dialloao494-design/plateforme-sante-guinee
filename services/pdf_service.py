@@ -281,16 +281,19 @@ def imaging_report_pdf(patient_name: str, order: dict, result: dict) -> bytes:
 
 
 def lab_result_pdf(patient_name: str, result: dict) -> bytes:
-    lines = [
-        f"Patient: {patient_name}",
-        f"Examen: {result.get('test_name', '—')} ({result.get('test_code', '—')})",
-        "",
-        f"Résultat: {result.get('result_summary') or '—'}",
-        f"Référence: {result.get('reference_range') or '—'}",
-        f"Interprétation: {result.get('interpretation') or '—'}",
-        f"Validé le: {result.get('validated_at') or '—'}",
-    ]
-    return build_simple_pdf("RÉSULTAT LABORATOIRE", lines)
+    from services.lab_report_pdf_builder import build_lab_report_pdf
+
+    return build_lab_report_pdf(
+        patient_name=patient_name,
+        patient_file_number=str(result.get("patient_file_number") or ""),
+        test_name=str(result.get("test_name") or ""),
+        template_id=result.get("template_id"),
+        result_data=result.get("result_data"),
+        result_summary=result.get("result_summary"),
+        technician=str(result.get("technician") or ""),
+        validated_date=str(result.get("validated_date") or ""),
+        validated_time=str(result.get("validated_time") or ""),
+    )
 
 
 def clinical_report_pdf(summary: dict) -> bytes:

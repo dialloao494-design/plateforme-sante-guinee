@@ -116,7 +116,7 @@ class ReceptionAdmissionCreate(BaseModel):
     services: List[str] = Field(default_factory=list)
     attending_clinician_user_id: Optional[int] = None
     attending_physician_name: Optional[str] = None
-    admission_type: Literal["emergency", "outpatient", "hospitalization"]
+    admission_type: Literal["emergency", "outpatient", "hospitalization", "specialized_consultation"]
     confirmation_status: Optional[Literal["confirmed", "pending"]] = None
     notes: Optional[str] = None
 

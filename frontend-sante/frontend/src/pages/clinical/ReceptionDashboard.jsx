@@ -3,6 +3,7 @@ import clinicalApi from '../../services/clinicalApi';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
 import { formatApiError } from '../../utils/apiError.js';
+import PatientRegistrationPrint from '../../components/print/PatientRegistrationPrint.jsx';
 import './clinical.css';
 
 const TABS = [
@@ -10,6 +11,7 @@ const TABS = [
   { id: 'register', label: 'Enregistrement', shortcut: '2' },
   { id: 'admission', label: 'Admission', shortcut: '3' },
   { id: 'billing', label: 'Facturation', shortcut: '4' },
+  { id: 'service_requests', label: 'Demandes de service', shortcut: '6' },
   { id: 'refund', label: 'Remboursement', shortcut: '5' },
 ];
 
@@ -33,7 +35,15 @@ const DEFAULT_BILLING_DEPARTMENTS = [
 const ADMISSION_TYPES = [
   { value: 'emergency', label: 'Urgence' },
   { value: 'outpatient', label: 'Consultation externe' },
+  { value: 'specialized_consultation', label: 'Consultation spécialisée' },
   { value: 'hospitalization', label: 'Hospitalisation' },
+];
+const RELATIONSHIP_OPTIONS = [
+  { value: 'Père', label: 'Père' },
+  { value: 'Mère', label: 'Mère' },
+  { value: 'Fils', label: 'Fils' },
+  { value: 'Fille', label: 'Fille' },
+  { value: 'Autre', label: 'Autre' },
 ];
 const ADMISSION_CONFIRMATIONS = [
   { value: 'confirmed', label: 'Confirmée' },
@@ -98,6 +108,7 @@ const EMPTY_REG = {
   emergency_same_address: false,
   emergency_full_name: '',
   emergency_relationship: '',
+  emergency_relationship_other: '',
   emergency_phone: '',
   emergency_address: '',
   emergency_commune: '',
@@ -118,6 +129,7 @@ const EMPTY_ADMISSION = {
   attending_clinician_user_id: '',
   attending_physician_name: '',
   confirmation_status: 'confirmed',
+  specialty_code: '',
   notes: '',
 };
 
@@ -255,6 +267,7 @@ const PaymentMethodRadios = ({ name, value, onChange, methods }) => (
 export default function ReceptionDashboard() {
   const { user } = useAuth();
   const searchRef = useRef(null);
+  const regPrintRef = useRef(null);
 
   const [tab, setTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
@@ -269,6 +282,7 @@ export default function ReceptionDashboard() {
 
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [registeredPatient, setRegisteredPatient] = useState(null);
+  const [registrationPrintForm, setRegistrationPrintForm] = useState(null);
   const [lastAdmission, setLastAdmission] = useState(null);
   const [lastRefund, setLastRefund] = useState(null);
 
@@ -504,6 +518,38 @@ export default function ReceptionDashboard() {
     reader.readAsDataURL(file);
   };
 
+  const printRegistrationSheet = () => {
+    if (!registeredPatient) return;
+    window.print();
+  };
+
+  const resolveRelationship = (form) => {
+    if (form.emergency_relationship === 'Autre') {
+      return form.emergency_relationship_other?.trim() || 'Autre';
+    }
+    return form.emergency_relationship || undefined;
+  };
+
+  const patientServiceRequests = useMemo(() => {
+    if (!selectedPatient) return [];
+    const rows = [];
+    for (const inv of invoices) {
+      for (const item of inv.items || []) {
+        rows.push({
+          key: `${inv.id}-${item.id}`,
+          invoiceNumber: inv.invoice_number,
+          service: item.description,
+          department: inv.department,
+          chargeType: item.charge_type,
+          amountGnf: item.amount_gnf,
+          status: invoiceStatusLabel(inv.status),
+          issuedAt: inv.issued_at || inv.created_at,
+        });
+      }
+    }
+    return rows.sort((a, b) => new Date(b.issuedAt || 0) - new Date(a.issuedAt || 0));
+  }, [invoices, selectedPatient]);
+
   const handleRegister = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -535,7 +581,7 @@ export default function ReceptionDashboard() {
         emergency_contact: {
           same_address_as_patient: regForm.emergency_same_address,
           full_name: regForm.emergency_full_name.trim(),
-          relationship: regForm.emergency_relationship || undefined,
+          relationship: resolveRelationship(regForm),
           phone: regForm.emergency_phone.trim(),
           address: regForm.emergency_same_address ? regForm.address : regForm.emergency_address || undefined,
           commune: regForm.emergency_same_address ? regForm.commune : regForm.emergency_commune || undefined,
@@ -551,6 +597,7 @@ export default function ReceptionDashboard() {
         },
       };
       const { data } = await clinicalApi.receptionHisRegister(payload);
+      setRegistrationPrintForm({ ...regForm });
       setRegisteredPatient(data || null);
       setRegForm({ ...EMPTY_REG, registration_date: todayStr });
       setMessage(`Patient enregistré · N° dossier patient ${data?.patient_number || '—'}`);
@@ -570,8 +617,19 @@ export default function ReceptionDashboard() {
     setError('');
     setMessage('');
     try {
-      const services = (admissionForm.services || []).filter(Boolean);
+      let services = (admissionForm.services || []).filter(Boolean);
       if (!services.length) return setError('Sélectionnez au moins un service.');
+      if (services.includes('Consultation spécialisée')) {
+        if (!admissionForm.specialty_code) {
+          return setError('Sélectionnez une spécialité pour la consultation spécialisée.');
+        }
+        const spec = specializedSpecialties.find((s) => s.code === admissionForm.specialty_code);
+        if (spec) {
+          services = services.map((s) =>
+            s === 'Consultation spécialisée' ? `Consultation spécialisée — ${spec.label}` : s
+          );
+        }
+      }
       const { data } = await clinicalApi.receptionHisCreateAdmission({
         patient_id: selectedPatient.id,
         admission_date: admissionForm.admission_date,
@@ -1021,7 +1079,30 @@ export default function ReceptionDashboard() {
               <label className="reception-his-check"><input type="checkbox" checked={regForm.emergency_same_address} onChange={(e) => updateReg({ emergency_same_address: e.target.checked })} />Adresse identique à celle du patient</label>
               <div className="clinical-form-row">
                 <label>Nom du contact *<input required value={regForm.emergency_full_name} onChange={(e) => updateReg({ emergency_full_name: e.target.value })} /></label>
-                <label>Relation<input value={regForm.emergency_relationship} onChange={(e) => updateReg({ emergency_relationship: e.target.value })} /></label>
+                <label>
+                  Relation *
+                  <select
+                    required
+                    value={regForm.emergency_relationship}
+                    onChange={(e) => updateReg({ emergency_relationship: e.target.value })}
+                  >
+                    <option value="">— Sélectionner —</option>
+                    {RELATIONSHIP_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </label>
+                {regForm.emergency_relationship === 'Autre' && (
+                  <label>
+                    Préciser la relation
+                    <input
+                      required
+                      value={regForm.emergency_relationship_other}
+                      onChange={(e) => updateReg({ emergency_relationship_other: e.target.value })}
+                      placeholder="Saisir la relation…"
+                    />
+                  </label>
+                )}
                 <label>Téléphone *<input required value={regForm.emergency_phone} onChange={(e) => updateReg({ emergency_phone: e.target.value })} /></label>
                 {!regForm.emergency_same_address && (
                   <>
@@ -1044,8 +1125,18 @@ export default function ReceptionDashboard() {
               <button
                 type="button"
                 className="clinical-btn clinical-btn--secondary"
+                onClick={printRegistrationSheet}
+              >
+                Imprimer la fiche d&apos;enregistrement
+              </button>
+            )}
+            {registeredPatient && (
+              <button
+                type="button"
+                className="clinical-btn clinical-btn--secondary"
                 onClick={() => {
                   setRegisteredPatient(null);
+                  setRegistrationPrintForm(null);
                   setRegForm({ ...EMPTY_REG, registration_date: todayStr });
                   setMessage('');
                 }}
@@ -1096,6 +1187,23 @@ export default function ReceptionDashboard() {
                     ))}
                   </div>
                 </div>
+                {(admissionForm.services || []).includes('Consultation spécialisée') && specializedSpecialties.length > 0 && (
+                  <div className="reception-his-specialty-picker">
+                    <label>
+                      Spécialité (consultation spécialisée) *
+                      <select
+                        required
+                        value={admissionForm.specialty_code}
+                        onChange={(e) => updateAdmission({ specialty_code: e.target.value })}
+                      >
+                        <option value="">Choisir une spécialité…</option>
+                        {specializedSpecialties.map((spec) => (
+                          <option key={spec.code} value={spec.code}>{spec.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                )}
               </div>
               <div className="reception-his-form-row">
                 <label>
@@ -1137,7 +1245,7 @@ export default function ReceptionDashboard() {
                   <select value={admissionForm.admission_type} onChange={(e) => updateAdmission({ admission_type: e.target.value })}>
                     {ADMISSION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
-                  <span className="reception-his-field-hint">Urgence · Consultation externe · Hospitalisation</span>
+                  <span className="reception-his-field-hint">Urgence · Consultation externe · Consultation spécialisée · Hospitalisation</span>
                 </label>
               </div>
               <div className="reception-his-form-row reception-his-form-row--2">
@@ -1455,10 +1563,11 @@ export default function ReceptionDashboard() {
                           </td>
                           <td>
                             <input
-                              type="number"
-                              min="0"
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
                               value={line.amount_gnf}
-                              onChange={(e) => updatePaymentLine(line.id, { amount_gnf: e.target.value })}
+                              onChange={(e) => updatePaymentLine(line.id, { amount_gnf: e.target.value.replace(/[^\d]/g, '') })}
                               placeholder="Montant"
                             />
                           </td>
@@ -1682,6 +1791,59 @@ export default function ReceptionDashboard() {
             </fieldset>
           </div>
         </section>
+      )}
+
+      {tab === 'service_requests' && (
+        <section className="reception-his-panel">
+          <PatientContextPanel />
+          <div className="clinical-card reception-his-form-sheet">
+            <h2>Demandes de service</h2>
+            <FormNotice>{!selectedPatient ? PATIENT_REQUIRED_NOTICE : null}</FormNotice>
+            {selectedPatient && patientServiceRequests.length === 0 && (
+              <FormNotice>Aucune demande de service enregistrée pour ce patient.</FormNotice>
+            )}
+            {selectedPatient && patientServiceRequests.length > 0 && (
+              <table className="reception-his-billing-lines">
+                <thead>
+                  <tr>
+                    <th>N° facture</th>
+                    <th>Date</th>
+                    <th>Service / examen</th>
+                    <th>Département</th>
+                    <th>Type</th>
+                    <th>Montant</th>
+                    <th>Statut facture</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {patientServiceRequests.map((row) => (
+                    <tr key={row.key}>
+                      <td>{row.invoiceNumber}</td>
+                      <td>{row.issuedAt ? new Date(row.issuedAt).toLocaleDateString('fr-FR') : '—'}</td>
+                      <td>{row.service}</td>
+                      <td>{row.department || '—'}</td>
+                      <td>{row.chargeType || '—'}</td>
+                      <td>{formatGNF(row.amountGnf || 0)}</td>
+                      <td>{row.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </section>
+      )}
+
+      {registeredPatient && registrationPrintForm && (
+        <div className="reception-his-registration-print" ref={regPrintRef}>
+          <PatientRegistrationPrint
+            patient={{
+              ...registeredPatient,
+              emergency_relationship: resolveRelationship(registrationPrintForm),
+            }}
+            form={registrationPrintForm}
+          />
+        </div>
       )}
     </div>
   );

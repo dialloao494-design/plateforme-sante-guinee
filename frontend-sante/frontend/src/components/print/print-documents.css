@@ -21,3 +21,71 @@
   text-transform: uppercase;
   color: #1e293b;
 }
+
+.print-registration-sheet {
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 12mm;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11pt;
+  color: #1e293b;
+}
+
+.print-registration-sheet__title {
+  text-align: center;
+  font-size: 14pt;
+  color: #0f766e;
+  margin: 0.5rem 0 1rem;
+}
+
+.print-registration-section {
+  margin-bottom: 1rem;
+}
+
+.print-registration-section h2 {
+  font-size: 11pt;
+  color: #0f766e;
+  border-bottom: 1px solid #cbd5e1;
+  padding-bottom: 0.25rem;
+  margin: 0 0 0.5rem;
+}
+
+.print-registration-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10pt;
+}
+
+.print-registration-table th {
+  text-align: left;
+  width: 22%;
+  padding: 0.35rem 0.5rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-weight: 600;
+}
+
+.print-registration-table td {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+.print-registration-qr {
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.print-registration-footer {
+  margin-top: 1.5rem;
+  padding-top: 0.5rem;
+  border-top: 2px solid #c9a227;
+  text-align: center;
+  font-size: 9pt;
+  color: #64748b;
+}
+
+@media print {
+  .print-registration-sheet {
+    padding: 0;
+  }
+}

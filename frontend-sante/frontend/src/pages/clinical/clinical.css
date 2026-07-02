@@ -1700,6 +1700,35 @@
   margin-bottom: 0.75rem;
 }
 
+.lab-his-validation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.reception-his-registration-print {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  .reception-his-registration-print,
+  .reception-his-registration-print * {
+    visibility: visible !important;
+  }
+
+  .reception-his-registration-print {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
 .reception-his-specialty-picker {
   display: flex;
   flex-wrap: wrap;

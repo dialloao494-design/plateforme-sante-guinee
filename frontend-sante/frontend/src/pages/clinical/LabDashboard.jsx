@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { formatApiError } from '../../utils/apiError.js';
+import { detectLabTemplateId, LAB_TEMPLATES, templateRowsForExam } from '../../data/labReportTemplates.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import './clinical.css';
 
@@ -28,7 +29,7 @@ const SAMPLE_TYPES = [
   { code: 'urine', label: 'Urine' },
   { code: 'stool', label: 'Selles' },
   { code: 'lcr', label: 'LCR' },
-  { code: 'swab', label: 'Écouvillon' },
+  { code: 'pus', label: 'Pus' },
   { code: 'other', label: 'Autre' },
 ];
 const VALIDATION_STATUSES = [
@@ -97,12 +98,6 @@ const formatDateTime = (value) => {
   }
 };
 
-const paymentBadgeClass = (status) => {
-  if (status === 'Validé') return 'lab-his-pay-badge lab-his-pay-badge--validated';
-  if (status === 'Payé') return 'lab-his-pay-badge lab-his-pay-badge--paid';
-  return 'lab-his-pay-badge lab-his-pay-badge--pending';
-};
-
 const ReadOnlyDisplay = ({ value }) => (
   <div
     className={`reception-his-auto-display${value ? ' reception-his-auto-display--filled' : ' reception-his-auto-display--empty'}`}
@@ -160,6 +155,8 @@ export default function LabDashboard() {
     status: 'pending',
     observations: '',
   });
+  const [activeTemplateId, setActiveTemplateId] = useState(null);
+  const [lastResultId, setLastResultId] = useState(null);
 
   const load = useCallback(async () => {
     const [queueRes, dashRes] = await Promise.allSettled([
@@ -207,15 +204,6 @@ export default function LabDashboard() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-
-  useEffect(() => {
-    if (user?.full_name && !validationForm.technician) {
-      setValidationForm((p) => ({ ...p, technician: user.full_name }));
-    }
-    if (user?.full_name && !sampleForm.collector) {
-      setSampleForm((p) => ({ ...p, collector: user.full_name }));
-    }
-  }, [user?.full_name, validationForm.technician, sampleForm.collector]);
 
   useEffect(() => {
     if (!selectedPatient?.id) {
@@ -384,9 +372,30 @@ export default function LabDashboard() {
     setResultRows((rows) => (rows.length <= 1 ? rows : rows.filter((_, i) => i !== idx)));
   };
 
+  const printLabReport = async (resultId) => {
+    const id = resultId || lastResultId;
+    if (!id) {
+      setError('Aucun résultat validé à imprimer.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await clinicalApi.downloadLabPdf(id, `lab-result-${id}.pdf`);
+      setMessage('Rapport laboratoire téléchargé.');
+    } catch (err) {
+      setError(formatApiError(err, 'Impression du rapport impossible'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const selectOrder = (order) => {
     setActiveOrderId(order.id);
-    setResultRows([{ ...EMPTY_RESULT_ROW, parameter: order.test_name || '' }]);
+    setLastResultId(null);
+    const templateId = detectLabTemplateId(order.test_name);
+    setActiveTemplateId(templateId);
+    setResultRows(templateRowsForExam(order.test_name));
     const status =
       order.status === 'completed'
         ? 'validated'
@@ -424,7 +433,11 @@ export default function LabDashboard() {
         .join('; ');
       const payload = {
         result_summary: summary,
-        result_data: JSON.stringify({ rows: filledRows, validation: validationForm }),
+        result_data: JSON.stringify({
+          rows: filledRows,
+          validation: validationForm,
+          template_id: activeTemplateId || detectLabTemplateId(activeOrder.test_name),
+        }),
         reference_range: refs || null,
         interpretation: validationForm.observations || null,
       };
@@ -438,6 +451,7 @@ export default function LabDashboard() {
       if (validationForm.status === 'validated') {
         const { data: result } = await clinicalApi.recordLabResult(activeOrder.id, payload);
         await clinicalApi.validateLabResult(result.id);
+        setLastResultId(result.id);
         setMessage(`Résultats validés pour ${activeOrder.test_name}`);
       } else if (validationForm.status === 'rejected') {
         await clinicalApi.updateLabOrder(activeOrder.id, { status: 'cancelled' });
@@ -621,7 +635,6 @@ export default function LabDashboard() {
                         <thead>
                           <tr>
                             <th>Examen demandé</th>
-                            <th>Statut paiement / validation</th>
                             <th>Date de demande</th>
                             <th>Demandé par</th>
                             <th />
@@ -631,9 +644,6 @@ export default function LabDashboard() {
                           {serviceRequests.map((req) => (
                             <tr key={req.id}>
                               <td>{req.exam_name}</td>
-                              <td>
-                                <span className={paymentBadgeClass(req.payment_status)}>{req.payment_status}</span>
-                              </td>
                               <td>{formatDateTime(req.requested_at)}</td>
                               <td>{req.requested_by || 'Réception'}</td>
                               <td>
@@ -740,7 +750,12 @@ export default function LabDashboard() {
                 <section className="lab-his-workflow-card lab-his-workflow-card--results">
                   <h3>Résultats</h3>
                   {activeOrder ? (
-                    <p className="clinical-lead lab-his-active-order">Examen actif : <strong>{activeOrder.test_name}</strong></p>
+                    <p className="clinical-lead lab-his-active-order">
+                      Examen actif : <strong>{activeOrder.test_name}</strong>
+                      {activeTemplateId && LAB_TEMPLATES[activeTemplateId] ? (
+                        <span className="clinical-hint"> · Modèle : {LAB_TEMPLATES[activeTemplateId].title}</span>
+                      ) : null}
+                    </p>
                   ) : (
                     <p className="clinical-lead lab-his-active-order">Sélectionnez une commande pour saisir les résultats.</p>
                   )}
@@ -850,14 +865,26 @@ export default function LabDashboard() {
                       placeholder="Notes cliniques, commentaires…"
                     />
                   </label>
-                  <button
-                    type="button"
-                    className="clinical-btn lab-his-workflow-action"
-                    onClick={submitResults}
-                    disabled={loading || !activeOrder}
-                  >
-                    {loading ? 'Enregistrement…' : 'Enregistrer les résultats'}
-                  </button>
+                  <div className="lab-his-validation-actions">
+                    <button
+                      type="button"
+                      className="clinical-btn lab-his-workflow-action"
+                      onClick={submitResults}
+                      disabled={loading || !activeOrder}
+                    >
+                      {loading ? 'Enregistrement…' : 'Enregistrer les résultats'}
+                    </button>
+                    {lastResultId && (
+                      <button
+                        type="button"
+                        className="clinical-btn clinical-btn--secondary"
+                        onClick={() => printLabReport(lastResultId)}
+                        disabled={loading}
+                      >
+                        Imprimer le rapport
+                      </button>
+                    )}
+                  </div>
                 </section>
               </>
             )}
