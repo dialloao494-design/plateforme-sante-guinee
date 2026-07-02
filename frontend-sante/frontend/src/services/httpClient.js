@@ -190,7 +190,7 @@ const redirectToLogin = () => {
 const httpClient = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: false,
-  timeout: 25_000,
+  timeout: 60_000,
 });
 
 const syncAuthHeader = () => {

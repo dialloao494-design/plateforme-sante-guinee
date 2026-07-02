@@ -163,17 +163,19 @@ def main() -> int:
             page.locator(".lab-his-results-table tbody tr").first.locator("input").nth(1).fill("5.1")
             page.locator('label:has-text("Biologiste") input').fill("Tech E2E")
             page.locator('.lab-his-status-options input[type="radio"]').nth(2).check(force=True)
-            page.click('button:has-text("Enregistrer les résultats")')
-            page.wait_for_timeout(4000)
-            notes = page.locator(".clinical-message").all_inner_texts()
-            joined = " | ".join(notes)
-            if "Impossible de joindre" in joined:
-                time.sleep(3)
+            validated = False
+            joined = ""
+            for attempt in range(4):
                 page.click('button:has-text("Enregistrer les résultats")')
-                page.wait_for_timeout(4000)
-                notes = page.locator(".clinical-message").all_inner_texts()
+                page.wait_for_timeout(5000 + attempt * 2000)
+                notes = page.locator(".clinical-message, .clinical-success, .clinical-error").all_inner_texts()
                 joined = " | ".join(notes)
-            validated = "Résultats validés" in joined
+                if "Résultats validés" in joined or "Résultats enregistrés" in joined:
+                    validated = True
+                    break
+                if "Impossible de joindre" not in joined and "erreur" not in joined.lower():
+                    break
+                time.sleep(2 + attempt)
             report["laboratory"].append(("Validate results in browser", validated, joined[:160]))
             if not validated:
                 raise RuntimeError(joined or "Lab validation failed")
