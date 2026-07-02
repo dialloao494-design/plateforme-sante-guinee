@@ -73,7 +73,7 @@ export default function PatientRegistrationPrint({ patient, form }) {
 
       <footer className="print-registration-footer">
         <p>Imprimé le {printedAt}</p>
-        <p>CHFMP-Polyclinique AASMA · Kobaya chinoiya · Tél. 613 04 94 48</p>
+        <p>CHFMP – AASMA · Kobaya chinoiya · Tél. 613 04 94 48</p>
       </footer>
     </div>
   );

@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext.jsx';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
 import { formatApiError } from '../../utils/apiError.js';
 import PatientRegistrationPrint from '../../components/print/PatientRegistrationPrint.jsx';
+import { SPECIALTY_OTHER_CODE } from '../../constants/clinicBranding.js';
 import './clinical.css';
 
 const TABS = [
@@ -130,6 +131,7 @@ const EMPTY_ADMISSION = {
   attending_physician_name: '',
   confirmation_status: 'confirmed',
   specialty_code: '',
+  specialty_other: '',
   notes: '',
 };
 
@@ -320,22 +322,77 @@ export default function ReceptionDashboard() {
 
   const specializedSpecialties = billingCatalog?.specialized_specialties || [];
 
+  const resolveSpecialtyLabel = (code, other) => {
+    if (code === SPECIALTY_OTHER_CODE) return (other || '').trim();
+    return specializedSpecialties.find((s) => s.code === code)?.label || '';
+  };
+
+  const syncSpecialtyCode = (code) => {
+    updateAdmission({ specialty_code: code });
+    setSelectedSpecialty(code);
+  };
+
+  const syncSpecialtyOther = (text) => {
+    updateAdmission({ specialty_other: text });
+  };
+
+  const showSpecialtyPicker =
+    admissionForm.admission_type === 'specialized_consultation'
+    || (admissionForm.services || []).includes('Consultation spécialisée');
+
+  const renderSpecialtyPicker = (idSuffix = '') => (
+    <div className="reception-his-specialty-picker">
+      <label htmlFor={`specialty-select-${idSuffix}`}>
+        Spécialité (consultation spécialisée) *
+        <select
+          id={`specialty-select-${idSuffix}`}
+          required={showSpecialtyPicker}
+          value={admissionForm.specialty_code || selectedSpecialty}
+          onChange={(e) => syncSpecialtyCode(e.target.value)}
+        >
+          <option value="">Choisir une spécialité…</option>
+          {specializedSpecialties.map((spec) => (
+            <option key={spec.code} value={spec.code}>{spec.label}</option>
+          ))}
+          <option value={SPECIALTY_OTHER_CODE}>Autre</option>
+        </select>
+      </label>
+      {(admissionForm.specialty_code === SPECIALTY_OTHER_CODE || selectedSpecialty === SPECIALTY_OTHER_CODE) && (
+        <label>
+          Préciser la spécialité
+          <input
+            required
+            value={admissionForm.specialty_other || ''}
+            onChange={(e) => syncSpecialtyOther(e.target.value)}
+            placeholder="Saisir la spécialité…"
+          />
+        </label>
+      )}
+    </div>
+  );
+
   const addSpecializedConsultation = () => {
-    if (!selectedSpecialty) {
+    const code = admissionForm.specialty_code || selectedSpecialty;
+    const label = resolveSpecialtyLabel(code, admissionForm.specialty_other);
+    if (!code) {
       setError('Sélectionnez une spécialité pour la consultation spécialisée.');
       return;
     }
-    const spec = specializedSpecialties.find((s) => s.code === selectedSpecialty);
+    if (!label) {
+      setError('Précisez la spécialité pour « Autre ».');
+      return;
+    }
     const svc = (billingCatalog?.consultation_services || []).find((c) => c.code === 'specialized_consultation');
-    if (!spec || !svc) return;
+    if (!svc) return;
     addBillingLine({
       charge_type: svc.charge_type,
-      description: `Consultation spécialisée — ${spec.label}`,
+      description: `Consultation spécialisée — ${label}`,
       quantity: 1,
       unit_price_gnf: svc.price_gnf,
     });
-    updateBilling({ department: `Consultation spécialisée — ${spec.label}` });
-    setSelectedSpecialty('');
+    updateBilling({ department: `Consultation spécialisée — ${label}` });
+    syncSpecialtyCode('');
+    syncSpecialtyOther('');
     setError('');
   };
 
@@ -635,15 +692,21 @@ export default function ReceptionDashboard() {
     try {
       let services = (admissionForm.services || []).filter(Boolean);
       if (!services.length) return setError('Sélectionnez au moins un service.');
-      if (services.includes('Consultation spécialisée')) {
+      if (showSpecialtyPicker) {
+        const specialtyLabel = resolveSpecialtyLabel(admissionForm.specialty_code, admissionForm.specialty_other);
         if (!admissionForm.specialty_code) {
           return setError('Sélectionnez une spécialité pour la consultation spécialisée.');
         }
-        const spec = specializedSpecialties.find((s) => s.code === admissionForm.specialty_code);
-        if (spec) {
+        if (!specialtyLabel) {
+          return setError('Précisez la spécialité pour « Autre ».');
+        }
+        if (services.includes('Consultation spécialisée')) {
           services = services.map((s) =>
-            s === 'Consultation spécialisée' ? `Consultation spécialisée — ${spec.label}` : s
+            s === 'Consultation spécialisée' ? `Consultation spécialisée — ${specialtyLabel}` : s
           );
+        }
+        if (admissionForm.admission_type === 'specialized_consultation' && !services.some((s) => s.startsWith('Consultation spécialisée'))) {
+          services.push(`Consultation spécialisée — ${specialtyLabel}`);
         }
       }
       if (services.includes('Imagerie médicale')) {
@@ -1193,16 +1256,19 @@ export default function ReceptionDashboard() {
             <GeneratedIdBanner label="N° admission généré" value={lastAdmission?.admission_number} />
             <fieldset>
               <legend>Admission</legend>
-              <div className="reception-his-form-row reception-his-form-row--4">
-                <DisplayField
-                  label="N° d'admission"
-                  value={lastAdmission?.admission_number || ''}
-                  hint={lastAdmission?.admission_number ? undefined : FIELD_HINTS.admissionNumber}
-                />
-                <DisplayField label="N° dossier patient" value={patientDossier} />
-                <DisplayField label="Nom et prénom" value={patientDisplayName} />
-                <div className="reception-his-multi-service">
-                  <span className="reception-his-multi-service-label">Services *</span>
+              <div className="reception-his-admission-grid">
+                <div className="reception-his-admission-ids">
+                  <DisplayField
+                    label="N° d'admission"
+                    value={lastAdmission?.admission_number || ''}
+                    hint={lastAdmission?.admission_number ? undefined : FIELD_HINTS.admissionNumber}
+                  />
+                  <DisplayField label="N° dossier patient" value={patientDossier} />
+                  <DisplayField label="Nom et prénom" value={patientDisplayName} />
+                </div>
+
+                <div className="reception-his-admission-services">
+                  <span className="reception-his-multi-service-label">Services demandés *</span>
                   <div className="reception-his-multi-service-grid">
                     {admissionServices.map((svc) => (
                       <label key={svc} className="reception-his-check">
@@ -1223,125 +1289,122 @@ export default function ReceptionDashboard() {
                     ))}
                   </div>
                 </div>
-                {(admissionForm.services || []).includes('Consultation spécialisée') && specializedSpecialties.length > 0 && (
-                  <div className="reception-his-specialty-picker">
-                    <label>
-                      Spécialité (consultation spécialisée) *
-                      <select
-                        required
-                        value={admissionForm.specialty_code}
-                        onChange={(e) => updateAdmission({ specialty_code: e.target.value })}
-                      >
-                        <option value="">Choisir une spécialité…</option>
-                        {specializedSpecialties.map((spec) => (
-                          <option key={spec.code} value={spec.code}>{spec.label}</option>
-                        ))}
-                      </select>
-                    </label>
+
+                {(showSpecialtyPicker || (admissionForm.services || []).includes('Imagerie médicale') || (admissionForm.services || []).includes('Laboratoire')) && (
+                  <div className="reception-his-admission-subopts">
+                    {showSpecialtyPicker && specializedSpecialties.length > 0 && renderSpecialtyPicker('admission')}
+                    {(admissionForm.services || []).includes('Imagerie médicale') && imagingExaminations.length > 0 && (
+                      <div className="reception-his-specialty-picker">
+                        <label>
+                          Examen d&apos;imagerie médicale *
+                          <select
+                            required
+                            value={admissionImagingCode}
+                            onChange={(e) => setAdmissionImagingCode(e.target.value)}
+                          >
+                            <option value="">Choisir un examen…</option>
+                            {imagingExaminations.map((exam) => (
+                              <option key={exam.code} value={exam.code}>{exam.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                    )}
+                    {(admissionForm.services || []).includes('Laboratoire') && (
+                      <div className="reception-his-specialty-picker">
+                        <label>
+                          Examen de laboratoire *
+                          <input
+                            type="search"
+                            value={admissionLabSearchQ}
+                            onChange={(e) => setAdmissionLabSearchQ(e.target.value)}
+                            placeholder="Rechercher un examen…"
+                          />
+                        </label>
+                        {admissionLabSelection && (
+                          <p className="clinical-hint">Sélectionné : <strong>{admissionLabSelection.name}</strong></p>
+                        )}
+                        {filteredAdmissionLabTests.length > 0 && (
+                          <ul className="reception-his-lab-search-results">
+                            {filteredAdmissionLabTests.map((test) => (
+                              <li key={test.code}>
+                                <button type="button" onClick={() => setAdmissionLabSelection(test)}>
+                                  {test.name} ({test.code})
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
-                {(admissionForm.services || []).includes('Imagerie médicale') && imagingExaminations.length > 0 && (
-                  <div className="reception-his-specialty-picker">
-                    <label>
-                      Examen d&apos;imagerie médicale *
-                      <select
-                        required
-                        value={admissionImagingCode}
-                        onChange={(e) => setAdmissionImagingCode(e.target.value)}
-                      >
-                        <option value="">Choisir un examen…</option>
-                        {imagingExaminations.map((exam) => (
-                          <option key={exam.code} value={exam.code}>{exam.label}</option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                )}
-                {(admissionForm.services || []).includes('Laboratoire') && (
-                  <div className="reception-his-specialty-picker">
-                    <label>
-                      Examen de laboratoire *
+
+                <div className="reception-his-admission-meta">
+                  <label>
+                    Date et heure d&apos;admission
+                    <div className="reception-his-datetime-pair">
                       <input
-                        type="search"
-                        value={admissionLabSearchQ}
-                        onChange={(e) => setAdmissionLabSearchQ(e.target.value)}
-                        placeholder="Rechercher un examen…"
+                        required
+                        type="date"
+                        value={admissionForm.admission_date}
+                        onChange={(e) => updateAdmission({ admission_date: e.target.value })}
                       />
-                    </label>
-                    {admissionLabSelection && (
-                      <p className="clinical-hint">Sélectionné : <strong>{admissionLabSelection.name}</strong></p>
-                    )}
-                    {filteredAdmissionLabTests.length > 0 && (
-                      <ul className="reception-his-lab-search-results">
-                        {filteredAdmissionLabTests.map((test) => (
-                          <li key={test.code}>
-                            <button
-                              type="button"
-                              onClick={() => setAdmissionLabSelection(test)}
-                            >
-                              {test.name} ({test.code})
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div className="reception-his-form-row">
-                <label>
-                  Date et heure d&apos;admission
-                  <div className="reception-his-datetime-pair">
+                      <input
+                        required
+                        type="time"
+                        value={admissionForm.admission_time}
+                        onChange={(e) => updateAdmission({ admission_time: e.target.value })}
+                      />
+                    </div>
+                  </label>
+                  <label>
+                    Médecin traitant
+                    <select value={admissionForm.attending_clinician_user_id} onChange={(e) => updateAdmission({ attending_clinician_user_id: e.target.value })}>
+                      <option value="">— Sélectionner —</option>
+                      {doctors.map((d) => (
+                        <option key={d.user_id || d.id} value={d.user_id || d.id}>
+                          {d.name || d.full_name || d.email}
+                        </option>
+                      ))}
+                    </select>
                     <input
-                      required
-                      type="date"
-                      value={admissionForm.admission_date}
-                      onChange={(e) => updateAdmission({ admission_date: e.target.value })}
+                      type="text"
+                      placeholder="Ou saisir le nom du médecin"
+                      value={admissionForm.attending_physician_name}
+                      onChange={(e) => updateAdmission({ attending_physician_name: e.target.value })}
                     />
-                    <input
-                      required
-                      type="time"
-                      value={admissionForm.admission_time}
-                      onChange={(e) => updateAdmission({ admission_time: e.target.value })}
-                    />
-                  </div>
-                </label>
-                <label>
-                  Médecin traitant
-                  <select value={admissionForm.attending_clinician_user_id} onChange={(e) => updateAdmission({ attending_clinician_user_id: e.target.value })}>
-                    <option value="">— Sélectionner —</option>
-                    {doctors.map((d) => (
-                      <option key={d.user_id || d.id} value={d.user_id || d.id}>
-                        {d.name || d.full_name || d.email}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    placeholder="Ou saisir le nom du médecin"
-                    value={admissionForm.attending_physician_name}
-                    onChange={(e) => updateAdmission({ attending_physician_name: e.target.value })}
-                  />
-                </label>
-                <label>
-                  Type d&apos;admission
-                  <select value={admissionForm.admission_type} onChange={(e) => updateAdmission({ admission_type: e.target.value })}>
-                    {ADMISSION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
-                  <span className="reception-his-field-hint">Urgence · Consultation externe · Consultation spécialisée · Hospitalisation</span>
-                </label>
-              </div>
-              <div className="reception-his-form-row reception-his-form-row--2">
-                <label>
-                  Confirmation / rendez-vous
-                  <select value={admissionForm.confirmation_status} onChange={(e) => updateAdmission({ confirmation_status: e.target.value })}>
-                    {ADMISSION_CONFIRMATIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                  </select>
-                </label>
-                <label className="reception-his-notes-field">
-                  Notes
-                  <textarea rows={2} value={admissionForm.notes} onChange={(e) => updateAdmission({ notes: e.target.value })} />
-                </label>
+                  </label>
+                  <label>
+                    Type d&apos;admission
+                    <select
+                      value={admissionForm.admission_type}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        const patch = { admission_type: v };
+                        if (v === 'specialized_consultation') {
+                          const current = admissionForm.services || [];
+                          if (!current.includes('Consultation spécialisée')) {
+                            patch.services = [...current, 'Consultation spécialisée'];
+                          }
+                        }
+                        updateAdmission(patch);
+                      }}
+                    >
+                      {ADMISSION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    Confirmation / rendez-vous
+                    <select value={admissionForm.confirmation_status} onChange={(e) => updateAdmission({ confirmation_status: e.target.value })}>
+                      {ADMISSION_CONFIRMATIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                  </label>
+                  <label className="reception-his-notes-field reception-his-admission-notes">
+                    Notes
+                    <textarea rows={2} value={admissionForm.notes} onChange={(e) => updateAdmission({ notes: e.target.value })} />
+                  </label>
+                </div>
               </div>
             </fieldset>
             <button type="submit" className="clinical-btn" disabled={loading || !selectedPatient}>Créer l&apos;admission</button>
@@ -1430,15 +1493,7 @@ export default function ReceptionDashboard() {
                       ))}
                       {specializedSpecialties.length > 0 && (
                         <div className="reception-his-specialty-picker">
-                          <label>
-                            Consultation spécialisée — spécialité
-                            <select value={selectedSpecialty} onChange={(e) => setSelectedSpecialty(e.target.value)}>
-                              <option value="">Choisir une spécialité…</option>
-                              {specializedSpecialties.map((spec) => (
-                                <option key={spec.code} value={spec.code}>{spec.label}</option>
-                              ))}
-                            </select>
-                          </label>
+                          {renderSpecialtyPicker('billing')}
                           <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addSpecializedConsultation}>
                             + Consultation spécialisée
                           </button>

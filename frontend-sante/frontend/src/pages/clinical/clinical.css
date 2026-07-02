@@ -1676,6 +1676,52 @@
   }
 }
 
+.reception-his-admission-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.reception-his-admission-ids {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.reception-his-admission-services {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  background: #f8fafc;
+}
+
+.reception-his-admission-subopts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.reception-his-admission-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.reception-his-admission-notes {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .reception-his-admission-ids {
+    grid-template-columns: 1fr;
+  }
+}
+
 .reception-his-multi-service {
   display: flex;
   flex-direction: column;

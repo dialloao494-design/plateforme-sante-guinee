@@ -12,7 +12,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-CLINIC_PRINT_NAME = "CHFM – POLYCLINIQUE AASMA"
+CLINIC_PRINT_NAME = "CHFMP – AASMA"
 LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "branding" / "aasma-clinic-logo.png"
 
 METHOD_LABELS = {
@@ -25,7 +25,7 @@ METHOD_LABELS = {
 
 
 def _gnf(amount: int) -> str:
-    return f"{int(amount):,} GNF".replace(",", "\u202f")
+    return f"{int(amount):,} GNF".replace(",", " ")
 
 
 def _styles():

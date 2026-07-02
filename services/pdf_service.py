@@ -5,8 +5,8 @@ from __future__ import annotations
 from io import BytesIO
 from pathlib import Path
 
-CLINIC_PRINT_NAME = "CHFM – POLYCLINIQUE AASMA"
-CLINIC_PRINT_NAME_FULL = "POLYCLINIQUE MÉDICO-CHIRURGICALE AASMA"
+CLINIC_PRINT_NAME = "CHFMP – AASMA"
+CLINIC_PRINT_NAME_FULL = "CHFMP – AASMA"
 LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "branding" / "aasma-clinic-logo.png"
 LOGO_DISPLAY_WIDTH = 140  # points (~140 px at 72 dpi)
 PAGE_WIDTH = 595
