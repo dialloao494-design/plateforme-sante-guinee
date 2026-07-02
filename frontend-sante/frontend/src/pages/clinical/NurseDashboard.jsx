@@ -7,6 +7,11 @@ import { formatApiError } from '../../utils/apiError.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import './clinical.css';
 
+const BUCKET_TITLES = {
+  assessments_today: 'Évaluations aujourd\'hui',
+  pending_admissions: 'Admissions en attente d\'évaluation',
+};
+
 const EMPTY_FORM = {
   temperature_c: '',
   bp_systolic: '',
@@ -110,6 +115,9 @@ export default function NurseDashboard() {
   const [searching, setSearching] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [assessmentLoading, setAssessmentLoading] = useState(false);
+  const [activeStatBucket, setActiveStatBucket] = useState(null);
+  const [bucketRows, setBucketRows] = useState([]);
+  const [loadingBucket, setLoadingBucket] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
 
   const bmi = useMemo(() => calcBmi(form.weight_kg, form.height_cm), [form.weight_kg, form.height_cm]);
@@ -177,6 +185,7 @@ export default function NurseDashboard() {
   };
 
   const selectPatient = async (patient) => {
+    if (!patient?.id) return;
     setSelectedPatient(patient);
     setSearchResults([]);
     setSearchQ('');
@@ -184,13 +193,35 @@ export default function NurseDashboard() {
     setError('');
     setForm(EMPTY_FORM);
     setAssessmentLoading(true);
+    setActiveStatBucket(null);
+    setBucketRows([]);
     try {
-      const { data } = await clinicalApi.receptionHisGetPatient(patient.id);
-      setSelectedPatient(data);
-      await loadAssessment(data.id);
+      const { data } = await clinicalApi.nurseGetPatient(patient.id);
+      if (data?.id) setSelectedPatient(data);
+      await loadAssessment(data?.id || patient.id);
     } catch (err) {
       setError(formatApiError(err, 'Chargement du patient impossible'));
       await loadAssessment(patient.id);
+    }
+  };
+
+  const loadStatBucket = async (bucket) => {
+    if (activeStatBucket === bucket) {
+      setActiveStatBucket(null);
+      setBucketRows([]);
+      return;
+    }
+    setActiveStatBucket(bucket);
+    setLoadingBucket(true);
+    setError('');
+    try {
+      const { data } = await clinicalApi.nurseDashboardBucket(bucket);
+      setBucketRows(data || []);
+    } catch (err) {
+      setBucketRows([]);
+      setError(formatApiError(err, 'Impossible de charger la liste des patients'));
+    } finally {
+      setLoadingBucket(false);
     }
   };
 
@@ -240,8 +271,18 @@ export default function NurseDashboard() {
   };
 
   const statCards = [
-    { label: 'Évaluations aujourd\'hui', value: stats?.assessments_today ?? 0, variant: 'success' },
-    { label: 'Admissions en attente', value: stats?.pending_admissions_today ?? 0, variant: 'warning' },
+    {
+      key: 'assessments_today',
+      label: 'Évaluations aujourd\'hui',
+      value: stats?.assessments_today ?? 0,
+      variant: 'success',
+    },
+    {
+      key: 'pending_admissions',
+      label: 'Admissions en attente',
+      value: stats?.pending_admissions_today ?? 0,
+      variant: 'warning',
+    },
     { label: 'Patient actif', value: selectedPatient ? patientFullName(selectedPatient) : '—', variant: 'accent' },
   ];
 
@@ -299,7 +340,63 @@ export default function NurseDashboard() {
       {error && <p className="clinical-error">{error}</p>}
       {message && <p className="clinical-success">{message}</p>}
 
-      <ClinicalStatGrid stats={statCards} />
+      <ClinicalStatGrid stats={statCards} onStatClick={loadStatBucket} activeKey={activeStatBucket} />
+
+      {activeStatBucket && (
+        <section className="lab-his-queue-panel nurse-his-queue-panel" aria-live="polite">
+          <h3>{BUCKET_TITLES[activeStatBucket] || 'Patients'}</h3>
+          {loadingBucket ? (
+            <p className="clinical-hint">Chargement…</p>
+          ) : bucketRows.length === 0 ? (
+            <p className="clinical-hint">Aucun patient dans cette liste.</p>
+          ) : (
+            <div className="lab-his-results-wrap">
+              <table className="lab-his-queue-table">
+                <thead>
+                  <tr>
+                    <th>N° dossier</th>
+                    <th>Nom</th>
+                    <th>Prénom</th>
+                    <th>Téléphone</th>
+                    {activeStatBucket === 'assessments_today' && <th>Infirmier(ère)</th>}
+                    <th>Date / heure</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {bucketRows.map((row) => (
+                    <tr key={`${row.patient_id}-${row.event_at}`}>
+                      <td>{row.patient_number || row.patient_id}</td>
+                      <td>{row.last_name}</td>
+                      <td>{row.first_name}</td>
+                      <td>{row.phone || '—'}</td>
+                      {activeStatBucket === 'assessments_today' && <td>{row.nurse_name || '—'}</td>}
+                      <td>{new Date(row.event_at).toLocaleString('fr-FR')}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="clinical-link-btn"
+                          onClick={() =>
+                            selectPatient({
+                              id: row.patient_id,
+                              patient_number: row.patient_number,
+                              first_name: row.first_name,
+                              last_name: row.last_name,
+                              phone: row.phone,
+                            })
+                          }
+                        >
+                          Ouvrir
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       {!selectedPatient ? (
         <div className="clinical-card reception-his-empty-state">

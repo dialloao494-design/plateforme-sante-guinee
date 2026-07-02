@@ -1,6 +1,7 @@
 """Tests for nurse assessment API."""
 
 from datetime import date, datetime
+import uuid
 
 import models
 from core.provisioning_context import provisioning_channel
@@ -8,7 +9,7 @@ from security import create_access_token, hash_password
 
 
 def _seed_nurse_clinic(db_session, admin_user):
-    suffix = str(admin_user.id)
+    suffix = uuid.uuid4().hex[:8]
     clinic = models.Clinic(name=f"Nurse Clinic {suffix}", address="Test")
     db_session.add(clinic)
     db_session.flush()
@@ -117,3 +118,67 @@ def test_nurse_assessment_save_and_doctor_sync(client, db_session, admin_user):
     consult = r3.json()
     assert "Douleur thoracique" in (consult.get("chief_complaint") or "")
     assert "Aspirine" in (consult.get("history") or "")
+
+
+def test_nurse_can_load_patient_profile_without_reception_access(client, db_session, admin_user):
+    clinic_id, nurse, _doctor_user, _doctor, patient = _seed_nurse_clinic(db_session, admin_user)
+
+    denied = client.get(
+        f"/clinical/reception/his/patients/{patient.id}",
+        headers=_auth(nurse),
+    )
+    assert denied.status_code == 403
+
+    allowed = client.get(
+        f"/clinical/nurse/patients/{patient.id}",
+        headers=_auth(nurse),
+    )
+    assert allowed.status_code == 200, allowed.text
+    body = allowed.json()
+    assert body["id"] == patient.id
+    assert body["first_name"] == "Aminata"
+    assert body["patient_number"] == patient.patient_number
+
+
+def test_nurse_dashboard_buckets_list_patients(client, db_session, admin_user):
+    clinic_id, nurse, _doctor_user, _doctor, patient = _seed_nurse_clinic(db_session, admin_user)
+    admission = models.Admission(
+        clinic_id=clinic_id,
+        patient_id=patient.id,
+        admission_number=f"ADM-{patient.id}",
+        admission_type="outpatient",
+        status="active",
+        admitted_at=datetime.utcnow(),
+    )
+    db_session.add(admission)
+    db_session.commit()
+
+    pending = client.get(
+        "/clinical/nurse/dashboard/bucket/pending_admissions",
+        headers=_auth(nurse),
+    )
+    assert pending.status_code == 200, pending.text
+    pending_rows = pending.json()
+    assert any(row["patient_id"] == patient.id for row in pending_rows)
+
+    saved = client.post(
+        "/clinical/nurse/assessments",
+        headers=_auth(nurse),
+        json={"patient_id": patient.id, "reason_for_consultation": "Contrôle"},
+    )
+    assert saved.status_code == 201, saved.text
+
+    today = client.get(
+        "/clinical/nurse/dashboard/bucket/assessments_today",
+        headers=_auth(nurse),
+    )
+    assert today.status_code == 200, today.text
+    today_rows = today.json()
+    assert any(row["patient_id"] == patient.id for row in today_rows)
+
+    pending_after = client.get(
+        "/clinical/nurse/dashboard/bucket/pending_admissions",
+        headers=_auth(nurse),
+    )
+    assert pending_after.status_code == 200
+    assert not any(row["patient_id"] == patient.id for row in pending_after.json())

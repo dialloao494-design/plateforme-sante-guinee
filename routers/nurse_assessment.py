@@ -14,7 +14,9 @@ from models.user import User
 from schemas.nurse_assessment import (
     NurseAssessmentCreate,
     NurseAssessmentResponse,
+    NurseDashboardRow,
     NurseDashboardStats,
+    NursePatientOut,
 )
 from security import get_current_user
 from services.nurse_assessment_service import NurseAssessmentService
@@ -103,3 +105,47 @@ def search_patients(
     clinic = resolve_clinic_for_user(db, current_user)
     patients = ReceptionHisService.search_patients(db, clinic_id=clinic.id, query=q)
     return patients
+
+
+@router.get("/patients/{patient_id}", response_model=NursePatientOut)
+def get_nurse_patient(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, NURSE_READ_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    patient = NurseAssessmentService.patient_profile(db, clinic_id=clinic.id, patient_id=patient_id)
+    return NursePatientOut(
+        id=patient.id,
+        patient_number=patient.patient_number,
+        qr_token=patient.qr_token,
+        first_name=patient.first_name,
+        last_name=patient.last_name,
+        date_of_birth=patient.date_of_birth,
+        age=patient.age or 0,
+        gender=patient.gender,
+        place_of_birth=patient.place_of_birth,
+        nationality=patient.nationality,
+        marital_status=patient.marital_status,
+        profession=patient.profession,
+        preferred_language=patient.preferred_language,
+        phone=patient.phone,
+        phone_secondary=patient.phone_secondary,
+        email=patient.email,
+        address=patient.address,
+        commune=patient.commune,
+        city=patient.city,
+        region=patient.region,
+    )
+
+
+@router.get("/dashboard/bucket/{bucket}", response_model=list[NurseDashboardRow])
+def nurse_dashboard_bucket(
+    bucket: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, NURSE_READ_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return NurseAssessmentService.list_dashboard_bucket(db, clinic_id=clinic.id, bucket=bucket)

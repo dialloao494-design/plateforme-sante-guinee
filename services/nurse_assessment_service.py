@@ -335,3 +335,97 @@ class NurseAssessmentService:
     @staticmethod
     def serialize(row: models.NurseAssessment) -> na_schemas.NurseAssessmentResponse:
         return _serialize_assessment(row)
+
+    @staticmethod
+    def patient_profile(
+        db: Session, *, clinic_id: int, patient_id: int
+    ) -> models.Patient:
+        assert_patient_in_clinic(db, patient_id=patient_id, clinic_id=clinic_id)
+        patient = (
+            db.query(models.Patient)
+            .filter(
+                models.Patient.id == patient_id,
+                models.Patient.clinic_id == clinic_id,
+                models.Patient.is_archived.is_(False),
+            )
+            .first()
+        )
+        if not patient:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient introuvable")
+        return patient
+
+    @staticmethod
+    def list_dashboard_bucket(
+        db: Session, *, clinic_id: int, bucket: str
+    ) -> list[na_schemas.NurseDashboardRow]:
+        today_start = NurseAssessmentService._today_start()
+        if bucket == "assessments_today":
+            rows = (
+                db.query(models.NurseAssessment)
+                .options(joinedload(models.NurseAssessment.patient))
+                .filter(
+                    models.NurseAssessment.clinic_id == clinic_id,
+                    models.NurseAssessment.deleted_at.is_(None),
+                    models.NurseAssessment.recorded_at >= today_start,
+                )
+                .order_by(models.NurseAssessment.recorded_at.desc())
+                .all()
+            )
+            return [
+                na_schemas.NurseDashboardRow(
+                    patient_id=row.patient_id,
+                    patient_number=row.patient.patient_number if row.patient else None,
+                    first_name=row.patient.first_name if row.patient else "",
+                    last_name=row.patient.last_name if row.patient else "",
+                    phone=row.patient.phone if row.patient else None,
+                    event_at=row.recorded_at,
+                    nurse_name=row.nurse_name,
+                )
+                for row in rows
+            ]
+
+        if bucket == "pending_admissions":
+            admissions = (
+                db.query(models.Admission)
+                .options(joinedload(models.Admission.patient))
+                .filter(
+                    models.Admission.clinic_id == clinic_id,
+                    models.Admission.admitted_at >= today_start,
+                )
+                .order_by(models.Admission.admitted_at.desc())
+                .all()
+            )
+            assessed_ids = {
+                r[0]
+                for r in db.query(models.NurseAssessment.patient_id)
+                .filter(
+                    models.NurseAssessment.clinic_id == clinic_id,
+                    models.NurseAssessment.deleted_at.is_(None),
+                    models.NurseAssessment.recorded_at >= today_start,
+                )
+                .distinct()
+                .all()
+            }
+            rows: list[na_schemas.NurseDashboardRow] = []
+            for admission in admissions:
+                if admission.patient_id in assessed_ids:
+                    continue
+                patient = admission.patient
+                if not patient:
+                    continue
+                rows.append(
+                    na_schemas.NurseDashboardRow(
+                        patient_id=patient.id,
+                        patient_number=patient.patient_number,
+                        first_name=patient.first_name,
+                        last_name=patient.last_name,
+                        phone=patient.phone,
+                        event_at=admission.admitted_at,
+                    )
+                )
+            return rows
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bucket inconnu — utilisez assessments_today ou pending_admissions",
+        )
