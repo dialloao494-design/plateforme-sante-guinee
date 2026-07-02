@@ -1,0 +1,145 @@
+{
+  "reception": [
+    [
+      "Demandes de service tab",
+      true,
+      ""
+    ],
+    [
+      "Registration print",
+      true,
+      ""
+    ],
+    [
+      "Relation Père",
+      true,
+      ""
+    ],
+    [
+      "Consultation spécialisée admission type",
+      true,
+      ""
+    ],
+    [
+      "Register patient API",
+      true,
+      ""
+    ],
+    [
+      "Patient saved with id",
+      true,
+      "PAT-017-000271"
+    ],
+    [
+      "Patient retrievable",
+      true,
+      ""
+    ],
+    [
+      "Admission specialized_consultation",
+      true,
+      "{\"id\":41,\"admission_number\":\"ADM-2026-017-00022\",\"patient_id\":271,\"patient_name\":\"Auditb81750 Patient\",\"department\":\"Consultation spécialisée — Pédiatrie, Laboratoire\",\"services\":[\"Consultation spécia"
+    ],
+    [
+      "Create invoice",
+      true,
+      ""
+    ],
+    [
+      "Split payment line 1",
+      true,
+      "{\"id\":33,\"invoice_number\":\"INV-2026-017-00030\",\"patient_id\":271,\"patient_name\":\"Auditb81750 Patient\",\"department\":\"Labor"
+    ],
+    [
+      "Split payment line 2",
+      true,
+      "{\"id\":33,\"invoice_number\":\"INV-2026-017-00030\",\"patient_id\":271,\"patient_name\":\"Auditb81750 Patient\",\"department\":\"Labor"
+    ],
+    [
+      "Invoice PDF receipt",
+      true,
+      "status=200 len=67452"
+    ]
+  ],
+  "lab": [
+    [
+      "Pus sample type in bundle",
+      true,
+      ""
+    ],
+    [
+      "Écouvillon removed",
+      true,
+      ""
+    ],
+    [
+      "Hémogramme template title",
+      true,
+      ""
+    ],
+    [
+      "BU template title",
+      true,
+      ""
+    ],
+    [
+      "ECBU template title",
+      true,
+      ""
+    ],
+    [
+      "Template selector UI",
+      true,
+      ""
+    ],
+    [
+      "Service requests visible",
+      true,
+      "count=1"
+    ],
+    [
+      "Save lab results",
+      true,
+      "{\"id\":70,\"lab_order_id\":83,\"result_summary\":\"GB: 5.2\",\"reference_range\":null,\"interpretation\":null,\"status\":\"draft\"}"
+    ],
+    [
+      "Validate lab result",
+      true,
+      "{\"id\":70,\"lab_order_id\":83,\"result_summary\":\"GB: 5.2\",\"reference_range\":null,\"interpretation\":null,\"status\":\"validated\"}"
+    ],
+    [
+      "Lab report PDF",
+      true,
+      "len=67986"
+    ],
+    [
+      "Lab PDF uses official template",
+      true,
+      ""
+    ]
+  ],
+  "pharmacy": [
+    [
+      "Patient search",
+      true,
+      "hits=1"
+    ],
+    [
+      "Stock inventory API",
+      true,
+      "items=19"
+    ],
+    [
+      "Stock tab in frontend bundle",
+      true,
+      ""
+    ]
+  ],
+  "frontend": [
+    [
+      "clinical bundle loaded",
+      true,
+      ""
+    ]
+  ]
+}

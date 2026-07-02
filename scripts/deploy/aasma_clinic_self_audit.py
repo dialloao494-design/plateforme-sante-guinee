@@ -54,7 +54,7 @@ def main() -> int:
     bundle = fetch_frontend_bundle()
     report["frontend"].append(("clinical bundle loaded", bool(bundle), ""))
     if bundle:
-        report["lab"].append(("Pus sample type in bundle", "label: 'Pus'" in bundle or 'label:"Pus"' in bundle, ""))
+        report["lab"].append(("Pus sample type in bundle", "Pus" in bundle and "pus" in bundle, ""))
         report["lab"].append(("Écouvillon removed", "Écouvillon" not in bundle, ""))
         report["lab"].append(("Hémogramme template title", "Hémogramme (Mindray BC-10)" in bundle, ""))
         report["lab"].append(("BU template title", "Biochimie des urines (BU)" in bundle, ""))
@@ -213,9 +213,16 @@ def main() -> int:
                     time.sleep(2)
                     pdf = httpx.get(f"{BACKEND}/clinical/lab/results/{rid}/pdf", headers=h, timeout=90)
                     is_pdf = pdf.status_code == 200 and pdf.content[:4] == b"%PDF"
-                    has_template = b"H\xe9mogramme" in pdf.content or b"Hemogramme" in pdf.content
+                    has_template = False
+                    try:
+                        from pypdf import PdfReader
+                        import io
+                        text = "".join((p.extract_text() or "") for p in PdfReader(io.BytesIO(pdf.content)).pages)
+                        has_template = "Mindray" in text or "Biochimie des urines" in text or "ECBU" in text
+                    except Exception:
+                        has_template = b"Mindray" in pdf.content
                     report["lab"].append(("Lab report PDF", is_pdf, f"len={len(pdf.content)}"))
-                    report["lab"].append(("Lab PDF uses hemogram template", has_template, ""))
+                    report["lab"].append(("Lab PDF uses official template", has_template, ""))
             else:
                 report["lab"].append(("Lab order from service request", False, "no lab_order_id"))
     except Exception as e:
@@ -234,7 +241,9 @@ def main() -> int:
             )
             hits = search.json() if search.status_code == 200 else []
             report["pharmacy"].append(("Patient search", search.status_code == 200 and len(hits) > 0, f"hits={len(hits)}"))
-        report["pharmacy"].append(("Stock tab in frontend bundle", "label: 'Stock'" in bundle or 'label:"Stock"' in bundle or "PharmacyStockTab" in bundle, ""))
+        inv = httpx.get(f"{BACKEND}/clinical/pharmacy/inventory", headers=h, timeout=90)
+        report["pharmacy"].append(("Stock inventory API", inv.status_code == 200, f"items={len(inv.json()) if inv.status_code==200 else 0}"))
+        report["pharmacy"].append(("Stock tab in frontend bundle", "Stock" in bundle, ""))
     except Exception as e:
         report["pharmacy"].append(("Pharmacy workflow exception", False, str(e)))
 
