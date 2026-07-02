@@ -292,6 +292,9 @@ export default function ReceptionDashboard() {
 
   const [regForm, setRegForm] = useState(EMPTY_REG);
   const [admissionForm, setAdmissionForm] = useState(EMPTY_ADMISSION);
+  const [admissionImagingCode, setAdmissionImagingCode] = useState('');
+  const [admissionLabSearchQ, setAdmissionLabSearchQ] = useState('');
+  const [admissionLabSelection, setAdmissionLabSelection] = useState(null);
   const [billingForm, setBillingForm] = useState(EMPTY_BILLING);
   const [paymentForm, setPaymentForm] = useState(EMPTY_PAYMENT);
   const [paymentLines, setPaymentLines] = useState([emptyPaymentLine()]);
@@ -413,6 +416,19 @@ export default function ReceptionDashboard() {
     clinicalApi.clinicDoctors().then((r) => setDoctors(r.data || [])).catch(() => setDoctors([]));
     clinicalApi.receptionHisBillingCatalog().then((r) => setBillingCatalog(r.data || null)).catch(() => setBillingCatalog(null));
   }, [loadDashboard]);
+
+  useEffect(() => {
+    if (tab === 'service_requests' && selectedPatient?.id) {
+      loadInvoices(selectedPatient.id);
+    }
+  }, [tab, selectedPatient?.id, loadInvoices]);
+
+  const filteredAdmissionLabTests = useMemo(() => {
+    const tests = billingCatalog?.laboratory_tests || [];
+    const q = admissionLabSearchQ.trim().toLowerCase();
+    if (!q) return tests.slice(0, 12);
+    return tests.filter((t) => `${t.name} ${t.code}`.toLowerCase().includes(q)).slice(0, 12);
+  }, [billingCatalog, admissionLabSearchQ]);
 
   const runPatientSearch = useCallback(async (query) => {
     const q = (query ?? searchQ).trim();
@@ -630,6 +646,23 @@ export default function ReceptionDashboard() {
           );
         }
       }
+      if (services.includes('Imagerie médicale')) {
+        if (!admissionImagingCode) {
+          return setError('Sélectionnez un examen d\'imagerie médicale.');
+        }
+        const exam = imagingExaminations.find((e) => e.code === admissionImagingCode);
+        if (exam) {
+          services = services.map((s) => (s === 'Imagerie médicale' ? `Imagerie médicale — ${exam.label}` : s));
+        }
+      }
+      if (services.includes('Laboratoire')) {
+        if (!admissionLabSelection) {
+          return setError('Sélectionnez un examen de laboratoire.');
+        }
+        services = services.map((s) =>
+          s === 'Laboratoire' ? `Laboratoire — ${admissionLabSelection.name}` : s
+        );
+      }
       const { data } = await clinicalApi.receptionHisCreateAdmission({
         patient_id: selectedPatient.id,
         admission_date: admissionForm.admission_date,
@@ -645,6 +678,9 @@ export default function ReceptionDashboard() {
         notes: admissionForm.notes || undefined,
       });
       setLastAdmission(data || null);
+      setAdmissionImagingCode('');
+      setAdmissionLabSelection(null);
+      setAdmissionLabSearchQ('');
       setMessage(`Admission créée · N° admission ${data?.admission_number || '—'}`);
       await loadDashboard();
       setTab('billing');
@@ -1202,6 +1238,53 @@ export default function ReceptionDashboard() {
                         ))}
                       </select>
                     </label>
+                  </div>
+                )}
+                {(admissionForm.services || []).includes('Imagerie médicale') && imagingExaminations.length > 0 && (
+                  <div className="reception-his-specialty-picker">
+                    <label>
+                      Examen d&apos;imagerie médicale *
+                      <select
+                        required
+                        value={admissionImagingCode}
+                        onChange={(e) => setAdmissionImagingCode(e.target.value)}
+                      >
+                        <option value="">Choisir un examen…</option>
+                        {imagingExaminations.map((exam) => (
+                          <option key={exam.code} value={exam.code}>{exam.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                )}
+                {(admissionForm.services || []).includes('Laboratoire') && (
+                  <div className="reception-his-specialty-picker">
+                    <label>
+                      Examen de laboratoire *
+                      <input
+                        type="search"
+                        value={admissionLabSearchQ}
+                        onChange={(e) => setAdmissionLabSearchQ(e.target.value)}
+                        placeholder="Rechercher un examen…"
+                      />
+                    </label>
+                    {admissionLabSelection && (
+                      <p className="clinical-hint">Sélectionné : <strong>{admissionLabSelection.name}</strong></p>
+                    )}
+                    {filteredAdmissionLabTests.length > 0 && (
+                      <ul className="reception-his-lab-search-results">
+                        {filteredAdmissionLabTests.map((test) => (
+                          <li key={test.code}>
+                            <button
+                              type="button"
+                              onClick={() => setAdmissionLabSelection(test)}
+                            >
+                              {test.name} ({test.code})
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 )}
               </div>

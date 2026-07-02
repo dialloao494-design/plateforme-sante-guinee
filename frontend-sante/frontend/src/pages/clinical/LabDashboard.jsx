@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { formatApiError } from '../../utils/apiError.js';
-import { detectLabTemplateId, LAB_TEMPLATES, templateRowsForExam } from '../../data/labReportTemplates.js';
+import { detectLabTemplateId, LAB_TEMPLATES, LAB_TEMPLATE_OPTIONS, templateRowsForExam, templateRowsForTemplateId } from '../../data/labReportTemplates.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import './clinical.css';
 
@@ -372,6 +372,14 @@ export default function LabDashboard() {
     setResultRows((rows) => (rows.length <= 1 ? rows : rows.filter((_, i) => i !== idx)));
   };
 
+  const applyLabTemplate = (templateId) => {
+    if (!templateId) return;
+    setActiveTemplateId(templateId);
+    setResultRows(templateRowsForTemplateId(templateId));
+    setMessage(`Modèle chargé : ${LAB_TEMPLATES[templateId]?.title || templateId}`);
+    setError('');
+  };
+
   const printLabReport = async (resultId) => {
     const id = resultId || lastResultId;
     if (!id) {
@@ -406,6 +414,7 @@ export default function LabDashboard() {
             : 'pending';
     setValidationForm((p) => ({
       ...p,
+      technician: '',
       status,
       validation_date: todayStr(),
       validation_time: nowTimeStr(),
@@ -452,16 +461,20 @@ export default function LabDashboard() {
         const { data: result } = await clinicalApi.recordLabResult(activeOrder.id, payload);
         await clinicalApi.validateLabResult(result.id);
         setLastResultId(result.id);
-        setMessage(`Résultats validés pour ${activeOrder.test_name}`);
+        setMessage(`Résultats validés pour ${activeOrder.test_name} — vous pouvez imprimer le rapport.`);
       } else if (validationForm.status === 'rejected') {
         await clinicalApi.updateLabOrder(activeOrder.id, { status: 'cancelled' });
         setMessage(`Examen rejeté : ${activeOrder.test_name}`);
+        setActiveOrderId(null);
+        setResultRows([{ ...EMPTY_RESULT_ROW }]);
       } else {
         await clinicalApi.recordLabResult(activeOrder.id, payload);
         setMessage(`Résultats enregistrés pour ${activeOrder.test_name}`);
       }
-      setResultRows([{ ...EMPTY_RESULT_ROW }]);
-      setActiveOrderId(null);
+      if (validationForm.status !== 'validated') {
+        setResultRows([{ ...EMPTY_RESULT_ROW }]);
+        setActiveOrderId(null);
+      }
       await load();
       if (selectedPatient?.id) {
         const { data } = await clinicalApi.labServiceRequests(selectedPatient.id);
@@ -747,6 +760,35 @@ export default function LabDashboard() {
                   </button>
                 </section>
 
+                <section className="lab-his-workflow-card lab-his-workflow-card--templates">
+                  <h3>Modèles de rapport officiels</h3>
+                  <p className="clinical-hint">
+                    Sélectionnez le modèle validé par la clinique (Hémogramme, BU ou ECBU). Les paramètres et valeurs de référence se chargent automatiquement.
+                  </p>
+                  <div className="lab-his-template-picker" role="group" aria-label="Modèles de rapport">
+                    {LAB_TEMPLATE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        className={`clinical-btn clinical-btn--secondary lab-his-template-btn${activeTemplateId === opt.id ? ' lab-his-template-btn--active' : ''}`}
+                        onClick={() => applyLabTemplate(opt.id)}
+                        disabled={!activeOrder}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  {!activeOrder && (
+                    <FormNotice>Sélectionnez d&apos;abord une demande de service pour activer un modèle.</FormNotice>
+                  )}
+                  {activeTemplateId === 'ecbu' && LAB_TEMPLATES.ecbu?.macro && (
+                    <p className="lab-his-ecbu-macro"><strong>{LAB_TEMPLATES.ecbu.macro}</strong></p>
+                  )}
+                  {activeTemplateId === 'hemogram' && LAB_TEMPLATES.hemogram?.note && (
+                    <p className="clinical-hint">{LAB_TEMPLATES.hemogram.note}</p>
+                  )}
+                </section>
+
                 <section className="lab-his-workflow-card lab-his-workflow-card--results">
                   <h3>Résultats</h3>
                   {activeOrder ? (
@@ -760,13 +802,24 @@ export default function LabDashboard() {
                     <p className="clinical-lead lab-his-active-order">Sélectionnez une commande pour saisir les résultats.</p>
                   )}
                   <div className="lab-his-results-wrap">
-                    <table className="lab-his-results-table">
+                    <table className={`lab-his-results-table${activeTemplateId === 'hemogram' ? ' lab-his-results-table--hemogram' : ''}`}>
                       <thead>
                         <tr>
                           <th>Paramètre</th>
                           <th>Résultat</th>
-                          <th>Valeurs de référence</th>
-                          <th>Unité</th>
+                          {activeTemplateId === 'hemogram' ? (
+                            <>
+                              <th>Unités</th>
+                              <th>Enfant</th>
+                              <th>Homme</th>
+                              <th>Femme</th>
+                            </>
+                          ) : (
+                            <>
+                              <th>Valeurs de référence</th>
+                              <th>Unité</th>
+                            </>
+                          )}
                           <th />
                         </tr>
                       </thead>
@@ -778,6 +831,7 @@ export default function LabDashboard() {
                                 value={row.parameter}
                                 onChange={(e) => updateResultRow(idx, 'parameter', e.target.value)}
                                 placeholder="ex. Glucose"
+                                readOnly={Boolean(activeTemplateId)}
                               />
                             </td>
                             <td>
@@ -787,33 +841,50 @@ export default function LabDashboard() {
                                 placeholder="Valeur"
                               />
                             </td>
+                            {activeTemplateId === 'hemogram' ? (
+                              <>
+                                <td><ReadOnlyDisplay value={row.unit} /></td>
+                                <td><ReadOnlyDisplay value={row.ref_child} /></td>
+                                <td><ReadOnlyDisplay value={row.ref_male} /></td>
+                                <td><ReadOnlyDisplay value={row.ref_female} /></td>
+                              </>
+                            ) : (
+                              <>
+                                <td>
+                                  <input
+                                    value={row.reference}
+                                    onChange={(e) => updateResultRow(idx, 'reference', e.target.value)}
+                                    placeholder="0,7 – 1,1 g/L"
+                                    readOnly={Boolean(activeTemplateId)}
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    value={row.unit}
+                                    onChange={(e) => updateResultRow(idx, 'unit', e.target.value)}
+                                    placeholder="g/L"
+                                    readOnly={Boolean(activeTemplateId)}
+                                  />
+                                </td>
+                              </>
+                            )}
                             <td>
-                              <input
-                                value={row.reference}
-                                onChange={(e) => updateResultRow(idx, 'reference', e.target.value)}
-                                placeholder="0,7 – 1,1 g/L"
-                              />
-                            </td>
-                            <td>
-                              <input
-                                value={row.unit}
-                                onChange={(e) => updateResultRow(idx, 'unit', e.target.value)}
-                                placeholder="g/L"
-                              />
-                            </td>
-                            <td>
-                              <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => removeResultRow(idx)}>
-                                ×
-                              </button>
+                              {!activeTemplateId && (
+                                <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => removeResultRow(idx)}>
+                                  ×
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                  <button type="button" className="clinical-btn clinical-btn--secondary lab-his-add-row" onClick={addResultRow}>
-                    + Ajouter une ligne
-                  </button>
+                  {!activeTemplateId && (
+                    <button type="button" className="clinical-btn clinical-btn--secondary lab-his-add-row" onClick={addResultRow}>
+                      + Ajouter une ligne
+                    </button>
+                  )}
                 </section>
 
                 <section className="lab-his-workflow-card lab-his-workflow-card--validation">

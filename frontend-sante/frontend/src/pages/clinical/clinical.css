@@ -1700,6 +1700,36 @@
   margin-bottom: 0.75rem;
 }
 
+.lab-his-template-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.lab-his-template-btn--active {
+  border-color: #0f766e;
+  background: #ecfdf5;
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.lab-his-ecbu-macro {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.75rem;
+  background: #fffbeb;
+  border-left: 3px solid #c9a227;
+}
+
+.lab-his-results-table--hemogram {
+  font-size: 0.82rem;
+}
+
+.lab-his-results-table--hemogram input[readonly] {
+  background: #f8fafc;
+  color: #334155;
+}
+
 .lab-his-validation-actions {
   display: flex;
   flex-wrap: wrap;
