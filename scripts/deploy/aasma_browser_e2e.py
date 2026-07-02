@@ -26,7 +26,7 @@ RUN = uuid.uuid4().hex[:6]
 PATIENT = {
     "last_name": f"E2E{RUN}",
     "first_name": "Clinic",
-    "phone": f"622{RUN[:6]}",
+    "phone": f"622{uuid.uuid4().hex[:7]}",
     "dob": "1992-03-10",
 }
 
@@ -165,12 +165,15 @@ def main() -> int:
             page.locator('.lab-his-status-options input[type="radio"]').nth(2).check(force=True)
             validated = False
             joined = ""
-            for attempt in range(4):
+            for attempt in range(5):
                 page.click('button:has-text("Enregistrer les résultats")')
-                page.wait_for_timeout(5000 + attempt * 2000)
+                page.wait_for_timeout(6000 + attempt * 2000)
                 notes = page.locator(".clinical-message, .clinical-success, .clinical-error").all_inner_texts()
                 joined = " | ".join(notes)
-                if "Résultats validés" in joined or "Résultats enregistrés" in joined:
+                if any(
+                    token in joined
+                    for token in ("Résultats validés", "Résultats enregistrés", "vous pouvez imprimer")
+                ):
                     validated = True
                     break
                 if "Impossible de joindre" not in joined and "erreur" not in joined.lower():

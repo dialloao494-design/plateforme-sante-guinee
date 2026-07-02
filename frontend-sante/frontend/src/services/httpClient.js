@@ -257,9 +257,27 @@ httpClient.interceptors.response.use(
 
     const method = String(config?.method || 'get').toLowerCase();
     const isTimeout = error?.code === 'ECONNABORTED';
+    const isNetwork = !error.response || error?.code === 'ERR_NETWORK' || isTimeout;
 
     if (isTimeout) {
       console.error(`[HTTP] Timeout after ${config?.timeout || httpClient.defaults.timeout}ms: ${method.toUpperCase()} ${url}`);
+    }
+
+    const retryableMutation =
+      Boolean(config) &&
+      ['post', 'patch', 'put'].includes(method) &&
+      statusCode !== 401 &&
+      isNetwork;
+
+    if (retryableMutation) {
+      const attempt = Number(config.__networkRetry || 0);
+      if (attempt < 3) {
+        config.__networkRetry = attempt + 1;
+        await new Promise((resolve) => {
+          window.setTimeout(resolve, 1200 * config.__networkRetry);
+        });
+        return httpClient(config);
+      }
     }
 
     const retryableGet =

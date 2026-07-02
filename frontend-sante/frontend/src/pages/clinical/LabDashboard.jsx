@@ -451,11 +451,19 @@ export default function LabDashboard() {
         interpretation: validationForm.observations || null,
       };
       const orderStatus = ORDER_STATUS_MAP[validationForm.status] || 'in_analysis';
-      if (orderStatus !== activeOrder.status) {
-        await clinicalApi.updateLabOrder(activeOrder.id, { status: orderStatus });
+      const patch = {};
+      if (validationForm.status === 'validated') {
+        if (activeOrder.status === 'ordered' || activeOrder.status === 'sample_collected') {
+          patch.status = 'in_analysis';
+        }
+      } else if (orderStatus !== activeOrder.status) {
+        patch.status = orderStatus;
       }
       if (sampleTypes.length > 0) {
-        await clinicalApi.updateLabOrder(activeOrder.id, { clinical_notes: buildSampleNotes() });
+        patch.clinical_notes = buildSampleNotes();
+      }
+      if (Object.keys(patch).length) {
+        await clinicalApi.updateLabOrder(activeOrder.id, patch);
       }
       if (validationForm.status === 'validated') {
         const { data: result } = await clinicalApi.recordLabResult(activeOrder.id, payload);
