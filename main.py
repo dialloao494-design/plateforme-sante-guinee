@@ -11,7 +11,7 @@ import models
 from routers import patient, patient_record, rendezvous, doctor, auth, teleconsultation, notifications, messages
 from routers import users, appointments, doctor_dashboard, ws, clinical, medical_history, hospitalization
 from routers import unified_billing, discharge, radiology, reminders, clinical_reports, platform, platform_setup
-from routers import nutrition, immunization, nursing_care, visit_workflow, clinical_phase2, lab_phase2, pharmacy_phase2, reception_his
+from routers import nutrition, immunization, nursing_care, visit_workflow, clinical_phase2, lab_phase2, pharmacy_phase2, reception_his, nurse_assessment
 from security import hash_password, verify_password
 from services.user_provisioning import register_public_user
 import os
@@ -266,6 +266,7 @@ app.include_router(radiology.router)
 app.include_router(nutrition.router)
 app.include_router(immunization.router)
 app.include_router(nursing_care.router)
+app.include_router(nurse_assessment.router)
 app.include_router(clinical_phase2.router)
 app.include_router(lab_phase2.router)
 app.include_router(pharmacy_phase2.router)
@@ -366,7 +367,7 @@ async def startup_event():
         from database import engine, Base
         # Import all model modules so their tables are registered on Base
         import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message, models.notification_event, models.attachment_access_log, models.clinical_note, models.consultation_summary, models.patient_document, models.clinical_audit_log
-        import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.clinic_charge_payment, models.medical_history, models.hospitalization, models.clinical_visit, models.invoice, models.discharge, models.imaging, models.appointment_reminder, models.pharmacy_inventory, models.password_reset_token, models.email_verification_token, models.visit_workflow, models.nutrition, models.immunization, models.nursing_care  # noqa: F401
+        import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.clinic_charge_payment, models.medical_history, models.hospitalization, models.clinical_visit, models.invoice, models.discharge, models.imaging, models.appointment_reminder, models.pharmacy_inventory, models.password_reset_token, models.email_verification_token, models.visit_workflow, models.nutrition, models.immunization, models.nursing_care, models.nurse_assessment  # noqa: F401
 
         # Always create tables if they don't exist (safe / idempotent)
         Base.metadata.create_all(bind=engine)
@@ -397,6 +398,7 @@ async def startup_event():
             ensure_doctor_medicine_deliveries_table,
             ensure_clinic_lab_tests_table,
             ensure_reception_his_schema,
+            ensure_nurse_assessment_schema,
             run_alembic_upgrade_head,
         )
 
@@ -426,6 +428,7 @@ async def startup_event():
         ensure_doctor_medicine_deliveries_table(engine)
         ensure_clinic_lab_tests_table(engine)
         ensure_reception_his_schema(engine)
+        ensure_nurse_assessment_schema(engine)
 
         from database import SessionLocal
         from services.user_provisioning import bootstrap_initial_admin, bootstrap_platform_owner

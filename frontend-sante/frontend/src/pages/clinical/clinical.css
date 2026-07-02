@@ -1897,3 +1897,68 @@
   margin-top: 0.35rem;
 }
 
+/* Nurse triage dashboard — paper-form layout */
+.nurse-his-clinic-name {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--clinical-accent, #0d6b5c);
+  margin: 0 0 0.25rem;
+}
+
+.nurse-his-form-sheet fieldset {
+  margin-bottom: 1rem;
+}
+
+.nurse-his-header-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  align-items: start;
+}
+
+.nurse-his-bp-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nurse-his-bp-pair input {
+  flex: 1;
+  min-width: 0;
+}
+
+.nurse-his-textarea-field textarea {
+  width: 100%;
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.nurse-his-save-row {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+}
+
+.nurse-his-recent {
+  margin-top: 1rem;
+}
+
+.nurse-doctor-panel {
+  background: #f4faf8;
+  border: 1px solid #c5e8df;
+}
+
+.nurse-doctor-vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0.75rem 0;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 720px) {
+  .nurse-his-header-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

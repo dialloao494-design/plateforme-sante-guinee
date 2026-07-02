@@ -337,17 +337,35 @@ class ClinicalWorkflowService:
         if rdv.clinical_status not in ("checked_in", "scheduled"):
             raise HTTPException(status_code=400, detail="Appointment not ready for consultation")
 
+        from services.nurse_assessment_service import NurseAssessmentService
+
+        nurse_assessment = NurseAssessmentService.get_latest(
+            db, clinic_id=clinic_id, patient_id=rdv.patient_id
+        )
+        resolved_complaint = chief_complaint
+        if nurse_assessment and nurse_assessment.reason_for_consultation:
+            resolved_complaint = nurse_assessment.reason_for_consultation.strip()
+
         consultation = models.ClinicalConsultation(
             clinic_id=clinic_id,
             appointment_id=appointment_id,
             patient_id=rdv.patient_id,
             doctor_id=doctor.id,
             status="in_progress",
-            chief_complaint=chief_complaint,
+            chief_complaint=resolved_complaint,
             started_at=datetime.utcnow(),
         )
         rdv.clinical_status = "in_consultation"
         db.add(consultation)
+        db.flush()
+
+        NurseAssessmentService.apply_to_consultation(
+            db,
+            clinic_id=clinic_id,
+            patient_id=rdv.patient_id,
+            consultation=consultation,
+        )
+
         db.commit()
         db.refresh(consultation)
         from services.visit_service import VisitService

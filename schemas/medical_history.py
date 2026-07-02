@@ -72,6 +72,8 @@ class PatientVitalSignsCreate(BaseModel):
     temperature_c: Optional[float] = Field(None, ge=30.0, le=45.0)
     weight_kg: Optional[float] = Field(None, ge=0.5, le=500.0)
     height_cm: Optional[float] = Field(None, ge=30.0, le=250.0)
+    respiratory_rate: Optional[int] = Field(None, ge=5, le=60)
+    bmi: Optional[float] = Field(None, ge=10.0, le=80.0)
     spo2: Optional[int] = Field(None, ge=50, le=100)
     notes: Optional[str] = Field(None, max_length=2000)
 
@@ -88,6 +90,8 @@ class PatientVitalSignsResponse(BaseModel):
     temperature_c: Optional[float] = None
     weight_kg: Optional[float] = None
     height_cm: Optional[float] = None
+    respiratory_rate: Optional[int] = None
+    bmi: Optional[float] = None
     spo2: Optional[int] = None
     notes: Optional[str] = None
     recorded_at: datetime

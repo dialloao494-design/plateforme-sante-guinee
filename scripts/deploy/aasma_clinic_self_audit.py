@@ -68,6 +68,8 @@ def main() -> int:
         report["reception"].append(("Registration print", "Imprimer la fiche" in bundle, ""))
         report["reception"].append(("Relation Père", "Père" in bundle, ""))
         report["reception"].append(("Consultation spécialisée admission type", "specialized_consultation" in bundle, ""))
+        report["reception"].append(("Nurse dashboard in bundle", "Tableau de bord — Infirmier" in bundle or "/clinical/nurse" in bundle, ""))
+        report["reception"].append(("Nurse assessment save label", "Enregistrer l'évaluation" in bundle or "Enregistrer l\\'évaluation" in bundle, ""))
 
     # --- Reception API workflow ---
     try:
@@ -247,6 +249,41 @@ def main() -> int:
     except Exception as e:
         report["pharmacy"].append(("Pharmacy workflow exception", False, str(e)))
 
+    # --- Nurse API workflow ---
+    report["nurse"] = []
+    try:
+        admin = login("contactpolycliniqueaasma@gmail.com", "AasmaAdmin1!")
+        ah = auth_headers(admin["access_token"])
+        dash = httpx.get(f"{BACKEND}/clinical/nurse/dashboard", headers=ah, timeout=60)
+        report["nurse"].append(("Nurse dashboard API", dash.status_code == 200, dash.text[:120]))
+        if pid:
+            save = httpx.post(
+                f"{BACKEND}/clinical/nurse/assessments",
+                headers=ah,
+                json={
+                    "patient_id": pid,
+                    "temperature_c": 37.5,
+                    "bp_systolic": 120,
+                    "bp_diastolic": 80,
+                    "heart_rate": 78,
+                    "respiratory_rate": 16,
+                    "height_cm": 170,
+                    "weight_kg": 65,
+                    "reason_for_consultation": f"Audit nurse {run}",
+                    "allergies": "Test audit",
+                    "nurse_notes": "Audit overnight",
+                },
+                timeout=90,
+            )
+            report["nurse"].append(("Save nurse assessment API", save.status_code in (200, 201), save.text[:160]))
+            if save.status_code in (200, 201):
+                body = save.json()
+                report["nurse"].append(("BMI calculated server-side", body.get("bmi") is not None, str(body.get("bmi"))))
+                get = httpx.get(f"{BACKEND}/clinical/nurse/patients/{pid}/assessment", headers=ah, timeout=60)
+                report["nurse"].append(("Retrieve nurse assessment", get.status_code == 200, get.text[:120]))
+    except Exception as e:
+        report["nurse"].append(("Nurse workflow exception", False, str(e)))
+
     # Print report
     def section_pass(name: str, items: list) -> bool:
         print(f"\n=== {name} ===")
@@ -262,17 +299,19 @@ def main() -> int:
     rec_pass = section_pass("RECEPTION", report["reception"])
     lab_pass = section_pass("LABORATORY", report["lab"])
     pharm_pass = section_pass("PHARMACY", report["pharmacy"])
+    nurse_pass = section_pass("NURSE", report.get("nurse", []))
     section_pass("FRONTEND BUNDLE", report["frontend"])
 
     print("\n=== SUMMARY ===")
     print(f"Reception: {'PASS' if rec_pass else 'FAIL'}")
     print(f"Laboratory: {'PASS' if lab_pass else 'FAIL'}")
     print(f"Pharmacy: {'PASS' if pharm_pass else 'FAIL'}")
+    print(f"Nurse: {'PASS' if nurse_pass else 'FAIL'}")
 
     out = Path(__file__).resolve().parents[2] / "docs" / "AASMA_SELF_AUDIT.json"
     out.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"\nWrote {out}")
-    return 0 if rec_pass and lab_pass and pharm_pass else 1
+    return 0 if rec_pass and lab_pass and pharm_pass and nurse_pass else 1
 
 
 if __name__ == "__main__":

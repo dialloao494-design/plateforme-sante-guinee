@@ -1317,3 +1317,66 @@ def run_alembic_upgrade_head() -> None:
     except Exception as exc:
         logger.warning("Alembic upgrade on startup failed (fallback ensure_* may apply): %s", exc)
 
+
+def ensure_nurse_assessment_schema(engine: Engine) -> None:
+    """Nurse triage assessments and extended vital signs columns."""
+    insp = inspect(engine)
+    dialect = engine.dialect.name
+    datetime_type = "TIMESTAMP" if dialect == "postgresql" else "DATETIME"
+    float_type = "DOUBLE PRECISION" if dialect == "postgresql" else "FLOAT"
+    autoinc = " AUTOINCREMENT" if dialect == "sqlite" else ""
+
+    if "patient_vital_signs" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("patient_vital_signs")}
+        for col, col_type in (
+            ("respiratory_rate", "INTEGER"),
+            ("bmi", float_type),
+        ):
+            if col not in cols:
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE patient_vital_signs ADD COLUMN {col} {col_type}"))
+                    logger.info("Added patient_vital_signs.%s", col)
+                except Exception as exc:
+                    logger.warning("patient_vital_signs.%s migration skipped: %s", col, exc)
+
+    if "nurse_assessments" not in insp.get_table_names():
+        stmt = f"""
+            CREATE TABLE nurse_assessments (
+                id INTEGER PRIMARY KEY{autoinc},
+                clinic_id INTEGER NOT NULL REFERENCES clinics(id),
+                patient_id INTEGER NOT NULL REFERENCES patients(id),
+                admission_id INTEGER REFERENCES admissions(id),
+                appointment_id INTEGER REFERENCES rendezvous(id),
+                consultation_id INTEGER REFERENCES consultations(id),
+                nurse_user_id INTEGER REFERENCES users(id),
+                nurse_name VARCHAR(128),
+                temperature_c {float_type},
+                bp_systolic INTEGER,
+                bp_diastolic INTEGER,
+                heart_rate INTEGER,
+                respiratory_rate INTEGER,
+                height_cm {float_type},
+                weight_kg {float_type},
+                bmi {float_type},
+                vitals_observations TEXT,
+                reason_for_consultation TEXT,
+                history_of_present_illness TEXT,
+                medical_history TEXT,
+                surgical_history TEXT,
+                gynecological_history TEXT,
+                allergies TEXT,
+                current_treatments TEXT,
+                nurse_notes TEXT,
+                recorded_at {datetime_type} NOT NULL,
+                updated_at {datetime_type} NOT NULL,
+                deleted_at {datetime_type}
+            )
+        """
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+            logger.info("Created nurse_assessments table")
+        except Exception as exc:
+            logger.warning("nurse_assessments migration failed: %s", exc)
+

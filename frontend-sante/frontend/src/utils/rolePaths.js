@@ -32,7 +32,7 @@ const ROLE_HOME = {
   pharmacist: '/clinical/pharmacy',
   nutritionist: '/clinical/nutrition',
   pev_agent: '/clinical/pev',
-  nurse: '/clinical/nursing-care',
+  nurse: '/clinical/nurse',
   midwife: '/clinical/pev',
   patient: '/dashboard',
 };

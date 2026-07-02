@@ -243,6 +243,8 @@ class MedicalHistoryService:
             temperature_c=payload.temperature_c,
             weight_kg=payload.weight_kg,
             height_cm=payload.height_cm,
+            respiratory_rate=payload.respiratory_rate,
+            bmi=payload.bmi,
             spo2=payload.spo2,
             notes=payload.notes,
             recorded_by_user_id=current_user.id,

@@ -93,6 +93,8 @@ export default function DoctorClinicalDashboard() {
 
   const [patientHistory, setPatientHistory] = useState(null);
 
+  const [nurseAssessment, setNurseAssessment] = useState(null);
+
 
 
   const load = useCallback(async () => {
@@ -127,6 +129,8 @@ export default function DoctorClinicalDashboard() {
 
       setPatientHistory(null);
 
+      setNurseAssessment(null);
+
       return;
 
     }
@@ -136,6 +140,12 @@ export default function DoctorClinicalDashboard() {
       .then(({ data }) => setPatientHistory(data))
 
       .catch(() => setPatientHistory(null));
+
+    clinicalApi.nurseGetAssessment(consultation.patient_id)
+
+      .then(({ data }) => setNurseAssessment(data || null))
+
+      .catch(() => setNurseAssessment(null));
 
   }, [consultation?.patient_id]);
 
@@ -160,6 +170,20 @@ export default function DoctorClinicalDashboard() {
       setRecentLabs([]);
 
       setRecentRx([]);
+
+      setForm({
+
+        chief_complaint: data.chief_complaint || '',
+
+        history: data.history || '',
+
+        examination: data.examination || '',
+
+        diagnosis: data.diagnosis || '',
+
+        treatment_plan: data.treatment_plan || '',
+
+      });
 
       setMessage(`Consultation #${data.id} démarrée`);
 
@@ -481,6 +505,43 @@ export default function DoctorClinicalDashboard() {
                   <li>Antécédents: {(patientHistory.chronic_conditions || []).map((c) => c.condition_name).join(', ') || '—'}</li>
                   <li>Groupe sanguin: {patientHistory.medical_record?.blood_type || '—'}</li>
                 </ul>
+              </div>
+            )}
+
+            {nurseAssessment && (
+              <div className="clinical-panel nurse-doctor-panel" style={{ marginBottom: '1rem' }}>
+                <h3>Évaluation infirmière</h3>
+                <p className="clinical-lead" style={{ marginTop: 0 }}>
+                  Saisie par {nurseAssessment.nurse_name || 'infirmier(ère)'} ·{' '}
+                  {new Date(nurseAssessment.recorded_at).toLocaleString('fr-FR')}
+                </p>
+                <div className="nurse-doctor-vitals-grid">
+                  <div><strong>TA</strong> {nurseAssessment.bp_systolic || '—'}/{nurseAssessment.bp_diastolic || '—'} mmHg</div>
+                  <div><strong>FC</strong> {nurseAssessment.heart_rate || '—'} batt/min</div>
+                  <div><strong>FR</strong> {nurseAssessment.respiratory_rate || '—'} resp/min</div>
+                  <div><strong>T°</strong> {nurseAssessment.temperature_c ?? '—'} °C</div>
+                  <div><strong>Poids</strong> {nurseAssessment.weight_kg ?? '—'} kg</div>
+                  <div><strong>Taille</strong> {nurseAssessment.height_cm ?? '—'} cm</div>
+                  <div><strong>IMC</strong> {nurseAssessment.bmi ?? '—'}</div>
+                </div>
+                {nurseAssessment.vitals_observations && (
+                  <p><strong>Observations :</strong> {nurseAssessment.vitals_observations}</p>
+                )}
+                {nurseAssessment.reason_for_consultation && (
+                  <p><strong>Motif :</strong> {nurseAssessment.reason_for_consultation}</p>
+                )}
+                {nurseAssessment.history_of_present_illness && (
+                  <p><strong>Histoire de la maladie :</strong> {nurseAssessment.history_of_present_illness}</p>
+                )}
+                {nurseAssessment.allergies && (
+                  <p><strong>Allergies (infirmier) :</strong> {nurseAssessment.allergies}</p>
+                )}
+                {nurseAssessment.current_treatments && (
+                  <p><strong>Traitements en cours :</strong> {nurseAssessment.current_treatments}</p>
+                )}
+                {nurseAssessment.nurse_notes && (
+                  <p><strong>Notes infirmières :</strong> {nurseAssessment.nurse_notes}</p>
+                )}
               </div>
             )}
 

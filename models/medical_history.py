@@ -67,6 +67,8 @@ class PatientVitalSigns(Base):
     temperature_c = Column(Float, nullable=True)
     weight_kg = Column(Float, nullable=True)
     height_cm = Column(Float, nullable=True)
+    respiratory_rate = Column(Integer, nullable=True)
+    bmi = Column(Float, nullable=True)
     spo2 = Column(Integer, nullable=True)
     notes = Column(Text, nullable=True)
     recorded_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)

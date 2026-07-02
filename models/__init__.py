@@ -36,6 +36,8 @@ from .pharmacy_inventory import PharmacyInventoryItem
 from .nutrition import NutritionAssessment
 from .immunization import VaccineScheduleItem, ImmunizationRecord
 from .nursing_care import NursingProcedure
+from .nurse_assessment import NurseAssessment
+from .clinic_charge_payment import ClinicChargePayment
 from .password_reset_token import PasswordResetToken
 from .email_verification_token import EmailVerificationToken
 from .visit_workflow import PatientVisitWorkflow, PatientVisitWorkflowStep

@@ -75,4 +75,5 @@ class Patient(Base):
     nutrition_assessments = relationship("NutritionAssessment", back_populates="patient")
     immunization_records = relationship("ImmunizationRecord", back_populates="patient")
     nursing_procedures = relationship("NursingProcedure", back_populates="patient")
+    nurse_assessments = relationship("NurseAssessment", back_populates="patient")
     clinic_refunds = relationship("ClinicRefund", back_populates="patient")

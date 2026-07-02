@@ -65,6 +65,15 @@ const clinicalApi = {
     }),
   recordNursingProcedure: (data) => httpClient.post('/clinical/nursing-care/procedures', data),
 
+  // Nurse triage / assessment
+  nurseDashboard: () => httpClient.get('/clinical/nurse/dashboard'),
+  nurseSearchPatients: (q) => httpClient.get('/clinical/nurse/patients/search', { params: { q } }),
+  nurseGetAssessment: (patientId, admissionId) =>
+    httpClient.get(`/clinical/nurse/patients/${patientId}/assessment`, {
+      params: admissionId ? { admission_id: admissionId } : {},
+    }),
+  nurseSaveAssessment: (data) => httpClient.post('/clinical/nurse/assessments', data),
+
   // Visit workflow queues
   startVisit: (data) => {
     invalidateApiCache('/clinical/workflow/');

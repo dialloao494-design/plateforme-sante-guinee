@@ -66,6 +66,8 @@ import models.immunization  # noqa: F401
 import models.password_reset_token  # noqa: F401
 import models.email_verification_token  # noqa: F401
 import models.nursing_care  # noqa: F401
+import models.nurse_assessment  # noqa: F401
+import models.clinic_charge_payment  # noqa: F401
 import models.visit_workflow  # noqa: F401
 
 from main import app

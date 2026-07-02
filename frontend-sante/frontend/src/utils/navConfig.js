@@ -70,7 +70,8 @@ const ROLE_NAV = {
   nutritionist: [{ path: '/clinical/nutrition', label: 'Nutrition', icon: 'board' }],
   pev_agent: [{ path: '/clinical/pev', label: 'PEV / Vaccination', icon: 'calendar' }],
   nurse: [
-    { path: '/clinical/nursing-care', label: 'Soins infirmiers', icon: 'board' },
+    { path: '/clinical/nurse', label: 'Infirmier(ère)', icon: 'board' },
+    { path: '/clinical/nursing-care', label: 'Soins infirmiers', icon: 'queue' },
     { path: '/clinical/patient-history', label: 'Dossier patient', icon: 'board' },
     { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'queue' },
   ],
@@ -96,6 +97,7 @@ const CLINIC_ONLY_PATHS = new Set([
   '/clinical/nutrition',
   '/clinical/pev',
   '/clinical/nursing-care',
+  '/clinical/nurse',
   '/clinical/patient-history',
   '/clinical/billing',
   '/clinical/reports',
