@@ -66,15 +66,14 @@ def main() -> int:
         try:
             login(page, *CREDS["reception"], "/clinical/reception")
             click_tab(page, "Enregistrement")
-            page.locator('input[value=""]').first  # noop wait
-            page.locator('label:has-text("Nom") input').first.fill(PATIENT["last_name"])
-            page.locator('label:has-text("Prénom") input').fill(PATIENT["first_name"])
+            page.get_by_role("textbox", name=re.compile(r"Nom \*")).fill(PATIENT["last_name"])
+            page.get_by_role("textbox", name=re.compile(r"Prénom \*")).fill(PATIENT["first_name"])
             page.locator('label:has-text("Date naissance") input').fill(PATIENT["dob"])
-            page.locator('label:has-text("Adresse") input').fill("Kobaya test E2E")
-            page.locator('label:has-text("Tél. principal") input').fill(PATIENT["phone"])
-            page.locator('label:has-text("Nom du contact") input').fill("Contact E2E")
-            page.locator('label:has-text("Relation") select').select_option("Père")
-            page.locator('label:has-text("Téléphone") input').first.fill(f"623{RUN[:6]}")
+            page.get_by_role("textbox", name=re.compile(r"Adresse \*")).fill("Kobaya test E2E")
+            page.get_by_role("textbox", name=re.compile(r"Tél. principal \*")).fill(PATIENT["phone"])
+            page.get_by_role("textbox", name=re.compile(r"Nom du contact \*")).fill("Contact E2E")
+            page.locator('fieldset:has(legend:has-text("Personne")) select').select_option("Père")
+            page.locator('fieldset:has(legend:has-text("Personne")) input[type="tel"], fieldset:has(legend:has-text("Personne")) label:has-text("Téléphone") input').fill(f"623{RUN[:6]}")
             page.click('button:has-text("Enregistrer le patient")')
             page.wait_for_selector("text=Patient enregistré", timeout=60000)
             report["reception"].append(("Register patient", True, ""))
@@ -95,15 +94,12 @@ def main() -> int:
         # --- ADMISSION ---
         try:
             click_tab(page, "Admission")
-            page.locator('label.reception-his-check:has-text("Laboratoire") input').check()
             page.locator('label.reception-his-check:has-text("Consultation spécialisée") input').check()
             page.locator("#specialty-select-admission").select_option(label="Pédiatrie")
-            page.locator('input[placeholder="Rechercher un examen"]').fill("Hémogramme")
-            time.sleep(0.5)
-            page.locator(".reception-his-lab-search-results button").first.click()
             page.select_option('label:has-text("Type d\'admission") select', value="specialized_consultation")
             time.sleep(0.3)
             specialty_val = page.locator("#specialty-select-admission").input_value()
+            report["admission"].append(("Admission layout services section", page.locator(".reception-his-admission-services").count() > 0, ""))
             report["admission"].append(("Specialty picker on admission type", specialty_val == "pediatrics", specialty_val))
             page.click('button:has-text("Créer l\'admission")')
             page.wait_for_selector("text=Admission créée", timeout=60000)
@@ -114,28 +110,34 @@ def main() -> int:
         # --- BILLING ---
         try:
             click_tab(page, "Facturation")
-            page.locator('input[placeholder="Nom ou code analyse"]').fill("Hémogramme")
-            time.sleep(0.5)
-            page.locator(".reception-his-lab-search-results button").first.click()
+            page.locator('input[placeholder="Nom ou code analyse…"]').fill("hémogramme")
+            time.sleep(1.2)
+            lab_btn = page.locator(".reception-his-lab-search-results button")
+            if lab_btn.count() == 0:
+                page.locator('input[placeholder="Nom ou code analyse…"]').fill("nfs")
+                time.sleep(1.2)
+            page.locator(".reception-his-lab-search-results button").first.click(timeout=15000)
             page.click('button:has-text("Créer facture")')
             page.wait_for_selector("text=Facture créée", timeout=60000)
             report["billing"].append(("Create invoice", True, ""))
 
-            page.locator('table.reception-his-billing-lines input[placeholder="Montant"]').first.fill("50000")
+            amt_input = page.locator('table.reception-his-billing-lines input[placeholder="Montant"]').first
+            remaining_hint = page.locator("text=Reste à payer").locator("..").locator(".reception-his-amount-display, .reception-his-auto-display").last
+            amt_input.fill("100000")
             page.click('button:has-text("Enregistrer le(s) paiement")')
             page.wait_for_selector("text=Paiement", timeout=60000)
             report["billing"].append(("Payment entry", True, ""))
 
             with page.expect_download(timeout=60000) as dl_info:
-                page.click('button:has-text("Imprimer le reçu")')
+                page.click('button:has-text("Imprimer reçu")')
             download = dl_info.value
             pdf_path = Path(__file__).resolve().parents[2] / "docs" / f"e2e_invoice_{RUN}.pdf"
             download.save_as(pdf_path)
-            pdf_bytes = pdf_path.read_bytes()
-            has_brand = b"CHFMP" in pdf_bytes and b"AASMA" in pdf_bytes
-            no_poly = b"POLYCLINIQUE" not in pdf_bytes
-            text = pdf_bytes.decode("latin-1", errors="replace")
-            no_square = "\u25a0" not in text and "■" not in text
+            from pypdf import PdfReader
+            pdf_text = "".join((p.extract_text() or "") for p in PdfReader(str(pdf_path)).pages)
+            has_brand = "CHFMP" in pdf_text and "AASMA" in pdf_text
+            no_poly = "POLYCLINIQUE" not in pdf_text
+            no_square = "■" not in pdf_text and "980■" not in pdf_text
             report["billing"].append(("Invoice PDF branding CHFMP – AASMA", has_brand and no_poly, str(pdf_path.name)))
             report["billing"].append(("Invoice PDF no corrupted amounts", no_square, ""))
         except Exception as e:
@@ -149,25 +151,46 @@ def main() -> int:
         try:
             login(page, *CREDS["lab"], "/clinical/lab")
             page.locator("#lab-patient-search").fill(patient_number or PATIENT["last_name"])
-            time.sleep(1)
+            time.sleep(1.5)
             page.locator(".reception-his-search-results button").first.click()
-            time.sleep(1)
-            page.locator('button:has-text("Saisir résultats")').first.click()
+            time.sleep(2)
+            saisir = page.locator('button:has-text("Saisir résultats")')
+            report["laboratory"].append(("Service requests from reception", saisir.count() > 0, f"buttons={saisir.count()}"))
+            saisir.first.click(timeout=30000)
             page.locator('button:has-text("Hémogramme (Mindray BC-10)")').click()
             time.sleep(0.3)
             report["laboratory"].append(("Template picker visible", page.locator('button:has-text("Hémogramme (Mindray BC-10)")').count() > 0, ""))
-            page.locator(".lab-his-results-table input[placeholder='Valeur']").first.fill("5.1")
+            page.locator(".lab-his-results-table tbody tr").first.locator("input").nth(1).fill("5.1")
             page.locator('label:has-text("Biologiste") input').fill("Tech E2E")
-            page.locator('input[name="lab-status"][value="validated"]').check()
+            page.locator('.lab-his-status-options input[type="radio"]').nth(2).check(force=True)
             page.click('button:has-text("Enregistrer les résultats")')
-            page.wait_for_selector("text=validés", timeout=60000)
-            report["laboratory"].append(("Save and validate results", True, ""))
-            with page.expect_download(timeout=60000) as dl_info:
-                page.click('button:has-text("Imprimer le rapport")')
-            lab_pdf = Path(__file__).resolve().parents[2] / "docs" / f"e2e_lab_{RUN}.pdf"
-            dl_info.value.save_as(lab_pdf)
-            lab_text = lab_pdf.read_bytes().decode("latin-1", errors="replace")
-            report["laboratory"].append(("Lab PDF Mindray template", "Mindray" in lab_text, lab_pdf.name))
+            page.wait_for_timeout(4000)
+            notes = page.locator(".clinical-message").all_inner_texts()
+            joined = " | ".join(notes)
+            if "Impossible de joindre" in joined:
+                time.sleep(3)
+                page.click('button:has-text("Enregistrer les résultats")')
+                page.wait_for_timeout(4000)
+                notes = page.locator(".clinical-message").all_inner_texts()
+                joined = " | ".join(notes)
+            validated = "Résultats validés" in joined
+            report["laboratory"].append(("Validate results in browser", validated, joined[:160]))
+            if not validated:
+                raise RuntimeError(joined or "Lab validation failed")
+            time.sleep(1)
+            print_btn = page.locator(".lab-his-validation-actions button.clinical-btn--secondary")
+            report["laboratory"].append(("Print report button visible", print_btn.count() > 0, f"count={print_btn.count()}"))
+            if print_btn.count():
+                print_btn.scroll_into_view_if_needed()
+                with page.expect_download(timeout=60000) as dl_info:
+                    print_btn.click()
+                lab_pdf = Path(__file__).resolve().parents[2] / "docs" / f"e2e_lab_{RUN}.pdf"
+                dl_info.value.save_as(lab_pdf)
+                from pypdf import PdfReader
+                lab_text = "".join((p.extract_text() or "") for p in PdfReader(str(lab_pdf)).pages)
+                report["laboratory"].append(("Lab PDF Mindray template", "Mindray" in lab_text, lab_pdf.name))
+            else:
+                report["laboratory"].append(("Lab PDF print in browser", False, "Print button not shown after validate"))
         except Exception as e:
             report["laboratory"].append(("Lab workflow", False, str(e)))
 
@@ -180,8 +203,8 @@ def main() -> int:
             login(page, *CREDS["pharmacy"], "/clinical/pharmacy")
             page.locator('nav button:has-text("Stock")').click()
             report["pharmacy"].append(("Stock tab", page.locator('h2:has-text("Stock")').count() > 0 or page.locator("text=Stock").count() > 0, ""))
-            page.locator('nav button').filter(has_text=re.compile("Dispensation|Tableau")).first.click()
-            page.locator('input[placeholder*="Recherche"], input[placeholder*="recherche"]').first.fill(patient_number or PATIENT["last_name"])
+            page.locator('nav.pharmacy-tabs button:has-text("Dispensation")').click()
+            page.locator("#pharmacy-patient-search").fill(patient_number or PATIENT["last_name"])
             time.sleep(1)
             hits = page.locator(".reception-his-search-results button, .pharmacy-his-search-results button")
             report["pharmacy"].append(("Patient search", hits.count() > 0, f"hits={hits.count()}"))

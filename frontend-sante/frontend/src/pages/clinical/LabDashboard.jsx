@@ -422,7 +422,7 @@ export default function LabDashboard() {
   };
 
   const submitResults = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
     if (!activeOrder) {
       setError('Sélectionnez une commande en cours pour saisir les résultats.');
       return;
