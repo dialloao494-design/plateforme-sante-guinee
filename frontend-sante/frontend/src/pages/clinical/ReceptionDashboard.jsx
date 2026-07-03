@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext.jsx';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
 import { formatApiError } from '../../utils/apiError.js';
 import PatientRegistrationPrint from '../../components/print/PatientRegistrationPrint.jsx';
+import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import { SPECIALTY_OTHER_CODE, PAYER_TYPE_OPTIONS, payerTypeLabel } from '../../constants/clinicBranding.js';
 import './clinical.css';
 
@@ -12,8 +13,8 @@ const TABS = [
   { id: 'register', label: 'Enregistrement', shortcut: '2' },
   { id: 'admission', label: 'Admission', shortcut: '3' },
   { id: 'billing', label: 'Facturation', shortcut: '4' },
-  { id: 'service_requests', label: 'Demandes de service', shortcut: '6' },
   { id: 'refund', label: 'Remboursement', shortcut: '5' },
+  { id: 'service_requests', label: 'Demandes de service', shortcut: '6' },
 ];
 
 const DEFAULT_ADMISSION_SERVICES = [
@@ -154,6 +155,57 @@ const EMPTY_REFUND = {
   refund_method: 'orange_money',
   reason: 'service_cancelled',
   reason_notes: '',
+};
+
+const SERVICE_REQUEST_CATEGORIES = [
+  { value: 'laboratory', label: 'Laboratoire' },
+  { value: 'nursing', label: 'Soins infirmiers' },
+  { value: 'imaging', label: 'Imagerie' },
+  { value: 'pharmacy', label: 'Pharmacie' },
+  { value: 'doctor', label: 'Médecin' },
+  { value: 'other', label: 'Autre' },
+];
+
+const SERVICE_REQUEST_STATUSES = [
+  { value: 'pending', label: 'En attente' },
+  { value: 'approved', label: 'Approuvée' },
+  { value: 'completed', label: 'Terminée' },
+  { value: 'cancelled', label: 'Annulée' },
+];
+
+const EMPTY_SERVICE_REQUEST = {
+  service_category: 'laboratory',
+  service_name: '',
+  department: '',
+  notes: '',
+  status: 'pending',
+};
+
+const DASHBOARD_BUCKET_TITLES = {
+  total_patients: 'Patients total',
+  patients_registered_today: 'Patients inscrits aujourd\'hui',
+  admissions_today: 'Admissions aujourd\'hui',
+  hospitalized_patients: 'Patients hospitalisés',
+  paid_invoices: 'Factures payées',
+  unpaid_invoices: 'Factures impayées',
+  revenue_today: 'Recette du jour',
+  revenue_month: 'Recette du mois',
+  refunds: 'Remboursements',
+};
+
+const serviceRequestStatusLabel = (status) =>
+  SERVICE_REQUEST_STATUSES.find((s) => s.value === status)?.label || status || '—';
+
+const serviceRequestCategoryLabel = (cat) =>
+  SERVICE_REQUEST_CATEGORIES.find((c) => c.value === cat)?.label || cat || '—';
+
+const formatDateTime = (value) => {
+  if (!value) return '—';
+  try {
+    return new Date(value).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+  } catch {
+    return String(value);
+  }
 };
 
 const calcAge = (dob) => {
@@ -309,6 +361,15 @@ export default function ReceptionDashboard() {
   const [billingCatalog, setBillingCatalog] = useState(null);
   const [billingLineItems, setBillingLineItems] = useState([]);
   const [labSearchQ, setLabSearchQ] = useState('');
+  const [activeStatBucket, setActiveStatBucket] = useState(null);
+  const [queueRows, setQueueRows] = useState([]);
+  const [loadingQueue, setLoadingQueue] = useState(false);
+  const [serviceRequests, setServiceRequests] = useState([]);
+  const [serviceRequestSearchQ, setServiceRequestSearchQ] = useState('');
+  const [serviceRequestStatusFilter, setServiceRequestStatusFilter] = useState('');
+  const [serviceRequestForm, setServiceRequestForm] = useState(EMPTY_SERVICE_REQUEST);
+  const [editingServiceRequestId, setEditingServiceRequestId] = useState(null);
+  const [loadingServiceRequests, setLoadingServiceRequests] = useState(false);
 
   const updateReg = (v) => setRegForm((p) => ({ ...p, ...v }));
   const updateAdmission = (v) => setAdmissionForm((p) => ({ ...p, ...v }));
@@ -474,11 +535,121 @@ export default function ReceptionDashboard() {
     clinicalApi.receptionHisBillingCatalog().then((r) => setBillingCatalog(r.data || null)).catch(() => setBillingCatalog(null));
   }, [loadDashboard]);
 
-  useEffect(() => {
-    if (tab === 'service_requests' && selectedPatient?.id) {
-      loadInvoices(selectedPatient.id);
+
+  const loadServiceRequests = useCallback(async () => {
+    setLoadingServiceRequests(true);
+    try {
+      const params = {};
+      if (selectedPatient?.id) params.patient_id = selectedPatient.id;
+      if (serviceRequestSearchQ.trim()) params.q = serviceRequestSearchQ.trim();
+      if (serviceRequestStatusFilter) params.status = serviceRequestStatusFilter;
+      const { data } = await clinicalApi.receptionHisListServiceRequests(params);
+      setServiceRequests(data || []);
+    } catch {
+      setServiceRequests([]);
+    } finally {
+      setLoadingServiceRequests(false);
     }
-  }, [tab, selectedPatient?.id, loadInvoices]);
+  }, [selectedPatient?.id, serviceRequestSearchQ, serviceRequestStatusFilter]);
+
+  const loadQueueBucket = async (bucket) => {
+    if (activeStatBucket === bucket) {
+      setActiveStatBucket(null);
+      setQueueRows([]);
+      return;
+    }
+    setActiveStatBucket(bucket);
+    setLoadingQueue(true);
+    setError('');
+    try {
+      const { data } = await clinicalApi.receptionHisDashboardQueue(bucket);
+      setQueueRows(data || []);
+    } catch (err) {
+      setQueueRows([]);
+      setError(formatApiError(err, 'Impossible de charger la liste'));
+    } finally {
+      setLoadingQueue(false);
+    }
+  };
+
+  const openInvoiceById = async (invoiceId, patientId) => {
+    if (!invoiceId) return;
+    if (patientId) {
+      await selectPatient({ id: patientId });
+    }
+    try {
+      const { data } = await clinicalApi.receptionHisGetInvoice(invoiceId);
+      if (data) {
+        setActiveInvoice(data);
+        setTab('billing');
+      }
+    } catch {
+      setError('Impossible d\'ouvrir la facture.');
+    }
+  };
+
+  const resetServiceRequestForm = () => {
+    setServiceRequestForm(EMPTY_SERVICE_REQUEST);
+    setEditingServiceRequestId(null);
+  };
+
+  const startEditServiceRequest = (row) => {
+    setEditingServiceRequestId(row.id);
+    setServiceRequestForm({
+      service_category: row.service_category,
+      service_name: row.service_name,
+      department: row.department || '',
+      notes: row.notes || '',
+      status: row.status,
+    });
+  };
+
+  const saveServiceRequest = async (e) => {
+    e.preventDefault();
+    if (!selectedPatient?.id) return setError('Sélectionnez un patient pour créer une demande de service.');
+    if (!serviceRequestForm.service_name.trim()) return setError('Indiquez le nom du service.');
+    setLoading(true);
+    setError('');
+    try {
+      if (editingServiceRequestId) {
+        await clinicalApi.receptionHisUpdateServiceRequest(editingServiceRequestId, serviceRequestForm);
+        setMessage('Demande de service mise à jour.');
+      } else {
+        await clinicalApi.receptionHisCreateServiceRequest({
+          patient_id: selectedPatient.id,
+          ...serviceRequestForm,
+        });
+        setMessage('Demande de service créée.');
+      }
+      resetServiceRequestForm();
+      await loadServiceRequests();
+    } catch (err) {
+      setError(formatApiError(err, 'Enregistrement de la demande impossible'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteServiceRequest = async (id) => {
+    if (!window.confirm('Supprimer cette demande de service ?')) return;
+    setLoading(true);
+    try {
+      await clinicalApi.receptionHisDeleteServiceRequest(id);
+      setMessage('Demande de service supprimée.');
+      if (editingServiceRequestId === id) resetServiceRequestForm();
+      await loadServiceRequests();
+    } catch (err) {
+      setError(formatApiError(err, 'Suppression impossible'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === 'service_requests') {
+      loadServiceRequests();
+    }
+  }, [tab, loadServiceRequests]);
 
   const filteredAdmissionLabTests = useMemo(() => {
     const tests = billingCatalog?.laboratory_tests || [];
@@ -603,25 +774,146 @@ export default function ReceptionDashboard() {
     return form.emergency_relationship || undefined;
   };
 
-  const patientServiceRequests = useMemo(() => {
-    if (!selectedPatient) return [];
-    const rows = [];
-    for (const inv of invoices) {
-      for (const item of inv.items || []) {
-        rows.push({
-          key: `${inv.id}-${item.id}`,
-          invoiceNumber: inv.invoice_number,
-          service: item.description,
-          department: inv.department,
-          chargeType: item.charge_type,
-          amountGnf: item.amount_gnf,
-          status: invoiceStatusLabel(inv.status),
-          issuedAt: inv.issued_at || inv.created_at,
-        });
-      }
+  const renderQueueTable = () => {
+    if (!activeStatBucket) return null;
+    if (loadingQueue) return <p className="clinical-hint">Chargement…</p>;
+    if (!queueRows.length) return <p className="clinical-hint">Aucun élément dans cette liste.</p>;
+
+    const bucket = activeStatBucket;
+    if (bucket === 'total_patients' || bucket === 'patients_registered_today') {
+      return (
+        <table className="lab-his-queue-table">
+          <thead>
+            <tr><th>Patient</th><th>N° dossier</th><th>Téléphone</th><th>Sexe</th><th>Date inscription</th><th /></tr>
+          </thead>
+          <tbody>
+            {queueRows.map((row) => (
+              <tr key={`${row.patient_id}-${row.patient_number}`}>
+                <td>{row.patient_name}</td>
+                <td>{row.patient_number || row.patient_id}</td>
+                <td>{row.phone || '—'}</td>
+                <td>{row.gender || '—'}</td>
+                <td>{formatDateTime(row.registration_date)}</td>
+                <td><button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => selectPatient({ id: row.patient_id })}>Ouvrir</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
     }
-    return rows.sort((a, b) => new Date(b.issuedAt || 0) - new Date(a.issuedAt || 0));
-  }, [invoices, selectedPatient]);
+    if (bucket === 'admissions_today') {
+      return (
+        <table className="lab-his-queue-table">
+          <thead><tr><th>Patient</th><th>Heure admission</th><th>Service</th><th>Statut</th><th /></tr></thead>
+          <tbody>
+            {queueRows.map((row) => (
+              <tr key={row.admission_id}>
+                <td>{row.patient_name}</td>
+                <td>{formatDateTime(row.admitted_at)}</td>
+                <td>{row.department || '—'}</td>
+                <td>{row.status}</td>
+                <td><button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => selectPatient({ id: row.patient_id })}>Ouvrir patient</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+    if (bucket === 'hospitalized_patients') {
+      return (
+        <table className="lab-his-queue-table">
+          <thead><tr><th>Patient</th><th>Chambre</th><th>Médecin</th><th>Date admission</th><th /></tr></thead>
+          <tbody>
+            {queueRows.map((row) => (
+              <tr key={row.admission_id}>
+                <td>{row.patient_name}</td>
+                <td>{row.room || '—'}</td>
+                <td>{row.doctor_name || '—'}</td>
+                <td>{formatDateTime(row.admitted_at)}</td>
+                <td><button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => selectPatient({ id: row.patient_id })}>Ouvrir patient</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+    if (bucket === 'paid_invoices') {
+      return (
+        <table className="lab-his-queue-table">
+          <thead><tr><th>Patient</th><th>N° facture</th><th>Montant</th><th>Mode paiement</th><th>Date paiement</th><th /></tr></thead>
+          <tbody>
+            {queueRows.map((row) => (
+              <tr key={row.invoice_id}>
+                <td>{row.patient_name}</td>
+                <td>{row.invoice_number}</td>
+                <td>{formatGNF(row.amount_gnf || 0)}</td>
+                <td>{methodLabel(PAYMENT_METHODS, row.payment_method)}</td>
+                <td>{formatDateTime(row.paid_at)}</td>
+                <td><button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => openInvoiceById(row.invoice_id, row.patient_id)}>Ouvrir facture</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+    if (bucket === 'unpaid_invoices') {
+      return (
+        <table className="lab-his-queue-table">
+          <thead><tr><th>Patient</th><th>N° facture</th><th>Solde dû</th><th>Date facture</th><th /></tr></thead>
+          <tbody>
+            {queueRows.map((row) => (
+              <tr key={row.invoice_id}>
+                <td>{row.patient_name}</td>
+                <td>{row.invoice_number}</td>
+                <td>{formatGNF(row.outstanding_balance_gnf || 0)}</td>
+                <td>{formatDateTime(row.issued_at)}</td>
+                <td><button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => openInvoiceById(row.invoice_id, row.patient_id)}>Ouvrir facture</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+    if (bucket === 'revenue_today' || bucket === 'revenue_month') {
+      return (
+        <table className="lab-his-queue-table">
+          <thead><tr><th>Patient</th><th>N° facture</th><th>Montant</th><th>Mode</th><th>Date / heure</th></tr></thead>
+          <tbody>
+            {queueRows.map((row) => (
+              <tr key={`${row.payment_id}-${row.invoice_id}`}>
+                <td>{row.patient_name}</td>
+                <td>{row.invoice_number || '—'}</td>
+                <td>{formatGNF(row.amount_gnf || 0)}</td>
+                <td>{methodLabel(PAYMENT_METHODS, row.payment_method)}</td>
+                <td>{formatDateTime(row.paid_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+    if (bucket === 'refunds') {
+      return (
+        <table className="lab-his-queue-table">
+          <thead><tr><th>N° remboursement</th><th>Patient</th><th>Facture</th><th>Montant</th><th>Raison</th><th>Statut</th><th>Date</th></tr></thead>
+          <tbody>
+            {queueRows.map((row) => (
+              <tr key={row.refund_id}>
+                <td>{row.refund_number}</td>
+                <td>{row.patient_name}</td>
+                <td>{row.invoice_number || '—'}</td>
+                <td>{formatGNF(row.refund_amount_gnf || 0)}</td>
+                <td>{row.reason}</td>
+                <td>{refundStatusLabel(row.status)}</td>
+                <td>{formatDateTime(row.paid_at || row.created_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    }
+    return null;
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -738,6 +1030,8 @@ export default function ReceptionDashboard() {
           : undefined,
         attending_physician_name: admissionForm.attending_physician_name || undefined,
         confirmation_status: admissionForm.confirmation_status,
+        specialty_code: admissionForm.specialty_code || undefined,
+        specialty_other: admissionForm.specialty_other || undefined,
         notes: admissionForm.notes || undefined,
       });
       setLastAdmission(data || null);
@@ -899,15 +1193,15 @@ export default function ReceptionDashboard() {
   const statCards = useMemo(() => {
     if (!stats) return [];
     return [
-      { label: 'Patients total', value: stats.total_patients ?? 0 },
-      { label: 'Patients inscrits aujourd’hui', value: stats.patients_registered_today ?? 0 },
-      { label: 'Admissions aujourd’hui', value: stats.admissions_today ?? 0 },
-      { label: 'Patients hospitalisés', value: stats.hospitalized_patients ?? 0 },
-      { label: 'Factures payées', value: stats.paid_invoices ?? 0 },
-      { label: 'Factures impayées', value: stats.unpaid_invoices ?? 0 },
-      { label: 'Recette du jour', value: formatGNF(stats.revenue_today_gnf ?? 0) },
-      { label: 'Recette du mois', value: formatGNF(stats.revenue_month_gnf ?? 0) },
-      { label: 'Total remboursements', value: formatGNF(stats.refunds_total_gnf ?? 0) },
+      { key: 'total_patients', label: 'Patients total', value: stats.total_patients ?? 0 },
+      { key: 'patients_registered_today', label: 'Patients inscrits aujourd\'hui', value: stats.patients_registered_today ?? 0, variant: 'success' },
+      { key: 'admissions_today', label: 'Admissions aujourd\'hui', value: stats.admissions_today ?? 0 },
+      { key: 'hospitalized_patients', label: 'Patients hospitalisés', value: stats.hospitalized_patients ?? 0, variant: 'warning' },
+      { key: 'paid_invoices', label: 'Factures payées', value: stats.paid_invoices ?? 0, variant: 'success' },
+      { key: 'unpaid_invoices', label: 'Factures impayées', value: stats.unpaid_invoices ?? 0, variant: 'warning' },
+      { key: 'revenue_today', label: 'Recette du jour', value: formatGNF(stats.revenue_today_gnf ?? 0), variant: 'accent' },
+      { key: 'revenue_month', label: 'Recette du mois', value: formatGNF(stats.revenue_month_gnf ?? 0), variant: 'accent' },
+      { key: 'refunds', label: 'Total remboursements', value: formatGNF(stats.refunds_total_gnf ?? 0) },
     ];
   }, [stats]);
 
@@ -1074,11 +1368,13 @@ export default function ReceptionDashboard() {
 
       {tab === 'dashboard' && (
         <section className="reception-his-panel">
-          <div className="reception-his-stats">
-            {statCards.map((s) => (
-              <article key={s.label} className="reception-his-stat-card"><span>{s.label}</span><strong>{s.value}</strong></article>
-            ))}
-          </div>
+          <ClinicalStatGrid stats={statCards} onStatClick={loadQueueBucket} activeKey={activeStatBucket} />
+          {activeStatBucket && (
+            <section className="lab-his-queue-panel reception-his-queue-panel" aria-live="polite">
+              <h3>{DASHBOARD_BUCKET_TITLES[activeStatBucket] || 'Liste détaillée'}</h3>
+              <div className="lab-his-results-wrap">{renderQueueTable()}</div>
+            </section>
+          )}
           <div className="clinical-grid">
             <article className="clinical-card">
               <h3>Répartition H/F/Autre</h3>
@@ -1948,33 +2244,120 @@ export default function ReceptionDashboard() {
           <PatientContextPanel />
           <div className="clinical-card reception-his-form-sheet">
             <h2>Demandes de service</h2>
-            <FormNotice>{!selectedPatient ? PATIENT_REQUIRED_NOTICE : null}</FormNotice>
-            {selectedPatient && patientServiceRequests.length === 0 && (
-              <FormNotice>Aucune demande de service enregistrée pour ce patient.</FormNotice>
-            )}
-            {selectedPatient && patientServiceRequests.length > 0 && (
+            <div className="reception-his-search-inline reception-his-service-request-filters">
+              <input
+                type="search"
+                placeholder="Rechercher une demande (service, n°…)"
+                value={serviceRequestSearchQ}
+                onChange={(e) => setServiceRequestSearchQ(e.target.value)}
+              />
+              <select value={serviceRequestStatusFilter} onChange={(e) => setServiceRequestStatusFilter(e.target.value)}>
+                <option value="">Tous les statuts</option>
+                {SERVICE_REQUEST_STATUSES.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+              <button type="button" className="clinical-btn clinical-btn--secondary" onClick={loadServiceRequests}>Actualiser</button>
+            </div>
+
+            <form className="reception-his-service-request-form" onSubmit={saveServiceRequest}>
+              <FormNotice>{!selectedPatient ? PATIENT_REQUIRED_NOTICE : null}</FormNotice>
+              <div className="clinical-form-row">
+                <label>
+                  Catégorie
+                  <select
+                    value={serviceRequestForm.service_category}
+                    onChange={(e) => setServiceRequestForm((p) => ({ ...p, service_category: e.target.value }))}
+                    disabled={!selectedPatient}
+                  >
+                    {SERVICE_REQUEST_CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Service / examen
+                  <input
+                    value={serviceRequestForm.service_name}
+                    onChange={(e) => setServiceRequestForm((p) => ({ ...p, service_name: e.target.value }))}
+                    disabled={!selectedPatient}
+                    required
+                  />
+                </label>
+                <label>
+                  Département
+                  <input
+                    value={serviceRequestForm.department}
+                    onChange={(e) => setServiceRequestForm((p) => ({ ...p, department: e.target.value }))}
+                    disabled={!selectedPatient}
+                  />
+                </label>
+                <label>
+                  Statut
+                  <select
+                    value={serviceRequestForm.status}
+                    onChange={(e) => setServiceRequestForm((p) => ({ ...p, status: e.target.value }))}
+                    disabled={!selectedPatient}
+                  >
+                    {SERVICE_REQUEST_STATUSES.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <label>
+                Notes
+                <textarea
+                  rows={2}
+                  value={serviceRequestForm.notes}
+                  onChange={(e) => setServiceRequestForm((p) => ({ ...p, notes: e.target.value }))}
+                  disabled={!selectedPatient}
+                />
+              </label>
+              <div className="reception-his-form-actions">
+                <button type="submit" className="clinical-btn" disabled={!selectedPatient || loading}>
+                  {editingServiceRequestId ? 'Mettre à jour la demande' : 'Créer la demande'}
+                </button>
+                {editingServiceRequestId && (
+                  <button type="button" className="clinical-btn clinical-btn--secondary" onClick={resetServiceRequestForm}>Annuler</button>
+                )}
+              </div>
+            </form>
+
+            {loadingServiceRequests ? (
+              <FormNotice>Chargement des demandes…</FormNotice>
+            ) : serviceRequests.length === 0 ? (
+              <FormNotice>Aucune demande de service{selectedPatient ? ' pour ce patient' : ''}.</FormNotice>
+            ) : (
               <table className="reception-his-billing-lines">
                 <thead>
                   <tr>
-                    <th>N° facture</th>
-                    <th>Date</th>
-                    <th>Service / examen</th>
+                    <th>N° demande</th>
+                    <th>Patient</th>
+                    <th>Catégorie</th>
+                    <th>Service</th>
                     <th>Département</th>
-                    <th>Type</th>
-                    <th>Montant</th>
-                    <th>Statut facture</th>
+                    <th>Statut</th>
+                    <th>Créée le</th>
+                    <th />
                   </tr>
                 </thead>
                 <tbody>
-                  {patientServiceRequests.map((row) => (
-                    <tr key={row.key}>
-                      <td>{row.invoiceNumber}</td>
-                      <td>{row.issuedAt ? new Date(row.issuedAt).toLocaleDateString('fr-FR') : '—'}</td>
-                      <td>{row.service}</td>
+                  {serviceRequests.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.request_number}</td>
+                      <td>{row.patient_name || row.patient_id}</td>
+                      <td>{serviceRequestCategoryLabel(row.service_category)}</td>
+                      <td>{row.service_name}</td>
                       <td>{row.department || '—'}</td>
-                      <td>{row.chargeType || '—'}</td>
-                      <td>{formatGNF(row.amountGnf || 0)}</td>
-                      <td>{row.status}</td>
+                      <td>{serviceRequestStatusLabel(row.status)}</td>
+                      <td>{formatDateTime(row.created_at)}</td>
+                      <td>
+                        <div className="reception-his-refund-actions">
+                          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => startEditServiceRequest(row)}>Modifier</button>
+                          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => deleteServiceRequest(row.id)}>Supprimer</button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1992,6 +2375,7 @@ export default function ReceptionDashboard() {
               emergency_relationship: resolveRelationship(registrationPrintForm),
             }}
             form={registrationPrintForm}
+            printedBy={(user?.full_name || user?.email || '').toUpperCase()}
           />
         </div>
       )}

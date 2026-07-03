@@ -62,6 +62,8 @@ class Admission(Base):
     outcome = Column(String(64), nullable=True)
     # cured | improved | unchanged | transferred | deceased | left_against_advice
     notes = Column(Text, nullable=True)
+    specialty_code = Column(String(64), nullable=True)
+    specialty_other = Column(String(255), nullable=True)
     admitted_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     attending_clinician_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     admitted_at = Column(DateTime, nullable=True)

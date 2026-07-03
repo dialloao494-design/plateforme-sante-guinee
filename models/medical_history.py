@@ -17,6 +17,7 @@ class PatientMedicalRecord(Base):
     patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False, unique=True, index=True)
     blood_type = Column(String(8), nullable=True)
     general_notes = Column(Text, nullable=True)
+    last_specialty = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
 from sqlalchemy.orm import Session, joinedload
 
@@ -32,6 +32,9 @@ from schemas.reception_his import (
     RefundStatusUpdate,
     PaymentRecordOut,
     InvoiceItemOut,
+    ServiceRequestCreate,
+    ServiceRequestUpdate,
+    ServiceRequestResponse,
 )
 from security import get_current_user
 from services.reception_his_service import ReceptionHisService
@@ -40,8 +43,6 @@ router = APIRouter(prefix="/clinical/reception/his", tags=["Reception HIS"])
 
 
 def _require_reception(user: User) -> None:
-    from fastapi import HTTPException
-
     if user.role not in RECEPTION_ROLES and user.role not in (
         "admin",
         "clinic_admin",
@@ -49,6 +50,27 @@ def _require_reception(user: User) -> None:
         "platform_owner",
     ):
         raise HTTPException(status_code=403, detail="Accès réservé à la réception")
+
+
+def _patient_out(patient: models.Patient) -> PatientSearchResult:
+    return PatientSearchResult(
+        id=patient.id,
+        patient_number=patient.patient_number,
+        qr_token=patient.qr_token,
+        first_name=patient.first_name,
+        last_name=patient.last_name,
+        phone=patient.phone,
+        age=patient.age or 0,
+        gender=patient.gender,
+        date_of_birth=patient.date_of_birth,
+        payer_json=patient.payer_json,
+        created_at=patient.created_at,
+    )
+
+
+def _service_request_out(row: models.ClinicServiceRequest) -> ServiceRequestResponse:
+    data = ReceptionHisService._serialize_service_request(row)
+    return ServiceRequestResponse(**data)
 
 
 def _invoice_out(invoice: models.Invoice) -> ReceptionInvoiceResponse:
@@ -201,20 +223,7 @@ def search_patients(
     _require_reception(current_user)
     clinic = resolve_clinic_for_user(db, current_user)
     patients = ReceptionHisService.search_patients(db, clinic_id=clinic.id, query=q)
-    return [
-        PatientSearchResult(
-            id=p.id,
-            patient_number=p.patient_number,
-            qr_token=p.qr_token,
-            first_name=p.first_name,
-            last_name=p.last_name,
-            phone=p.phone,
-            age=p.age or 0,
-            gender=p.gender,
-            date_of_birth=p.date_of_birth,
-        )
-        for p in patients
-    ]
+    return [_patient_out(p) for p in patients]
 
 
 @router.get("/patients/{patient_id}", response_model=PatientSearchResult)
@@ -236,17 +245,81 @@ def get_patient(
     )
     if not patient:
         raise HTTPException(status_code=404, detail="Patient introuvable")
-    return PatientSearchResult(
-        id=patient.id,
-        patient_number=patient.patient_number,
-        qr_token=patient.qr_token,
-        first_name=patient.first_name,
-        last_name=patient.last_name,
-        phone=patient.phone,
-        age=patient.age or 0,
-        gender=patient.gender,
-        date_of_birth=patient.date_of_birth,
+    return _patient_out(patient)
+
+
+@router.get("/dashboard/queue")
+def dashboard_queue(
+    bucket: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return ReceptionHisService.dashboard_queue(db, clinic_id=clinic.id, bucket=bucket)
+
+
+@router.get("/service-requests", response_model=List[ServiceRequestResponse])
+def list_service_requests(
+    patient_id: Optional[int] = Query(None),
+    q: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    rows = ReceptionHisService.list_service_requests(
+        db, clinic_id=clinic.id, patient_id=patient_id, q=q, status=status
     )
+    return [_service_request_out(r) for r in rows]
+
+
+@router.post("/service-requests", response_model=ServiceRequestResponse, status_code=201)
+def create_service_request(
+    body: ServiceRequestCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    row = ReceptionHisService.create_service_request(
+        db, clinic_id=clinic.id, payload=body, actor=current_user
+    )
+    row = (
+        db.query(models.ClinicServiceRequest)
+        .options(joinedload(models.ClinicServiceRequest.patient))
+        .filter(models.ClinicServiceRequest.id == row.id)
+        .first()
+    )
+    return _service_request_out(row)
+
+
+@router.patch("/service-requests/{request_id}", response_model=ServiceRequestResponse)
+def update_service_request(
+    request_id: int,
+    body: ServiceRequestUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    row = ReceptionHisService.update_service_request(
+        db, clinic_id=clinic.id, request_id=request_id, payload=body, actor=current_user
+    )
+    return _service_request_out(row)
+
+
+@router.delete("/service-requests/{request_id}", status_code=204)
+def delete_service_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    ReceptionHisService.delete_service_request(db, clinic_id=clinic.id, request_id=request_id)
+    return Response(status_code=204)
 
 
 @router.post("/patients/check-duplicates", response_model=List[DuplicatePatientMatch])

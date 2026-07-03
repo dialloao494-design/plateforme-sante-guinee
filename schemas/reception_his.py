@@ -108,6 +108,23 @@ class DuplicateCheckRequest(BaseModel):
     date_of_birth: Optional[date] = None
 
 
+class PatientSearchResult(BaseModel):
+    id: int
+    patient_number: Optional[str] = None
+    qr_token: Optional[str] = None
+    first_name: str
+    last_name: str
+    phone: Optional[str] = None
+    age: int
+    gender: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    payer_json: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
 class ReceptionAdmissionCreate(BaseModel):
     patient_id: int
     admission_date: date
@@ -118,6 +135,8 @@ class ReceptionAdmissionCreate(BaseModel):
     attending_physician_name: Optional[str] = None
     admission_type: Literal["emergency", "outpatient", "hospitalization", "specialized_consultation"]
     confirmation_status: Optional[Literal["confirmed", "pending"]] = None
+    specialty_code: Optional[str] = None
+    specialty_other: Optional[str] = None
     notes: Optional[str] = None
 
     @model_validator(mode="after")
@@ -125,6 +144,43 @@ class ReceptionAdmissionCreate(BaseModel):
         if self.services or (self.department and self.department.strip()):
             return self
         raise ValueError("Sélectionnez au moins un service")
+
+
+class ServiceRequestCreate(BaseModel):
+    patient_id: int
+    admission_id: Optional[int] = None
+    service_category: Literal["laboratory", "nursing", "imaging", "pharmacy", "doctor", "other"]
+    service_name: str = Field(..., min_length=1, max_length=255)
+    department: Optional[str] = Field(None, max_length=128)
+    notes: Optional[str] = None
+    status: Literal["pending", "approved", "completed", "cancelled"] = "pending"
+
+
+class ServiceRequestUpdate(BaseModel):
+    service_category: Optional[Literal["laboratory", "nursing", "imaging", "pharmacy", "doctor", "other"]] = None
+    service_name: Optional[str] = Field(None, min_length=1, max_length=255)
+    department: Optional[str] = Field(None, max_length=128)
+    notes: Optional[str] = None
+    status: Optional[Literal["pending", "approved", "completed", "cancelled"]] = None
+
+
+class ServiceRequestResponse(BaseModel):
+    id: int
+    request_number: str
+    patient_id: int
+    patient_name: Optional[str] = None
+    patient_number: Optional[str] = None
+    admission_id: Optional[int] = None
+    service_category: str
+    service_name: str
+    department: Optional[str] = None
+    status: str
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 class ReceptionAdmissionResponse(BaseModel):
@@ -296,18 +352,3 @@ class ReceptionPeriodReport(BaseModel):
     refunds_gnf: int
     net_revenue_gnf: int
     revenue_by_service: dict
-
-
-class PatientSearchResult(BaseModel):
-    id: int
-    patient_number: Optional[str] = None
-    qr_token: Optional[str] = None
-    first_name: str
-    last_name: str
-    phone: Optional[str] = None
-    age: int
-    gender: Optional[str] = None
-    date_of_birth: Optional[date] = None
-
-    class Config:
-        from_attributes = True

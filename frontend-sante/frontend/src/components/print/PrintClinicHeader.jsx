@@ -10,10 +10,10 @@ import {
 import './print-documents.css';
 
 /** Official clinic header for all printable documents. */
-export default function PrintClinicHeader({ documentTitle = null }) {
+export default function PrintClinicHeader({ documentTitle = null, compact = false }) {
   return (
-    <header className="print-clinic-header">
-      <img src={CLINIC_LOGO_URL} alt="" className="print-clinic-header__logo" width={120} height={120} />
+    <header className={`print-clinic-header${compact ? ' print-clinic-header--compact' : ''}`}>
+      <img src={CLINIC_LOGO_URL} alt="" className="print-clinic-header__logo" width={compact ? 72 : 120} height={compact ? 72 : 120} />
       <p className="print-clinic-header__country">{CLINIC_COUNTRY}</p>
       <p className="print-clinic-header__ministry">{CLINIC_MINISTRY}</p>
       <p className="print-clinic-header__name">{CLINIC_PRINT_NAME}</p>

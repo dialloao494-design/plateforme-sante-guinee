@@ -1,4 +1,5 @@
 import PrintClinicHeader from './PrintClinicHeader.jsx';
+import PrintDocumentFooter from './PrintDocumentFooter.jsx';
 import { payerTypeLabel } from '../../constants/clinicBranding.js';
 import './print-documents.css';
 
@@ -39,75 +40,70 @@ const parsePayer = (patient, form) => {
   return null;
 };
 
-/** Printable patient registration sheet — AASMA clinic layout. */
-export default function PatientRegistrationPrint({ patient, form }) {
+/** Printable patient registration sheet — single A4 page layout. */
+export default function PatientRegistrationPrint({ patient, form, printedBy = '' }) {
   if (!patient) return null;
   const p = { ...form, ...patient };
-  const printedAt = new Date().toLocaleString('fr-FR');
   const payer = parsePayer(patient, form);
 
   return (
     <div className="print-registration-sheet">
-      <PrintClinicHeader documentTitle="Fiche d'enregistrement patient" />
+      <div className="print-registration-top">
+        <div className="print-registration-top-main">
+          <PrintClinicHeader documentTitle="Fiche d'enregistrement patient" compact />
+        </div>
+        {p.qr_token && (
+          <div className="print-registration-qr-corner" aria-label="Code QR patient">
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=96x96&data=${encodeURIComponent(p.qr_token)}`}
+              alt="QR patient"
+              width={88}
+              height={88}
+            />
+            <p className="print-registration-qr-token">{p.qr_token}</p>
+          </div>
+        )}
+      </div>
 
-      <section className="print-registration-section">
+      <section className="print-registration-section print-registration-section--compact">
         <h2>Identité</h2>
-        <table className="print-registration-table">
+        <table className="print-registration-table print-registration-table--compact">
           <tbody>
             <tr><th>N° dossier</th><td>{p.patient_number || p.id || '—'}</td><th>Date inscription</th><td>{formatDate(p.registration_date || form?.registration_date)}</td></tr>
             <tr><th>Nom</th><td>{p.last_name}</td><th>Prénom</th><td>{p.first_name}</td></tr>
-            <tr><th>Date de naissance</th><td>{formatDate(p.date_of_birth)}</td><th>Sexe</th><td>{genderLabel(p.gender)}</td></tr>
-            <tr><th>Nationalité</th><td>{p.nationality || '—'}</td><th>Profession</th><td>{p.profession || '—'}</td></tr>
+            <tr><th>Date naissance</th><td>{formatDate(p.date_of_birth)}</td><th>Sexe</th><td>{genderLabel(p.gender)}</td></tr>
             <tr><th>Téléphone</th><td>{p.phone}</td><th>Email</th><td>{p.email || '—'}</td></tr>
           </tbody>
         </table>
       </section>
 
-      <section className="print-registration-section">
-        <h2>Adresse</h2>
-        <table className="print-registration-table">
+      <section className="print-registration-section print-registration-section--compact">
+        <h2>Adresse &amp; contact</h2>
+        <table className="print-registration-table print-registration-table--compact">
           <tbody>
             <tr><th>Adresse</th><td colSpan={3}>{p.address || '—'}</td></tr>
             <tr><th>Commune / ville</th><td>{p.commune || p.city || '—'}</td><th>Région</th><td>{p.region || '—'}</td></tr>
-            <tr><th>Pays</th><td colSpan={3}>{p.country || 'Guinée'}</td></tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section className="print-registration-section">
-        <h2>Personne à contacter</h2>
-        <table className="print-registration-table">
-          <tbody>
-            <tr><th>Nom</th><td>{p.emergency_full_name || form?.emergency_full_name || '—'}</td><th>Relation</th><td>{p.emergency_relationship || form?.emergency_relationship || '—'}</td></tr>
-            <tr><th>Téléphone</th><td colSpan={3}>{p.emergency_phone || form?.emergency_phone || '—'}</td></tr>
+            <tr><th>Contact urgence</th><td>{p.emergency_full_name || form?.emergency_full_name || '—'}</td><th>Tél. contact</th><td>{p.emergency_phone || form?.emergency_phone || '—'}</td></tr>
           </tbody>
         </table>
       </section>
 
       {payer && (
-        <section className="print-registration-section">
+        <section className="print-registration-section print-registration-section--compact">
           <h2>Payeur</h2>
-          <table className="print-registration-table">
+          <table className="print-registration-table print-registration-table--compact">
             <tbody>
               <tr><th>Type de payeur</th><td colSpan={3}>{payerTypeLabel(payer.payer_type)}</td></tr>
-              {payer.insurance_company && <tr><th>Assurance</th><td>{payer.insurance_company}</td><th>N° assurance</th><td>{payer.insurance_number || '—'}</td></tr>}
+              {payer.insurance_company && (
+                <tr><th>Assurance</th><td>{payer.insurance_company}</td><th>N° assurance</th><td>{payer.insurance_number || '—'}</td></tr>
+              )}
               {payer.company_name && <tr><th>Entreprise</th><td colSpan={3}>{payer.company_name}</td></tr>}
-              {payer.notes && <tr><th>Notes</th><td colSpan={3}>{payer.notes}</td></tr>}
             </tbody>
           </table>
         </section>
       )}
 
-      {p.qr_token && (
-        <div className="print-registration-qr">
-          <img src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(p.qr_token)}`} alt="QR patient" width={100} height={100} />
-          <p>Code QR : {p.qr_token}</p>
-        </div>
-      )}
-
-      <footer className="print-registration-footer">
-        <p>Imprimé le {printedAt}</p>
-      </footer>
+      <PrintDocumentFooter printedBy={printedBy} department="Réception" pageLabel="Page 1 sur 1" />
     </div>
   );
 }

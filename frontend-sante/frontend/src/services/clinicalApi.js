@@ -173,6 +173,22 @@ const clinicalApi = {
     httpClient.get('/clinical/reception/his/invoices/search', {
       params: { q, ...(patientId ? { patient_id: patientId } : {}) },
     }),
+  receptionHisDashboardQueue: (bucket) =>
+    httpClient.get('/clinical/reception/his/dashboard/queue', { params: { bucket } }),
+  receptionHisListServiceRequests: (params = {}) =>
+    httpClient.get('/clinical/reception/his/service-requests', { params }),
+  receptionHisCreateServiceRequest: (data) => {
+    invalidateApiCache('/clinical/reception/his/');
+    return httpClient.post('/clinical/reception/his/service-requests', data);
+  },
+  receptionHisUpdateServiceRequest: (id, data) => {
+    invalidateApiCache('/clinical/reception/his/');
+    return httpClient.patch(`/clinical/reception/his/service-requests/${id}`, data);
+  },
+  receptionHisDeleteServiceRequest: (id) => {
+    invalidateApiCache('/clinical/reception/his/');
+    return httpClient.delete(`/clinical/reception/his/service-requests/${id}`);
+  },
 
   // Doctor
   doctorQueue: () => httpClient.get('/clinical/doctor/queue'),

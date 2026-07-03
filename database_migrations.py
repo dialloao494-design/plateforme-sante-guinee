@@ -1304,6 +1304,56 @@ def ensure_reception_his_schema(engine: Engine) -> None:
         except Exception as exc:
             logger.warning("clinic_refunds migration failed: %s", exc)
 
+    if "clinic_service_requests" not in insp.get_table_names():
+        stmt = f"""
+            CREATE TABLE clinic_service_requests (
+                id INTEGER PRIMARY KEY{autoinc},
+                clinic_id INTEGER NOT NULL REFERENCES clinics(id),
+                patient_id INTEGER NOT NULL REFERENCES patients(id),
+                admission_id INTEGER REFERENCES admissions(id),
+                request_number VARCHAR(32) NOT NULL UNIQUE,
+                service_category VARCHAR(32) NOT NULL,
+                service_name VARCHAR(255) NOT NULL,
+                department VARCHAR(128),
+                status VARCHAR(32) NOT NULL DEFAULT 'pending',
+                notes TEXT,
+                created_by_user_id INTEGER REFERENCES users(id),
+                updated_by_user_id INTEGER REFERENCES users(id),
+                created_at {datetime_type} NOT NULL,
+                updated_at {datetime_type} NOT NULL
+            )
+        """
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+            logger.info("Created clinic_service_requests table")
+        except Exception as exc:
+            logger.warning("clinic_service_requests migration failed: %s", exc)
+
+    if "admissions" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("admissions")}
+        for col, col_type in (
+            ("specialty_code", "VARCHAR(64)"),
+            ("specialty_other", "VARCHAR(255)"),
+        ):
+            if col not in cols:
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE admissions ADD COLUMN {col} {col_type}"))
+                    logger.info("Added admissions.%s", col)
+                except Exception as exc:
+                    logger.warning("admissions.%s migration skipped: %s", col, exc)
+
+    if "patient_medical_records" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("patient_medical_records")}
+        if "last_specialty" not in cols:
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE patient_medical_records ADD COLUMN last_specialty VARCHAR(255)"))
+                logger.info("Added patient_medical_records.last_specialty")
+            except Exception as exc:
+                logger.warning("patient_medical_records.last_specialty migration skipped: %s", exc)
+
 
 def run_alembic_upgrade_head() -> None:
     """Apply Alembic migrations on startup (Railway runs uvicorn without Docker entrypoint)."""

@@ -22,6 +22,8 @@ from schemas.reception_his import (
     ReceptionPaymentCreate,
     RefundCreate,
     RefundStatusUpdate,
+    ServiceRequestCreate,
+    ServiceRequestUpdate,
 )
 from services.cis_audit import log_cis
 from services.medical_history_service import ensure_medical_record
@@ -325,6 +327,20 @@ class ReceptionHisService:
             services = [payload.department.strip()]
         department_label = ", ".join(services)
 
+        specialty_code = (payload.specialty_code or "").strip() or None
+        specialty_other = (payload.specialty_other or "").strip() or None
+        specialty_label = None
+        if specialty_code:
+            from data.aasma_billing_catalog import SPECIALIZED_SPECIALTIES
+
+            if specialty_code == "__other__":
+                specialty_label = specialty_other
+            else:
+                specialty_label = next(
+                    (s["label"] for s in SPECIALIZED_SPECIALTIES if s["code"] == specialty_code),
+                    specialty_code,
+                )
+
         admission = models.Admission(
             clinic_id=clinic_id,
             patient_id=payload.patient_id,
@@ -335,12 +351,18 @@ class ReceptionHisService:
             status=status,
             attending_clinician_user_id=payload.attending_clinician_user_id,
             notes=combined_notes,
+            specialty_code=specialty_code,
+            specialty_other=specialty_other,
             admitted_by_user_id=actor.id,
             admitted_at=admitted_at,
         )
         db.add(admission)
         db.commit()
         db.refresh(admission)
+        if specialty_label:
+            record = ensure_medical_record(db, payload.patient_id)
+            record.last_specialty = specialty_label
+            db.commit()
         log_cis(
             db,
             actor=actor,
@@ -1032,3 +1054,406 @@ class ReceptionHisService:
         for svc, amt in (report.get("revenue_by_service") or {}).items():
             lines.append(f"{svc},{amt}")
         return "\n".join(lines)
+
+    @staticmethod
+    def _service_request_number(clinic_id: int, request_id: int) -> str:
+        return f"DSR-{clinic_id:03d}-{request_id:06d}"
+
+    @staticmethod
+    def _serialize_service_request(row: models.ClinicServiceRequest) -> dict[str, Any]:
+        patient_name = None
+        patient_number = None
+        if row.patient:
+            patient_name = f"{row.patient.last_name} {row.patient.first_name}".strip()
+            patient_number = row.patient.patient_number
+        return {
+            "id": row.id,
+            "request_number": row.request_number,
+            "patient_id": row.patient_id,
+            "patient_name": patient_name,
+            "patient_number": patient_number,
+            "admission_id": row.admission_id,
+            "service_category": row.service_category,
+            "service_name": row.service_name,
+            "department": row.department,
+            "status": row.status,
+            "notes": row.notes,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        }
+
+    @staticmethod
+    def list_service_requests(
+        db: Session,
+        *,
+        clinic_id: int,
+        patient_id: int | None = None,
+        q: str | None = None,
+        status: str | None = None,
+        limit: int = 100,
+    ) -> list[models.ClinicServiceRequest]:
+        query = (
+            db.query(models.ClinicServiceRequest)
+            .options(joinedload(models.ClinicServiceRequest.patient))
+            .filter(models.ClinicServiceRequest.clinic_id == clinic_id)
+        )
+        if patient_id:
+            query = query.filter(models.ClinicServiceRequest.patient_id == patient_id)
+        if status:
+            query = query.filter(models.ClinicServiceRequest.status == status)
+        if q and q.strip():
+            pattern = f"%{q.strip()}%"
+            query = query.filter(
+                models.ClinicServiceRequest.service_name.ilike(pattern)
+                | models.ClinicServiceRequest.request_number.ilike(pattern)
+                | models.ClinicServiceRequest.department.ilike(pattern)
+            )
+        return query.order_by(models.ClinicServiceRequest.created_at.desc()).limit(limit).all()
+
+    @staticmethod
+    def create_service_request(
+        db: Session,
+        *,
+        clinic_id: int,
+        payload: ServiceRequestCreate,
+        actor: User,
+    ) -> models.ClinicServiceRequest:
+        from core.tenant import assert_patient_in_clinic
+
+        assert_patient_in_clinic(db, patient_id=payload.patient_id, clinic_id=clinic_id)
+        row = models.ClinicServiceRequest(
+            clinic_id=clinic_id,
+            patient_id=payload.patient_id,
+            admission_id=payload.admission_id,
+            request_number="PENDING",
+            service_category=payload.service_category,
+            service_name=payload.service_name.strip(),
+            department=(payload.department or "").strip() or None,
+            status=payload.status,
+            notes=(payload.notes or "").strip() or None,
+            created_by_user_id=actor.id,
+            updated_by_user_id=actor.id,
+        )
+        db.add(row)
+        db.flush()
+        row.request_number = ReceptionHisService._service_request_number(clinic_id, row.id)
+        db.commit()
+        db.refresh(row)
+        return row
+
+    @staticmethod
+    def update_service_request(
+        db: Session,
+        *,
+        clinic_id: int,
+        request_id: int,
+        payload: ServiceRequestUpdate,
+        actor: User,
+    ) -> models.ClinicServiceRequest:
+        row = (
+            db.query(models.ClinicServiceRequest)
+            .options(joinedload(models.ClinicServiceRequest.patient))
+            .filter(
+                models.ClinicServiceRequest.id == request_id,
+                models.ClinicServiceRequest.clinic_id == clinic_id,
+            )
+            .first()
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Demande de service introuvable")
+        data = payload.model_dump(exclude_unset=True)
+        for key, value in data.items():
+            if key in ("service_name", "department", "notes") and isinstance(value, str):
+                value = value.strip() or None
+            setattr(row, key, value)
+        row.updated_by_user_id = actor.id
+        db.commit()
+        db.refresh(row)
+        return row
+
+    @staticmethod
+    def delete_service_request(db: Session, *, clinic_id: int, request_id: int) -> None:
+        row = (
+            db.query(models.ClinicServiceRequest)
+            .filter(
+                models.ClinicServiceRequest.id == request_id,
+                models.ClinicServiceRequest.clinic_id == clinic_id,
+            )
+            .first()
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Demande de service introuvable")
+        db.delete(row)
+        db.commit()
+
+    @staticmethod
+    def dashboard_queue(db: Session, *, clinic_id: int, bucket: str) -> list[dict[str, Any]]:
+        today = date.today()
+        month_start = today.replace(day=1)
+        start_today = datetime.combine(today, time.min)
+        end_today = datetime.combine(today, time.max)
+        start_month = datetime.combine(month_start, time.min)
+
+        def gender_label(g: str | None) -> str:
+            if not g:
+                return "—"
+            key = g.lower()
+            if key in ("m", "male", "homme", "h"):
+                return "Masculin"
+            if key in ("f", "female", "femme"):
+                return "Féminin"
+            return g
+
+        if bucket == "total_patients":
+            rows = (
+                db.query(models.Patient)
+                .filter(models.Patient.clinic_id == clinic_id, models.Patient.is_archived.is_(False))
+                .order_by(models.Patient.created_at.desc())
+                .limit(500)
+                .all()
+            )
+            return [
+                {
+                    "patient_id": p.id,
+                    "patient_name": f"{p.last_name} {p.first_name}",
+                    "patient_number": p.patient_number,
+                    "phone": p.phone,
+                    "gender": gender_label(p.gender),
+                    "registration_date": p.registration_date.isoformat() if p.registration_date else (
+                        p.created_at.date().isoformat() if p.created_at else None
+                    ),
+                }
+                for p in rows
+            ]
+
+        if bucket == "patients_registered_today":
+            rows = (
+                db.query(models.Patient)
+                .filter(
+                    models.Patient.clinic_id == clinic_id,
+                    models.Patient.is_archived.is_(False),
+                    models.Patient.created_at >= start_today,
+                    models.Patient.created_at <= end_today,
+                )
+                .order_by(models.Patient.created_at.desc())
+                .all()
+            )
+            return [
+                {
+                    "patient_id": p.id,
+                    "patient_name": f"{p.last_name} {p.first_name}",
+                    "patient_number": p.patient_number,
+                    "phone": p.phone,
+                    "gender": gender_label(p.gender),
+                    "registration_date": p.created_at.isoformat() if p.created_at else None,
+                }
+                for p in rows
+            ]
+
+        if bucket == "admissions_today":
+            rows = (
+                db.query(models.Admission)
+                .options(joinedload(models.Admission.patient))
+                .filter(
+                    models.Admission.clinic_id == clinic_id,
+                    models.Admission.admitted_at >= start_today,
+                    models.Admission.admitted_at <= end_today,
+                )
+                .order_by(models.Admission.admitted_at.desc())
+                .all()
+            )
+            return [
+                {
+                    "admission_id": a.id,
+                    "patient_id": a.patient_id,
+                    "patient_name": (
+                        f"{a.patient.last_name} {a.patient.first_name}" if a.patient else f"#{a.patient_id}"
+                    ),
+                    "admitted_at": a.admitted_at.isoformat() if a.admitted_at else None,
+                    "department": a.department,
+                    "status": a.status,
+                }
+                for a in rows
+            ]
+
+        if bucket == "hospitalized_patients":
+            rows = (
+                db.query(models.Admission)
+                .options(
+                    joinedload(models.Admission.patient),
+                    joinedload(models.Admission.stays).joinedload(models.PatientStay.bed).joinedload(
+                        models.HospitalBed.room
+                    ),
+                )
+                .filter(
+                    models.Admission.clinic_id == clinic_id,
+                    models.Admission.admission_type == "hospitalization",
+                    models.Admission.status.in_(["admitted", "in_care", "pending"]),
+                )
+                .order_by(models.Admission.admitted_at.desc())
+                .all()
+            )
+            out = []
+            for a in rows:
+                room_label = "—"
+                current_stay = next((s for s in (a.stays or []) if s.is_current and not s.released_at), None)
+                if current_stay and current_stay.bed and current_stay.bed.room:
+                    room_label = f"{current_stay.bed.room.ward_name} — {current_stay.bed.room.room_number}/{current_stay.bed.bed_number}"
+                doctor_name = "—"
+                if a.attending_clinician_user_id:
+                    doc = db.query(models.User).filter(models.User.id == a.attending_clinician_user_id).first()
+                    if doc:
+                        doctor_name = doc.email or f"#{doc.id}"
+                out.append(
+                    {
+                        "admission_id": a.id,
+                        "patient_id": a.patient_id,
+                        "patient_name": (
+                            f"{a.patient.last_name} {a.patient.first_name}" if a.patient else f"#{a.patient_id}"
+                        ),
+                        "room": room_label,
+                        "doctor_name": doctor_name,
+                        "admitted_at": a.admitted_at.isoformat() if a.admitted_at else None,
+                    }
+                )
+            return out
+
+        if bucket == "paid_invoices":
+            rows = (
+                db.query(models.Invoice)
+                .options(joinedload(models.Invoice.patient), joinedload(models.Invoice.payments))
+                .filter(models.Invoice.clinic_id == clinic_id, models.Invoice.status == "paid")
+                .order_by(models.Invoice.issued_at.desc())
+                .limit(200)
+                .all()
+            )
+            return [
+                {
+                    "invoice_id": inv.id,
+                    "patient_id": inv.patient_id,
+                    "patient_name": (
+                        f"{inv.patient.last_name} {inv.patient.first_name}" if inv.patient else f"#{inv.patient_id}"
+                    ),
+                    "invoice_number": inv.invoice_number,
+                    "amount_gnf": inv.total_amount_gnf,
+                    "payment_method": inv.payments[-1].payment_method if inv.payments else "—",
+                    "paid_at": inv.payments[-1].paid_at.isoformat() if inv.payments else None,
+                }
+                for inv in rows
+            ]
+
+        if bucket == "unpaid_invoices":
+            rows = (
+                db.query(models.Invoice)
+                .options(joinedload(models.Invoice.patient))
+                .filter(
+                    models.Invoice.clinic_id == clinic_id,
+                    models.Invoice.status.in_(["issued", "partially_paid", "unpaid"]),
+                )
+                .order_by(models.Invoice.issued_at.desc())
+                .limit(200)
+                .all()
+            )
+            return [
+                {
+                    "invoice_id": inv.id,
+                    "patient_id": inv.patient_id,
+                    "patient_name": (
+                        f"{inv.patient.last_name} {inv.patient.first_name}" if inv.patient else f"#{inv.patient_id}"
+                    ),
+                    "invoice_number": inv.invoice_number,
+                    "outstanding_balance_gnf": max(0, inv.total_amount_gnf - inv.paid_amount_gnf),
+                    "issued_at": inv.issued_at.isoformat() if inv.issued_at else None,
+                }
+                for inv in rows
+            ]
+
+        if bucket == "revenue_today":
+            rows = (
+                db.query(models.PaymentRecord)
+                .join(models.Invoice, models.PaymentRecord.invoice_id == models.Invoice.id)
+                .options(joinedload(models.PaymentRecord.invoice).joinedload(models.Invoice.patient))
+                .filter(
+                    models.Invoice.clinic_id == clinic_id,
+                    models.PaymentRecord.paid_at >= start_today,
+                    models.PaymentRecord.paid_at <= end_today,
+                )
+                .order_by(models.PaymentRecord.paid_at.desc())
+                .all()
+            )
+            return [
+                {
+                    "payment_id": pay.id,
+                    "invoice_id": pay.invoice_id,
+                    "invoice_number": pay.invoice.invoice_number if pay.invoice else None,
+                    "patient_name": (
+                        f"{pay.invoice.patient.last_name} {pay.invoice.patient.first_name}"
+                        if pay.invoice and pay.invoice.patient
+                        else "—"
+                    ),
+                    "amount_gnf": pay.amount_gnf,
+                    "payment_method": pay.payment_method,
+                    "paid_at": pay.paid_at.isoformat() if pay.paid_at else None,
+                }
+                for pay in rows
+            ]
+
+        if bucket == "revenue_month":
+            rows = (
+                db.query(models.PaymentRecord)
+                .join(models.Invoice, models.PaymentRecord.invoice_id == models.Invoice.id)
+                .options(joinedload(models.PaymentRecord.invoice).joinedload(models.Invoice.patient))
+                .filter(
+                    models.Invoice.clinic_id == clinic_id,
+                    models.PaymentRecord.paid_at >= start_month,
+                )
+                .order_by(models.PaymentRecord.paid_at.desc())
+                .limit(500)
+                .all()
+            )
+            return [
+                {
+                    "payment_id": pay.id,
+                    "invoice_id": pay.invoice_id,
+                    "invoice_number": pay.invoice.invoice_number if pay.invoice else None,
+                    "patient_name": (
+                        f"{pay.invoice.patient.last_name} {pay.invoice.patient.first_name}"
+                        if pay.invoice and pay.invoice.patient
+                        else "—"
+                    ),
+                    "amount_gnf": pay.amount_gnf,
+                    "payment_method": pay.payment_method,
+                    "paid_at": pay.paid_at.isoformat() if pay.paid_at else None,
+                }
+                for pay in rows
+            ]
+
+        if bucket == "refunds":
+            rows = (
+                db.query(models.ClinicRefund)
+                .options(joinedload(models.ClinicRefund.patient), joinedload(models.ClinicRefund.invoice))
+                .filter(models.ClinicRefund.clinic_id == clinic_id)
+                .order_by(models.ClinicRefund.created_at.desc())
+                .limit(200)
+                .all()
+            )
+            return [
+                {
+                    "refund_id": r.id,
+                    "refund_number": r.refund_number,
+                    "patient_id": r.patient_id,
+                    "patient_name": (
+                        f"{r.patient.last_name} {r.patient.first_name}" if r.patient else f"#{r.patient_id}"
+                    ),
+                    "invoice_number": r.invoice.invoice_number if r.invoice else None,
+                    "refund_amount_gnf": r.refund_amount_gnf,
+                    "reason": r.reason,
+                    "status": r.status,
+                    "refund_method": r.refund_method,
+                    "created_at": r.created_at.isoformat() if r.created_at else None,
+                    "paid_at": r.paid_at.isoformat() if r.paid_at else None,
+                }
+                for r in rows
+            ]
+
+        raise HTTPException(status_code=400, detail=f"Bucket inconnu: {bucket}")

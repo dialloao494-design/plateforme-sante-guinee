@@ -44,5 +44,6 @@ from .visit_workflow import PatientVisitWorkflow, PatientVisitWorkflowStep
 from .doctor_medicine_delivery import DoctorMedicineDelivery
 from .clinic_lab_test import ClinicLabTest
 from .clinic_refund import ClinicRefund
+from .clinic_service_request import ClinicServiceRequest
 
 from . import user_hooks as _user_hooks  # noqa: F401
