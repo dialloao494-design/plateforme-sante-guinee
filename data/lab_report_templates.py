@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 CLINIC_LAB_FOOTER_ADDRESS = (
-    "CHFMP-Polyclinique AASMA sis à Kobaya chinoiya, "
+    "CHFMP – AASMA sis à Kobaya chinoiya, "
     "sur la colline entre la Pharmacie Dara et les écoles MOLASY"
 )
 CLINIC_LAB_FOOTER_CONTACT = "Téléphone : 613 04 94 48    Email : contactpolycliniqueaasma@gmail.com"

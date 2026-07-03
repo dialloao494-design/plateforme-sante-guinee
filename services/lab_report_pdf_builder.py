@@ -19,9 +19,20 @@ from data.lab_report_templates import (
     TEMPLATES,
     detect_template_id,
 )
+from data.clinic_branding import CLINIC_FOOTER_LINE
+from services.clinic_print_header import append_official_clinic_header
 
 LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "branding" / "aasma-clinic-logo.png"
 TITLE_COLOR = colors.HexColor("#C9A227")
+
+
+def _parse_payload(result_data: str | None) -> dict:
+    if not result_data:
+        return {}
+    try:
+        return json.loads(result_data) or {}
+    except (json.JSONDecodeError, TypeError):
+        return {}
 
 
 def _footer(canvas, doc):
@@ -53,15 +64,11 @@ def _title_style():
 
 def _parse_rows(result_data: str | None, result_summary: str | None) -> dict[str, str]:
     out: dict[str, str] = {}
-    if result_data:
-        try:
-            payload = json.loads(result_data)
-            for row in payload.get("rows") or []:
-                p = str(row.get("parameter") or "").strip()
-                if p:
-                    out[p] = str(row.get("result") or "").strip()
-        except (json.JSONDecodeError, TypeError):
-            pass
+    payload = _parse_payload(result_data)
+    for row in payload.get("rows") or []:
+        p = str(row.get("parameter") or "").strip()
+        if p:
+            out[p] = str(row.get("result") or "").strip()
     if not out and result_summary:
         for part in result_summary.split("·"):
             if ":" in part:
@@ -84,6 +91,7 @@ def build_lab_report_pdf(
 ) -> bytes:
     tid = template_id or detect_template_id(test_name)
     tpl = TEMPLATES.get(tid or "")
+    payload = _parse_payload(result_data)
     values = _parse_rows(result_data, result_summary)
 
     buf = BytesIO()
@@ -98,14 +106,8 @@ def build_lab_report_pdf(
     story = []
     page_w = A4[0] - doc.leftMargin - doc.rightMargin
 
-    if LOGO_PATH.is_file():
-        img = Image(str(LOGO_PATH), width=36 * mm, height=36 * mm, kind="proportional")
-        img.hAlign = "CENTER"
-        story.append(img)
-        story.append(Spacer(1, 4))
-
-    title = tpl["title"] if tpl else (test_name or "Résultat laboratoire")
-    story.append(Paragraph(title, _title_style()))
+    append_official_clinic_header(story, page_width=page_w, document_title=tpl["title"] if tpl else (test_name or "Résultat laboratoire"))
+    story.append(Spacer(1, 4))
 
     meta = f"<b>Patient :</b> {patient_name or '—'} &nbsp;&nbsp; <b>N° dossier :</b> {patient_file_number or '—'}"
     if technician:
@@ -117,8 +119,9 @@ def build_lab_report_pdf(
     story.append(Paragraph(meta, getSampleStyleSheet()["Normal"]))
     story.append(Spacer(1, 8))
 
-    if tpl and tpl.get("type") == "ecbu" and tpl.get("macro"):
-        story.append(Paragraph(f"<b>{tpl['macro']}</b>", getSampleStyleSheet()["Normal"]))
+    macro_text = (payload.get("macro_appearance") or "").strip()
+    if tpl and tpl.get("type") == "ecbu" and macro_text:
+        story.append(Paragraph(f"<b>Aspect macroscopique :</b> {macro_text}", getSampleStyleSheet()["Normal"]))
         story.append(Spacer(1, 6))
 
     if tpl and tpl.get("type") == "hemogram":

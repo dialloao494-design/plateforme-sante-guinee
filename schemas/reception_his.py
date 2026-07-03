@@ -21,7 +21,7 @@ class EmergencyContactPayload(BaseModel):
 
 
 class PayerPayload(BaseModel):
-    payer_type: Literal["patient", "insurance", "company"] = "patient"
+    payer_type: Literal["patient", "insurance", "company", "employee", "dg", "mshp"] = "patient"
     insurance_company: Optional[str] = None
     insurance_number: Optional[str] = None
     company_name: Optional[str] = None

@@ -1,12 +1,28 @@
-import { CLINIC_LOGO_URL, CLINIC_PRINT_NAME } from '../../constants/clinicBranding.js';
+import {
+  CLINIC_ADDRESS,
+  CLINIC_COUNTRY,
+  CLINIC_EMAIL,
+  CLINIC_LOGO_URL,
+  CLINIC_MINISTRY,
+  CLINIC_PHONE,
+  CLINIC_PRINT_NAME,
+} from '../../constants/clinicBranding.js';
 import './print-documents.css';
 
-/** Centered logo + clinic name for print-only receipt/invoice layouts. */
-export default function PrintClinicHeader() {
+/** Official clinic header for all printable documents. */
+export default function PrintClinicHeader({ documentTitle = null }) {
   return (
     <header className="print-clinic-header">
-      <img src={CLINIC_LOGO_URL} alt="" className="print-clinic-header__logo" width={140} height={140} />
+      <img src={CLINIC_LOGO_URL} alt="" className="print-clinic-header__logo" width={120} height={120} />
+      <p className="print-clinic-header__country">{CLINIC_COUNTRY}</p>
+      <p className="print-clinic-header__ministry">{CLINIC_MINISTRY}</p>
       <p className="print-clinic-header__name">{CLINIC_PRINT_NAME}</p>
+      <p className="print-clinic-header__contact">{CLINIC_ADDRESS}</p>
+      <p className="print-clinic-header__contact">
+        Tél. {CLINIC_PHONE} · {CLINIC_EMAIL}
+      </p>
+      <div className="print-clinic-header__separator" aria-hidden="true" />
+      {documentTitle ? <h1 className="print-clinic-header__doc-title">{documentTitle}</h1> : null}
     </header>
   );
 }

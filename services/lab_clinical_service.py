@@ -608,6 +608,8 @@ class LabClinicalService:
             row = grouped.get(order.patient_id)
             exam = order.test_name or order.test_code or "—"
             ts = order.created_at
+            result_summary = None
+            technician = None
             if bucket == "validated_today":
                 result = (
                     db.query(models.LabResult)
@@ -615,8 +617,19 @@ class LabClinicalService:
                     .order_by(models.LabResult.validated_at.desc())
                     .first()
                 )
-                if result and result.validated_at:
-                    ts = result.validated_at
+                if result:
+                    if result.validated_at:
+                        ts = result.validated_at
+                    result_summary = result.result_summary
+                    if result.result_data:
+                        try:
+                            import json
+
+                            payload = json.loads(result.result_data) if isinstance(result.result_data, str) else result.result_data
+                            validation = (payload or {}).get("validation") or {}
+                            technician = validation.get("technician")
+                        except Exception:
+                            pass
             if not row:
                 grouped[order.patient_id] = {
                     "patient_id": order.patient_id,
@@ -626,12 +639,18 @@ class LabClinicalService:
                     "exams": [exam],
                     "status": LabClinicalService._order_status_label(order.status),
                     "date_time": ts,
+                    "result_summary": result_summary,
+                    "technician": technician,
                 }
             else:
                 if exam not in row["exams"]:
                     row["exams"].append(exam)
                 if ts and (not row["date_time"] or ts > row["date_time"]):
                     row["date_time"] = ts
+                if result_summary and not row.get("result_summary"):
+                    row["result_summary"] = result_summary
+                if technician and not row.get("technician"):
+                    row["technician"] = technician
         rows = []
         for row in grouped.values():
             rows.append(

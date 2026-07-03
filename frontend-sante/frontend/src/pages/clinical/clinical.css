@@ -1677,18 +1677,21 @@
 }
 
 .reception-his-admission-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
+  align-items: start;
 }
 
 .reception-his-admission-ids {
+  grid-column: 1 / -1;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
 }
 
 .reception-his-admission-services {
+  grid-column: 1 / -1;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 0.85rem 1rem;
@@ -1781,6 +1784,62 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 0.75rem;
+}
+
+.lab-his-validation-summary {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px solid #d1fae5;
+  border-radius: 8px;
+  background: #f0fdf4;
+}
+
+.lab-his-validation-summary h4 {
+  margin: 0 0 0.75rem;
+  color: #065f46;
+}
+
+.lab-his-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0 0 1rem;
+}
+
+.lab-his-summary-grid div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.lab-his-summary-grid dt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.lab-his-summary-grid dd {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.lab-his-queue-summary {
+  max-width: 280px;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  color: #334155;
+}
+
+.lab-his-ecbu-macro-field {
+  display: block;
+  margin-top: 0.75rem;
+}
+
+.lab-his-ecbu-macro-field textarea {
+  width: 100%;
+  margin-top: 0.35rem;
 }
 
 .reception-his-registration-print {

@@ -28,8 +28,22 @@ def printed_by_label(user) -> str:
 
 
 def _escape_pdf_text(text: str) -> str:
+    text = (text or "").replace("\u00a0", " ").replace("\u202f", " ")
+    text = text.replace("–", "-").replace("—", "-").replace("−", "-")
     safe = text.encode("latin-1", errors="replace").decode("latin-1")
+    safe = safe.replace("\ufffd", " ")
     return safe.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+
+def _read_logo_image() -> tuple[bytes, int, int, str] | None:
+    """Return logo bytes, width, height, filter name — JPEG only for simple PDF."""
+    if not LOGO_PATH.is_file():
+        return None
+    data = LOGO_PATH.read_bytes()
+    if len(data) >= 3 and data[:3] == b"\xff\xd8\xff":
+        width, height = _jpeg_dimensions(data)
+        return data, width, height, "DCTDecode"
+    return None
 
 
 def _jpeg_dimensions(data: bytes) -> tuple[int, int]:
@@ -132,14 +146,13 @@ def _build_pdf_stream_text_only(title: str, lines: list[str]) -> bytes:
 
 def build_simple_pdf(title: str, lines: list[str]) -> bytes:
     """Minimal PDF generator with centered clinic logo header."""
-    use_logo = LOGO_PATH.is_file()
+    logo = _read_logo_image()
+    use_logo = logo is not None
     if use_logo:
-        logo_bytes = LOGO_PATH.read_bytes()
-        logo_w, logo_h = _jpeg_dimensions(logo_bytes)
+        logo_bytes, logo_w, logo_h, _filter = logo
         stream_bytes = _build_pdf_stream(title, lines, logo_bytes, logo_w, logo_h)
     else:
         logo_bytes = b""
-        logo_w = logo_h = 0
         stream_bytes = _build_pdf_stream_text_only(title, lines)
 
     objects: list[bytes] = []

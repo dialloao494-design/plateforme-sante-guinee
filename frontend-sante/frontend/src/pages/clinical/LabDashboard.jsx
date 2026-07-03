@@ -157,6 +157,8 @@ export default function LabDashboard() {
   });
   const [activeTemplateId, setActiveTemplateId] = useState(null);
   const [lastResultId, setLastResultId] = useState(null);
+  const [validationSummary, setValidationSummary] = useState(null);
+  const [ecbuMacro, setEcbuMacro] = useState('');
 
   const load = useCallback(async () => {
     const [queueRes, dashRes] = await Promise.allSettled([
@@ -231,6 +233,23 @@ export default function LabDashboard() {
     if (!selectedPatient?.id) return [];
     return orders.filter((o) => o.patient_id === selectedPatient.id);
   }, [orders, selectedPatient?.id]);
+
+  const actionableOrders = useMemo(
+    () => patientOrders.filter((o) => o.status !== 'completed' && o.status !== 'cancelled'),
+    [patientOrders],
+  );
+
+  useEffect(() => {
+    if (!selectedPatient?.id || activeOrderId) return;
+    const fromRequests = serviceRequests.find((r) => r.lab_order_id);
+    if (fromRequests?.lab_order_id) {
+      selectOrderById(fromRequests.lab_order_id);
+      return;
+    }
+    if (actionableOrders.length > 0) {
+      selectOrder(actionableOrders[0]);
+    }
+  }, [selectedPatient?.id, actionableOrders, serviceRequests, activeOrderId]);
 
   const activeOrder = useMemo(() => {
     if (!activeOrderId) return null;
@@ -374,8 +393,23 @@ export default function LabDashboard() {
 
   const applyLabTemplate = (templateId) => {
     if (!templateId) return;
+    if (!activeOrder && selectedPatient) {
+      const match = actionableOrders.find((o) => detectLabTemplateId(o.test_name) === templateId);
+      if (match) {
+        selectOrder(match);
+      } else if (actionableOrders.length > 0) {
+        selectOrder(actionableOrders[0]);
+      } else {
+        setError('Aucune commande laboratoire en cours pour ce patient.');
+        return;
+      }
+    } else if (!activeOrder) {
+      setError('Sélectionnez d\'abord un patient.');
+      return;
+    }
     setActiveTemplateId(templateId);
     setResultRows(templateRowsForTemplateId(templateId));
+    if (templateId === 'ecbu') setEcbuMacro('');
     setMessage(`Modèle chargé : ${LAB_TEMPLATES[templateId]?.title || templateId}`);
     setError('');
   };
@@ -401,9 +435,11 @@ export default function LabDashboard() {
   const selectOrder = (order) => {
     setActiveOrderId(order.id);
     setLastResultId(null);
+    setValidationSummary(null);
     const templateId = detectLabTemplateId(order.test_name);
     setActiveTemplateId(templateId);
     setResultRows(templateRowsForExam(order.test_name));
+    setEcbuMacro('');
     const status =
       order.status === 'completed'
         ? 'validated'
@@ -449,6 +485,7 @@ export default function LabDashboard() {
           rows: filledRows,
           validation: validationForm,
           template_id: activeTemplateId || detectLabTemplateId(activeOrder.test_name),
+          ...(activeTemplateId === 'ecbu' && ecbuMacro.trim() ? { macro_appearance: ecbuMacro.trim() } : {}),
         }),
         reference_range: referenceRange,
         interpretation: validationForm.observations || null,
@@ -472,6 +509,17 @@ export default function LabDashboard() {
         const { data: result } = await clinicalApi.recordLabResult(activeOrder.id, payload);
         await clinicalApi.validateLabResult(result.id);
         setLastResultId(result.id);
+        setValidationSummary({
+          patient: patientFullName(selectedPatient),
+          patientNumber: selectedPatient?.patient_number || selectedPatient?.id,
+          exam: activeOrder.test_name,
+          rows: filledRows,
+          technician: validationForm.technician || user?.email || '—',
+          date: validationForm.validation_date,
+          time: validationForm.validation_time,
+          status: 'Validé',
+          macro: activeTemplateId === 'ecbu' ? ecbuMacro.trim() : '',
+        });
         setMessage(`Résultats validés pour ${activeOrder.test_name} — vous pouvez imprimer le rapport.`);
       } else if (validationForm.status === 'rejected') {
         await clinicalApi.updateLabOrder(activeOrder.id, { status: 'cancelled' });
@@ -584,6 +632,7 @@ export default function LabDashboard() {
                         <th>Nom</th>
                         <th>Prénom</th>
                         <th>Examens / services demandés</th>
+                        {activeStatBucket === 'validated_today' && <th>Résumé des résultats</th>}
                         <th>Statut</th>
                         <th>Date / heure</th>
                       </tr>
@@ -595,6 +644,12 @@ export default function LabDashboard() {
                           <td>{row.last_name}</td>
                           <td>{row.first_name}</td>
                           <td>{row.exams}</td>
+                          {activeStatBucket === 'validated_today' && (
+                            <td className="lab-his-queue-summary">
+                              {row.result_summary || '—'}
+                              {row.technician ? ` · ${row.technician}` : ''}
+                            </td>
+                          )}
                           <td>{row.status}</td>
                           <td>{formatDateTime(row.date_time)}</td>
                         </tr>
@@ -647,51 +702,14 @@ export default function LabDashboard() {
                 </section>
 
                 <section className="lab-his-workflow-card lab-his-workflow-card--exams">
-                  <h3>Demandes de service</h3>
+                  <h3>Examens à traiter</h3>
                   <p className="clinical-hint">
-                    Examens facturés et validés par la Réception — le laboratoire ne crée ni ne modifie les tarifs.
+                    Commandes laboratoire en cours pour ce patient — sélectionnez un examen pour saisir les résultats.
                   </p>
-                  {serviceRequests.length === 0 ? (
-                    <FormNotice>Aucune demande de service laboratoire pour ce patient.</FormNotice>
+                  {patientOrders.length === 0 ? (
+                    <FormNotice>Aucun examen laboratoire en cours pour ce patient.</FormNotice>
                   ) : (
-                    <div className="lab-his-results-wrap">
-                      <table className="lab-his-service-table">
-                        <thead>
-                          <tr>
-                            <th>Examen demandé</th>
-                            <th>Date de demande</th>
-                            <th>Demandé par</th>
-                            <th />
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {serviceRequests.map((req) => (
-                            <tr key={req.id}>
-                              <td>{req.exam_name}</td>
-                              <td>{formatDateTime(req.requested_at)}</td>
-                              <td>{req.requested_by || 'Réception'}</td>
-                              <td>
-                                {req.lab_order_id ? (
-                                  <button
-                                    type="button"
-                                    className="clinical-btn clinical-btn--secondary"
-                                    onClick={() => selectOrderById(req.lab_order_id)}
-                                  >
-                                    Saisir résultats
-                                  </button>
-                                ) : (
-                                  <span className="clinical-hint">En attente de paiement</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                  {patientOrders.length > 0 && (
                     <div className="lab-his-worklist">
-                      <h4>Commandes en cours</h4>
                       {patientOrders.map((order) => (
                         <div
                           key={order.id}
@@ -783,17 +801,25 @@ export default function LabDashboard() {
                         type="button"
                         className={`clinical-btn clinical-btn--secondary lab-his-template-btn${activeTemplateId === opt.id ? ' lab-his-template-btn--active' : ''}`}
                         onClick={() => applyLabTemplate(opt.id)}
-                        disabled={!activeOrder}
+                        disabled={loading || !selectedPatient}
                       >
                         {opt.label}
                       </button>
                     ))}
                   </div>
-                  {!activeOrder && (
-                    <FormNotice>Sélectionnez d&apos;abord une demande de service pour activer un modèle.</FormNotice>
+                  {!selectedPatient && (
+                    <FormNotice>Sélectionnez d&apos;abord un patient pour charger un modèle.</FormNotice>
                   )}
-                  {activeTemplateId === 'ecbu' && LAB_TEMPLATES.ecbu?.macro && (
-                    <p className="lab-his-ecbu-macro"><strong>{LAB_TEMPLATES.ecbu.macro}</strong></p>
+                  {activeTemplateId === 'ecbu' && (
+                    <label className="lab-his-ecbu-macro-field">
+                      Aspect macroscopique
+                      <textarea
+                        rows={2}
+                        value={ecbuMacro}
+                        onChange={(e) => setEcbuMacro(e.target.value)}
+                        placeholder="Saisir l'aspect macroscopique (ex. urine jaune clair, culot léger…)"
+                      />
+                    </label>
                   )}
                   {activeTemplateId === 'hemogram' && LAB_TEMPLATES.hemogram?.note && (
                     <p className="clinical-hint">{LAB_TEMPLATES.hemogram.note}</p>
@@ -825,6 +851,8 @@ export default function LabDashboard() {
                               <th>Homme</th>
                               <th>Femme</th>
                             </>
+                          ) : activeTemplateId === 'bu' ? (
+                            <th>Valeurs de référence</th>
                           ) : (
                             <>
                               <th>Valeurs de référence</th>
@@ -858,6 +886,17 @@ export default function LabDashboard() {
                                 <td><ReadOnlyDisplay value={row.ref_child} /></td>
                                 <td><ReadOnlyDisplay value={row.ref_male} /></td>
                                 <td><ReadOnlyDisplay value={row.ref_female} /></td>
+                              </>
+                            ) : activeTemplateId === 'bu' ? (
+                              <>
+                                <td>
+                                  <input
+                                    value={row.reference}
+                                    onChange={(e) => updateResultRow(idx, 'reference', e.target.value)}
+                                    placeholder="0,7 – 1,1 g/L"
+                                    readOnly={Boolean(activeTemplateId)}
+                                  />
+                                </td>
                               </>
                             ) : (
                               <>
@@ -967,6 +1006,41 @@ export default function LabDashboard() {
                       </button>
                     )}
                   </div>
+                  {validationSummary && (
+                    <section className="lab-his-validation-summary" aria-live="polite">
+                      <h4>Résumé de validation</h4>
+                      <dl className="lab-his-summary-grid">
+                        <div><dt>Patient</dt><dd>{validationSummary.patient} · N° {validationSummary.patientNumber}</dd></div>
+                        <div><dt>Examen</dt><dd>{validationSummary.exam}</dd></div>
+                        <div><dt>Technicien</dt><dd>{validationSummary.technician}</dd></div>
+                        <div><dt>Date</dt><dd>{validationSummary.date} {validationSummary.time}</dd></div>
+                        <div><dt>Statut</dt><dd>{validationSummary.status}</dd></div>
+                      </dl>
+                      {validationSummary.macro ? (
+                        <p className="lab-his-summary-macro"><strong>Aspect macroscopique :</strong> {validationSummary.macro}</p>
+                      ) : null}
+                      <div className="lab-his-results-wrap">
+                        <table className="lab-his-results-table">
+                          <thead>
+                            <tr>
+                              <th>Paramètre</th>
+                              <th>Résultat</th>
+                              <th>Référence</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {validationSummary.rows.map((row, idx) => (
+                              <tr key={idx}>
+                                <td>{row.parameter}</td>
+                                <td>{row.result}</td>
+                                <td>{row.reference || row.ref_male || '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  )}
                 </section>
               </>
             )}

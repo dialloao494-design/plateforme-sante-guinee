@@ -1,4 +1,5 @@
-import { CLINIC_LOGO_URL, CLINIC_PRINT_NAME } from '../../constants/clinicBranding.js';
+import PrintClinicHeader from './PrintClinicHeader.jsx';
+import { payerTypeLabel } from '../../constants/clinicBranding.js';
 import './print-documents.css';
 
 const genderLabel = (g) => {
@@ -16,19 +17,38 @@ const formatDate = (d) => {
   }
 };
 
+const parsePayer = (patient, form) => {
+  const raw = patient?.payer_json || patient?.payer;
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  if (raw && typeof raw === 'object') return raw;
+  if (form?.payer_type) {
+    return {
+      payer_type: form.payer_type,
+      insurance_company: form.insurance_company,
+      insurance_number: form.insurance_number,
+      company_name: form.company_name,
+      notes: form.payer_notes,
+    };
+  }
+  return null;
+};
+
 /** Printable patient registration sheet — AASMA clinic layout. */
 export default function PatientRegistrationPrint({ patient, form }) {
   if (!patient) return null;
   const p = { ...form, ...patient };
   const printedAt = new Date().toLocaleString('fr-FR');
+  const payer = parsePayer(patient, form);
 
   return (
     <div className="print-registration-sheet">
-      <header className="print-clinic-header">
-        <img src={CLINIC_LOGO_URL} alt="" className="print-clinic-header__logo" width={120} height={120} />
-        <p className="print-clinic-header__name">{CLINIC_PRINT_NAME}</p>
-        <h1 className="print-registration-sheet__title">Fiche d&apos;enregistrement patient</h1>
-      </header>
+      <PrintClinicHeader documentTitle="Fiche d'enregistrement patient" />
 
       <section className="print-registration-section">
         <h2>Identité</h2>
@@ -64,6 +84,20 @@ export default function PatientRegistrationPrint({ patient, form }) {
         </table>
       </section>
 
+      {payer && (
+        <section className="print-registration-section">
+          <h2>Payeur</h2>
+          <table className="print-registration-table">
+            <tbody>
+              <tr><th>Type de payeur</th><td colSpan={3}>{payerTypeLabel(payer.payer_type)}</td></tr>
+              {payer.insurance_company && <tr><th>Assurance</th><td>{payer.insurance_company}</td><th>N° assurance</th><td>{payer.insurance_number || '—'}</td></tr>}
+              {payer.company_name && <tr><th>Entreprise</th><td colSpan={3}>{payer.company_name}</td></tr>}
+              {payer.notes && <tr><th>Notes</th><td colSpan={3}>{payer.notes}</td></tr>}
+            </tbody>
+          </table>
+        </section>
+      )}
+
       {p.qr_token && (
         <div className="print-registration-qr">
           <img src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(p.qr_token)}`} alt="QR patient" width={100} height={100} />
@@ -73,7 +107,6 @@ export default function PatientRegistrationPrint({ patient, form }) {
 
       <footer className="print-registration-footer">
         <p>Imprimé le {printedAt}</p>
-        <p>CHFMP – AASMA · Kobaya chinoiya · Tél. 613 04 94 48</p>
       </footer>
     </div>
   );

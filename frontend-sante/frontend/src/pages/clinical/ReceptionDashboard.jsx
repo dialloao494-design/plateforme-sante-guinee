@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext.jsx';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
 import { formatApiError } from '../../utils/apiError.js';
 import PatientRegistrationPrint from '../../components/print/PatientRegistrationPrint.jsx';
-import { SPECIALTY_OTHER_CODE } from '../../constants/clinicBranding.js';
+import { SPECIALTY_OTHER_CODE, PAYER_TYPE_OPTIONS, payerTypeLabel } from '../../constants/clinicBranding.js';
 import './clinical.css';
 
 const TABS = [
@@ -969,6 +969,17 @@ export default function ReceptionDashboard() {
 
   const patientDossier = selectedPatient?.patient_number || '';
   const patientDisplayName = patientFullName(selectedPatient);
+  const patientPayerLabel = useMemo(() => {
+    if (!selectedPatient) return '';
+    try {
+      const raw = selectedPatient.payer_json || selectedPatient.payer;
+      if (!raw) return '';
+      const payer = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      return payerTypeLabel(payer?.payer_type);
+    } catch {
+      return '';
+    }
+  }, [selectedPatient]);
 
   const PatientContextPanel = () => (
     <div className={`clinical-card reception-his-patient-context${selectedPatient ? ' reception-his-patient-context--active' : ''}`}>
@@ -977,6 +988,7 @@ export default function ReceptionDashboard() {
         <div><strong>N° dossier</strong><span className={selectedPatient?.patient_number ? 'reception-his-value-filled' : ''}>{selectedPatient?.patient_number || ''}</span></div>
         <div><strong>Nom</strong><span className={selectedPatient?.last_name ? 'reception-his-value-filled' : ''}>{selectedPatient?.last_name || ''}</span></div>
         <div><strong>Prénom</strong><span className={selectedPatient?.first_name ? 'reception-his-value-filled' : ''}>{selectedPatient?.first_name || ''}</span></div>
+        <div><strong>Payeur</strong><span className={patientPayerLabel ? 'reception-his-value-filled' : ''}>{patientPayerLabel || ''}</span></div>
         <div><strong>Téléphone</strong><span className={selectedPatient?.phone ? 'reception-his-value-filled' : ''}>{selectedPatient?.phone || ''}</span></div>
         <div><strong>Âge</strong><span className={patientAge(selectedPatient) ? 'reception-his-value-filled' : ''}>{patientAge(selectedPatient)}</span></div>
         <div><strong>Sexe</strong><span className={selectedPatient?.gender ? 'reception-his-value-filled' : ''}>{genderLabel(selectedPatient?.gender)}</span></div>
@@ -1214,7 +1226,7 @@ export default function ReceptionDashboard() {
               </div>
             </fieldset>
             <fieldset><legend>Payeur</legend><div className="clinical-form-row">
-              <label>Type de payeur<select value={regForm.payer_type} onChange={(e) => updateReg({ payer_type: e.target.value })}><option value="patient">Patient</option><option value="insurance">Assurance</option><option value="company">Entreprise</option></select></label>
+              <label>Type de payeur<select value={regForm.payer_type} onChange={(e) => updateReg({ payer_type: e.target.value })}>{PAYER_TYPE_OPTIONS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}</select></label>
               {regForm.payer_type === 'insurance' && (<><label>Compagnie d’assurance<input value={regForm.insurance_company} onChange={(e) => updateReg({ insurance_company: e.target.value })} /></label><label>Numéro d’assurance<input value={regForm.insurance_number} onChange={(e) => updateReg({ insurance_number: e.target.value })} /></label></>)}
               {regForm.payer_type === 'company' && <label>Nom de l’entreprise<input value={regForm.company_name} onChange={(e) => updateReg({ company_name: e.target.value })} /></label>}
               <label>Notes<textarea rows={2} value={regForm.payer_notes} onChange={(e) => updateReg({ payer_notes: e.target.value })} /></label>
@@ -1292,7 +1304,7 @@ export default function ReceptionDashboard() {
 
                 {(showSpecialtyPicker || (admissionForm.services || []).includes('Imagerie médicale') || (admissionForm.services || []).includes('Laboratoire')) && (
                   <div className="reception-his-admission-subopts">
-                    {showSpecialtyPicker && specializedSpecialties.length > 0 && renderSpecialtyPicker('admission')}
+                    {showSpecialtyPicker && renderSpecialtyPicker('admission')}
                     {(admissionForm.services || []).includes('Imagerie médicale') && imagingExaminations.length > 0 && (
                       <div className="reception-his-specialty-picker">
                         <label>
@@ -1491,7 +1503,7 @@ export default function ReceptionDashboard() {
                           </button>
                         )
                       ))}
-                      {specializedSpecialties.length > 0 && (
+                      {showSpecialtyPicker && (
                         <div className="reception-his-specialty-picker">
                           {renderSpecialtyPicker('billing')}
                           <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addSpecializedConsultation}>

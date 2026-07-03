@@ -12,8 +12,8 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-CLINIC_PRINT_NAME = "CHFMP – AASMA"
-LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "branding" / "aasma-clinic-logo.png"
+from data.clinic_branding import CLINIC_FOOTER_LINE, CLINIC_PRINT_NAME
+from services.clinic_print_header import append_official_clinic_header
 
 METHOD_LABELS = {
     "cash": "Espèces",
@@ -131,16 +131,8 @@ def build_hospital_invoice_pdf(
     story: list = []
     page_w = A4[0] - doc.leftMargin - doc.rightMargin
 
-    # Header — logo + clinic name
-    if LOGO_PATH.is_file():
-        img = Image(str(LOGO_PATH), width=42 * mm, height=42 * mm, kind="proportional")
-        img.hAlign = "CENTER"
-        story.append(img)
-        story.append(Spacer(1, 4))
-    story.append(Paragraph(CLINIC_PRINT_NAME, styles["clinic"]))
-    story.append(Spacer(1, 6))
-    story.append(Paragraph(document_title, styles["title"]))
-    story.append(Spacer(1, 10))
+    append_official_clinic_header(story, page_width=page_w, document_title=document_title)
+    story.append(Spacer(1, 4))
 
     # Meta block
     meta_left = [
@@ -281,7 +273,8 @@ def build_hospital_invoice_pdf(
         y = 12 * mm
         canvas.drawString(doc.leftMargin, y + 14, f"Imprimé par : {printed_by or '—'}")
         canvas.drawString(doc.leftMargin, y + 4, f"Date : {printed_date or '—'}    Heure : {printed_time or '—'}")
-        canvas.drawRightString(A4[0] - doc.rightMargin, y + 4, f"Page {canvas.getPageNumber()} sur {canvas.getPageNumber()}")
+        canvas.drawCentredString(A4[0] / 2, y + 4, CLINIC_FOOTER_LINE[:90])
+        canvas.drawRightString(A4[0] - doc.rightMargin, y + 4, f"Page {canvas.getPageNumber()}")
         canvas.restoreState()
 
     doc.build(story, onFirstPage=_footer, onLaterPages=_footer)

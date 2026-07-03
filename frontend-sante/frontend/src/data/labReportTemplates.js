@@ -56,7 +56,7 @@ export const LAB_TEMPLATES = {
     id: 'ecbu',
     title: 'Examen Cytobactériologique des Urines (ECBU)',
     keywords: ['ecbu', 'cytobact', 'cytobactériologique', 'cytobacteriologique'],
-    macro: 'Aspect macroscopique : urine jaune clair, culot léger',
+    macro: '',
     rows: [
       { parameter: 'Leucocytes', unit: 'mm³', reference: '<10' },
       { parameter: 'Hématies', unit: 'mm³', reference: '<10' },
