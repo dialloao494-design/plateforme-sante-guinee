@@ -301,7 +301,7 @@ httpClient.interceptors.response.use(
       console.error(`[HTTP ${statusCode}] ${url}:`, message);
     }
 
-    if (error?.response?.status === 401 || error?.response?.status === 403) {
+    if (error?.response?.status === 401) {
       const sentAuth = String(config?.headers?.Authorization || '');
       const currentToken = getAuthToken();
       const stillOurSession =

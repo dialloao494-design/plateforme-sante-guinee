@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -84,3 +84,50 @@ class NurseDashboardStats(BaseModel):
     assessments_today: int = 0
     pending_admissions_today: int = 0
     recent_assessments: list[NurseAssessmentResponse] = []
+
+
+class NursePatientDetail(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    patient_number: Optional[str] = None
+    qr_token: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    phone: Optional[str] = None
+    phone_secondary: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    commune: Optional[str] = None
+    city: Optional[str] = None
+    region: Optional[str] = None
+    country: Optional[str] = None
+    place_of_birth: Optional[str] = None
+    nationality: Optional[str] = None
+    marital_status: Optional[str] = None
+    profession: Optional[str] = None
+    preferred_language: Optional[str] = None
+
+
+class NurseAssessmentQueueRow(BaseModel):
+    assessment_id: int
+    patient_id: int
+    patient_number: Optional[str] = None
+    patient_name: str
+    nurse_name: Optional[str] = None
+    status: str = "Évalué"
+    recorded_at: datetime
+
+
+class NursePendingAdmissionRow(BaseModel):
+    admission_id: int
+    patient_id: int
+    patient_number: Optional[str] = None
+    patient_name: str
+    admitted_at: Optional[datetime] = None
+    services: list[str] = []
+    priority: str = "Routine"
+    department: Optional[str] = None

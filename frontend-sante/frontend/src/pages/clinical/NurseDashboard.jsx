@@ -65,6 +65,20 @@ const formatDob = (dob) => {
   }
 };
 
+const formatDateTime = (value) => {
+  if (!value) return '—';
+  try {
+    return new Date(value).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+  } catch {
+    return String(value);
+  }
+};
+
+const BUCKET_TITLES = {
+  assessments_today: 'Évaluations aujourd\'hui',
+  pending_admissions: 'Admissions en attente',
+};
+
 const calcBmi = (weightKg, heightCm) => {
   const w = Number(weightKg);
   const h = Number(heightCm);
@@ -111,6 +125,9 @@ export default function NurseDashboard() {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [assessmentLoading, setAssessmentLoading] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [activeStatBucket, setActiveStatBucket] = useState(null);
+  const [queueRows, setQueueRows] = useState([]);
+  const [loadingQueue, setLoadingQueue] = useState(false);
 
   const bmi = useMemo(() => calcBmi(form.weight_kg, form.height_cm), [form.weight_kg, form.height_cm]);
 
@@ -177,6 +194,7 @@ export default function NurseDashboard() {
   };
 
   const selectPatient = async (patient) => {
+    if (!patient?.id) return;
     setSelectedPatient(patient);
     setSearchResults([]);
     setSearchQ('');
@@ -185,12 +203,50 @@ export default function NurseDashboard() {
     setForm(EMPTY_FORM);
     setAssessmentLoading(true);
     try {
-      const { data } = await clinicalApi.receptionHisGetPatient(patient.id);
+      const { data } = await clinicalApi.nurseGetPatient(patient.id);
       setSelectedPatient(data);
       await loadAssessment(data.id);
     } catch (err) {
       setError(formatApiError(err, 'Chargement du patient impossible'));
       await loadAssessment(patient.id);
+    }
+  };
+
+  const openPatientById = async (patientId) => {
+    if (!patientId) return;
+    setError('');
+    try {
+      const { data } = await clinicalApi.nurseGetPatient(patientId);
+      await selectPatient(data);
+    } catch (err) {
+      setError(formatApiError(err, 'Ouverture du patient impossible'));
+    }
+  };
+
+  const loadQueueBucket = async (bucket) => {
+    if (activeStatBucket === bucket) {
+      setActiveStatBucket(null);
+      setQueueRows([]);
+      return;
+    }
+    setActiveStatBucket(bucket);
+    setLoadingQueue(true);
+    setError('');
+    try {
+      if (bucket === 'assessments_today') {
+        const { data } = await clinicalApi.nurseQueueAssessmentsToday();
+        setQueueRows(data || []);
+      } else if (bucket === 'pending_admissions') {
+        const { data } = await clinicalApi.nurseQueuePendingAdmissions();
+        setQueueRows(data || []);
+      } else {
+        setQueueRows([]);
+      }
+    } catch (err) {
+      setQueueRows([]);
+      setError(formatApiError(err, 'Impossible de charger la liste'));
+    } finally {
+      setLoadingQueue(false);
     }
   };
 
@@ -240,8 +296,8 @@ export default function NurseDashboard() {
   };
 
   const statCards = [
-    { label: 'Évaluations aujourd\'hui', value: stats?.assessments_today ?? 0, variant: 'success' },
-    { label: 'Admissions en attente', value: stats?.pending_admissions_today ?? 0, variant: 'warning' },
+    { key: 'assessments_today', label: 'Évaluations aujourd\'hui', value: stats?.assessments_today ?? 0, variant: 'success' },
+    { key: 'pending_admissions', label: 'Admissions en attente', value: stats?.pending_admissions_today ?? 0, variant: 'warning' },
     { label: 'Patient actif', value: selectedPatient ? patientFullName(selectedPatient) : '—', variant: 'accent' },
   ];
 
@@ -299,7 +355,80 @@ export default function NurseDashboard() {
       {error && <p className="clinical-error">{error}</p>}
       {message && <p className="clinical-success">{message}</p>}
 
-      <ClinicalStatGrid stats={statCards} />
+      <ClinicalStatGrid stats={statCards} onStatClick={loadQueueBucket} activeKey={activeStatBucket} />
+
+      {activeStatBucket && (
+        <section className="lab-his-queue-panel nurse-his-queue-panel" aria-live="polite">
+          <h3>{BUCKET_TITLES[activeStatBucket] || 'Liste'}</h3>
+          {loadingQueue ? (
+            <p className="clinical-hint">Chargement…</p>
+          ) : queueRows.length === 0 ? (
+            <p className="clinical-hint">Aucun élément dans cette liste.</p>
+          ) : activeStatBucket === 'assessments_today' ? (
+            <div className="lab-his-results-wrap">
+              <table className="lab-his-queue-table">
+                <thead>
+                  <tr>
+                    <th>N° dossier</th>
+                    <th>Patient</th>
+                    <th>Statut</th>
+                    <th>Infirmier(ère)</th>
+                    <th>Date / heure</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {queueRows.map((row) => (
+                    <tr key={row.assessment_id}>
+                      <td>{row.patient_number || row.patient_id}</td>
+                      <td>{row.patient_name}</td>
+                      <td>{row.status}</td>
+                      <td>{row.nurse_name || '—'}</td>
+                      <td>{formatDateTime(row.recorded_at)}</td>
+                      <td>
+                        <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => openPatientById(row.patient_id)}>
+                          Ouvrir patient
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="lab-his-results-wrap">
+              <table className="lab-his-queue-table">
+                <thead>
+                  <tr>
+                    <th>N° dossier</th>
+                    <th>Patient</th>
+                    <th>Date / heure admission</th>
+                    <th>Service</th>
+                    <th>Priorité</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {queueRows.map((row) => (
+                    <tr key={row.admission_id}>
+                      <td>{row.patient_number || row.patient_id}</td>
+                      <td>{row.patient_name}</td>
+                      <td>{formatDateTime(row.admitted_at)}</td>
+                      <td>{(row.services || []).join(', ') || row.department || '—'}</td>
+                      <td>{row.priority}</td>
+                      <td>
+                        <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => openPatientById(row.patient_id)}>
+                          Ouvrir patient
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       {!selectedPatient ? (
         <div className="clinical-card reception-his-empty-state">

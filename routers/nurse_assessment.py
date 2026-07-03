@@ -13,8 +13,11 @@ from database import get_db
 from models.user import User
 from schemas.nurse_assessment import (
     NurseAssessmentCreate,
+    NurseAssessmentQueueRow,
     NurseAssessmentResponse,
     NurseDashboardStats,
+    NursePatientDetail,
+    NursePendingAdmissionRow,
 )
 from security import get_current_user
 from services.nurse_assessment_service import NurseAssessmentService
@@ -103,3 +106,35 @@ def search_patients(
     clinic = resolve_clinic_for_user(db, current_user)
     patients = ReceptionHisService.search_patients(db, clinic_id=clinic.id, query=q)
     return patients
+
+
+@router.get("/patients/{patient_id}", response_model=NursePatientDetail)
+def get_nurse_patient(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, NURSE_READ_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    patient = NurseAssessmentService.get_patient_detail(db, clinic_id=clinic.id, patient_id=patient_id)
+    return NursePatientDetail.model_validate(patient)
+
+
+@router.get("/queue/assessments-today", response_model=list[NurseAssessmentQueueRow])
+def queue_assessments_today(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, NURSE_READ_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return NurseAssessmentService.list_assessments_today(db, clinic_id=clinic.id)
+
+
+@router.get("/queue/pending-admissions", response_model=list[NursePendingAdmissionRow])
+def queue_pending_admissions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, NURSE_READ_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return NurseAssessmentService.list_pending_admissions_today(db, clinic_id=clinic.id)

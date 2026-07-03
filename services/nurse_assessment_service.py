@@ -335,3 +335,120 @@ class NurseAssessmentService:
     @staticmethod
     def serialize(row: models.NurseAssessment) -> na_schemas.NurseAssessmentResponse:
         return _serialize_assessment(row)
+
+    @staticmethod
+    def _priority_label(admission_type: Optional[str]) -> str:
+        if admission_type == "emergency":
+            return "Urgence"
+        if admission_type == "hospitalization":
+            return "Hospitalisation"
+        if admission_type == "specialized_consultation":
+            return "Consultation spécialisée"
+        return "Routine"
+
+    @staticmethod
+    def _parse_services(services_json: Optional[str]) -> list[str]:
+        if not services_json:
+            return []
+        try:
+            import json
+
+            data = json.loads(services_json)
+            if isinstance(data, list):
+                return [str(s) for s in data if s]
+        except Exception:
+            pass
+        return []
+
+    @staticmethod
+    def get_patient_detail(db: Session, *, clinic_id: int, patient_id: int) -> models.Patient:
+        assert_patient_in_clinic(db, patient_id=patient_id, clinic_id=clinic_id)
+        patient = (
+            db.query(models.Patient)
+            .filter(
+                models.Patient.id == patient_id,
+                models.Patient.clinic_id == clinic_id,
+                models.Patient.is_archived.is_(False),
+            )
+            .first()
+        )
+        if not patient:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient introuvable")
+        return patient
+
+    @staticmethod
+    def list_assessments_today(db: Session, *, clinic_id: int) -> list[na_schemas.NurseAssessmentQueueRow]:
+        today_start = NurseAssessmentService._today_start()
+        rows = (
+            db.query(models.NurseAssessment)
+            .options(joinedload(models.NurseAssessment.patient))
+            .filter(
+                models.NurseAssessment.clinic_id == clinic_id,
+                models.NurseAssessment.deleted_at.is_(None),
+                models.NurseAssessment.recorded_at >= today_start,
+            )
+            .order_by(models.NurseAssessment.recorded_at.desc())
+            .all()
+        )
+        out: list[na_schemas.NurseAssessmentQueueRow] = []
+        for row in rows:
+            patient = row.patient
+            out.append(
+                na_schemas.NurseAssessmentQueueRow(
+                    assessment_id=row.id,
+                    patient_id=row.patient_id,
+                    patient_number=patient.patient_number if patient else None,
+                    patient_name=f"{patient.last_name} {patient.first_name}".strip() if patient else "—",
+                    nurse_name=row.nurse_name,
+                    status="Évalué",
+                    recorded_at=row.recorded_at,
+                )
+            )
+        return out
+
+    @staticmethod
+    def list_pending_admissions_today(db: Session, *, clinic_id: int) -> list[na_schemas.NursePendingAdmissionRow]:
+        today_start = NurseAssessmentService._today_start()
+        assessed_patient_ids = {
+            r[0]
+            for r in db.query(models.NurseAssessment.patient_id)
+            .filter(
+                models.NurseAssessment.clinic_id == clinic_id,
+                models.NurseAssessment.deleted_at.is_(None),
+                models.NurseAssessment.recorded_at >= today_start,
+            )
+            .distinct()
+            .all()
+        }
+        admissions = (
+            db.query(models.Admission)
+            .options(joinedload(models.Admission.patient))
+            .filter(
+                models.Admission.clinic_id == clinic_id,
+                models.Admission.admitted_at >= today_start,
+                models.Admission.status.notin_(["discharged", "cancelled"]),
+            )
+            .order_by(models.Admission.admitted_at.asc())
+            .all()
+        )
+        out: list[na_schemas.NursePendingAdmissionRow] = []
+        for adm in admissions:
+            if adm.patient_id in assessed_patient_ids:
+                continue
+            patient = adm.patient
+            services = NurseAssessmentService._parse_services(adm.services_json)
+            if not services and adm.department:
+                services = [adm.department]
+            out.append(
+                na_schemas.NursePendingAdmissionRow(
+                    admission_id=adm.id,
+                    patient_id=adm.patient_id,
+                    patient_number=patient.patient_number if patient else None,
+                    patient_name=f"{patient.last_name} {patient.first_name}".strip() if patient else "—",
+                    admitted_at=adm.admitted_at,
+                    services=services,
+                    priority=NurseAssessmentService._priority_label(adm.admission_type),
+                    department=adm.department,
+                )
+            )
+        return out

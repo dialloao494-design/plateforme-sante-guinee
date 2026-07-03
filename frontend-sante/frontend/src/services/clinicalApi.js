@@ -68,6 +68,9 @@ const clinicalApi = {
   // Nurse triage / assessment
   nurseDashboard: () => httpClient.get('/clinical/nurse/dashboard'),
   nurseSearchPatients: (q) => httpClient.get('/clinical/nurse/patients/search', { params: { q } }),
+  nurseGetPatient: (patientId) => httpClient.get(`/clinical/nurse/patients/${patientId}`),
+  nurseQueueAssessmentsToday: () => httpClient.get('/clinical/nurse/queue/assessments-today'),
+  nurseQueuePendingAdmissions: () => httpClient.get('/clinical/nurse/queue/pending-admissions'),
   nurseGetAssessment: (patientId, admissionId) =>
     httpClient.get(`/clinical/nurse/patients/${patientId}/assessment`, {
       params: admissionId ? { admission_id: admissionId } : {},
