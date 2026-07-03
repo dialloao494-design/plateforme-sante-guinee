@@ -48,6 +48,35 @@ const ORDER_STATUS_MAP = {
 
 const EMPTY_RESULT_ROW = { parameter: '', result: '', reference: '', unit: '' };
 
+const parseSampleNotes = (clinicalNotes) => {
+  if (!clinicalNotes) return null;
+  try {
+    const data = typeof clinicalNotes === 'string' ? JSON.parse(clinicalNotes) : clinicalNotes;
+    if (!data || typeof data !== 'object') return null;
+    return data;
+  } catch {
+    return null;
+  }
+};
+
+const parseResultPayload = (resultData) => {
+  if (!resultData) return null;
+  try {
+    return typeof resultData === 'string' ? JSON.parse(resultData) : resultData;
+  } catch {
+    return null;
+  }
+};
+
+const sampleCodesFromLabels = (labels = []) => {
+  const codes = [];
+  for (const label of labels) {
+    const hit = SAMPLE_TYPES.find((s) => s.label === label);
+    if (hit) codes.push(hit.code);
+  }
+  return codes;
+};
+
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const nowTimeStr = () => new Date().toTimeString().slice(0, 5);
 
@@ -159,6 +188,7 @@ export default function LabDashboard() {
   const [lastResultId, setLastResultId] = useState(null);
   const [validationSummary, setValidationSummary] = useState(null);
   const [ecbuMacro, setEcbuMacro] = useState('');
+  const [savedSampleInfo, setSavedSampleInfo] = useState(null);
 
   const load = useCallback(async () => {
     const [queueRes, dashRes] = await Promise.allSettled([
@@ -231,28 +261,30 @@ export default function LabDashboard() {
 
   const patientOrders = useMemo(() => {
     if (!selectedPatient?.id) return [];
-    return orders.filter((o) => o.patient_id === selectedPatient.id);
-  }, [orders, selectedPatient?.id]);
+    const fromQueue = orders.filter((o) => o.patient_id === selectedPatient.id);
+    const knownIds = new Set(fromQueue.map((o) => o.id));
+    const fromRequests = (serviceRequests || [])
+      .filter((r) => r.lab_order_id && !knownIds.has(r.lab_order_id))
+      .map((r) => ({
+        id: r.lab_order_id,
+        patient_id: selectedPatient.id,
+        test_name: r.exam_name,
+        test_code: r.exam_code || '',
+        status: 'ordered',
+        payment_status: r.payment_status,
+      }));
+    return [...fromQueue, ...fromRequests];
+  }, [orders, selectedPatient?.id, serviceRequests]);
 
   const actionableOrders = useMemo(
     () => patientOrders.filter((o) => o.status !== 'completed' && o.status !== 'cancelled'),
     [patientOrders],
   );
 
-  useEffect(() => {
-    if (!selectedPatient?.id || activeOrderId) return;
-    const fromRequests = serviceRequests.find((r) => r.lab_order_id);
-    if (fromRequests?.lab_order_id) {
-      selectOrderById(fromRequests.lab_order_id);
-      return;
-    }
-    if (actionableOrders.length > 0) {
-      selectOrder(actionableOrders[0]);
-    }
-  }, [selectedPatient?.id, actionableOrders, serviceRequests, activeOrderId]);
-
   const activeOrder = useMemo(() => {
     if (!activeOrderId) return null;
+    const fromPatient = patientOrders.find((o) => o.id === activeOrderId);
+    if (fromPatient) return fromPatient;
     const fromQueue = orders.find((o) => o.id === activeOrderId);
     if (fromQueue) return fromQueue;
     const req = serviceRequests.find((r) => r.lab_order_id === activeOrderId);
@@ -265,7 +297,7 @@ export default function LabDashboard() {
       };
     }
     return null;
-  }, [orders, activeOrderId, serviceRequests, selectedPatient?.id]);
+  }, [orders, activeOrderId, serviceRequests, selectedPatient?.id, patientOrders]);
 
   const stats = useMemo(() => {
     if (!labStats) {
@@ -312,6 +344,11 @@ export default function LabDashboard() {
     setSearchQ('');
     setSearchResults([]);
     setActiveOrderId(null);
+    setActiveTemplateId(null);
+    setSavedSampleInfo(null);
+    setValidationSummary(null);
+    setSampleTypes([]);
+    setSampleOther('');
     setMessage(`Patient sélectionné : ${patientFullName(patient)} · N° ${patient.patient_number || patient.id}`);
     setError('');
   };
@@ -321,7 +358,112 @@ export default function LabDashboard() {
     setServiceRequests([]);
     setActiveOrderId(null);
     setResultRows([{ ...EMPTY_RESULT_ROW }]);
+    setActiveTemplateId(null);
+    setValidationSummary(null);
+    setSavedSampleInfo(null);
+    setEcbuMacro('');
   };
+
+  const hydrateSampleFromOrder = (order) => {
+    const parsed = parseSampleNotes(order?.clinical_notes);
+    if (!parsed) {
+      setSavedSampleInfo(null);
+      return;
+    }
+    setSavedSampleInfo(parsed);
+    setSampleForm({
+      collection_date: parsed.collection_date || todayStr(),
+      collection_time: parsed.collection_time || nowTimeStr(),
+      collector: parsed.collector || '',
+    });
+    const codes = sampleCodesFromLabels(parsed.sample_types || []);
+    setSampleTypes(codes);
+    setSampleOther(parsed.sample_other || '');
+  };
+
+  const hydrateResultsFromOrder = (order) => {
+    const payload = parseResultPayload(order?.result_data);
+    if (!payload?.rows?.length) return false;
+    setActiveTemplateId(payload.template_id || detectLabTemplateId(order.test_name));
+    setResultRows(payload.rows);
+    setEcbuMacro(payload.macro_appearance || '');
+    if (payload.validation) {
+      setValidationForm((prev) => ({ ...prev, ...payload.validation }));
+    }
+    if (order.latest_result_id) setLastResultId(order.latest_result_id);
+    if (order.result_status === 'validated') {
+      setValidationSummary({
+        patient: patientFullName(selectedPatient),
+        patientNumber: selectedPatient?.patient_number || selectedPatient?.id,
+        exam: order.test_name,
+        rows: payload.rows,
+        technician: payload.validation?.technician || order.technician_name || '—',
+        date: payload.validation?.validation_date || todayStr(),
+        time: payload.validation?.validation_time || nowTimeStr(),
+        status: 'Validé',
+        macro: payload.macro_appearance || '',
+      });
+    }
+    return true;
+  };
+
+  const pickOrderForTemplate = (templateId) => {
+    if (!actionableOrders.length) return null;
+    if (templateId) {
+      const match = actionableOrders.find((o) => detectLabTemplateId(o.test_name) === templateId);
+      if (match) return match;
+    }
+    return actionableOrders[0];
+  };
+
+  const ensureActiveOrder = (templateId = null) => {
+    if (activeOrderId && activeOrder) return activeOrder;
+    const pick = pickOrderForTemplate(templateId);
+    if (!pick) return null;
+    setActiveOrderId(pick.id);
+    hydrateSampleFromOrder(pick);
+    return pick;
+  };
+
+  const selectOrder = (order) => {
+    if (!order?.id) return;
+    setActiveOrderId(order.id);
+    setValidationSummary(null);
+    hydrateSampleFromOrder(order);
+    const hasSavedResults = hydrateResultsFromOrder(order);
+    if (!hasSavedResults) {
+      const templateId = detectLabTemplateId(order.test_name);
+      setActiveTemplateId(templateId);
+      setResultRows(templateId ? templateRowsForTemplateId(templateId) : templateRowsForExam(order.test_name));
+      setEcbuMacro('');
+      setLastResultId(null);
+    }
+    const status =
+      order.status === 'completed'
+        ? 'validated'
+        : order.status === 'in_analysis'
+          ? 'in_progress'
+          : order.status === 'cancelled'
+            ? 'rejected'
+            : 'pending';
+    setValidationForm((p) => ({
+      ...p,
+      technician: order.technician_name || p.technician || '',
+      status,
+      validation_date: todayStr(),
+      validation_time: nowTimeStr(),
+    }));
+    setMessage(`Examen actif : ${order.test_name}`);
+    setError('');
+  };
+
+  useEffect(() => {
+    if (!selectedPatient?.id || activeOrderId) return undefined;
+    if (actionableOrders.length > 0) {
+      selectOrder(actionableOrders[0]);
+    }
+    return undefined;
+  }, [selectedPatient?.id, actionableOrders, activeOrderId]);
 
   const selectOrderById = async (orderId) => {
     let order = orders.find((o) => o.id === orderId) || patientOrders.find((o) => o.id === orderId);
@@ -355,8 +497,9 @@ export default function LabDashboard() {
   });
 
   const saveSampleCollection = async () => {
-    if (!activeOrder?.id) {
-      setError('Sélectionnez une commande avant d\'enregistrer le prélèvement.');
+    const order = ensureActiveOrder() || activeOrder;
+    if (!order?.id) {
+      setError('Aucun examen laboratoire en cours. Facturez d\'abord l\'examen à la réception.');
       return;
     }
     if (sampleTypes.length === 0) {
@@ -370,12 +513,17 @@ export default function LabDashboard() {
     setLoading(true);
     setError('');
     try {
-      await clinicalApi.updateLabOrder(activeOrder.id, {
+      const notes = buildSampleNotes();
+      const { data } = await clinicalApi.updateLabOrder(order.id, {
         status: 'sample_collected',
-        clinical_notes: buildSampleNotes(),
+        clinical_notes: notes,
       });
+      const snapshot = parseSampleNotes(notes);
+      setSavedSampleInfo(snapshot);
+      setActiveOrderId(order.id);
       setMessage('Prélèvement enregistré.');
       await load();
+      if (data?.clinical_notes) hydrateSampleFromOrder(data);
     } catch (err) {
       setError(formatApiError(err, 'Enregistrement du prélèvement impossible'));
     } finally {
@@ -393,25 +541,20 @@ export default function LabDashboard() {
 
   const applyLabTemplate = (templateId) => {
     if (!templateId) return;
-    if (!activeOrder && selectedPatient) {
-      const match = actionableOrders.find((o) => detectLabTemplateId(o.test_name) === templateId);
-      if (match) {
-        selectOrder(match);
-      } else if (actionableOrders.length > 0) {
-        selectOrder(actionableOrders[0]);
-      } else {
-        setError('Aucune commande laboratoire en cours pour ce patient.');
-        return;
-      }
-    } else if (!activeOrder) {
+    if (!selectedPatient) {
       setError('Sélectionnez d\'abord un patient.');
       return;
     }
+    const order = ensureActiveOrder(templateId);
     setActiveTemplateId(templateId);
     setResultRows(templateRowsForTemplateId(templateId));
     if (templateId === 'ecbu') setEcbuMacro('');
-    setMessage(`Modèle chargé : ${LAB_TEMPLATES[templateId]?.title || templateId}`);
-    setError('');
+    setMessage(
+      order
+        ? `Modèle chargé : ${LAB_TEMPLATES[templateId]?.title || templateId}`
+        : `Modèle chargé (aperçu) : ${LAB_TEMPLATES[templateId]?.title || templateId} — facturez l\'examen à la réception pour enregistrer.`,
+    );
+    setError(order ? '' : 'Aucun examen facturé en cours — le tableau est prêt pour la saisie, mais l\'enregistrement nécessite une commande.');
   };
 
   const printLabReport = async (resultId) => {
@@ -432,35 +575,11 @@ export default function LabDashboard() {
     }
   };
 
-  const selectOrder = (order) => {
-    setActiveOrderId(order.id);
-    setLastResultId(null);
-    setValidationSummary(null);
-    const templateId = detectLabTemplateId(order.test_name);
-    setActiveTemplateId(templateId);
-    setResultRows(templateRowsForExam(order.test_name));
-    setEcbuMacro('');
-    const status =
-      order.status === 'completed'
-        ? 'validated'
-        : order.status === 'in_analysis'
-          ? 'in_progress'
-          : order.status === 'cancelled'
-            ? 'rejected'
-            : 'pending';
-    setValidationForm((p) => ({
-      ...p,
-      technician: '',
-      status,
-      validation_date: todayStr(),
-      validation_time: nowTimeStr(),
-    }));
-  };
-
   const submitResults = async (e) => {
     e?.preventDefault?.();
-    if (!activeOrder) {
-      setError('Sélectionnez une commande en cours pour saisir les résultats.');
+    const order = ensureActiveOrder(activeTemplateId) || activeOrder;
+    if (!order?.id) {
+      setError('Aucun examen laboratoire actif. Facturez l\'examen à la réception puis sélectionnez-le dans « Examens à traiter ».');
       return;
     }
     const filledRows = resultRows.filter((r) => r.parameter.trim() || r.result.trim());
@@ -476,7 +595,6 @@ export default function LabDashboard() {
         .filter((r) => r.reference)
         .map((r) => `${r.parameter} (${r.reference})`)
         .join('; ');
-      // Full reference values live in result_data.rows; keep reference_range within DB limits.
       const referenceRange =
         refs.length > 250 ? `${refs.slice(0, 247)}…` : refs || null;
       const payload = {
@@ -484,7 +602,7 @@ export default function LabDashboard() {
         result_data: JSON.stringify({
           rows: filledRows,
           validation: validationForm,
-          template_id: activeTemplateId || detectLabTemplateId(activeOrder.test_name),
+          template_id: activeTemplateId || detectLabTemplateId(order.test_name),
           ...(activeTemplateId === 'ecbu' && ecbuMacro.trim() ? { macro_appearance: ecbuMacro.trim() } : {}),
         }),
         reference_range: referenceRange,
@@ -493,26 +611,27 @@ export default function LabDashboard() {
       const orderStatus = ORDER_STATUS_MAP[validationForm.status] || 'in_analysis';
       const patch = {};
       if (validationForm.status === 'validated') {
-        if (activeOrder.status === 'ordered' || activeOrder.status === 'sample_collected') {
+        if (order.status === 'ordered' || order.status === 'sample_collected') {
           patch.status = 'in_analysis';
         }
-      } else if (orderStatus !== activeOrder.status) {
+      } else if (orderStatus !== order.status) {
         patch.status = orderStatus;
       }
       if (sampleTypes.length > 0) {
         patch.clinical_notes = buildSampleNotes();
       }
       if (Object.keys(patch).length) {
-        await clinicalApi.updateLabOrder(activeOrder.id, patch);
+        await clinicalApi.updateLabOrder(order.id, patch);
       }
       if (validationForm.status === 'validated') {
-        const { data: result } = await clinicalApi.recordLabResult(activeOrder.id, payload);
+        const { data: result } = await clinicalApi.recordLabResult(order.id, payload);
         await clinicalApi.validateLabResult(result.id);
         setLastResultId(result.id);
+        setActiveOrderId(order.id);
         setValidationSummary({
           patient: patientFullName(selectedPatient),
           patientNumber: selectedPatient?.patient_number || selectedPatient?.id,
-          exam: activeOrder.test_name,
+          exam: order.test_name,
           rows: filledRows,
           technician: validationForm.technician || user?.email || '—',
           date: validationForm.validation_date,
@@ -520,19 +639,18 @@ export default function LabDashboard() {
           status: 'Validé',
           macro: activeTemplateId === 'ecbu' ? ecbuMacro.trim() : '',
         });
-        setMessage(`Résultats validés pour ${activeOrder.test_name} — vous pouvez imprimer le rapport.`);
+        setMessage(`Résultats validés pour ${order.test_name} — vous pouvez imprimer le rapport.`);
       } else if (validationForm.status === 'rejected') {
-        await clinicalApi.updateLabOrder(activeOrder.id, { status: 'cancelled' });
-        setMessage(`Examen rejeté : ${activeOrder.test_name}`);
+        await clinicalApi.updateLabOrder(order.id, { status: 'cancelled' });
+        setMessage(`Examen rejeté : ${order.test_name}`);
         setActiveOrderId(null);
         setResultRows([{ ...EMPTY_RESULT_ROW }]);
+        setActiveTemplateId(null);
       } else {
-        await clinicalApi.recordLabResult(activeOrder.id, payload);
-        setMessage(`Résultats enregistrés pour ${activeOrder.test_name}`);
-      }
-      if (validationForm.status !== 'validated') {
-        setResultRows([{ ...EMPTY_RESULT_ROW }]);
-        setActiveOrderId(null);
+        const { data: result } = await clinicalApi.recordLabResult(order.id, payload);
+        setLastResultId(result.id);
+        setActiveOrderId(order.id);
+        setMessage(`Résultats enregistrés pour ${order.test_name}`);
       }
       await load();
       if (selectedPatient?.id) {
@@ -779,11 +897,24 @@ export default function LabDashboard() {
                       </label>
                     )}
                   </fieldset>
+                  {savedSampleInfo && (
+                    <div className="lab-his-saved-sample" aria-live="polite">
+                      <strong>Prélèvement enregistré</strong>
+                      <p>
+                        {(savedSampleInfo.sample_types || []).join(', ') || '—'}
+                        {savedSampleInfo.sample_other ? ` · ${savedSampleInfo.sample_other}` : ''}
+                      </p>
+                      <p className="clinical-hint">
+                        {savedSampleInfo.collection_date || '—'} {savedSampleInfo.collection_time || ''}
+                        {savedSampleInfo.collector ? ` · ${savedSampleInfo.collector}` : ''}
+                      </p>
+                    </div>
+                  )}
                   <button
                     type="button"
                     className="clinical-btn clinical-btn--secondary"
                     onClick={saveSampleCollection}
-                    disabled={loading || !activeOrder}
+                    disabled={loading}
                   >
                     {loading ? 'Enregistrement…' : 'Enregistrer le prélèvement'}
                   </button>
@@ -991,7 +1122,7 @@ export default function LabDashboard() {
                       type="button"
                       className="clinical-btn lab-his-workflow-action"
                       onClick={submitResults}
-                      disabled={loading || !activeOrder}
+                      disabled={loading}
                     >
                       {loading ? 'Enregistrement…' : 'Enregistrer les résultats'}
                     </button>

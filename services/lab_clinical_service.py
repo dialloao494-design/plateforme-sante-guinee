@@ -326,6 +326,7 @@ class LabClinicalService:
         result = (
             db.query(models.LabResult)
             .filter(models.LabResult.lab_order_id == order.id)
+            .order_by(models.LabResult.updated_at.desc(), models.LabResult.id.desc())
             .first()
         )
         technician = LabClinicalService._technician_name(db, result)
@@ -338,6 +339,7 @@ class LabClinicalService:
             "test_name": order.test_name,
             "priority": order.priority,
             "status": order.status,
+            "clinical_notes": order.clinical_notes,
             "patient_name": f"{patient.first_name} {patient.last_name}" if patient else None,
             "patient_first_name": patient.first_name if patient else None,
             "patient_last_name": patient.last_name if patient else None,
@@ -351,6 +353,9 @@ class LabClinicalService:
             "result_status": result.status if result else None,
             "validated_at": result.validated_at if result else None,
             "technician_name": technician,
+            "latest_result_id": result.id if result else None,
+            "result_summary": result.result_summary if result else None,
+            "result_data": result.result_data if result else None,
             "created_at": order.created_at,
         }
 

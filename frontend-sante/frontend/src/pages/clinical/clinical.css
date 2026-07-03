@@ -1842,6 +1842,18 @@
   margin-top: 0.35rem;
 }
 
+.lab-his-saved-sample {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.lab-his-saved-sample p {
+  margin: 0.25rem 0 0;
+}
+
 .reception-his-registration-print {
   display: none;
 }

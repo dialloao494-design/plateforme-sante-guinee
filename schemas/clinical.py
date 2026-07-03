@@ -211,6 +211,10 @@ class LabOrderResponse(BaseModel):
     result_status: Optional[str] = None
     validated_at: Optional[datetime] = None
     technician_name: Optional[str] = None
+    clinical_notes: Optional[str] = None
+    latest_result_id: Optional[int] = None
+    result_summary: Optional[str] = None
+    result_data: Optional[str] = None
     created_at: Optional[datetime] = None
 
     class Config:
