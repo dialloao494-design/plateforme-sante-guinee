@@ -1864,11 +1864,17 @@
   }
 
   .reception-his-registration-print,
-  .reception-his-registration-print * {
+  .reception-his-registration-print *,
+  .pharmacy-his-receipt-print,
+  .pharmacy-his-receipt-print *,
+  .lab-his-validation-summary-print,
+  .lab-his-validation-summary-print * {
     visibility: visible !important;
   }
 
-  .reception-his-registration-print {
+  .reception-his-registration-print,
+  .pharmacy-his-receipt-print,
+  .lab-his-validation-summary-print {
     display: block !important;
     position: absolute;
     left: 0;
@@ -1883,6 +1889,11 @@
   align-items: flex-end;
   width: 100%;
   padding: 0.65rem 0;
+}
+
+.lab-his-validation-summary-print,
+.pharmacy-his-receipt-print {
+  display: none;
 }
 
 .reception-his-specialty-picker label {

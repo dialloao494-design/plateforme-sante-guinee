@@ -255,7 +255,8 @@ export default function NurseDashboard() {
   const numOrNull = (v) => {
     if (v === '' || v == null) return null;
     const n = Number(v);
-    return Number.isFinite(n) ? n : null;
+    if (!Number.isFinite(n) || n === 0) return null;
+    return n;
   };
 
   const saveAssessment = async () => {

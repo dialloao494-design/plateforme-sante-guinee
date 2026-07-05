@@ -3,6 +3,8 @@ import clinicalApi from '../../services/clinicalApi';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { formatApiError } from '../../utils/apiError.js';
 import { detectLabTemplateId, LAB_TEMPLATES, LAB_TEMPLATE_OPTIONS, templateRowsForExam, templateRowsForTemplateId } from '../../data/labReportTemplates.js';
+import PrintClinicHeader from '../../components/print/PrintClinicHeader.jsx';
+import PrintDocumentFooter from '../../components/print/PrintDocumentFooter.jsx';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import './clinical.css';
 
@@ -610,11 +612,15 @@ export default function LabDashboard() {
       };
       const orderStatus = ORDER_STATUS_MAP[validationForm.status] || 'in_analysis';
       const patch = {};
+      const statusRank = { ordered: 0, sample_collected: 1, in_analysis: 2, completed: 3, cancelled: -1 };
+      const currentRank = statusRank[order.status] ?? 0;
       if (validationForm.status === 'validated') {
-        if (order.status === 'ordered' || order.status === 'sample_collected') {
+        if (currentRank < statusRank.in_analysis) {
           patch.status = 'in_analysis';
         }
-      } else if (orderStatus !== order.status) {
+      } else if (validationForm.status === 'rejected') {
+        patch.status = 'cancelled';
+      } else if (orderStatus !== order.status && (statusRank[orderStatus] ?? 0) >= currentRank) {
         patch.status = orderStatus;
       }
       if (sampleTypes.length > 0) {
@@ -638,10 +644,10 @@ export default function LabDashboard() {
           time: validationForm.validation_time,
           status: 'Validé',
           macro: activeTemplateId === 'ecbu' ? ecbuMacro.trim() : '',
+          observations: validationForm.observations || '',
         });
         setMessage(`Résultats validés pour ${order.test_name} — vous pouvez imprimer le rapport.`);
       } else if (validationForm.status === 'rejected') {
-        await clinicalApi.updateLabOrder(order.id, { status: 'cancelled' });
         setMessage(`Examen rejeté : ${order.test_name}`);
         setActiveOrderId(null);
         setResultRows([{ ...EMPTY_RESULT_ROW }]);
@@ -1150,6 +1156,9 @@ export default function LabDashboard() {
                       {validationSummary.macro ? (
                         <p className="lab-his-summary-macro"><strong>Aspect macroscopique :</strong> {validationSummary.macro}</p>
                       ) : null}
+                      {validationSummary.observations ? (
+                        <p className="lab-his-summary-macro"><strong>Observations :</strong> {validationSummary.observations}</p>
+                      ) : null}
                       <div className="lab-his-results-wrap">
                         <table className="lab-his-results-table">
                           <thead>
@@ -1170,7 +1179,40 @@ export default function LabDashboard() {
                           </tbody>
                         </table>
                       </div>
+                      <button
+                        type="button"
+                        className="clinical-btn clinical-btn--secondary"
+                        onClick={() => window.print()}
+                      >
+                        Imprimer le résumé de validation
+                      </button>
                     </section>
+                  )}
+                  {validationSummary && (
+                    <div className="lab-his-validation-summary-print" aria-hidden="true">
+                      <PrintClinicHeader documentTitle="Résumé de validation laboratoire" compact />
+                      <dl className="lab-his-summary-grid">
+                        <div><dt>Patient</dt><dd>{validationSummary.patient} · N° {validationSummary.patientNumber}</dd></div>
+                        <div><dt>Examen</dt><dd>{validationSummary.exam}</dd></div>
+                        <div><dt>Technicien</dt><dd>{validationSummary.technician}</dd></div>
+                        <div><dt>Date / heure</dt><dd>{validationSummary.date} {validationSummary.time}</dd></div>
+                        <div><dt>Statut</dt><dd>{validationSummary.status}</dd></div>
+                      </dl>
+                      {validationSummary.observations ? <p><strong>Observations :</strong> {validationSummary.observations}</p> : null}
+                      <table className="lab-his-results-table">
+                        <thead><tr><th>Paramètre</th><th>Résultat</th><th>Référence</th></tr></thead>
+                        <tbody>
+                          {validationSummary.rows.map((row, idx) => (
+                            <tr key={idx}>
+                              <td>{row.parameter}</td>
+                              <td>{row.result}</td>
+                              <td>{row.reference || row.ref_male || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <PrintDocumentFooter printedBy={user?.email || ''} department="Laboratoire" />
+                    </div>
                   )}
                 </section>
               </>

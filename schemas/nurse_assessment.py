@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def calc_bmi(weight_kg: Optional[float], height_cm: Optional[float]) -> Optional[float]:
@@ -38,6 +38,24 @@ class NurseAssessmentCreate(BaseModel):
     allergies: Optional[str] = Field(None, max_length=5000)
     current_treatments: Optional[str] = Field(None, max_length=10000)
     nurse_notes: Optional[str] = Field(None, max_length=10000)
+
+    @field_validator(
+        "temperature_c",
+        "bp_systolic",
+        "bp_diastolic",
+        "heart_rate",
+        "respiratory_rate",
+        "height_cm",
+        "weight_kg",
+        mode="before",
+    )
+    @classmethod
+    def _empty_vital_as_none(cls, v):
+        if v is None or v == "":
+            return None
+        if isinstance(v, (int, float)) and v == 0:
+            return None
+        return v
 
 
 class NurseAssessmentResponse(BaseModel):

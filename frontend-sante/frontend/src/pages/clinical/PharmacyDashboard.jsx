@@ -354,8 +354,16 @@ export default function PharmacyDashboard() {
     }
   };
 
-  const printReceipt = () => {
+  const printReceipt = async () => {
     if (!savedRequest) return;
+    if (savedRequest.charge_id) {
+      try {
+        await printReceiptPdf();
+        return;
+      } catch {
+        /* fall through to browser print */
+      }
+    }
     window.print();
   };
 
