@@ -51,8 +51,13 @@ class NurseAssessmentCreate(BaseModel):
     )
     @classmethod
     def _empty_vital_as_none(cls, v):
-        if v is None or v == "":
+        if v is None:
             return None
+        if isinstance(v, str):
+            text = v.strip()
+            if text in ("", "0", "0.0"):
+                return None
+            return text
         if isinstance(v, (int, float)) and v == 0:
             return None
         return v

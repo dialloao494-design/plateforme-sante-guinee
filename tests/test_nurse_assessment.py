@@ -7,8 +7,8 @@ from core.provisioning_context import provisioning_channel
 from security import create_access_token, hash_password
 
 
-def _seed_nurse_clinic(db_session, admin_user):
-    suffix = str(admin_user.id)
+def _seed_nurse_clinic(db_session, admin_user, salt=""):
+    suffix = f"{admin_user.id}{salt}"
     clinic = models.Clinic(name=f"Nurse Clinic {suffix}", address="Test")
     db_session.add(clinic)
     db_session.flush()
@@ -117,3 +117,24 @@ def test_nurse_assessment_save_and_doctor_sync(client, db_session, admin_user):
     consult = r3.json()
     assert "Douleur thoracique" in (consult.get("chief_complaint") or "")
     assert "Aspirine" in (consult.get("history") or "")
+
+
+def test_nurse_assessment_string_zero_vitals_are_treated_as_empty(client, db_session, admin_user):
+    _, nurse, _, _, patient = _seed_nurse_clinic(db_session, admin_user, salt="-zero")
+
+    r = client.post(
+        "/clinical/nurse/assessments",
+        headers=_auth(nurse),
+        json={
+            "patient_id": patient.id,
+            "bp_systolic": "0",
+            "bp_diastolic": "0",
+            "heart_rate": "0",
+            "reason_for_consultation": "String zero repro",
+        },
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["bp_systolic"] is None
+    assert body["bp_diastolic"] is None
+    assert body["heart_rate"] is None

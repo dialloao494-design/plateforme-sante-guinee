@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 FOLLOW_UP_INTERVALS = Literal["7d", "15d", "1m", "3m", "6m", "custom"]
 FOLLOW_UP_VISIT_TYPES = Literal["consultation", "follow_up"]
@@ -76,6 +76,31 @@ class PatientVitalSignsCreate(BaseModel):
     bmi: Optional[float] = Field(None, ge=10.0, le=80.0)
     spo2: Optional[int] = Field(None, ge=50, le=100)
     notes: Optional[str] = Field(None, max_length=2000)
+
+    @field_validator(
+        "bp_systolic",
+        "bp_diastolic",
+        "heart_rate",
+        "temperature_c",
+        "weight_kg",
+        "height_cm",
+        "respiratory_rate",
+        "bmi",
+        "spo2",
+        mode="before",
+    )
+    @classmethod
+    def _empty_vital_as_none(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            text = v.strip()
+            if text in ("", "0", "0.0"):
+                return None
+            return text
+        if isinstance(v, (int, float)) and v == 0:
+            return None
+        return v
 
 
 class PatientVitalSignsResponse(BaseModel):
