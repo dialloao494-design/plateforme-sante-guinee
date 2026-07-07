@@ -15,7 +15,17 @@ from services.visit_service import VisitService
 
 
 class ImagingService:
-    VALID_MODALITIES = ("xray", "ultrasound", "ct_scan", "mri")
+    # Catalogue modalities. Doctors may also request "other" imaging with a
+    # free-text label, so we accept any non-empty modality up to the column
+    # length (String(32)) rather than a fixed whitelist.
+    VALID_MODALITIES = (
+        "xray",
+        "ultrasound",
+        "ct_scan",
+        "mri",
+        "mammography",
+        "dental_panoramic",
+    )
 
     @staticmethod
     def create_order(
@@ -30,7 +40,8 @@ class ImagingService:
         actor: User,
         client_ip: str | None = None,
     ) -> models.ImagingOrder:
-        if modality not in ImagingService.VALID_MODALITIES:
+        modality = (modality or "").strip()
+        if not modality or len(modality) > 32:
             raise HTTPException(status_code=400, detail=f"Invalid modality: {modality}")
         consultation = (
             db.query(models.ClinicalConsultation)
