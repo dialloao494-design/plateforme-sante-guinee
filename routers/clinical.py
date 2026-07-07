@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import date
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from sqlalchemy.orm import Session, joinedload
 
 import models
 from core.clinical_access import (
@@ -43,6 +43,7 @@ from schemas.clinical import (
     ConsultationResponse,
     ConsultationStart,
     ConsultationUpdate,
+    DoctorConsultationOpen,
     DailyRevenueSummary,
     LabOrderCreate,
     LabOrderResponse,
@@ -172,6 +173,14 @@ def _consultation_response(c: models.ClinicalConsultation) -> ConsultationRespon
         examination=c.examination,
         diagnosis=c.diagnosis,
         treatment_plan=c.treatment_plan,
+        medical_history=c.medical_history,
+        surgical_history=c.surgical_history,
+        gyneco_history=c.gyneco_history,
+        allergies=c.allergies,
+        current_treatments=c.current_treatments,
+        observations=c.observations,
+        target_specialty_code=c.target_specialty_code,
+        target_specialty_other=c.target_specialty_other,
         started_at=c.started_at,
         completed_at=c.completed_at,
         patient_name=patient_name,
@@ -770,6 +779,323 @@ def schedule_consultation_follow_up(
         status=fu.status,
         follow_up_appointment_id=fu.follow_up_appointment_id,
         created_at=fu.created_at,
+    )
+
+
+# --- Doctor dashboard: search, identity, stats, history, catalog, PDF ---
+
+
+def _patient_identity(db: Session, patient: models.Patient) -> dict:
+    import json
+
+    payer_label = None
+    if patient.payer_json:
+        try:
+            payer = json.loads(patient.payer_json) or {}
+            payer_label = payer.get("type") or payer.get("payer_type") or payer.get("name")
+        except (ValueError, TypeError):
+            payer_label = None
+    return {
+        "patient_id": patient.id,
+        "patient_number": patient.patient_number,
+        "full_name": f"{patient.first_name} {patient.last_name}".strip(),
+        "first_name": patient.first_name,
+        "last_name": patient.last_name,
+        "age": patient.age,
+        "sex": patient.gender,
+        "phone": patient.phone,
+        "qr_token": patient.qr_token,
+        "payer": payer_label or "Payant",
+    }
+
+
+@router.get("/doctor/patients/search")
+def doctor_search_patients(
+    q: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, (*DOCTOR_ROLES, *ADMIN_ROLES))
+    clinic = resolve_clinic_for_user(db, current_user)
+    from services.reception_his_service import ReceptionHisService
+
+    patients = ReceptionHisService.search_patients(db, clinic_id=clinic.id, query=q)
+    return [_patient_identity(db, p) for p in patients]
+
+
+@router.get("/doctor/patients/{patient_id}/identity")
+def doctor_patient_identity(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, (*DOCTOR_ROLES, *ADMIN_ROLES))
+    clinic = resolve_clinic_for_user(db, current_user)
+    patient = (
+        db.query(models.Patient)
+        .filter(models.Patient.id == patient_id, models.Patient.clinic_id == clinic.id)
+        .first()
+    )
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient introuvable")
+    return _patient_identity(db, patient)
+
+
+@router.post("/doctor/open-consultation", response_model=ConsultationResponse, status_code=201)
+def doctor_open_consultation(
+    body: DoctorConsultationOpen,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, DOCTOR_ROLES, request, clinic_id=clinic.id)
+    doctor = doctor_for_user(db, current_user)
+    consultation = ClinicalWorkflowService.open_consultation_for_patient(
+        db,
+        clinic_id=clinic.id,
+        doctor=doctor,
+        patient_id=body.patient_id,
+        chief_complaint=body.chief_complaint,
+        actor=current_user,
+        client_ip=client_ip(request),
+    )
+    db.refresh(consultation, ["patient", "doctor"])
+    return _consultation_response(consultation)
+
+
+@router.get("/doctor/dashboard")
+def doctor_dashboard_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, (*DOCTOR_ROLES, *ADMIN_ROLES))
+    clinic = resolve_clinic_for_user(db, current_user)
+    if current_user.role == "doctor":
+        doctor = doctor_for_user(db, current_user)
+        doctor_id = doctor.id
+    else:
+        doctor_id = -1
+    return ClinicalWorkflowService.doctor_dashboard_stats(
+        db, clinic_id=clinic.id, doctor_id=doctor_id
+    )
+
+
+@router.get("/doctor/dashboard/queue")
+def doctor_dashboard_queue(
+    bucket: str = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, (*DOCTOR_ROLES, *ADMIN_ROLES))
+    clinic = resolve_clinic_for_user(db, current_user)
+    if current_user.role == "doctor":
+        doctor = doctor_for_user(db, current_user)
+        doctor_id = doctor.id
+    else:
+        doctor_id = -1
+    return ClinicalWorkflowService.doctor_dashboard_queue(
+        db, clinic_id=clinic.id, doctor_id=doctor_id, bucket=bucket
+    )
+
+
+@router.get("/doctor/patients/{patient_id}/consultations")
+def doctor_patient_consultations(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, (*DOCTOR_ROLES, *ADMIN_ROLES))
+    clinic = resolve_clinic_for_user(db, current_user)
+    return ClinicalWorkflowService.patient_consultations(
+        db, clinic_id=clinic.id, patient_id=patient_id
+    )
+
+
+@router.get("/doctor/catalog")
+def doctor_catalog(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, (*DOCTOR_ROLES, *ADMIN_ROLES))
+    clinic = resolve_clinic_for_user(db, current_user)
+    from data.aasma_billing_catalog import IMAGING_EXAMINATIONS, SPECIALIZED_SPECIALTIES
+
+    lab_tests: list[dict] = []
+    try:
+        rows = (
+            db.query(models.ClinicLabTest)
+            .filter(
+                models.ClinicLabTest.clinic_id == clinic.id,
+                models.ClinicLabTest.active.is_(True),
+            )
+            .order_by(models.ClinicLabTest.sort_order)
+            .all()
+        )
+        for r in rows:
+            lab_tests.append(
+                {"code": r.code, "name": r.name, "category": r.category_label}
+            )
+    except Exception:
+        lab_tests = []
+    if not lab_tests:
+        try:
+            from data.aasma_lab_catalog import AASMA_LAB_CATALOG
+
+            for t in AASMA_LAB_CATALOG:
+                lab_tests.append(
+                    {
+                        "code": t.get("code"),
+                        "name": t.get("name"),
+                        "category": t.get("category_label"),
+                    }
+                )
+        except Exception:
+            lab_tests = []
+    return {
+        "specialties": SPECIALIZED_SPECIALTIES,
+        "imaging": IMAGING_EXAMINATIONS,
+        "lab_tests": lab_tests,
+    }
+
+
+@router.get("/doctor/service-requests")
+def doctor_list_service_requests(
+    patient_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, (*DOCTOR_ROLES, *ADMIN_ROLES))
+    clinic = resolve_clinic_for_user(db, current_user)
+    from services.reception_his_service import ReceptionHisService
+
+    rows = ReceptionHisService.list_service_requests(
+        db, clinic_id=clinic.id, patient_id=patient_id
+    )
+    return [ReceptionHisService._serialize_service_request(r) for r in rows]
+
+
+@router.post("/doctor/service-requests", status_code=201)
+def doctor_create_service_request(
+    body: dict,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    clinic = resolve_clinic_for_user(db, current_user)
+    _require_role(db, current_user, DOCTOR_ROLES, request, clinic_id=clinic.id)
+    from schemas.reception_his import ServiceRequestCreate
+    from services.reception_his_service import ReceptionHisService
+
+    payload = ServiceRequestCreate(**body)
+    row = ReceptionHisService.create_service_request(
+        db, clinic_id=clinic.id, payload=payload, actor=current_user
+    )
+    row = (
+        db.query(models.ClinicServiceRequest)
+        .options(joinedload(models.ClinicServiceRequest.patient))
+        .filter(models.ClinicServiceRequest.id == row.id)
+        .first()
+    )
+    return ReceptionHisService._serialize_service_request(row)
+
+
+@router.get("/consultations/{consultation_id}/pdf")
+def consultation_report_pdf(
+    consultation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, (*DOCTOR_ROLES, *ADMIN_ROLES))
+    clinic = resolve_clinic_for_user(db, current_user)
+    consultation = (
+        db.query(models.ClinicalConsultation)
+        .options(
+            joinedload(models.ClinicalConsultation.patient),
+            joinedload(models.ClinicalConsultation.doctor),
+            joinedload(models.ClinicalConsultation.lab_orders),
+            joinedload(models.ClinicalConsultation.imaging_orders),
+            joinedload(models.ClinicalConsultation.prescriptions),
+        )
+        .filter(
+            models.ClinicalConsultation.id == consultation_id,
+            models.ClinicalConsultation.clinic_id == clinic.id,
+            models.ClinicalConsultation.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if not consultation:
+        raise HTTPException(status_code=404, detail="Consultation introuvable")
+
+    from data.aasma_billing_catalog import SPECIALIZED_SPECIALTIES
+    from services.consultation_pdf_builder import build_consultation_pdf
+    from services.nurse_assessment_service import NurseAssessmentService
+
+    patient = consultation.patient
+    identity = _patient_identity(db, patient) if patient else {}
+
+    assessment = NurseAssessmentService.get_latest(
+        db, clinic_id=clinic.id, patient_id=consultation.patient_id
+    )
+    vitals = {}
+    if assessment:
+        vitals = {
+            "temperature_c": assessment.temperature_c,
+            "bp_systolic": assessment.bp_systolic,
+            "bp_diastolic": assessment.bp_diastolic,
+            "heart_rate": assessment.heart_rate,
+            "respiratory_rate": assessment.respiratory_rate,
+            "weight_kg": assessment.weight_kg,
+            "height_cm": assessment.height_cm,
+            "bmi": assessment.bmi,
+        }
+
+    specialty_label = None
+    if consultation.target_specialty_code == "__other__":
+        specialty_label = consultation.target_specialty_other
+    elif consultation.target_specialty_code:
+        specialty_label = next(
+            (s["label"] for s in SPECIALIZED_SPECIALTIES if s["code"] == consultation.target_specialty_code),
+            consultation.target_specialty_code,
+        )
+
+    pdf_bytes = build_consultation_pdf(
+        {
+            "patient": identity,
+            "consultation": {
+                "chief_complaint": consultation.chief_complaint,
+                "history": consultation.history,
+                "medical_history": consultation.medical_history,
+                "surgical_history": consultation.surgical_history,
+                "gyneco_history": consultation.gyneco_history,
+                "allergies": consultation.allergies,
+                "current_treatments": consultation.current_treatments,
+                "examination": consultation.examination,
+                "diagnosis": consultation.diagnosis,
+                "treatment_plan": consultation.treatment_plan,
+                "observations": consultation.observations,
+            },
+            "vitals": vitals,
+            "specialty_label": specialty_label,
+            "lab_orders": [o.test_name for o in (consultation.lab_orders or [])],
+            "imaging_orders": [o.modality for o in (consultation.imaging_orders or [])],
+            "prescriptions": [
+                f"{len(p.items)} médicament(s)" for p in (consultation.prescriptions or [])
+            ],
+            "doctor_name": consultation.doctor.name if consultation.doctor else None,
+            "printed_by": getattr(current_user, "email", None) or getattr(current_user, "full_name", "—"),
+            "department": "Médecine / Consultation",
+            "date": (consultation.started_at or consultation.created_at).strftime("%d/%m/%Y %H:%M")
+            if (consultation.started_at or consultation.created_at)
+            else None,
+        }
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="consultation_{consultation_id}.pdf"'
+        },
     )
 
 

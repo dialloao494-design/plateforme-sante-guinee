@@ -1,832 +1,820 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { CLINIC_PRINT_NAME } from '../../constants/clinicBranding.js';
+import { useAuth } from '../../contexts/AuthContext.jsx';
 import clinicalApi from '../../services/clinicalApi';
-
+import { formatApiError } from '../../utils/apiError.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
-
 import './clinical.css';
 
+const CONSULT_FIELDS = [
+  { key: 'chief_complaint', label: 'Motif de consultation', rows: 2 },
+  { key: 'history', label: "Histoire de la maladie", rows: 3 },
+  { key: 'medical_history', label: 'Antécédents médicaux', rows: 2 },
+  { key: 'surgical_history', label: 'Antécédents chirurgicaux', rows: 2 },
+  { key: 'gyneco_history', label: 'Antécédents gynéco-obstétricaux', rows: 2 },
+  { key: 'allergies', label: 'Allergies', rows: 2 },
+  { key: 'current_treatments', label: 'Traitements en cours', rows: 2 },
+  { key: 'examination', label: 'Examen clinique', rows: 3 },
+  { key: 'diagnosis', label: 'Diagnostic', rows: 2 },
+  { key: 'treatment_plan', label: 'Plan de traitement', rows: 3 },
+  { key: 'observations', label: 'Observations / Notes', rows: 2 },
+];
 
+const EMPTY_FORM = CONSULT_FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: '' }), {
+  target_specialty_code: '',
+  target_specialty_other: '',
+});
 
-const FIELD_LABELS = {
-
-  chief_complaint: 'Motif de consultation',
-
-  history: 'Antécédents',
-
-  examination: 'Examen clinique',
-
-  diagnosis: 'Diagnostic',
-
-  treatment_plan: 'Plan de traitement',
-
+const BUCKET_TITLES = {
+  patients_waiting: 'Patients en attente',
+  consultations_today: "Consultations aujourd'hui",
+  hospitalized_patients: 'Patients hospitalisés',
+  lab_pending: 'Résultats labo en attente',
+  imaging_pending: 'Imagerie en attente',
+  completed_consultations: 'Consultations terminées',
 };
 
+const qrImageUrl = (token) =>
+  token ? `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(token)}` : '';
 
+const genderLabel = (g) => {
+  if (g === 'F' || g === 'Féminin' || g === 'f') return 'Féminin';
+  if (g === 'M' || g === 'Masculin' || g === 'm') return 'Masculin';
+  return g || '—';
+};
+
+const formatDateTime = (value) => {
+  if (!value) return '—';
+  try {
+    return new Date(value).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+  } catch {
+    return String(value);
+  }
+};
 
 export default function DoctorClinicalDashboard() {
+  const { user } = useAuth();
+  const searchRef = useRef(null);
 
+  const [stats, setStats] = useState(null);
   const [queue, setQueue] = useState([]);
+  const [activeBucket, setActiveBucket] = useState(null);
+  const [bucketRows, setBucketRows] = useState([]);
+  const [loadingBucket, setLoadingBucket] = useState(false);
 
+  const [searchQ, setSearchQ] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+
+  const [identity, setIdentity] = useState(null);
   const [consultation, setConsultation] = useState(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [nurseAssessment, setNurseAssessment] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [serviceRequests, setServiceRequests] = useState([]);
 
-  const [form, setForm] = useState({
+  const [catalog, setCatalog] = useState({ specialties: [], imaging: [], lab_tests: [] });
 
-    chief_complaint: '',
+  // Lab request
+  const [labSearch, setLabSearch] = useState('');
+  const [selectedLabs, setSelectedLabs] = useState([]);
+  const [labNotes, setLabNotes] = useState('');
 
-    history: '',
-
-    examination: '',
-
-    diagnosis: '',
-
-    treatment_plan: '',
-
-  });
-
-  const [labForm, setLabForm] = useState({ test_code: 'NFS', test_name: 'Numération formule sanguine', priority: 'routine' });
-
+  // Imaging request
   const [imagingForm, setImagingForm] = useState({
     modality: 'xray',
-    body_part: 'Thorax',
+    modality_other: '',
+    body_part: '',
     clinical_indication: '',
     priority: 'routine',
   });
 
-  const [recentImaging, setRecentImaging] = useState([]);
-
-  const [rxForm, setRxForm] = useState({
-
-    medication_name: '',
-
-    dosage: '',
-
-    frequency: '2x/jour',
-
-    duration_days: 7,
-
-  });
-
-  const [recentLabs, setRecentLabs] = useState([]);
-
-  const [recentRx, setRecentRx] = useState([]);
-
-  const [vitalsForm, setVitalsForm] = useState({
-    bp_systolic: '',
-    bp_diastolic: '',
-    heart_rate: '',
-    temperature_c: '',
-    weight_kg: '',
-  });
-
-  const [followUpForm, setFollowUpForm] = useState({
-    interval_type: '1m',
-    scheduled_date: '',
+  // Hospitalization decision
+  const [hosp, setHosp] = useState({
+    requested: false,
     reason: '',
-    clinical_notes: '',
+    duration: '24h',
+    custom_days: '',
+    notes: '',
   });
 
   const [message, setMessage] = useState('');
-
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const [patientHistory, setPatientHistory] = useState(null);
-
-  const [nurseAssessment, setNurseAssessment] = useState(null);
-
-
-
-  const load = useCallback(async () => {
-
+  const loadDashboard = useCallback(async () => {
     try {
-
-      const { data } = await clinicalApi.doctorQueue();
-
-      setQueue(data || []);
-
+      const [statsRes, queueRes] = await Promise.all([
+        clinicalApi.doctorDashboard(),
+        clinicalApi.doctorQueue(),
+      ]);
+      setStats(statsRes.data || null);
+      setQueue(queueRes.data || []);
     } catch (err) {
-
-      setError(err?.response?.data?.detail || 'File médecin indisponible');
-
+      setError(formatApiError(err, 'Chargement du tableau de bord impossible'));
     }
-
   }, []);
 
-
-
   useEffect(() => {
+    loadDashboard();
+    clinicalApi
+      .doctorCatalog()
+      .then(({ data }) => setCatalog(data || { specialties: [], imaging: [], lab_tests: [] }))
+      .catch(() => {});
+  }, [loadDashboard]);
 
-    load();
-
-  }, [load]);
-
-
-
-  useEffect(() => {
-
-    if (!consultation?.patient_id) {
-
-      setPatientHistory(null);
-
-      setNurseAssessment(null);
-
+  const loadBucket = async (bucket) => {
+    if (activeBucket === bucket) {
+      setActiveBucket(null);
+      setBucketRows([]);
       return;
-
     }
-
-    clinicalApi.patientMedicalHistory(consultation.patient_id)
-
-      .then(({ data }) => setPatientHistory(data))
-
-      .catch(() => setPatientHistory(null));
-
-    clinicalApi.nurseGetAssessment(consultation.patient_id)
-
-      .then(({ data }) => setNurseAssessment(data || null))
-
-      .catch(() => setNurseAssessment(null));
-
-  }, [consultation?.patient_id]);
-
-
-
-  const startConsultation = async (appointmentId) => {
-
-    setError('');
-
+    setActiveBucket(bucket);
+    setLoadingBucket(true);
     try {
-
-      const { data } = await clinicalApi.startConsultation({
-
-        appointment_id: appointmentId,
-
-        chief_complaint: form.chief_complaint || 'Consultation',
-
-      });
-
-      setConsultation(data);
-
-      setRecentLabs([]);
-
-      setRecentRx([]);
-
-      setForm({
-
-        chief_complaint: data.chief_complaint || '',
-
-        history: data.history || '',
-
-        examination: data.examination || '',
-
-        diagnosis: data.diagnosis || '',
-
-        treatment_plan: data.treatment_plan || '',
-
-      });
-
-      setMessage(`Consultation #${data.id} démarrée`);
-
-      load();
-
+      const { data } = await clinicalApi.doctorDashboardQueue(bucket);
+      setBucketRows(data || []);
     } catch (err) {
-
-      setError(err?.response?.data?.detail || 'Impossible de démarrer');
-
+      setBucketRows([]);
+      setError(formatApiError(err, 'Liste indisponible'));
+    } finally {
+      setLoadingBucket(false);
     }
-
   };
 
+  const runSearch = async () => {
+    const q = searchQ.trim();
+    if (!q) return;
+    setSearching(true);
+    setError('');
+    try {
+      const { data } = await clinicalApi.doctorSearchPatients(q);
+      setSearchResults(data || []);
+      if ((data || []).length === 0) setMessage('Aucun patient trouvé.');
+    } catch (err) {
+      setError(formatApiError(err, 'Recherche impossible'));
+    } finally {
+      setSearching(false);
+    }
+  };
 
+  const openPatient = async (patientId, chiefComplaint) => {
+    if (!patientId) return;
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const { data: consult } = await clinicalApi.doctorOpenConsultation({
+        patient_id: patientId,
+        chief_complaint: chiefComplaint || undefined,
+      });
+      setConsultation(consult);
+      setForm({
+        ...EMPTY_FORM,
+        chief_complaint: consult.chief_complaint || '',
+        history: consult.history || '',
+        examination: consult.examination || '',
+        diagnosis: consult.diagnosis || '',
+        treatment_plan: consult.treatment_plan || '',
+        medical_history: consult.medical_history || '',
+        surgical_history: consult.surgical_history || '',
+        gyneco_history: consult.gyneco_history || '',
+        allergies: consult.allergies || '',
+        current_treatments: consult.current_treatments || '',
+        observations: consult.observations || '',
+        target_specialty_code: consult.target_specialty_code || '',
+        target_specialty_other: consult.target_specialty_other || '',
+      });
+      setSelectedLabs([]);
+      setLabNotes('');
+      setHosp({ requested: false, reason: '', duration: '24h', custom_days: '', notes: '' });
+      setSearchResults([]);
+
+      const [idRes, assessRes, histRes] = await Promise.allSettled([
+        clinicalApi.doctorPatientIdentity(patientId),
+        clinicalApi.nurseGetAssessment(patientId),
+        clinicalApi.doctorPatientConsultations(patientId),
+      ]);
+      if (idRes.status === 'fulfilled') setIdentity(idRes.value.data);
+      setNurseAssessment(assessRes.status === 'fulfilled' ? assessRes.value.data || null : null);
+      setHistory(histRes.status === 'fulfilled' ? histRes.value.data || [] : []);
+      refreshServiceRequests(patientId);
+      setMessage(`Consultation #${consult.id} ouverte`);
+      loadDashboard();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      setError(formatApiError(err, "Impossible d'ouvrir la consultation"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const refreshServiceRequests = (patientId) => {
+    const pid = patientId || consultation?.patient_id;
+    if (!pid) return;
+    clinicalApi
+      .doctorListServiceRequests(pid)
+      .then(({ data }) => setServiceRequests(data || []))
+      .catch(() => {});
+  };
+
+  const buildUpdatePayload = () => ({
+    chief_complaint: form.chief_complaint,
+    history: form.history,
+    examination: form.examination,
+    diagnosis: form.diagnosis,
+    treatment_plan: form.treatment_plan,
+    medical_history: form.medical_history,
+    surgical_history: form.surgical_history,
+    gyneco_history: form.gyneco_history,
+    allergies: form.allergies,
+    current_treatments: form.current_treatments,
+    observations: form.observations,
+    target_specialty_code: form.target_specialty_code || null,
+    target_specialty_other:
+      form.target_specialty_code === '__other__' ? form.target_specialty_other : null,
+  });
 
   const saveConsultation = async (complete = false) => {
-
     if (!consultation) return;
-
+    setBusy(true);
     setError('');
-
+    setMessage('');
     try {
-
       const { data } = await clinicalApi.updateConsultation(consultation.id, {
-
-        ...form,
-
+        ...buildUpdatePayload(),
         status: complete ? 'completed' : undefined,
-
       });
-
       setConsultation(data);
-
-      setMessage(complete ? 'Consultation terminée' : 'Consultation enregistrée');
-
-      if (complete) {
-
-        setConsultation(null);
-
-        load();
-
+      setMessage(complete ? 'Consultation validée et terminée.' : 'Consultation enregistrée.');
+      if (consultation.patient_id) {
+        clinicalApi
+          .doctorPatientConsultations(consultation.patient_id)
+          .then(({ data: h }) => setHistory(h || []))
+          .catch(() => {});
       }
-
+      loadDashboard();
     } catch (err) {
-
-      setError(err?.response?.data?.detail || 'Sauvegarde impossible');
-
+      setError(formatApiError(err, 'Sauvegarde impossible'));
+    } finally {
+      setBusy(false);
     }
-
   };
 
-
-
-  const orderLab = async () => {
-
-    if (!consultation) return;
-
-    try {
-
-      const { data } = await clinicalApi.orderLab(consultation.id, labForm);
-
-      setRecentLabs((prev) => [{ ...labForm, id: data?.id, at: new Date().toISOString() }, ...prev]);
-
-      setMessage(`Examen ${labForm.test_name} prescrit`);
-
-    } catch (err) {
-
-      setError(err?.response?.data?.detail || 'Prescription labo impossible');
-
-    }
-
+  const toggleLab = (test) => {
+    setSelectedLabs((prev) =>
+      prev.find((t) => t.code === test.code)
+        ? prev.filter((t) => t.code !== test.code)
+        : [...prev, test]
+    );
   };
 
-
-
-  const orderImaging = async () => {
-
+  const sendLabRequest = async () => {
     if (!consultation) return;
-
-    try {
-
-      const { data } = await clinicalApi.orderImaging(consultation.id, imagingForm);
-
-      setRecentImaging((prev) => [{ ...imagingForm, id: data?.id, at: new Date().toISOString() }, ...prev]);
-
-      setMessage(`Imagerie ${imagingForm.modality} prescrite`);
-
-    } catch (err) {
-
-      setError(err?.response?.data?.detail || 'Prescription imagerie impossible');
-
+    if (selectedLabs.length === 0) {
+      setError('Sélectionnez au moins un examen de laboratoire.');
+      return;
     }
-
-  };
-
-
-
-  const prescribe = async () => {
-
-    if (!consultation) return;
-
-    try {
-
-      await clinicalApi.prescribe(consultation.id, {
-
-        items: [{ ...rxForm, route: 'oral' }],
-
-      });
-
-      setRecentRx((prev) => [{ ...rxForm, at: new Date().toISOString() }, ...prev]);
-
-      setMessage('Ordonnance transmise à la pharmacie');
-
-      setRxForm({ medication_name: '', dosage: '', frequency: '2x/jour', duration_days: 7 });
-
-    } catch (err) {
-
-      setError(err?.response?.data?.detail || 'Prescription impossible');
-
-    }
-
-  };
-
-
-
-  const requestAdmission = async () => {
-
-    if (!consultation) return;
-
+    setBusy(true);
     setError('');
-
     try {
+      for (const t of selectedLabs) {
+        await clinicalApi.orderLab(consultation.id, {
+          test_code: t.code || t.name,
+          test_name: t.name,
+          priority: 'routine',
+          clinical_notes: labNotes || null,
+        });
+      }
+      await clinicalApi.doctorCreateServiceRequest({
+        patient_id: consultation.patient_id,
+        service_category: 'laboratory',
+        service_name: selectedLabs.map((t) => t.name).join(', '),
+        department: 'Laboratoire',
+        notes: labNotes || null,
+      });
+      setMessage(`${selectedLabs.length} examen(s) envoyé(s) au laboratoire.`);
+      setSelectedLabs([]);
+      setLabNotes('');
+      setLabSearch('');
+      refreshServiceRequests();
+      loadDashboard();
+    } catch (err) {
+      setError(formatApiError(err, 'Envoi au laboratoire impossible'));
+    } finally {
+      setBusy(false);
+    }
+  };
 
-      const { data } = await clinicalApi.createAdmission({
+  const sendImagingRequest = async () => {
+    if (!consultation) return;
+    const modality =
+      imagingForm.modality === 'other'
+        ? (imagingForm.modality_other || 'other').slice(0, 32)
+        : imagingForm.modality;
+    if (!modality) {
+      setError("Précisez l'examen d'imagerie.");
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await clinicalApi.orderImaging(consultation.id, {
+        modality,
+        body_part: imagingForm.body_part || null,
+        clinical_indication: imagingForm.clinical_indication || null,
+        priority: imagingForm.priority,
+      });
+      const label =
+        (catalog.imaging || []).find((i) => i.modality === modality)?.label ||
+        imagingForm.modality_other ||
+        modality;
+      await clinicalApi.doctorCreateServiceRequest({
+        patient_id: consultation.patient_id,
+        service_category: 'imaging',
+        service_name: `${label}${imagingForm.body_part ? ' — ' + imagingForm.body_part : ''}`,
+        department: 'Imagerie médicale',
+        notes: imagingForm.clinical_indication || null,
+      });
+      setMessage("Demande d'imagerie envoyée.");
+      setImagingForm({ modality: 'xray', modality_other: '', body_part: '', clinical_indication: '', priority: 'routine' });
+      refreshServiceRequests();
+      loadDashboard();
+    } catch (err) {
+      setError(formatApiError(err, "Envoi de l'imagerie impossible"));
+    } finally {
+      setBusy(false);
+    }
+  };
 
+  const requestHospitalization = async () => {
+    if (!consultation) return;
+    setBusy(true);
+    setError('');
+    try {
+      const durationLabel =
+        hosp.duration === 'custom' ? `${hosp.custom_days || '?'} jour(s)` : hosp.duration;
+      const reason = hosp.reason || form.chief_complaint || 'Hospitalisation requise';
+      await clinicalApi.createAdmission({
         consultation_id: consultation.id,
-
-        reason: form.chief_complaint || 'Hospitalisation requise',
-
-        diagnosis_summary: form.diagnosis,
-
+        reason,
+        diagnosis_summary: form.diagnosis || null,
+        notes: `Durée: ${durationLabel}${hosp.notes ? ' — ' + hosp.notes : ''}`,
       });
-
-      setMessage(`Admission ${data.admission_number} créée — assignez un lit à l'hospitalisation.`);
-
+      await clinicalApi.doctorCreateServiceRequest({
+        patient_id: consultation.patient_id,
+        service_category: 'other',
+        service_name: `Hospitalisation (${durationLabel})`,
+        department: 'Hospitalisation',
+        notes: `${reason}${hosp.notes ? ' — ' + hosp.notes : ''}`,
+      });
+      setMessage("Demande d'hospitalisation créée — assignez un lit à l'hospitalisation.");
+      refreshServiceRequests();
+      loadDashboard();
     } catch (err) {
-
-      setError(err?.response?.data?.detail || 'Admission impossible');
-
+      setError(formatApiError(err, 'Demande d\'hospitalisation impossible'));
+    } finally {
+      setBusy(false);
     }
-
   };
 
-
-
-  const saveVitals = async () => {
-
+  const sendTo = async (target) => {
     if (!consultation) return;
-
+    const map = {
+      reception: { category: 'other', department: 'Réception', name: 'Retour à la réception' },
+      nurse: { category: 'nursing', department: 'Soins infirmiers', name: 'Soins infirmiers' },
+      lab: { category: 'laboratory', department: 'Laboratoire', name: 'Orientation laboratoire' },
+      imaging: { category: 'imaging', department: 'Imagerie médicale', name: 'Orientation imagerie' },
+    };
+    const cfg = map[target];
+    setBusy(true);
+    setError('');
     try {
-
-      await clinicalApi.recordVitals(consultation.id, {
-
-        bp_systolic: vitalsForm.bp_systolic ? Number(vitalsForm.bp_systolic) : null,
-
-        bp_diastolic: vitalsForm.bp_diastolic ? Number(vitalsForm.bp_diastolic) : null,
-
-        heart_rate: vitalsForm.heart_rate ? Number(vitalsForm.heart_rate) : null,
-
-        temperature_c: vitalsForm.temperature_c ? Number(vitalsForm.temperature_c) : null,
-
-        weight_kg: vitalsForm.weight_kg ? Number(vitalsForm.weight_kg) : null,
-
+      await clinicalApi.doctorCreateServiceRequest({
+        patient_id: consultation.patient_id,
+        service_category: cfg.category,
+        service_name: cfg.name,
+        department: cfg.department,
+        notes: form.diagnosis || null,
       });
-
-      setMessage('Signes vitaux enregistrés');
-
+      setMessage(`Patient envoyé vers ${cfg.department}.`);
+      refreshServiceRequests();
     } catch (err) {
-
-      setError(err?.response?.data?.detail || 'Enregistrement des signes vitaux impossible');
-
+      setError(formatApiError(err, 'Envoi impossible'));
+    } finally {
+      setBusy(false);
     }
-
   };
 
-
-
-  const scheduleFollowUp = async () => {
-
+  const printReport = async () => {
     if (!consultation) return;
-
+    setError('');
     try {
-
-      await clinicalApi.scheduleFollowUp(consultation.id, {
-
-        interval_type: followUpForm.interval_type,
-
-        scheduled_date: followUpForm.interval_type === 'custom' ? followUpForm.scheduled_date : null,
-
-        reason: followUpForm.reason || 'Suivi post-consultation',
-
-        clinical_notes: followUpForm.clinical_notes || null,
-
-        visit_type: 'follow_up',
-
-      });
-
-      setMessage('Suivi planifié');
-
+      await clinicalApi.downloadConsultationPdf(
+        consultation.id,
+        `consultation_${consultation.id}.pdf`
+      );
     } catch (err) {
-
-      setError(err?.response?.data?.detail || 'Planification du suivi impossible');
-
+      setError(formatApiError(err, 'Impression impossible'));
     }
-
   };
 
-
-
-  const stats = [
-
-    { label: 'Patients en file', value: queue.length, variant: 'accent' },
-
-    { label: 'Consultation active', value: consultation ? `#${consultation.id}` : '—' },
-
-    { label: 'Examens (session)', value: recentLabs.length },
-
-    { label: 'Ordonnances (session)', value: recentRx.length, variant: 'success' },
-
+  const statCards = [
+    { key: 'patients_waiting', label: 'Patients en attente', value: stats?.patients_waiting ?? 0, variant: 'accent' },
+    { key: 'consultations_today', label: "Consultations aujourd'hui", value: stats?.consultations_today ?? 0 },
+    { key: 'hospitalized_patients', label: 'Patients hospitalisés', value: stats?.hospitalized_patients ?? 0, variant: 'warning' },
+    { key: 'lab_pending', label: 'Résultats labo en attente', value: stats?.lab_pending ?? 0 },
+    { key: 'imaging_pending', label: 'Imagerie en attente', value: stats?.imaging_pending ?? 0 },
+    { key: 'completed_consultations', label: 'Consultations terminées', value: stats?.completed_consultations ?? 0, variant: 'success' },
   ];
 
-
+  const labResults = (catalog.lab_tests || []).filter((t) => {
+    const q = labSearch.trim().toLowerCase();
+    if (!q) return false;
+    return (
+      (t.name || '').toLowerCase().includes(q) ||
+      (t.category || '').toLowerCase().includes(q) ||
+      (t.code || '').toLowerCase().includes(q)
+    );
+  }).slice(0, 25);
 
   return (
-
-    <div className="clinical-page">
-
-      <h1>Tableau de bord — Médecin</h1>
-
-      <p className="clinical-lead">File d&apos;attente, consultations, prescriptions et demandes d&apos;examens.</p>
+    <div className="clinical-page reception-his">
+      <header className="reception-his-header">
+        <div>
+          <p className="nurse-his-clinic-name">{CLINIC_PRINT_NAME}</p>
+          <h1>Tableau de bord — Médecin</h1>
+          <p className="clinical-lead">Consultation · Examens · Imagerie · Hospitalisation</p>
+          <p className="reception-his-session">Session : {user?.full_name || user?.email || 'Médecin'}</p>
+        </div>
+        <div className="reception-his-search">
+          <label htmlFor="doctor-patient-search">Recherche patient</label>
+          <div className="reception-his-search-inline">
+            <input
+              id="doctor-patient-search"
+              ref={searchRef}
+              type="search"
+              placeholder="N° dossier, nom, téléphone, QR…"
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  runSearch();
+                }
+              }}
+              autoComplete="off"
+            />
+            <button type="button" className="clinical-btn" onClick={runSearch} disabled={searching || !searchQ.trim()}>
+              {searching ? '…' : 'Rechercher'}
+            </button>
+          </div>
+          {searchResults.length > 0 && (
+            <ul className="reception-his-search-results reception-his-search-results--inline">
+              {searchResults.map((p) => (
+                <li key={p.patient_id}>
+                  <button type="button" onClick={() => openPatient(p.patient_id)}>
+                    <strong>{p.full_name}</strong>
+                    <span>N° {p.patient_number || '—'} · {p.phone || '—'}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </header>
 
       {error && <p className="clinical-error">{String(error)}</p>}
-
       {message && <p className="clinical-success">{message}</p>}
 
+      <ClinicalStatGrid stats={statCards} onStatClick={loadBucket} activeKey={activeBucket} />
 
-
-      <ClinicalStatGrid stats={stats} />
+      {activeBucket && (
+        <section className="lab-his-queue-panel" aria-live="polite">
+          <h3>{BUCKET_TITLES[activeBucket] || 'Liste'}</h3>
+          {loadingBucket ? (
+            <p className="clinical-hint">Chargement…</p>
+          ) : bucketRows.length === 0 ? (
+            <p className="clinical-hint">Aucun élément dans cette liste.</p>
+          ) : (
+            <div className="lab-his-results-wrap">
+              <table className="lab-his-queue-table">
+                <thead>
+                  <tr>
+                    <th>Patient</th>
+                    <th>Détail</th>
+                    <th>Statut</th>
+                    <th aria-label="Actions" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {bucketRows.map((r, idx) => (
+                    <tr key={`${activeBucket}-${idx}`}>
+                      <td>{r.patient_name || '—'}</td>
+                      <td>
+                        {r.test_name || r.modality || r.diagnosis || r.clinical_status || r.department || '—'}
+                      </td>
+                      <td><span className="clinical-badge">{r.status || r.clinical_status || '—'}</span></td>
+                      <td>
+                        {r.patient_id && (
+                          <button type="button" className="clinical-btn secondary" onClick={() => openPatient(r.patient_id)}>
+                            Ouvrir
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       <DepartmentQueuePanel department="doctor" title="File de visite — Médecin" />
 
-      <nav className="clinical-section-nav" aria-label="Sections médecin">
-
-        <a href="#doctor-queue">File d&apos;attente</a>
-
-        <a href="#doctor-consultation">Consultation</a>
-
-        <a href="#doctor-lab">Examens</a>
-
-        <a href="#doctor-rx">Ordonnances</a>
-
-      </nav>
-
-
-
       <div className="clinical-grid">
-
-        <section id="doctor-queue" className="clinical-card">
-
+        <section className="clinical-card">
           <h2>File d&apos;attente</h2>
-
           <ul className="clinical-list">
-
             {queue.map((item) => (
-
               <li key={item.id}>
-
                 <strong>{item.patient_name}</strong>
-
                 <br />
-
-                {new Date(item.date).toLocaleString('fr-FR')} · <span className="clinical-badge">{item.clinical_status}</span>
-
+                {formatDateTime(item.date)} · <span className="clinical-badge">{item.clinical_status}</span>
                 <div className="clinical-actions">
-
-                  <button type="button" className="clinical-btn" onClick={() => startConsultation(item.id)}>
-
-                    Démarrer consultation
-
+                  <button type="button" className="clinical-btn" onClick={() => openPatient(item.patient_id, item.chief_complaint)} disabled={busy}>
+                    Ouvrir le dossier
                   </button>
-
                 </div>
-
               </li>
-
             ))}
-
             {queue.length === 0 && <li>Aucun patient en attente.</li>}
-
           </ul>
-
         </section>
 
-
-
         {consultation ? (
-
-          <section id="doctor-consultation" className="clinical-card">
-
+          <section className="clinical-card" style={{ gridColumn: '1 / -1' }}>
             <h2>Consultation #{consultation.id}</h2>
 
-            <p><strong>{consultation.patient_name}</strong></p>
-
-            {patientHistory && (
+            {/* Patient identity */}
+            {identity && (
               <div className="clinical-panel" style={{ marginBottom: '1rem' }}>
-                <h3>Dossier médical</h3>
-                <ul className="clinical-list">
-                  <li>Allergies: {(patientHistory.allergies || []).map((a) => a.allergen).join(', ') || '—'}</li>
-                  <li>Antécédents: {(patientHistory.chronic_conditions || []).map((c) => c.condition_name).join(', ') || '—'}</li>
-                  <li>Groupe sanguin: {patientHistory.medical_record?.blood_type || '—'}</li>
-                </ul>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div className="nurse-doctor-vitals-grid" style={{ flex: 1 }}>
+                    <div><strong>N° dossier</strong> {identity.patient_number || '—'}</div>
+                    <div><strong>Nom</strong> {identity.full_name}</div>
+                    <div><strong>Âge</strong> {identity.age ?? '—'}</div>
+                    <div><strong>Sexe</strong> {genderLabel(identity.sex)}</div>
+                    <div><strong>Téléphone</strong> {identity.phone || '—'}</div>
+                    <div><strong>Prise en charge</strong> {identity.payer || '—'}</div>
+                  </div>
+                  {identity.qr_token && (
+                    <img src={qrImageUrl(identity.qr_token)} alt="QR patient" width={90} height={90} style={{ alignSelf: 'flex-start' }} />
+                  )}
+                </div>
               </div>
             )}
 
-            {nurseAssessment && (
+            {/* Nurse vitals */}
+            {nurseAssessment ? (
               <div className="clinical-panel nurse-doctor-panel" style={{ marginBottom: '1rem' }}>
                 <h3>Évaluation infirmière</h3>
                 <p className="clinical-lead" style={{ marginTop: 0 }}>
-                  Saisie par {nurseAssessment.nurse_name || 'infirmier(ère)'} ·{' '}
-                  {new Date(nurseAssessment.recorded_at).toLocaleString('fr-FR')}
+                  {nurseAssessment.nurse_name || 'Infirmier(ère)'} · {formatDateTime(nurseAssessment.recorded_at)}
                 </p>
                 <div className="nurse-doctor-vitals-grid">
-                  <div><strong>TA</strong> {nurseAssessment.bp_systolic || '—'}/{nurseAssessment.bp_diastolic || '—'} mmHg</div>
-                  <div><strong>FC</strong> {nurseAssessment.heart_rate || '—'} batt/min</div>
-                  <div><strong>FR</strong> {nurseAssessment.respiratory_rate || '—'} resp/min</div>
                   <div><strong>T°</strong> {nurseAssessment.temperature_c ?? '—'} °C</div>
+                  <div><strong>TA</strong> {nurseAssessment.bp_systolic || '—'}/{nurseAssessment.bp_diastolic || '—'}</div>
+                  <div><strong>FC</strong> {nurseAssessment.heart_rate || '—'}</div>
+                  <div><strong>FR</strong> {nurseAssessment.respiratory_rate || '—'}</div>
                   <div><strong>Poids</strong> {nurseAssessment.weight_kg ?? '—'} kg</div>
                   <div><strong>Taille</strong> {nurseAssessment.height_cm ?? '—'} cm</div>
                   <div><strong>IMC</strong> {nurseAssessment.bmi ?? '—'}</div>
                 </div>
-                {nurseAssessment.vitals_observations && (
-                  <p><strong>Observations :</strong> {nurseAssessment.vitals_observations}</p>
-                )}
-                {nurseAssessment.reason_for_consultation && (
-                  <p><strong>Motif :</strong> {nurseAssessment.reason_for_consultation}</p>
-                )}
-                {nurseAssessment.history_of_present_illness && (
-                  <p><strong>Histoire de la maladie :</strong> {nurseAssessment.history_of_present_illness}</p>
-                )}
-                {nurseAssessment.allergies && (
-                  <p><strong>Allergies (infirmier) :</strong> {nurseAssessment.allergies}</p>
-                )}
-                {nurseAssessment.current_treatments && (
-                  <p><strong>Traitements en cours :</strong> {nurseAssessment.current_treatments}</p>
-                )}
-                {nurseAssessment.nurse_notes && (
-                  <p><strong>Notes infirmières :</strong> {nurseAssessment.nurse_notes}</p>
-                )}
+                {nurseAssessment.vitals_observations && <p><strong>Observations :</strong> {nurseAssessment.vitals_observations}</p>}
+                {nurseAssessment.nurse_notes && <p><strong>Notes infirmières :</strong> {nurseAssessment.nurse_notes}</p>}
               </div>
+            ) : (
+              <p className="clinical-hint" style={{ marginBottom: '1rem' }}>Aucune évaluation infirmière disponible.</p>
             )}
 
-            {Object.keys(FIELD_LABELS).map((field) => (
-
-              <div className="clinical-field" key={field}>
-
-                <label>{FIELD_LABELS[field]}</label>
-
-                <textarea
-
-                  rows={2}
-
-                  value={form[field]}
-
-                  onChange={(e) => setForm({ ...form, [field]: e.target.value })}
-
-                />
-
+            {/* Consultation form */}
+            <h3>Dossier de consultation</h3>
+            {CONSULT_FIELDS.map((f) => (
+              <div className="clinical-field" key={f.key}>
+                <label>{f.label}</label>
+                <textarea rows={f.rows} value={form[f.key]} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />
               </div>
-
             ))}
 
-            <div className="clinical-actions">
-
-              <button type="button" className="clinical-btn secondary" onClick={() => saveConsultation(false)}>Enregistrer</button>
-
-              <button type="button" className="clinical-btn" onClick={() => saveConsultation(true)}>Terminer</button>
-
-              {consultation && (
-                <button type="button" className="clinical-btn secondary" onClick={requestAdmission}>
-                  Demander admission
-                </button>
-              )}
-
-            </div>
-
-
-
-            <h3 id="doctor-lab" style={{ marginTop: '1.25rem' }}>Demandes d&apos;examens</h3>
-
+            {/* Service decision */}
             <div className="clinical-field">
-
-              <label>Code</label>
-
-              <input value={labForm.test_code} onChange={(e) => setLabForm({ ...labForm, test_code: e.target.value })} />
-
-            </div>
-
-            <div className="clinical-field">
-
-              <label>Examen</label>
-
-              <input value={labForm.test_name} onChange={(e) => setLabForm({ ...labForm, test_name: e.target.value })} />
-
-            </div>
-
-            <div className="clinical-field">
-
-              <label>Priorité</label>
-
-              <select value={labForm.priority} onChange={(e) => setLabForm({ ...labForm, priority: e.target.value })}>
-
-                <option value="routine">Routine</option>
-
-                <option value="urgent">Urgent</option>
-
-              </select>
-
-            </div>
-
-            <button type="button" className="clinical-btn" onClick={orderLab}>Envoyer au laboratoire</button>
-
-            {recentLabs.length > 0 && (
-
-              <ul className="clinical-list" style={{ marginTop: '0.75rem' }}>
-
-                {recentLabs.map((lab) => (
-
-                  <li key={`${lab.test_code}-${lab.at}`}>
-
-                    {lab.test_name} ({lab.test_code}) · <span className="clinical-badge">{lab.priority}</span>
-
-                  </li>
-
+              <label>Service / Spécialité</label>
+              <select
+                value={form.target_specialty_code}
+                onChange={(e) => setForm({ ...form, target_specialty_code: e.target.value })}
+              >
+                <option value="">Consultation générale</option>
+                {(catalog.specialties || []).map((s) => (
+                  <option key={s.code} value={s.code}>{s.label}</option>
                 ))}
-
-              </ul>
-
-            )}
-
-
-
-            <h3 id="doctor-imaging" style={{ marginTop: '1.25rem' }}>Imagerie médicale</h3>
-
-            <div className="clinical-field">
-
-              <label>Modalité</label>
-
-              <select value={imagingForm.modality} onChange={(e) => setImagingForm({ ...imagingForm, modality: e.target.value })}>
-
-                <option value="xray">Radiographie</option>
-
-                <option value="ultrasound">Échographie</option>
-
-                <option value="ct_scan">Scanner</option>
-
-                <option value="mri">IRM</option>
-
+                <option value="__other__">Autre (préciser)</option>
               </select>
-
             </div>
-
-            <div className="clinical-field">
-
-              <label>Région</label>
-
-              <input value={imagingForm.body_part} onChange={(e) => setImagingForm({ ...imagingForm, body_part: e.target.value })} />
-
-            </div>
-
-            <div className="clinical-field">
-
-              <label>Indication clinique</label>
-
-              <input value={imagingForm.clinical_indication} onChange={(e) => setImagingForm({ ...imagingForm, clinical_indication: e.target.value })} />
-
-            </div>
-
-            <button type="button" className="clinical-btn" onClick={orderImaging}>Prescrire imagerie</button>
-
-            {recentImaging.length > 0 && (
-
-              <ul className="clinical-list" style={{ marginTop: '0.75rem' }}>
-
-                {recentImaging.map((img) => (
-
-                  <li key={`${img.modality}-${img.at}`}>
-
-                    {img.modality} — {img.body_part} · <span className="clinical-badge">{img.priority}</span>
-
-                  </li>
-
-                ))}
-
-              </ul>
-
-            )}
-
-
-
-            <h3 id="doctor-rx" style={{ marginTop: '1.25rem' }}>Prescriptions</h3>
-
-            <div className="clinical-field">
-
-              <label>Médicament</label>
-
-              <input value={rxForm.medication_name} onChange={(e) => setRxForm({ ...rxForm, medication_name: e.target.value })} />
-
-            </div>
-
-            <div className="clinical-field">
-
-              <label>Posologie</label>
-
-              <input value={rxForm.dosage} onChange={(e) => setRxForm({ ...rxForm, dosage: e.target.value })} placeholder="ex. 500mg" />
-
-            </div>
-
-            <button type="button" className="clinical-btn" onClick={prescribe}>Transmettre à la pharmacie</button>
-
-            {recentRx.length > 0 && (
-
-              <ul className="clinical-list" style={{ marginTop: '0.75rem' }}>
-
-                {recentRx.map((rx) => (
-
-                  <li key={`${rx.medication_name}-${rx.at}`}>
-
-                    {rx.medication_name} {rx.dosage} · {rx.frequency}
-
-                  </li>
-
-                ))}
-
-              </ul>
-
-            )}
-
-
-
-            <h3 style={{ marginTop: '1.25rem' }}>Signes vitaux</h3>
-
-            <div className="clinical-field">
-
-              <label>TA systolique / diastolique</label>
-
-              <input placeholder="120" value={vitalsForm.bp_systolic} onChange={(e) => setVitalsForm({ ...vitalsForm, bp_systolic: e.target.value })} style={{ width: '45%', marginRight: '8px' }} />
-
-              <input placeholder="80" value={vitalsForm.bp_diastolic} onChange={(e) => setVitalsForm({ ...vitalsForm, bp_diastolic: e.target.value })} style={{ width: '45%' }} />
-
-            </div>
-
-            <div className="clinical-field">
-
-              <label>FC / Temp / Poids</label>
-
-              <input placeholder="FC" value={vitalsForm.heart_rate} onChange={(e) => setVitalsForm({ ...vitalsForm, heart_rate: e.target.value })} style={{ width: '30%', marginRight: '4px' }} />
-
-              <input placeholder="°C" value={vitalsForm.temperature_c} onChange={(e) => setVitalsForm({ ...vitalsForm, temperature_c: e.target.value })} style={{ width: '30%', marginRight: '4px' }} />
-
-              <input placeholder="kg" value={vitalsForm.weight_kg} onChange={(e) => setVitalsForm({ ...vitalsForm, weight_kg: e.target.value })} style={{ width: '30%' }} />
-
-            </div>
-
-            <button type="button" className="clinical-btn secondary" onClick={saveVitals}>Enregistrer signes vitaux</button>
-
-
-
-            <h3 style={{ marginTop: '1.25rem' }}>Planifier un suivi</h3>
-
-            <div className="clinical-field">
-
-              <label>Intervalle</label>
-
-              <select value={followUpForm.interval_type} onChange={(e) => setFollowUpForm({ ...followUpForm, interval_type: e.target.value })}>
-
-                <option value="7d">7 jours</option>
-
-                <option value="15d">15 jours</option>
-
-                <option value="1m">1 mois</option>
-
-                <option value="3m">3 mois</option>
-
-                <option value="6m">6 mois</option>
-
-                <option value="custom">Date personnalisée</option>
-
-              </select>
-
-            </div>
-
-            {followUpForm.interval_type === 'custom' && (
-
+            {form.target_specialty_code === '__other__' && (
               <div className="clinical-field">
-
-                <label>Date</label>
-
-                <input type="date" value={followUpForm.scheduled_date} onChange={(e) => setFollowUpForm({ ...followUpForm, scheduled_date: e.target.value })} />
-
+                <label>Préciser la spécialité</label>
+                <input value={form.target_specialty_other} onChange={(e) => setForm({ ...form, target_specialty_other: e.target.value })} />
               </div>
-
             )}
 
-            <div className="clinical-field">
-
-              <label>Motif / notes</label>
-
-              <input value={followUpForm.reason} onChange={(e) => setFollowUpForm({ ...followUpForm, reason: e.target.value })} placeholder="Contrôle post-traitement" />
-
+            <div className="clinical-actions">
+              <button type="button" className="clinical-btn secondary" onClick={() => saveConsultation(false)} disabled={busy}>Enregistrer</button>
+              <button type="button" className="clinical-btn" onClick={() => saveConsultation(true)} disabled={busy}>Valider la consultation</button>
+              <button type="button" className="clinical-btn secondary" onClick={printReport} disabled={busy}>Imprimer le compte rendu</button>
+            </div>
+            <div className="clinical-actions" style={{ marginTop: '0.5rem' }}>
+              <button type="button" className="clinical-btn secondary" onClick={() => sendTo('reception')} disabled={busy}>Envoyer à la réception</button>
+              <button type="button" className="clinical-btn secondary" onClick={() => sendTo('nurse')} disabled={busy}>Envoyer à l&apos;infirmerie</button>
+              <button type="button" className="clinical-btn secondary" onClick={() => sendTo('lab')} disabled={busy}>Orienter labo</button>
+              <button type="button" className="clinical-btn secondary" onClick={() => sendTo('imaging')} disabled={busy}>Orienter imagerie</button>
             </div>
 
-            <button type="button" className="clinical-btn" onClick={scheduleFollowUp}>Planifier le suivi</button>
+            {/* Laboratory request */}
+            <h3 style={{ marginTop: '1.5rem' }}>Demande de laboratoire</h3>
+            <div className="clinical-field">
+              <label>Rechercher un examen</label>
+              <input value={labSearch} onChange={(e) => setLabSearch(e.target.value)} placeholder="Nom ou catégorie de l'examen…" />
+            </div>
+            {labResults.length > 0 && (
+              <ul className="clinical-list" style={{ maxHeight: 180, overflowY: 'auto' }}>
+                {labResults.map((t) => (
+                  <li key={t.code}>
+                    <label style={{ cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(selectedLabs.find((x) => x.code === t.code))}
+                        onChange={() => toggleLab(t)}
+                        style={{ marginRight: 8 }}
+                      />
+                      {t.name} <span className="clinical-badge">{t.category || '—'}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {selectedLabs.length > 0 && (
+              <p className="clinical-hint">Sélectionnés : {selectedLabs.map((t) => t.name).join(', ')}</p>
+            )}
+            <div className="clinical-field">
+              <label>Notes</label>
+              <input value={labNotes} onChange={(e) => setLabNotes(e.target.value)} />
+            </div>
+            <button type="button" className="clinical-btn" onClick={sendLabRequest} disabled={busy || selectedLabs.length === 0}>Envoyer au laboratoire</button>
 
+            {/* Imaging request */}
+            <h3 style={{ marginTop: '1.5rem' }}>Demande d&apos;imagerie</h3>
+            <div className="clinical-field">
+              <label>Examen</label>
+              <select value={imagingForm.modality} onChange={(e) => setImagingForm({ ...imagingForm, modality: e.target.value })}>
+                {(catalog.imaging || []).map((i) => (
+                  <option key={i.code} value={i.modality}>{i.label}</option>
+                ))}
+                <option value="other">Autre (préciser)</option>
+              </select>
+            </div>
+            {imagingForm.modality === 'other' && (
+              <div className="clinical-field">
+                <label>Préciser l&apos;examen</label>
+                <input value={imagingForm.modality_other} onChange={(e) => setImagingForm({ ...imagingForm, modality_other: e.target.value })} />
+              </div>
+            )}
+            <div className="clinical-field">
+              <label>Région / partie du corps</label>
+              <input value={imagingForm.body_part} onChange={(e) => setImagingForm({ ...imagingForm, body_part: e.target.value })} />
+            </div>
+            <div className="clinical-field">
+              <label>Indication clinique</label>
+              <input value={imagingForm.clinical_indication} onChange={(e) => setImagingForm({ ...imagingForm, clinical_indication: e.target.value })} />
+            </div>
+            <button type="button" className="clinical-btn" onClick={sendImagingRequest} disabled={busy}>Envoyer à l&apos;imagerie</button>
+
+            {/* Hospitalization decision */}
+            <h3 style={{ marginTop: '1.5rem' }}>Hospitalisation</h3>
+            <div className="clinical-field">
+              <label>Hospitaliser le patient ?</label>
+              <select value={hosp.requested ? 'yes' : 'no'} onChange={(e) => setHosp({ ...hosp, requested: e.target.value === 'yes' })}>
+                <option value="no">Non</option>
+                <option value="yes">Oui</option>
+              </select>
+            </div>
+            {hosp.requested && (
+              <>
+                <div className="clinical-field">
+                  <label>Motif d&apos;hospitalisation</label>
+                  <input value={hosp.reason} onChange={(e) => setHosp({ ...hosp, reason: e.target.value })} />
+                </div>
+                <div className="clinical-field">
+                  <label>Durée</label>
+                  <select value={hosp.duration} onChange={(e) => setHosp({ ...hosp, duration: e.target.value })}>
+                    <option value="24h">24 heures</option>
+                    <option value="48h">48 heures</option>
+                    <option value="72h">72 heures</option>
+                    <option value="custom">Nombre de jours personnalisé</option>
+                  </select>
+                </div>
+                {hosp.duration === 'custom' && (
+                  <div className="clinical-field">
+                    <label>Nombre de jours</label>
+                    <input type="number" min="1" value={hosp.custom_days} onChange={(e) => setHosp({ ...hosp, custom_days: e.target.value })} />
+                  </div>
+                )}
+                <div className="clinical-field">
+                  <label>Notes</label>
+                  <input value={hosp.notes} onChange={(e) => setHosp({ ...hosp, notes: e.target.value })} />
+                </div>
+                <button type="button" className="clinical-btn" onClick={requestHospitalization} disabled={busy}>Créer la demande d&apos;hospitalisation</button>
+              </>
+            )}
+
+            {/* Service requests created for this patient */}
+            <h3 style={{ marginTop: '1.5rem' }}>Demandes de services envoyées</h3>
+            {serviceRequests.length === 0 ? (
+              <p className="clinical-hint">Aucune demande de service pour ce patient.</p>
+            ) : (
+              <div className="lab-his-results-wrap">
+                <table className="lab-his-queue-table">
+                  <thead>
+                    <tr>
+                      <th>Service</th>
+                      <th>Département</th>
+                      <th>Statut</th>
+                      <th>Créée le</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {serviceRequests.map((s) => (
+                      <tr key={s.id}>
+                        <td>{s.service_name || '—'}</td>
+                        <td>{s.department || '—'}</td>
+                        <td><span className="clinical-badge">{s.status || '—'}</span></td>
+                        <td>{formatDateTime(s.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Consultation history */}
+            <h3 style={{ marginTop: '1.5rem' }}>Historique des consultations</h3>
+            {history.length === 0 ? (
+              <p className="clinical-hint">Aucune consultation antérieure.</p>
+            ) : (
+              <div className="lab-his-results-wrap">
+                <table className="lab-his-queue-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Médecin</th>
+                      <th>Diagnostic</th>
+                      <th>Services</th>
+                      <th aria-label="Actions" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.map((h) => (
+                      <tr key={h.id}>
+                        <td>{formatDateTime(h.date)}</td>
+                        <td>{h.doctor_name || '—'}</td>
+                        <td>{h.diagnosis || '—'}</td>
+                        <td>{h.requested_services || '—'}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="clinical-btn secondary"
+                            onClick={() => clinicalApi.downloadConsultationPdf(h.id, `consultation_${h.id}.pdf`).catch(() => {})}
+                          >
+                            Imprimer
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
-
         ) : (
-
           <section className="clinical-card">
-
             <h2>Consultation</h2>
-
-            <p className="clinical-lead">Sélectionnez un patient dans la file pour démarrer une consultation.</p>
-
+            <p className="clinical-lead">Recherchez un patient ou sélectionnez-le dans la file pour démarrer une consultation.</p>
           </section>
-
         )}
-
       </div>
-
     </div>
-
   );
-
 }
-
-

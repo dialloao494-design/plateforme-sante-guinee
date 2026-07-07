@@ -26,6 +26,18 @@ class ClinicalConsultation(Base):
     diagnosis = Column(Text, nullable=True)
     treatment_plan = Column(Text, nullable=True)
 
+    # Extended doctor consultation fields
+    medical_history = Column(Text, nullable=True)
+    surgical_history = Column(Text, nullable=True)
+    gyneco_history = Column(Text, nullable=True)
+    allergies = Column(Text, nullable=True)
+    current_treatments = Column(Text, nullable=True)
+    observations = Column(Text, nullable=True)
+
+    # Service / specialty routing decision
+    target_specialty_code = Column(String(64), nullable=True)
+    target_specialty_other = Column(String(255), nullable=True)
+
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     deleted_at = Column(DateTime, nullable=True)

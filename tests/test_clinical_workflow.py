@@ -343,6 +343,155 @@ def test_assign_doctor_syncs_user_clinic(client, db_session, admin_user):
     assert doc_user.clinic_id == clinic_b
 
 
+def test_doctor_dashboard_module(client, db_session, admin_user):
+    """Doctor dashboard: search → open consultation → save extended fields →
+    lab/imaging/service requests → history → PDF → dashboard cards."""
+    r = client.post(
+        "/clinical/clinics",
+        json={"name": "Clinique Médecin", "city": "Conakry"},
+        headers=_auth_header(admin_user),
+    )
+    clinic_id = r.json()["id"]
+
+    with provisioning_channel("test_fixture"):
+        doc_user = models.User(
+            email="doctor.dash@test.com",
+            hashed_password=hash_password("DoctorPass1"),
+            role="doctor",
+            clinic_id=clinic_id,
+        )
+        db_session.add(doc_user)
+        db_session.flush()
+        doctor = models.Doctor(
+            user_id=doc_user.id,
+            first_name="Mamadou",
+            last_name="Sow",
+            specialty="Médecine générale",
+            city="Conakry",
+            phone="+224600000099",
+            clinic_id=clinic_id,
+        )
+        db_session.add(doctor)
+        db_session.commit()
+        db_session.refresh(doctor)
+
+    with provisioning_channel("test_fixture"):
+        patient = models.Patient(
+            clinic_id=clinic_id,
+            first_name="Fatou",
+            last_name="Barry",
+            age=34,
+            gender="F",
+            phone="+224620000001",
+            patient_number="P-DASH-001",
+        )
+        db_session.add(patient)
+        db_session.commit()
+        db_session.refresh(patient)
+    patient_id = patient.id
+
+    doc_headers = _auth_header(doc_user)
+
+    # Dashboard stats + catalog
+    r = client.get("/clinical/doctor/dashboard", headers=doc_headers)
+    assert r.status_code == 200, r.text
+    assert "patients_waiting" in r.json()
+
+    r = client.get("/clinical/doctor/catalog", headers=doc_headers)
+    assert r.status_code == 200
+    assert "specialties" in r.json() and "imaging" in r.json()
+
+    # Search
+    r = client.get("/clinical/doctor/patients/search", params={"q": "Barry"}, headers=doc_headers)
+    assert r.status_code == 200
+    assert any(p["patient_id"] == patient_id for p in r.json())
+
+    # Open consultation from search (no pre-existing appointment)
+    r = client.post(
+        "/clinical/doctor/open-consultation",
+        json={"patient_id": patient_id, "chief_complaint": "Céphalées"},
+        headers=doc_headers,
+    )
+    assert r.status_code == 201, r.text
+    consultation_id = r.json()["id"]
+
+    # Save extended consultation fields
+    r = client.patch(
+        f"/clinical/consultations/{consultation_id}",
+        json={
+            "diagnosis": "Migraine",
+            "treatment_plan": "Repos + antalgiques",
+            "medical_history": "RAS",
+            "surgical_history": "Appendicectomie 2015",
+            "allergies": "Pénicilline",
+            "observations": "Revoir dans 1 semaine",
+            "target_specialty_code": "internal_medicine",
+        },
+        headers=doc_headers,
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["diagnosis"] == "Migraine"
+    assert body["surgical_history"] == "Appendicectomie 2015"
+    assert body["target_specialty_code"] == "internal_medicine"
+
+    # Lab + imaging orders
+    r = client.post(
+        f"/clinical/consultations/{consultation_id}/lab-orders",
+        json={"test_code": "NFS", "test_name": "Numération formule sanguine"},
+        headers=doc_headers,
+    )
+    assert r.status_code == 201
+    r = client.post(
+        f"/clinical/radiology/consultations/{consultation_id}/orders",
+        json={"modality": "xray", "body_part": "Crâne", "clinical_indication": "Céphalées"},
+        headers=doc_headers,
+    )
+    assert r.status_code == 201, r.text
+
+    # Doctor service request
+    r = client.post(
+        "/clinical/doctor/service-requests",
+        json={
+            "patient_id": patient_id,
+            "service_category": "laboratory",
+            "service_name": "NFS",
+            "department": "Laboratoire",
+        },
+        headers=doc_headers,
+    )
+    assert r.status_code == 201, r.text
+
+    r = client.get("/clinical/doctor/service-requests", params={"patient_id": patient_id}, headers=doc_headers)
+    assert r.status_code == 200
+    assert len(r.json()) >= 1
+
+    # Consultation history
+    r = client.get(f"/clinical/doctor/patients/{patient_id}/consultations", headers=doc_headers)
+    assert r.status_code == 200
+    assert any(c["id"] == consultation_id for c in r.json())
+
+    # PDF report
+    r = client.get(f"/clinical/consultations/{consultation_id}/pdf", headers=doc_headers)
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "application/pdf"
+    assert r.content[:4] == b"%PDF"
+
+    # Dashboard drill-down bucket
+    r = client.get("/clinical/doctor/dashboard/queue", params={"bucket": "lab_pending"}, headers=doc_headers)
+    assert r.status_code == 200
+    assert isinstance(r.json(), list)
+
+    # Validate consultation
+    r = client.patch(
+        f"/clinical/consultations/{consultation_id}",
+        json={"status": "completed"},
+        headers=doc_headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["status"] == "completed"
+
+
 def test_lab_staff_login_after_admin_create(client, admin_user):
     r = client.post(
         "/clinical/clinics",

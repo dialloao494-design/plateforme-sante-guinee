@@ -1354,6 +1354,26 @@ def ensure_reception_his_schema(engine: Engine) -> None:
             except Exception as exc:
                 logger.warning("patient_medical_records.last_specialty migration skipped: %s", exc)
 
+    if "consultations" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("consultations")}
+        for col, col_type in (
+            ("medical_history", "TEXT"),
+            ("surgical_history", "TEXT"),
+            ("gyneco_history", "TEXT"),
+            ("allergies", "TEXT"),
+            ("current_treatments", "TEXT"),
+            ("observations", "TEXT"),
+            ("target_specialty_code", "VARCHAR(64)"),
+            ("target_specialty_other", "VARCHAR(255)"),
+        ):
+            if col not in cols:
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE consultations ADD COLUMN {col} {col_type}"))
+                    logger.info("Added consultations.%s", col)
+                except Exception as exc:
+                    logger.warning("consultations.%s migration skipped: %s", col, exc)
+
 
 def run_alembic_upgrade_head() -> None:
     """Apply Alembic migrations on startup (Railway runs uvicorn without Docker entrypoint)."""

@@ -9,7 +9,10 @@ from pydantic import BaseModel, Field
 
 
 class ImagingOrderCreate(BaseModel):
-    modality: str = Field(..., pattern="^(xray|ultrasound|ct_scan|mri)$")
+    # Accept the full AASMA imaging catalogue (xray, ultrasound, ct_scan, mri,
+    # mammography, dental_panoramic) as well as free-text "other" modalities.
+    # Column is String(32); keep validation to a non-empty, bounded string.
+    modality: str = Field(..., min_length=1, max_length=32)
     body_part: Optional[str] = None
     clinical_indication: Optional[str] = None
     priority: str = "routine"

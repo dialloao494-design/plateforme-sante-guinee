@@ -192,6 +192,26 @@ const clinicalApi = {
 
   // Doctor
   doctorQueue: () => httpClient.get('/clinical/doctor/queue'),
+  doctorDashboard: () => httpClient.get('/clinical/doctor/dashboard'),
+  doctorDashboardQueue: (bucket) =>
+    httpClient.get('/clinical/doctor/dashboard/queue', { params: { bucket } }),
+  doctorSearchPatients: (q) =>
+    httpClient.get('/clinical/doctor/patients/search', { params: { q } }),
+  doctorPatientIdentity: (patientId) =>
+    httpClient.get(`/clinical/doctor/patients/${patientId}/identity`),
+  doctorOpenConsultation: (data) => httpClient.post('/clinical/doctor/open-consultation', data),
+  doctorPatientConsultations: (patientId) =>
+    httpClient.get(`/clinical/doctor/patients/${patientId}/consultations`),
+  doctorCatalog: () => httpClient.get('/clinical/doctor/catalog'),
+  doctorListServiceRequests: (patientId) =>
+    httpClient.get('/clinical/doctor/service-requests', {
+      params: patientId ? { patient_id: patientId } : {},
+    }),
+  doctorCreateServiceRequest: (data) => httpClient.post('/clinical/doctor/service-requests', data),
+  downloadConsultationPdf: (consultationId, filename) =>
+    import('../utils/downloadPdf').then(({ downloadAuthenticatedPdf }) =>
+      downloadAuthenticatedPdf(`/clinical/consultations/${consultationId}/pdf`, filename)
+    ),
   startConsultation: (data) => httpClient.post('/clinical/consultations', data),
   updateConsultation: (id, data) => httpClient.patch(`/clinical/consultations/${id}`, data),
   orderLab: (consultationId, data) =>

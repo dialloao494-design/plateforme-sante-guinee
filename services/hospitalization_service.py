@@ -205,6 +205,7 @@ class HospitalizationService:
             consultation_id=consultation.id,
             admission_number=_next_admission_number(db, clinic_id),
             status="pending",
+            admission_type="hospitalization",
             reason=payload.reason,
             diagnosis_summary=payload.diagnosis_summary or consultation.diagnosis,
             attending_clinician_user_id=payload.attending_clinician_user_id,

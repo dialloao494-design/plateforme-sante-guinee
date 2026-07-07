@@ -155,7 +155,20 @@ class ConsultationUpdate(BaseModel):
     examination: Optional[str] = None
     diagnosis: Optional[str] = None
     treatment_plan: Optional[str] = None
+    medical_history: Optional[str] = None
+    surgical_history: Optional[str] = None
+    gyneco_history: Optional[str] = None
+    allergies: Optional[str] = None
+    current_treatments: Optional[str] = None
+    observations: Optional[str] = None
+    target_specialty_code: Optional[str] = None
+    target_specialty_other: Optional[str] = None
     status: Optional[str] = None
+
+
+class DoctorConsultationOpen(BaseModel):
+    patient_id: int
+    chief_complaint: Optional[str] = None
 
 
 class ConsultationResponse(BaseModel):
@@ -170,6 +183,14 @@ class ConsultationResponse(BaseModel):
     examination: Optional[str]
     diagnosis: Optional[str]
     treatment_plan: Optional[str]
+    medical_history: Optional[str] = None
+    surgical_history: Optional[str] = None
+    gyneco_history: Optional[str] = None
+    allergies: Optional[str] = None
+    current_treatments: Optional[str] = None
+    observations: Optional[str] = None
+    target_specialty_code: Optional[str] = None
+    target_specialty_other: Optional[str] = None
     started_at: Optional[datetime]
     completed_at: Optional[datetime]
     patient_name: Optional[str] = None

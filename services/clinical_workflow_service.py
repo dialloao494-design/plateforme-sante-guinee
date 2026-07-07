@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime, time
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, joinedload
@@ -407,8 +407,22 @@ class ClinicalWorkflowService:
         if not consultation:
             raise HTTPException(status_code=404, detail="Consultation not found")
 
-        for field in ("chief_complaint", "history", "examination", "diagnosis", "treatment_plan"):
-            val = getattr(payload, field)
+        for field in (
+            "chief_complaint",
+            "history",
+            "examination",
+            "diagnosis",
+            "treatment_plan",
+            "medical_history",
+            "surgical_history",
+            "gyneco_history",
+            "allergies",
+            "current_treatments",
+            "observations",
+            "target_specialty_code",
+            "target_specialty_other",
+        ):
+            val = getattr(payload, field, None)
             if val is not None:
                 setattr(consultation, field, val)
 
@@ -454,6 +468,370 @@ class ClinicalWorkflowService:
             .order_by(models.RendezVous.date.asc())
             .all()
         )
+
+    @staticmethod
+    def open_consultation_for_patient(
+        db: Session,
+        *,
+        clinic_id: int,
+        doctor: models.Doctor,
+        patient_id: int,
+        chief_complaint: str | None = None,
+        actor: User | None = None,
+        client_ip: str | None = None,
+    ) -> models.ClinicalConsultation:
+        """Search-driven entry point: resume or start a consultation for a patient."""
+        patient = (
+            db.query(models.Patient)
+            .filter(models.Patient.id == patient_id, models.Patient.clinic_id == clinic_id)
+            .first()
+        )
+        if not patient:
+            raise HTTPException(status_code=404, detail="Patient introuvable dans cette clinique")
+
+        existing = (
+            db.query(models.ClinicalConsultation)
+            .filter(
+                models.ClinicalConsultation.clinic_id == clinic_id,
+                models.ClinicalConsultation.patient_id == patient_id,
+                models.ClinicalConsultation.doctor_id == doctor.id,
+                models.ClinicalConsultation.status == "in_progress",
+                models.ClinicalConsultation.deleted_at.is_(None),
+            )
+            .order_by(models.ClinicalConsultation.id.desc())
+            .first()
+        )
+        if existing:
+            return existing
+
+        rdv = (
+            db.query(models.RendezVous)
+            .filter(
+                models.RendezVous.clinic_id == clinic_id,
+                models.RendezVous.patient_id == patient_id,
+                models.RendezVous.doctor_id == doctor.id,
+                models.RendezVous.clinical_status.in_(("checked_in", "scheduled", "in_consultation")),
+                models.RendezVous.status != "cancelled",
+            )
+            .order_by(models.RendezVous.date.desc())
+            .first()
+        )
+        if rdv and rdv.clinical_status == "in_consultation":
+            existing2 = (
+                db.query(models.ClinicalConsultation)
+                .filter(models.ClinicalConsultation.appointment_id == rdv.id)
+                .first()
+            )
+            if existing2:
+                return existing2
+            rdv.clinical_status = "checked_in"
+            db.commit()
+        if not rdv:
+            rdv = models.RendezVous(
+                date=datetime.utcnow(),
+                duration_minutes=30,
+                status="confirmed",
+                payment_status="pending",
+                price=doctor.consultation_fee or 0,
+                consultation_type="physical",
+                doctor_id=doctor.id,
+                patient_id=patient_id,
+                clinic_id=clinic_id,
+                clinical_status="checked_in",
+            )
+            db.add(rdv)
+            db.commit()
+            db.refresh(rdv)
+
+        return ClinicalWorkflowService.start_consultation(
+            db,
+            clinic_id=clinic_id,
+            appointment_id=rdv.id,
+            doctor=doctor,
+            chief_complaint=chief_complaint,
+            actor=actor,
+            client_ip=client_ip,
+        )
+
+    @staticmethod
+    def patient_consultations(
+        db: Session, *, clinic_id: int, patient_id: int, limit: int = 50
+    ) -> list[dict]:
+        rows = (
+            db.query(models.ClinicalConsultation)
+            .options(joinedload(models.ClinicalConsultation.doctor))
+            .filter(
+                models.ClinicalConsultation.clinic_id == clinic_id,
+                models.ClinicalConsultation.patient_id == patient_id,
+                models.ClinicalConsultation.deleted_at.is_(None),
+            )
+            .order_by(models.ClinicalConsultation.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        out = []
+        for c in rows:
+            lab_names = [o.test_name for o in (c.lab_orders or [])]
+            imaging_names = [o.modality for o in (c.imaging_orders or [])]
+            services = []
+            if lab_names:
+                services.append("Labo: " + ", ".join(lab_names[:5]))
+            if imaging_names:
+                services.append("Imagerie: " + ", ".join(imaging_names[:5]))
+            if c.prescriptions:
+                services.append(f"Ordonnances: {len(c.prescriptions)}")
+            out.append(
+                {
+                    "id": c.id,
+                    "date": (c.started_at or c.created_at).isoformat()
+                    if (c.started_at or c.created_at)
+                    else None,
+                    "status": c.status,
+                    "doctor_name": c.doctor.name if c.doctor else None,
+                    "chief_complaint": c.chief_complaint,
+                    "diagnosis": c.diagnosis,
+                    "treatment_plan": c.treatment_plan,
+                    "requested_services": " | ".join(services) or "—",
+                }
+            )
+        return out
+
+    @staticmethod
+    def doctor_dashboard_stats(db: Session, *, clinic_id: int, doctor_id: int) -> dict:
+        today = date.today()
+        start_today = datetime.combine(today, time.min)
+        end_today = datetime.combine(today, time.max)
+
+        patients_waiting = (
+            db.query(models.RendezVous)
+            .filter(
+                models.RendezVous.clinic_id == clinic_id,
+                models.RendezVous.doctor_id == doctor_id,
+                models.RendezVous.clinical_status.in_(("checked_in", "in_consultation")),
+                models.RendezVous.status != "cancelled",
+            )
+            .count()
+        )
+        consultations_today = (
+            db.query(models.ClinicalConsultation)
+            .filter(
+                models.ClinicalConsultation.clinic_id == clinic_id,
+                models.ClinicalConsultation.doctor_id == doctor_id,
+                models.ClinicalConsultation.started_at >= start_today,
+                models.ClinicalConsultation.started_at <= end_today,
+                models.ClinicalConsultation.deleted_at.is_(None),
+            )
+            .count()
+        )
+        completed_today = (
+            db.query(models.ClinicalConsultation)
+            .filter(
+                models.ClinicalConsultation.clinic_id == clinic_id,
+                models.ClinicalConsultation.doctor_id == doctor_id,
+                models.ClinicalConsultation.status == "completed",
+                models.ClinicalConsultation.completed_at >= start_today,
+                models.ClinicalConsultation.completed_at <= end_today,
+                models.ClinicalConsultation.deleted_at.is_(None),
+            )
+            .count()
+        )
+        hospitalized = (
+            db.query(models.Admission)
+            .filter(
+                models.Admission.clinic_id == clinic_id,
+                models.Admission.admission_type == "hospitalization",
+                models.Admission.status.in_(["admitted", "in_care", "pending"]),
+            )
+            .count()
+        )
+        lab_pending = (
+            db.query(models.LabOrder)
+            .join(
+                models.ClinicalConsultation,
+                models.LabOrder.consultation_id == models.ClinicalConsultation.id,
+            )
+            .filter(
+                models.LabOrder.clinic_id == clinic_id,
+                models.ClinicalConsultation.doctor_id == doctor_id,
+                models.LabOrder.status.in_(["ordered", "sample_collected", "in_analysis"]),
+            )
+            .count()
+        )
+        imaging_pending = (
+            db.query(models.ImagingOrder)
+            .join(
+                models.ClinicalConsultation,
+                models.ImagingOrder.consultation_id == models.ClinicalConsultation.id,
+            )
+            .filter(
+                models.ClinicalConsultation.clinic_id == clinic_id,
+                models.ClinicalConsultation.doctor_id == doctor_id,
+                models.ImagingOrder.status.in_(["ordered", "scheduled", "in_progress"]),
+            )
+            .count()
+        )
+        return {
+            "patients_waiting": patients_waiting,
+            "consultations_today": consultations_today,
+            "hospitalized_patients": hospitalized,
+            "lab_pending": lab_pending,
+            "imaging_pending": imaging_pending,
+            "completed_consultations": completed_today,
+        }
+
+    @staticmethod
+    def doctor_dashboard_queue(
+        db: Session, *, clinic_id: int, doctor_id: int, bucket: str
+    ) -> list[dict]:
+        today = date.today()
+        start_today = datetime.combine(today, time.min)
+        end_today = datetime.combine(today, time.max)
+
+        def pname(patient) -> str:
+            if not patient:
+                return "—"
+            return f"{patient.last_name} {patient.first_name}".strip()
+
+        if bucket == "patients_waiting":
+            rows = (
+                db.query(models.RendezVous)
+                .options(joinedload(models.RendezVous.patient))
+                .filter(
+                    models.RendezVous.clinic_id == clinic_id,
+                    models.RendezVous.doctor_id == doctor_id,
+                    models.RendezVous.clinical_status.in_(("checked_in", "in_consultation")),
+                    models.RendezVous.status != "cancelled",
+                )
+                .order_by(models.RendezVous.date.asc())
+                .all()
+            )
+            return [
+                {
+                    "appointment_id": r.id,
+                    "patient_id": r.patient_id,
+                    "patient_name": pname(r.patient),
+                    "patient_number": r.patient.patient_number if r.patient else None,
+                    "clinical_status": r.clinical_status,
+                    "date": r.date.isoformat() if r.date else None,
+                }
+                for r in rows
+            ]
+
+        if bucket in ("consultations_today", "completed_consultations"):
+            query = (
+                db.query(models.ClinicalConsultation)
+                .options(joinedload(models.ClinicalConsultation.patient))
+                .filter(
+                    models.ClinicalConsultation.clinic_id == clinic_id,
+                    models.ClinicalConsultation.doctor_id == doctor_id,
+                    models.ClinicalConsultation.deleted_at.is_(None),
+                )
+            )
+            if bucket == "completed_consultations":
+                query = query.filter(
+                    models.ClinicalConsultation.status == "completed",
+                    models.ClinicalConsultation.completed_at >= start_today,
+                    models.ClinicalConsultation.completed_at <= end_today,
+                )
+            else:
+                query = query.filter(
+                    models.ClinicalConsultation.started_at >= start_today,
+                    models.ClinicalConsultation.started_at <= end_today,
+                )
+            rows = query.order_by(models.ClinicalConsultation.id.desc()).all()
+            return [
+                {
+                    "consultation_id": c.id,
+                    "patient_id": c.patient_id,
+                    "patient_name": pname(c.patient),
+                    "status": c.status,
+                    "diagnosis": c.diagnosis,
+                    "date": (c.started_at or c.created_at).isoformat()
+                    if (c.started_at or c.created_at)
+                    else None,
+                }
+                for c in rows
+            ]
+
+        if bucket == "hospitalized_patients":
+            rows = (
+                db.query(models.Admission)
+                .options(joinedload(models.Admission.patient))
+                .filter(
+                    models.Admission.clinic_id == clinic_id,
+                    models.Admission.admission_type == "hospitalization",
+                    models.Admission.status.in_(["admitted", "in_care", "pending"]),
+                )
+                .order_by(models.Admission.admitted_at.desc())
+                .all()
+            )
+            return [
+                {
+                    "admission_id": a.id,
+                    "patient_id": a.patient_id,
+                    "patient_name": pname(a.patient),
+                    "status": a.status,
+                    "admitted_at": a.admitted_at.isoformat() if a.admitted_at else None,
+                }
+                for a in rows
+            ]
+
+        if bucket == "lab_pending":
+            rows = (
+                db.query(models.LabOrder)
+                .join(
+                    models.ClinicalConsultation,
+                    models.LabOrder.consultation_id == models.ClinicalConsultation.id,
+                )
+                .options(joinedload(models.LabOrder.patient))
+                .filter(
+                    models.LabOrder.clinic_id == clinic_id,
+                    models.ClinicalConsultation.doctor_id == doctor_id,
+                    models.LabOrder.status.in_(["ordered", "sample_collected", "in_analysis"]),
+                )
+                .order_by(models.LabOrder.id.desc())
+                .all()
+            )
+            return [
+                {
+                    "order_id": o.id,
+                    "patient_id": o.patient_id,
+                    "patient_name": pname(o.patient),
+                    "test_name": o.test_name,
+                    "status": o.status,
+                }
+                for o in rows
+            ]
+
+        if bucket == "imaging_pending":
+            rows = (
+                db.query(models.ImagingOrder)
+                .join(
+                    models.ClinicalConsultation,
+                    models.ImagingOrder.consultation_id == models.ClinicalConsultation.id,
+                )
+                .options(joinedload(models.ImagingOrder.patient))
+                .filter(
+                    models.ClinicalConsultation.clinic_id == clinic_id,
+                    models.ClinicalConsultation.doctor_id == doctor_id,
+                    models.ImagingOrder.status.in_(["ordered", "scheduled", "in_progress"]),
+                )
+                .order_by(models.ImagingOrder.id.desc())
+                .all()
+            )
+            return [
+                {
+                    "order_id": o.id,
+                    "patient_id": o.patient_id,
+                    "patient_name": pname(o.patient),
+                    "modality": o.modality,
+                    "body_part": getattr(o, "body_part", None),
+                    "status": o.status,
+                }
+                for o in rows
+            ]
+
+        return []
 
     @staticmethod
     def create_lab_order(
