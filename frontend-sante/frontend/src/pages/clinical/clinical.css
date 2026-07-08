@@ -2044,3 +2044,243 @@
   }
 }
 
+/* ===== Doctor consultation page (mockup layout) ===== */
+.doctor-consult-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.doctor-consult-head h2 {
+  margin: 0;
+}
+
+.doctor-box {
+  border: 1.5px solid #c7d2e0;
+  border-radius: 14px;
+  margin-bottom: 1rem;
+  background: #fff;
+  overflow: hidden;
+}
+.doctor-box-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #1f3a5f;
+  padding: 0.55rem 0.9rem;
+  border-bottom: 1px solid #e3e9f1;
+  background: #f5f8fc;
+}
+.doctor-box-body {
+  padding: 0.8rem 0.9rem;
+}
+.doctor-box-body textarea,
+.doctor-box-body input,
+.doctor-box-body select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d3dbe6;
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  color: inherit;
+  resize: vertical;
+}
+.doctor-box-body textarea:focus,
+.doctor-box-body input:focus,
+.doctor-box-body select:focus {
+  outline: none;
+  border-color: #3b7ddd;
+  box-shadow: 0 0 0 3px rgba(59, 125, 221, 0.15);
+}
+
+/* Identity */
+.doctor-identity {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.doctor-identity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.5rem 1.2rem;
+  flex: 1;
+}
+.doctor-identity-grid div,
+.doctor-vitals-grid div {
+  display: flex;
+  flex-direction: column;
+}
+.doctor-identity-grid span,
+.doctor-vitals-grid span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #7b8794;
+}
+.doctor-identity-qr {
+  border: 1px solid #e3e9f1;
+  border-radius: 8px;
+  align-self: flex-start;
+}
+.doctor-vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 0.5rem 1rem;
+}
+
+/* Antécédents sub-fields */
+.doctor-antecedents {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.7rem;
+}
+.doctor-subfield {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.doctor-subfield label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #45525f;
+}
+
+/* Service + hospitaliser row */
+.doctor-decision-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  border: 1.5px solid #c7d2e0;
+  border-radius: 14px;
+  padding: 0.8rem 0.9rem;
+  margin-bottom: 1rem;
+  background: #fff;
+}
+.doctor-decision-field {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.doctor-decision-field > label {
+  font-weight: 700;
+  color: #1f3a5f;
+}
+.doctor-decision-field select,
+.doctor-decision-field input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d3dbe6;
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+}
+.doctor-toggle {
+  display: flex;
+  gap: 0.5rem;
+}
+.doctor-toggle label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1.5px solid #d3dbe6;
+  border-radius: 8px;
+  padding: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+.doctor-toggle label.is-active {
+  border-color: #3b7ddd;
+  background: #eaf2fd;
+  color: #1f3a5f;
+}
+
+/* Page 2 — Demande de service */
+.doctor-service-box .doctor-box-title {
+  background: #eef4ff;
+  color: #1a3b6b;
+}
+.doctor-service-block {
+  padding: 0.6rem 0;
+  border-bottom: 1px dashed #dbe3ee;
+}
+.doctor-service-block:last-child {
+  border-bottom: none;
+}
+.doctor-service-block h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  color: #1f3a5f;
+}
+.doctor-service-search {
+  margin-bottom: 0.5rem;
+}
+.doctor-service-options {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0.4rem 0.6rem;
+  max-height: 190px;
+  overflow-y: auto;
+  border: 1px solid #e3e9f1;
+  border-radius: 8px;
+  background: #fafcff;
+}
+.doctor-service-options li {
+  padding: 0.15rem 0;
+}
+.doctor-service-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.doctor-imaging-row select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d3dbe6;
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  margin-bottom: 0.5rem;
+}
+.doctor-hosp-label {
+  margin: 0 0 0.4rem;
+  font-weight: 600;
+  color: #45525f;
+}
+.doctor-duration-pills {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+.doctor-pill {
+  border: 1.5px solid #d3dbe6;
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.35rem 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.doctor-pill.is-active {
+  border-color: #3b7ddd;
+  background: #3b7ddd;
+  color: #fff;
+}
+.doctor-duration-custom input {
+  width: 90px;
+  border: 1.5px solid #d3dbe6;
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+}
+

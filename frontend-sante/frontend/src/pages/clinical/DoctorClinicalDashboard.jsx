@@ -22,6 +22,17 @@ const CONSULT_FIELDS = [
   { key: 'observations', label: 'Observations / Notes', rows: 2 },
 ];
 
+// Antécédents sub-fields grouped into one boxed section (mockup page 1).
+const ANTECEDENT_FIELDS = [
+  { key: 'medical_history', label: 'Antécédents médicaux' },
+  { key: 'surgical_history', label: 'Antécédents chirurgicaux' },
+  { key: 'gyneco_history', label: 'Antécédents gynéco-obstétricaux' },
+  { key: 'allergies', label: 'Allergies' },
+  { key: 'current_treatments', label: 'Traitements en cours' },
+];
+
+const HOSP_DURATIONS = ['24h', '48h', '72h'];
+
 const EMPTY_FORM = CONSULT_FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: '' }), {
   target_specialty_code: '',
   target_specialty_other: '',
@@ -556,80 +567,171 @@ export default function DoctorClinicalDashboard() {
         </section>
 
         {consultation ? (
-          <section className="clinical-card" style={{ gridColumn: '1 / -1' }}>
-            <h2>Consultation #{consultation.id}</h2>
-
-            {/* Patient identity */}
-            {identity && (
-              <div className="clinical-panel" style={{ marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                  <div className="nurse-doctor-vitals-grid" style={{ flex: 1 }}>
-                    <div><strong>N° dossier</strong> {identity.patient_number || '—'}</div>
-                    <div><strong>Nom</strong> {identity.full_name}</div>
-                    <div><strong>Âge</strong> {identity.age ?? '—'}</div>
-                    <div><strong>Sexe</strong> {genderLabel(identity.sex)}</div>
-                    <div><strong>Téléphone</strong> {identity.phone || '—'}</div>
-                    <div><strong>Prise en charge</strong> {identity.payer || '—'}</div>
-                  </div>
-                  {identity.qr_token && (
-                    <img src={qrImageUrl(identity.qr_token)} alt="QR patient" width={90} height={90} style={{ alignSelf: 'flex-start' }} />
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Nurse vitals */}
-            {nurseAssessment ? (
-              <div className="clinical-panel nurse-doctor-panel" style={{ marginBottom: '1rem' }}>
-                <h3>Évaluation infirmière</h3>
-                <p className="clinical-lead" style={{ marginTop: 0 }}>
-                  {nurseAssessment.nurse_name || 'Infirmier(ère)'} · {formatDateTime(nurseAssessment.recorded_at)}
-                </p>
-                <div className="nurse-doctor-vitals-grid">
-                  <div><strong>T°</strong> {nurseAssessment.temperature_c ?? '—'} °C</div>
-                  <div><strong>TA</strong> {nurseAssessment.bp_systolic || '—'}/{nurseAssessment.bp_diastolic || '—'}</div>
-                  <div><strong>FC</strong> {nurseAssessment.heart_rate || '—'}</div>
-                  <div><strong>FR</strong> {nurseAssessment.respiratory_rate || '—'}</div>
-                  <div><strong>Poids</strong> {nurseAssessment.weight_kg ?? '—'} kg</div>
-                  <div><strong>Taille</strong> {nurseAssessment.height_cm ?? '—'} cm</div>
-                  <div><strong>IMC</strong> {nurseAssessment.bmi ?? '—'}</div>
-                </div>
-                {nurseAssessment.vitals_observations && <p><strong>Observations :</strong> {nurseAssessment.vitals_observations}</p>}
-                {nurseAssessment.nurse_notes && <p><strong>Notes infirmières :</strong> {nurseAssessment.nurse_notes}</p>}
-              </div>
-            ) : (
-              <p className="clinical-hint" style={{ marginBottom: '1rem' }}>Aucune évaluation infirmière disponible.</p>
-            )}
-
-            {/* Consultation form */}
-            <h3>Dossier de consultation</h3>
-            {CONSULT_FIELDS.map((f) => (
-              <div className="clinical-field" key={f.key}>
-                <label>{f.label}</label>
-                <textarea rows={f.rows} value={form[f.key]} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />
-              </div>
-            ))}
-
-            {/* Service decision */}
-            <div className="clinical-field">
-              <label>Service / Spécialité</label>
-              <select
-                value={form.target_specialty_code}
-                onChange={(e) => setForm({ ...form, target_specialty_code: e.target.value })}
-              >
-                <option value="">Consultation générale</option>
-                {(catalog.specialties || []).map((s) => (
-                  <option key={s.code} value={s.code}>{s.label}</option>
-                ))}
-                <option value="__other__">Autre (préciser)</option>
-              </select>
+          <section className="clinical-card doctor-consult" style={{ gridColumn: '1 / -1' }}>
+            <div className="doctor-consult-head">
+              <h2>Dashboard Doctor — Consultation #{consultation.id}</h2>
+              <span className="clinical-badge">{consultation.status || 'in_progress'}</span>
             </div>
-            {form.target_specialty_code === '__other__' && (
-              <div className="clinical-field">
-                <label>Préciser la spécialité</label>
-                <input value={form.target_specialty_other} onChange={(e) => setForm({ ...form, target_specialty_other: e.target.value })} />
+
+            {/* 1. Identité du patient */}
+            <section className="doctor-box">
+              <div className="doctor-box-title">Identité du patient</div>
+              <div className="doctor-box-body">
+                {identity ? (
+                  <div className="doctor-identity">
+                    <div className="doctor-identity-grid">
+                      <div><span>N° dossier</span><strong>{identity.patient_number || '—'}</strong></div>
+                      <div><span>Nom complet</span><strong>{identity.full_name}</strong></div>
+                      <div><span>Âge</span><strong>{identity.age ?? '—'}</strong></div>
+                      <div><span>Sexe</span><strong>{genderLabel(identity.sex)}</strong></div>
+                      <div><span>Téléphone</span><strong>{identity.phone || '—'}</strong></div>
+                      <div><span>Prise en charge</span><strong>{identity.payer || '—'}</strong></div>
+                    </div>
+                    {identity.qr_token && (
+                      <img className="doctor-identity-qr" src={qrImageUrl(identity.qr_token)} alt="QR patient" width={92} height={92} />
+                    )}
+                  </div>
+                ) : (
+                  <p className="clinical-hint">Identité indisponible.</p>
+                )}
               </div>
-            )}
+            </section>
+
+            {/* 2. Paramètres vitaux */}
+            <section className="doctor-box">
+              <div className="doctor-box-title">Paramètres vitaux</div>
+              <div className="doctor-box-body">
+                {nurseAssessment ? (
+                  <>
+                    <p className="clinical-lead" style={{ marginTop: 0 }}>
+                      {nurseAssessment.nurse_name || 'Infirmier(ère)'} · {formatDateTime(nurseAssessment.recorded_at)}
+                    </p>
+                    <div className="doctor-vitals-grid">
+                      <div><span>T°</span><strong>{nurseAssessment.temperature_c ?? '—'} °C</strong></div>
+                      <div><span>TA</span><strong>{nurseAssessment.bp_systolic || '—'}/{nurseAssessment.bp_diastolic || '—'}</strong></div>
+                      <div><span>FC</span><strong>{nurseAssessment.heart_rate || '—'}</strong></div>
+                      <div><span>FR</span><strong>{nurseAssessment.respiratory_rate || '—'}</strong></div>
+                      <div><span>Poids</span><strong>{nurseAssessment.weight_kg ?? '—'} kg</strong></div>
+                      <div><span>Taille</span><strong>{nurseAssessment.height_cm ?? '—'} cm</strong></div>
+                      <div><span>IMC</span><strong>{nurseAssessment.bmi ?? '—'}</strong></div>
+                    </div>
+                    {nurseAssessment.vitals_observations && <p style={{ marginBottom: 0 }}><strong>Observations :</strong> {nurseAssessment.vitals_observations}</p>}
+                    {nurseAssessment.nurse_notes && <p style={{ marginBottom: 0 }}><strong>Notes infirmières :</strong> {nurseAssessment.nurse_notes}</p>}
+                  </>
+                ) : (
+                  <p className="clinical-hint">Aucune évaluation infirmière disponible.</p>
+                )}
+              </div>
+            </section>
+
+            {/* 3. Motif de consultation */}
+            <section className="doctor-box">
+              <div className="doctor-box-title">Motif de consultation</div>
+              <div className="doctor-box-body">
+                <textarea rows={2} value={form.chief_complaint} onChange={(e) => setForm({ ...form, chief_complaint: e.target.value })} />
+              </div>
+            </section>
+
+            {/* 4. Histoire de la maladie */}
+            <section className="doctor-box">
+              <div className="doctor-box-title">Histoire de la maladie</div>
+              <div className="doctor-box-body">
+                <textarea rows={3} value={form.history} onChange={(e) => setForm({ ...form, history: e.target.value })} />
+              </div>
+            </section>
+
+            {/* 5. Antécédents */}
+            <section className="doctor-box">
+              <div className="doctor-box-title">Antécédents</div>
+              <div className="doctor-box-body doctor-antecedents">
+                {ANTECEDENT_FIELDS.map((f) => (
+                  <div className="doctor-subfield" key={f.key}>
+                    <label>{f.label}</label>
+                    <textarea rows={2} value={form[f.key]} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Examen clinique */}
+            <section className="doctor-box">
+              <div className="doctor-box-title">Examen clinique</div>
+              <div className="doctor-box-body">
+                <textarea rows={3} value={form.examination} onChange={(e) => setForm({ ...form, examination: e.target.value })} />
+              </div>
+            </section>
+
+            {/* 6. Diagnostic */}
+            <section className="doctor-box">
+              <div className="doctor-box-title">Diagnostic</div>
+              <div className="doctor-box-body">
+                <textarea rows={2} value={form.diagnosis} onChange={(e) => setForm({ ...form, diagnosis: e.target.value })} />
+              </div>
+            </section>
+
+            {/* 7. Traitement à suivre */}
+            <section className="doctor-box">
+              <div className="doctor-box-title">Traitement à suivre</div>
+              <div className="doctor-box-body">
+                <textarea rows={3} value={form.treatment_plan} onChange={(e) => setForm({ ...form, treatment_plan: e.target.value })} />
+              </div>
+            </section>
+
+            {/* 8. Service + À hospitaliser (une ligne) */}
+            <div className="doctor-decision-row">
+              <div className="doctor-decision-field">
+                <label>Service</label>
+                <select
+                  value={form.target_specialty_code}
+                  onChange={(e) => setForm({ ...form, target_specialty_code: e.target.value })}
+                >
+                  <option value="">Consultation générale (toutes spécialités)</option>
+                  {(catalog.specialties || []).map((s) => (
+                    <option key={s.code} value={s.code}>{s.label}</option>
+                  ))}
+                  <option value="__other__">Autre (préciser)</option>
+                </select>
+                {form.target_specialty_code === '__other__' && (
+                  <input
+                    style={{ marginTop: '0.4rem' }}
+                    placeholder="Préciser la spécialité"
+                    value={form.target_specialty_other}
+                    onChange={(e) => setForm({ ...form, target_specialty_other: e.target.value })}
+                  />
+                )}
+              </div>
+              <div className="doctor-decision-field">
+                <label>À hospitaliser</label>
+                <div className="doctor-toggle">
+                  <label className={hosp.requested ? 'is-active' : ''}>
+                    <input
+                      type="radio"
+                      name="hospitalize"
+                      checked={hosp.requested}
+                      onChange={() => setHosp({ ...hosp, requested: true })}
+                    />
+                    Oui
+                  </label>
+                  <label className={!hosp.requested ? 'is-active' : ''}>
+                    <input
+                      type="radio"
+                      name="hospitalize"
+                      checked={!hosp.requested}
+                      onChange={() => setHosp({ ...hosp, requested: false })}
+                    />
+                    Non
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* 9. Observation */}
+            <section className="doctor-box">
+              <div className="doctor-box-title">Observation</div>
+              <div className="doctor-box-body">
+                <textarea rows={2} value={form.observations} onChange={(e) => setForm({ ...form, observations: e.target.value })} />
+              </div>
+            </section>
 
             <div className="clinical-actions">
               <button type="button" className="clinical-btn secondary" onClick={() => saveConsultation(false)} disabled={busy}>Enregistrer</button>
@@ -643,102 +745,124 @@ export default function DoctorClinicalDashboard() {
               <button type="button" className="clinical-btn secondary" onClick={() => sendTo('imaging')} disabled={busy}>Orienter imagerie</button>
             </div>
 
-            {/* Laboratory request */}
-            <h3 style={{ marginTop: '1.5rem' }}>Demande de laboratoire</h3>
-            <div className="clinical-field">
-              <label>Rechercher un examen</label>
-              <input value={labSearch} onChange={(e) => setLabSearch(e.target.value)} placeholder="Nom ou catégorie de l'examen…" />
-            </div>
-            {labResults.length > 0 && (
-              <ul className="clinical-list" style={{ maxHeight: 180, overflowY: 'auto' }}>
-                {labResults.map((t) => (
-                  <li key={t.code}>
-                    <label style={{ cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={Boolean(selectedLabs.find((x) => x.code === t.code))}
-                        onChange={() => toggleLab(t)}
-                        style={{ marginRight: 8 }}
-                      />
-                      {t.name} <span className="clinical-badge">{t.category || '—'}</span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {selectedLabs.length > 0 && (
-              <p className="clinical-hint">Sélectionnés : {selectedLabs.map((t) => t.name).join(', ')}</p>
-            )}
-            <div className="clinical-field">
-              <label>Notes</label>
-              <input value={labNotes} onChange={(e) => setLabNotes(e.target.value)} />
-            </div>
-            <button type="button" className="clinical-btn" onClick={sendLabRequest} disabled={busy || selectedLabs.length === 0}>Envoyer au laboratoire</button>
+            {/* ===== Page 2 : Demande de service ===== */}
+            <section className="doctor-box doctor-service-box">
+              <div className="doctor-box-title">Demande de service</div>
+              <div className="doctor-box-body">
 
-            {/* Imaging request */}
-            <h3 style={{ marginTop: '1.5rem' }}>Demande d&apos;imagerie</h3>
-            <div className="clinical-field">
-              <label>Examen</label>
-              <select value={imagingForm.modality} onChange={(e) => setImagingForm({ ...imagingForm, modality: e.target.value })}>
-                {(catalog.imaging || []).map((i) => (
-                  <option key={i.code} value={i.modality}>{i.label}</option>
-                ))}
-                <option value="other">Autre (préciser)</option>
-              </select>
-            </div>
-            {imagingForm.modality === 'other' && (
-              <div className="clinical-field">
-                <label>Préciser l&apos;examen</label>
-                <input value={imagingForm.modality_other} onChange={(e) => setImagingForm({ ...imagingForm, modality_other: e.target.value })} />
-              </div>
-            )}
-            <div className="clinical-field">
-              <label>Région / partie du corps</label>
-              <input value={imagingForm.body_part} onChange={(e) => setImagingForm({ ...imagingForm, body_part: e.target.value })} />
-            </div>
-            <div className="clinical-field">
-              <label>Indication clinique</label>
-              <input value={imagingForm.clinical_indication} onChange={(e) => setImagingForm({ ...imagingForm, clinical_indication: e.target.value })} />
-            </div>
-            <button type="button" className="clinical-btn" onClick={sendImagingRequest} disabled={busy}>Envoyer à l&apos;imagerie</button>
+                {/* Laboratoire */}
+                <div className="doctor-service-block">
+                  <h4>Rechercher examen laboratoire</h4>
+                  <input
+                    className="doctor-service-search"
+                    value={labSearch}
+                    onChange={(e) => setLabSearch(e.target.value)}
+                    placeholder="Nom ou code…"
+                  />
+                  {labResults.length > 0 && (
+                    <ul className="doctor-service-options">
+                      {labResults.map((t) => (
+                        <li key={t.code}>
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={Boolean(selectedLabs.find((x) => x.code === t.code))}
+                              onChange={() => toggleLab(t)}
+                            />
+                            {t.name} <span className="clinical-badge">{t.category || '—'}</span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {selectedLabs.length > 0 && (
+                    <p className="clinical-hint">Sélectionnés (les bilans) : {selectedLabs.map((t) => t.name).join(', ')}</p>
+                  )}
+                  <input
+                    className="doctor-service-search"
+                    value={labNotes}
+                    onChange={(e) => setLabNotes(e.target.value)}
+                    placeholder="Notes…"
+                  />
+                  <button type="button" className="clinical-btn" onClick={sendLabRequest} disabled={busy || selectedLabs.length === 0}>Envoyer au laboratoire</button>
+                </div>
 
-            {/* Hospitalization decision */}
-            <h3 style={{ marginTop: '1.5rem' }}>Hospitalisation</h3>
-            <div className="clinical-field">
-              <label>Hospitaliser le patient ?</label>
-              <select value={hosp.requested ? 'yes' : 'no'} onChange={(e) => setHosp({ ...hosp, requested: e.target.value === 'yes' })}>
-                <option value="no">Non</option>
-                <option value="yes">Oui</option>
-              </select>
-            </div>
-            {hosp.requested && (
-              <>
-                <div className="clinical-field">
-                  <label>Motif d&apos;hospitalisation</label>
-                  <input value={hosp.reason} onChange={(e) => setHosp({ ...hosp, reason: e.target.value })} />
-                </div>
-                <div className="clinical-field">
-                  <label>Durée</label>
-                  <select value={hosp.duration} onChange={(e) => setHosp({ ...hosp, duration: e.target.value })}>
-                    <option value="24h">24 heures</option>
-                    <option value="48h">48 heures</option>
-                    <option value="72h">72 heures</option>
-                    <option value="custom">Nombre de jours personnalisé</option>
-                  </select>
-                </div>
-                {hosp.duration === 'custom' && (
-                  <div className="clinical-field">
-                    <label>Nombre de jours</label>
-                    <input type="number" min="1" value={hosp.custom_days} onChange={(e) => setHosp({ ...hosp, custom_days: e.target.value })} />
+                {/* Imagerie médicale */}
+                <div className="doctor-service-block">
+                  <h4>Imagerie médicale — examen</h4>
+                  <div className="doctor-imaging-row">
+                    <select value={imagingForm.modality} onChange={(e) => setImagingForm({ ...imagingForm, modality: e.target.value })}>
+                      {(catalog.imaging || []).map((i) => (
+                        <option key={i.code} value={i.modality}>{i.label}</option>
+                      ))}
+                      <option value="other">Autre (préciser)</option>
+                    </select>
                   </div>
-                )}
-                <div className="clinical-field">
-                  <label>Notes</label>
-                  <input value={hosp.notes} onChange={(e) => setHosp({ ...hosp, notes: e.target.value })} />
+                  {imagingForm.modality === 'other' && (
+                    <input
+                      className="doctor-service-search"
+                      placeholder="Préciser l'examen (ex. Doppler)…"
+                      value={imagingForm.modality_other}
+                      onChange={(e) => setImagingForm({ ...imagingForm, modality_other: e.target.value })}
+                    />
+                  )}
+                  <input
+                    className="doctor-service-search"
+                    placeholder="Région / partie du corps…"
+                    value={imagingForm.body_part}
+                    onChange={(e) => setImagingForm({ ...imagingForm, body_part: e.target.value })}
+                  />
+                  <input
+                    className="doctor-service-search"
+                    placeholder="Indication clinique…"
+                    value={imagingForm.clinical_indication}
+                    onChange={(e) => setImagingForm({ ...imagingForm, clinical_indication: e.target.value })}
+                  />
+                  <button type="button" className="clinical-btn" onClick={sendImagingRequest} disabled={busy}>Envoyer à l&apos;imagerie</button>
                 </div>
-                <button type="button" className="clinical-btn" onClick={requestHospitalization} disabled={busy}>Créer la demande d&apos;hospitalisation</button>
-              </>
-            )}
+
+                {/* Hospitalisation */}
+                <div className="doctor-service-block">
+                  <h4>Hospitalisation</h4>
+                  <p className="doctor-hosp-label">À hospitaliser pour :</p>
+                  <div className="doctor-duration-pills">
+                    {HOSP_DURATIONS.map((d) => (
+                      <button
+                        type="button"
+                        key={d}
+                        className={`doctor-pill ${hosp.duration === d ? 'is-active' : ''}`}
+                        onClick={() => setHosp({ ...hosp, requested: true, duration: d })}
+                      >
+                        {d.toUpperCase()}
+                      </button>
+                    ))}
+                    <span className="doctor-duration-custom">
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="jours"
+                        value={hosp.custom_days}
+                        onChange={(e) => setHosp({ ...hosp, requested: true, duration: 'custom', custom_days: e.target.value })}
+                      />
+                    </span>
+                  </div>
+                  <input
+                    className="doctor-service-search"
+                    placeholder="Motif d'hospitalisation…"
+                    value={hosp.reason}
+                    onChange={(e) => setHosp({ ...hosp, reason: e.target.value })}
+                  />
+                  <input
+                    className="doctor-service-search"
+                    placeholder="Notes…"
+                    value={hosp.notes}
+                    onChange={(e) => setHosp({ ...hosp, notes: e.target.value })}
+                  />
+                  <button type="button" className="clinical-btn" onClick={requestHospitalization} disabled={busy}>Créer la demande d&apos;hospitalisation</button>
+                </div>
+
+              </div>
+            </section>
 
             {/* Service requests created for this patient */}
             <h3 style={{ marginTop: '1.5rem' }}>Demandes de services envoyées</h3>
