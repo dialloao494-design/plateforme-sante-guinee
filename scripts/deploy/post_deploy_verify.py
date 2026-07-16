@@ -57,6 +57,8 @@ def check_clinic_isolation(base: str) -> None:
             "age": 42,
             "gender": "F",
             "phone": phone,
+            "mother_name": "Mère Deploy",
+            "visit_destination": "Consultation externe",
         },
         headers={"Authorization": f"Bearer {token_alpha}"},
         timeout=30.0,
