@@ -23,6 +23,8 @@ const EMPTY_FORM = {
   gynecological_history: '',
   allergies: '',
   current_treatments: '',
+  hospitalized_daily_vitals: '',
+  prescription: '',
   nurse_notes: '',
 };
 
@@ -56,8 +58,9 @@ const patientAge = (p) => {
   return '';
 };
 
-const formatDob = (dob) => {
+const formatDob = (dob, precision) => {
   if (!dob) return '';
+  if (precision === 'year') return String(dob).slice(0, 4);
   try {
     return new Date(dob).toLocaleDateString('fr-FR');
   } catch {
@@ -184,6 +187,8 @@ export default function NurseDashboard() {
         gynecological_history: data.gynecological_history ?? '',
         allergies: data.allergies ?? '',
         current_treatments: data.current_treatments ?? '',
+        hospitalized_daily_vitals: data.hospitalized_daily_vitals ?? '',
+        prescription: data.prescription ?? '',
         nurse_notes: data.nurse_notes ?? '',
       });
     } catch {
@@ -285,9 +290,15 @@ export default function NurseDashboard() {
         gynecological_history: form.gynecological_history || null,
         allergies: form.allergies || null,
         current_treatments: form.current_treatments || null,
+        hospitalized_daily_vitals: form.hospitalized_daily_vitals || null,
+        prescription: form.prescription || null,
         nurse_notes: form.nurse_notes || null,
       });
       setMessage('Évaluation infirmière enregistrée — visible par le médecin.');
+      setForm(EMPTY_FORM);
+      setSelectedPatient(null);
+      setSearchQ('');
+      setSearchResults([]);
       loadDashboard();
     } catch (err) {
       setError(formatApiError(err, 'Enregistrement impossible'));
@@ -469,7 +480,7 @@ export default function NurseDashboard() {
           <fieldset>
             <legend>Identité</legend>
             <div className="reception-his-form-row reception-his-form-row--3">
-              <DisplayField label="Date de naissance" value={formatDob(selectedPatient.date_of_birth)} />
+              <DisplayField label="Date de naissance" value={formatDob(selectedPatient.date_of_birth, selectedPatient.date_of_birth_precision)} />
               <DisplayField label="Lieu de naissance" value={selectedPatient.place_of_birth || ''} />
               <DisplayField label="Nationalité" value={selectedPatient.nationality || ''} />
               <DisplayField label="État civil" value={selectedPatient.marital_status || ''} />
@@ -614,6 +625,18 @@ export default function NurseDashboard() {
               rows={3}
               value={form.current_treatments}
               onChange={(e) => updateForm({ current_treatments: e.target.value })}
+            />
+            <TextAreaField
+              label="Signes vitaux des patients hospitalisés (soins quotidiens)"
+              rows={3}
+              value={form.hospitalized_daily_vitals}
+              onChange={(e) => updateForm({ hospitalized_daily_vitals: e.target.value })}
+            />
+            <TextAreaField
+              label="Prescription"
+              rows={3}
+              value={form.prescription}
+              onChange={(e) => updateForm({ prescription: e.target.value })}
             />
           </fieldset>
 

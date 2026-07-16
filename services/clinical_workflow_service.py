@@ -321,6 +321,16 @@ class ClinicalWorkflowService:
             .first()
         )
         if existing:
+            from services.nurse_assessment_service import NurseAssessmentService
+
+            NurseAssessmentService.apply_to_consultation(
+                db,
+                clinic_id=clinic_id,
+                patient_id=existing.patient_id,
+                consultation=existing,
+            )
+            db.commit()
+            db.refresh(existing)
             if actor:
                 log_cis(
                     db,
@@ -470,6 +480,84 @@ class ClinicalWorkflowService:
         )
 
     @staticmethod
+    def doctor_waiting_queue(db: Session, *, clinic_id: int, doctor_id: int | None = None) -> list[dict]:
+        """Patients ready for doctor review, including nurse-only handoffs."""
+        today = date.today()
+        start_today = datetime.combine(today, time.min)
+
+        appt_query = (
+            db.query(models.RendezVous)
+            .options(joinedload(models.RendezVous.patient), joinedload(models.RendezVous.doctor))
+            .filter(
+                models.RendezVous.clinic_id == clinic_id,
+                models.RendezVous.clinical_status.in_(("checked_in", "in_consultation")),
+                models.RendezVous.status != "cancelled",
+            )
+        )
+        if doctor_id is not None and doctor_id > 0:
+            appt_query = appt_query.filter(models.RendezVous.doctor_id == doctor_id)
+        appointments = appt_query.order_by(models.RendezVous.date.asc()).all()
+
+        rows: list[dict] = []
+        queued_patient_ids: set[int] = set()
+        for rdv in appointments:
+            queued_patient_ids.add(rdv.patient_id)
+            patient_name = _patient_name(rdv.patient) if rdv.patient else "—"
+            rows.append(
+                {
+                    "id": rdv.id,
+                    "appointment_id": rdv.id,
+                    "patient_id": rdv.patient_id,
+                    "patient_name": patient_name,
+                    "patient_number": rdv.patient.patient_number if rdv.patient else None,
+                    "doctor_id": rdv.doctor_id,
+                    "doctor_name": rdv.doctor.name if rdv.doctor else None,
+                    "date": rdv.date.isoformat() if rdv.date else None,
+                    "status": rdv.status,
+                    "clinical_status": rdv.clinical_status,
+                    "consultation_type": rdv.consultation_type,
+                    "chief_complaint": None,
+                    "source": "appointment",
+                }
+            )
+
+        assessments = (
+            db.query(models.NurseAssessment)
+            .options(joinedload(models.NurseAssessment.patient))
+            .filter(
+                models.NurseAssessment.clinic_id == clinic_id,
+                models.NurseAssessment.deleted_at.is_(None),
+                models.NurseAssessment.recorded_at >= start_today,
+            )
+            .order_by(models.NurseAssessment.recorded_at.desc())
+            .all()
+        )
+        seen_assessment_patients: set[int] = set()
+        for assessment in assessments:
+            if assessment.patient_id in queued_patient_ids or assessment.patient_id in seen_assessment_patients:
+                continue
+            seen_assessment_patients.add(assessment.patient_id)
+            patient_name = _patient_name(assessment.patient) if assessment.patient else "—"
+            rows.append(
+                {
+                    "id": f"assessment-{assessment.id}",
+                    "assessment_id": assessment.id,
+                    "patient_id": assessment.patient_id,
+                    "patient_name": patient_name,
+                    "patient_number": assessment.patient.patient_number if assessment.patient else None,
+                    "doctor_id": None,
+                    "doctor_name": None,
+                    "date": assessment.recorded_at.isoformat() if assessment.recorded_at else None,
+                    "status": "pending",
+                    "clinical_status": "Évaluation infirmière",
+                    "consultation_type": "physical",
+                    "chief_complaint": assessment.reason_for_consultation,
+                    "source": "nurse_assessment",
+                }
+            )
+        return rows
+
+    @staticmethod
     def open_consultation_for_patient(
         db: Session,
         *,
@@ -502,6 +590,16 @@ class ClinicalWorkflowService:
             .first()
         )
         if existing:
+            from services.nurse_assessment_service import NurseAssessmentService
+
+            NurseAssessmentService.apply_to_consultation(
+                db,
+                clinic_id=clinic_id,
+                patient_id=existing.patient_id,
+                consultation=existing,
+            )
+            db.commit()
+            db.refresh(existing)
             return existing
 
         rdv = (
@@ -602,14 +700,38 @@ class ClinicalWorkflowService:
         start_today = datetime.combine(today, time.min)
         end_today = datetime.combine(today, time.max)
 
-        patients_waiting = (
-            db.query(models.RendezVous)
-            .filter(
-                models.RendezVous.clinic_id == clinic_id,
-                models.RendezVous.doctor_id == doctor_id,
-                models.RendezVous.clinical_status.in_(("checked_in", "in_consultation")),
-                models.RendezVous.status != "cancelled",
+        appointment_waiting_query = db.query(models.RendezVous).filter(
+            models.RendezVous.clinic_id == clinic_id,
+            models.RendezVous.clinical_status.in_(("checked_in", "in_consultation")),
+            models.RendezVous.status != "cancelled",
+        )
+        if doctor_id > 0:
+            appointment_waiting_query = appointment_waiting_query.filter(
+                models.RendezVous.doctor_id == doctor_id
             )
+        appointment_waiting = appointment_waiting_query.count()
+        appointment_patient_query = db.query(models.RendezVous.patient_id).filter(
+            models.RendezVous.clinic_id == clinic_id,
+            models.RendezVous.clinical_status.in_(("checked_in", "in_consultation")),
+            models.RendezVous.status != "cancelled",
+        )
+        if doctor_id > 0:
+            appointment_patient_query = appointment_patient_query.filter(
+                models.RendezVous.doctor_id == doctor_id
+            )
+        appointment_patient_ids = {
+            row[0]
+            for row in appointment_patient_query.all()
+        }
+        nurse_waiting = (
+            db.query(models.NurseAssessment.patient_id)
+            .filter(
+                models.NurseAssessment.clinic_id == clinic_id,
+                models.NurseAssessment.deleted_at.is_(None),
+                models.NurseAssessment.recorded_at >= start_today,
+                ~models.NurseAssessment.patient_id.in_(appointment_patient_ids or {-1}),
+            )
+            .distinct()
             .count()
         )
         consultations_today = (
@@ -671,7 +793,7 @@ class ClinicalWorkflowService:
             .count()
         )
         return {
-            "patients_waiting": patients_waiting,
+            "patients_waiting": appointment_waiting + nurse_waiting,
             "consultations_today": consultations_today,
             "hospitalized_patients": hospitalized,
             "lab_pending": lab_pending,
@@ -693,29 +815,9 @@ class ClinicalWorkflowService:
             return f"{patient.last_name} {patient.first_name}".strip()
 
         if bucket == "patients_waiting":
-            rows = (
-                db.query(models.RendezVous)
-                .options(joinedload(models.RendezVous.patient))
-                .filter(
-                    models.RendezVous.clinic_id == clinic_id,
-                    models.RendezVous.doctor_id == doctor_id,
-                    models.RendezVous.clinical_status.in_(("checked_in", "in_consultation")),
-                    models.RendezVous.status != "cancelled",
-                )
-                .order_by(models.RendezVous.date.asc())
-                .all()
+            return ClinicalWorkflowService.doctor_waiting_queue(
+                db, clinic_id=clinic_id, doctor_id=doctor_id
             )
-            return [
-                {
-                    "appointment_id": r.id,
-                    "patient_id": r.patient_id,
-                    "patient_name": pname(r.patient),
-                    "patient_number": r.patient.patient_number if r.patient else None,
-                    "clinical_status": r.clinical_status,
-                    "date": r.date.isoformat() if r.date else None,
-                }
-                for r in rows
-            ]
 
         if bucket in ("consultations_today", "completed_consultations"):
             query = (

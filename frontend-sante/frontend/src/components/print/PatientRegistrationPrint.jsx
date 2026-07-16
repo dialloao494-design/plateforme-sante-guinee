@@ -9,8 +9,9 @@ const genderLabel = (g) => {
   return g || '—';
 };
 
-const formatDate = (d) => {
+const formatDate = (d, precision = 'full') => {
   if (!d) return '—';
+  if (precision === 'year') return String(d).slice(0, 4);
   try {
     return new Date(d).toLocaleDateString('fr-FR');
   } catch {
@@ -71,7 +72,7 @@ export default function PatientRegistrationPrint({ patient, form, printedBy = ''
           <tbody>
             <tr><th>N° dossier</th><td>{p.patient_number || p.id || '—'}</td><th>Date inscription</th><td>{formatDate(p.registration_date || form?.registration_date)}</td></tr>
             <tr><th>Nom</th><td>{p.last_name}</td><th>Prénom</th><td>{p.first_name}</td></tr>
-            <tr><th>Date naissance</th><td>{formatDate(p.date_of_birth)}</td><th>Sexe</th><td>{genderLabel(p.gender)}</td></tr>
+            <tr><th>Date naissance</th><td>{formatDate(p.date_of_birth, p.date_of_birth_precision)}</td><th>Sexe</th><td>{genderLabel(p.gender)}</td></tr>
             <tr><th>Téléphone</th><td>{p.phone}</td><th>Email</th><td>{p.email || '—'}</td></tr>
           </tbody>
         </table>

@@ -178,6 +178,7 @@ class ReceptionHisService:
             age=age,
             gender=payload.gender,
             date_of_birth=payload.date_of_birth,
+            date_of_birth_precision=payload.date_of_birth_precision,
             phone=payload.phone.strip(),
             phone_secondary=(payload.phone_secondary or "").strip() or None,
             email=(payload.email or "").strip() or None,

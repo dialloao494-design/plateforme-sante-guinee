@@ -91,6 +91,8 @@ const EMPTY_REG = {
   first_name: '',
   last_name: '',
   date_of_birth: '',
+  date_of_birth_precision: 'full',
+  birth_year: '',
   gender: 'F',
   marital_status: '',
   nationality: 'Guinéenne',
@@ -163,6 +165,7 @@ const SERVICE_REQUEST_CATEGORIES = [
   { value: 'imaging', label: 'Imagerie' },
   { value: 'pharmacy', label: 'Pharmacie' },
   { value: 'doctor', label: 'Médecin' },
+  { value: 'service', label: 'Services / Prestations' },
   { value: 'other', label: 'Autre' },
 ];
 
@@ -176,10 +179,12 @@ const SERVICE_REQUEST_STATUSES = [
 const EMPTY_SERVICE_REQUEST = {
   service_category: 'laboratory',
   service_name: '',
-  department: '',
-  notes: '',
   status: 'pending',
 };
+
+const DEFAULT_SERVICE_PRESTATIONS = [
+  { code: 'medical_transport_ambulance', label: 'Medical Transport / Ambulance' },
+];
 
 const DASHBOARD_BUCKET_TITLES = {
   total_patients: 'Patients total',
@@ -366,6 +371,7 @@ export default function ReceptionDashboard() {
   const [loadingQueue, setLoadingQueue] = useState(false);
   const [serviceRequests, setServiceRequests] = useState([]);
   const [serviceRequestSearchQ, setServiceRequestSearchQ] = useState('');
+  const [serviceRequestExamSearchQ, setServiceRequestExamSearchQ] = useState('');
   const [serviceRequestStatusFilter, setServiceRequestStatusFilter] = useState('');
   const [serviceRequestForm, setServiceRequestForm] = useState(EMPTY_SERVICE_REQUEST);
   const [editingServiceRequestId, setEditingServiceRequestId] = useState(null);
@@ -590,6 +596,7 @@ export default function ReceptionDashboard() {
 
   const resetServiceRequestForm = () => {
     setServiceRequestForm(EMPTY_SERVICE_REQUEST);
+    setServiceRequestExamSearchQ('');
     setEditingServiceRequestId(null);
   };
 
@@ -598,10 +605,9 @@ export default function ReceptionDashboard() {
     setServiceRequestForm({
       service_category: row.service_category,
       service_name: row.service_name,
-      department: row.department || '',
-      notes: row.notes || '',
       status: row.status,
     });
+    setServiceRequestExamSearchQ(row.service_name || '');
   };
 
   const saveServiceRequest = async (e) => {
@@ -611,13 +617,18 @@ export default function ReceptionDashboard() {
     setLoading(true);
     setError('');
     try {
+      const payload = {
+        service_category: serviceRequestForm.service_category,
+        service_name: serviceRequestForm.service_name.trim(),
+        status: serviceRequestForm.status,
+      };
       if (editingServiceRequestId) {
-        await clinicalApi.receptionHisUpdateServiceRequest(editingServiceRequestId, serviceRequestForm);
+        await clinicalApi.receptionHisUpdateServiceRequest(editingServiceRequestId, payload);
         setMessage('Demande de service mise à jour.');
       } else {
         await clinicalApi.receptionHisCreateServiceRequest({
           patient_id: selectedPatient.id,
-          ...serviceRequestForm,
+          ...payload,
         });
         setMessage('Demande de service créée.');
       }
@@ -652,7 +663,7 @@ export default function ReceptionDashboard() {
   }, [tab, loadServiceRequests]);
 
   const filteredAdmissionLabTests = useMemo(() => {
-    const tests = billingCatalog?.laboratory_tests || [];
+    const tests = billingCatalog?.lab_tests || [];
     const q = admissionLabSearchQ.trim().toLowerCase();
     if (!q) return tests.slice(0, 12);
     return tests.filter((t) => `${t.name} ${t.code}`.toLowerCase().includes(q)).slice(0, 12);
@@ -921,10 +932,15 @@ export default function ReceptionDashboard() {
     setError('');
     setMessage('');
     try {
+      const resolvedDob =
+        regForm.date_of_birth_precision === 'year'
+          ? `${regForm.birth_year}-01-01`
+          : regForm.date_of_birth;
       const payload = {
         first_name: regForm.first_name.trim(),
         last_name: regForm.last_name.trim(),
-        date_of_birth: regForm.date_of_birth,
+        date_of_birth: resolvedDob,
+        date_of_birth_precision: regForm.date_of_birth_precision,
         gender: regForm.gender,
         is_newborn: regForm.is_newborn,
         registration_date: regForm.registration_date || undefined,
@@ -1212,12 +1228,23 @@ export default function ReceptionDashboard() {
 
   const admissionServices = billingCatalog?.admission_services?.map((s) => s.label) || DEFAULT_ADMISSION_SERVICES;
   const billingDepartments = billingCatalog?.billing_departments || DEFAULT_BILLING_DEPARTMENTS;
+  const servicePrestations = billingCatalog?.service_prestations || DEFAULT_SERVICE_PRESTATIONS;
 
   const addBillingLine = (line) => {
     setBillingLineItems((prev) => [...prev, { id: `line-${Date.now()}-${Math.random()}`, ...line }]);
   };
 
   const removeBillingLine = (id) => setBillingLineItems((prev) => prev.filter((l) => l.id !== id));
+
+  const chooseServiceRequest = (category, name) => {
+    setServiceRequestForm((prev) => ({
+      ...prev,
+      service_category: category,
+      service_name: name,
+    }));
+    setServiceRequestExamSearchQ(name);
+    setError('');
+  };
 
   const billingSubtotal = useMemo(
     () => billingLineItems.reduce((sum, l) => sum + Number(l.quantity || 1) * Number(l.unit_price_gnf || 0), 0),
@@ -1236,6 +1263,23 @@ export default function ReceptionDashboard() {
       (t) => String(t.name || '').toLowerCase().includes(q) || String(t.code || '').toLowerCase().includes(q)
     ).slice(0, 40);
   }, [billingCatalog, labSearchQ]);
+
+  const filteredServiceRequestLabTests = useMemo(() => {
+    const tests = billingCatalog?.lab_tests || [];
+    const q = serviceRequestExamSearchQ.trim().toLowerCase();
+    if (!q) return tests.slice(0, 20);
+    return tests.filter(
+      (t) => String(t.name || '').toLowerCase().includes(q) || String(t.code || '').toLowerCase().includes(q)
+    ).slice(0, 20);
+  }, [billingCatalog, serviceRequestExamSearchQ]);
+
+  const filteredServicePrestations = useMemo(() => {
+    const q = serviceRequestExamSearchQ.trim().toLowerCase();
+    if (!q) return servicePrestations;
+    return servicePrestations.filter(
+      (svc) => String(svc.label || '').toLowerCase().includes(q) || String(svc.code || '').toLowerCase().includes(q)
+    );
+  }, [servicePrestations, serviceRequestExamSearchQ]);
 
   const refundInvoices = useMemo(() => {
     if (!invoiceSearchQ.trim()) return invoices;
@@ -1455,11 +1499,66 @@ export default function ReceptionDashboard() {
               <label className="reception-his-check"><input type="checkbox" checked={regForm.is_newborn} onChange={(e) => updateReg({ is_newborn: e.target.checked })} />Nouveau-né</label>
               <label>Nom *<input required value={regForm.last_name} onChange={(e) => updateReg({ last_name: e.target.value })} /></label>
               <label>Prénom *<input required value={regForm.first_name} onChange={(e) => updateReg({ first_name: e.target.value })} /></label>
-              <label>Date naissance *<input required type="date" value={regForm.date_of_birth} onChange={(e) => updateReg({ date_of_birth: e.target.value })} /></label>
+              <div className="reception-his-birthdate-field">
+                <span>Date naissance *</span>
+                <div className="reception-his-birthdate-modes">
+                  <label>
+                    <input
+                      type="radio"
+                      name="birth-date-mode"
+                      value="full"
+                      checked={regForm.date_of_birth_precision === 'full'}
+                      onChange={() => updateReg({ date_of_birth_precision: 'full', birth_year: '' })}
+                    />
+                    Date complète (JJ/MM/AAAA)
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="birth-date-mode"
+                      value="year"
+                      checked={regForm.date_of_birth_precision === 'year'}
+                      onChange={() => updateReg({ date_of_birth_precision: 'year', date_of_birth: '' })}
+                    />
+                    Année seulement (AAAA)
+                  </label>
+                </div>
+                {regForm.date_of_birth_precision === 'year' ? (
+                  <input
+                    required
+                    type="number"
+                    inputMode="numeric"
+                    min="1900"
+                    max={new Date().getFullYear()}
+                    placeholder="AAAA"
+                    value={regForm.birth_year}
+                    onChange={(e) => updateReg({ birth_year: e.target.value.replace(/[^\d]/g, '').slice(0, 4) })}
+                  />
+                ) : (
+                  <input
+                    required
+                    type="date"
+                    value={regForm.date_of_birth}
+                    onChange={(e) => updateReg({ date_of_birth: e.target.value })}
+                  />
+                )}
+              </div>
               <DisplayField
                 label="Âge"
-                value={calcAge(regForm.date_of_birth) !== '' ? String(calcAge(regForm.date_of_birth)) : ''}
-                hint={calcAge(regForm.date_of_birth) !== '' ? undefined : FIELD_HINTS.age}
+                value={
+                  regForm.date_of_birth_precision === 'year'
+                    ? (regForm.birth_year.length === 4 ? String(new Date().getFullYear() - Number(regForm.birth_year)) : '')
+                    : (calcAge(regForm.date_of_birth) !== '' ? String(calcAge(regForm.date_of_birth)) : '')
+                }
+                hint={
+                  (
+                    regForm.date_of_birth_precision === 'year'
+                      ? regForm.birth_year.length === 4
+                      : calcAge(regForm.date_of_birth) !== ''
+                  )
+                    ? undefined
+                    : FIELD_HINTS.age
+                }
               />
               <label>Sexe *<select required value={regForm.gender} onChange={(e) => updateReg({ gender: e.target.value })}><option value="F">Féminin</option><option value="M">Masculin</option><option value="Autre">Autre</option></select></label>
               <label>État civil<input value={regForm.marital_status} onChange={(e) => updateReg({ marital_status: e.target.value })} /></label>
@@ -2267,7 +2366,10 @@ export default function ReceptionDashboard() {
                   Catégorie
                   <select
                     value={serviceRequestForm.service_category}
-                    onChange={(e) => setServiceRequestForm((p) => ({ ...p, service_category: e.target.value }))}
+                    onChange={(e) => {
+                      setServiceRequestForm((p) => ({ ...p, service_category: e.target.value, service_name: '' }));
+                      setServiceRequestExamSearchQ('');
+                    }}
                     disabled={!selectedPatient}
                   >
                     {SERVICE_REQUEST_CATEGORIES.map((c) => (
@@ -2276,21 +2378,8 @@ export default function ReceptionDashboard() {
                   </select>
                 </label>
                 <label>
-                  Service / examen
-                  <input
-                    value={serviceRequestForm.service_name}
-                    onChange={(e) => setServiceRequestForm((p) => ({ ...p, service_name: e.target.value }))}
-                    disabled={!selectedPatient}
-                    required
-                  />
-                </label>
-                <label>
-                  Département
-                  <input
-                    value={serviceRequestForm.department}
-                    onChange={(e) => setServiceRequestForm((p) => ({ ...p, department: e.target.value }))}
-                    disabled={!selectedPatient}
-                  />
+                  Service / examen sélectionné
+                  <ReadOnlyDisplay value={serviceRequestForm.service_name} />
                 </label>
                 <label>
                   Statut
@@ -2305,15 +2394,88 @@ export default function ReceptionDashboard() {
                   </select>
                 </label>
               </div>
-              <label>
-                Notes
-                <textarea
-                  rows={2}
-                  value={serviceRequestForm.notes}
-                  onChange={(e) => setServiceRequestForm((p) => ({ ...p, notes: e.target.value }))}
-                  disabled={!selectedPatient}
-                />
-              </label>
+
+              {serviceRequestForm.service_category === 'laboratory' && (
+                <fieldset className="reception-his-nested-fieldset">
+                  <legend>Examens de laboratoire</legend>
+                  <label>
+                    Rechercher un examen
+                    <input
+                      type="search"
+                      value={serviceRequestExamSearchQ}
+                      onChange={(e) => setServiceRequestExamSearchQ(e.target.value)}
+                      placeholder="Nom ou code analyse…"
+                      disabled={!selectedPatient}
+                    />
+                  </label>
+                  <ul className="reception-his-lab-search-results">
+                    {filteredServiceRequestLabTests.map((test) => (
+                      <li key={test.code}>
+                        <button
+                          type="button"
+                          onClick={() => chooseServiceRequest('laboratory', `${test.name} (${test.code})`)}
+                          disabled={!selectedPatient}
+                        >
+                          {test.name} ({test.code}) {test.category ? `· ${test.category}` : ''}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  {filteredServiceRequestLabTests.length === 0 && (
+                    <p className="clinical-hint">Aucun examen trouvé.</p>
+                  )}
+                </fieldset>
+              )}
+
+              {serviceRequestForm.service_category === 'imaging' && (
+                <fieldset className="reception-his-nested-fieldset">
+                  <legend>Examens d&apos;imagerie</legend>
+                  <div className="reception-his-service-options">
+                    {imagingExaminations.map((exam) => (
+                      <button
+                        key={exam.code}
+                        type="button"
+                        className="clinical-btn clinical-btn--secondary"
+                        onClick={() => chooseServiceRequest('imaging', exam.label)}
+                        disabled={!selectedPatient}
+                      >
+                        {exam.label}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
+
+              {serviceRequestForm.service_category === 'service' && (
+                <fieldset className="reception-his-nested-fieldset">
+                  <legend>Services / Prestations</legend>
+                  <div className="reception-his-service-options">
+                    {filteredServicePrestations.map((svc) => (
+                      <button
+                        key={svc.code}
+                        type="button"
+                        className="clinical-btn clinical-btn--secondary"
+                        onClick={() => chooseServiceRequest('service', svc.label)}
+                        disabled={!selectedPatient}
+                      >
+                        {svc.label}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
+
+              {['nursing', 'pharmacy', 'doctor', 'other'].includes(serviceRequestForm.service_category) && (
+                <label>
+                  Service / prestation
+                  <input
+                    value={serviceRequestForm.service_name}
+                    onChange={(e) => setServiceRequestForm((p) => ({ ...p, service_name: e.target.value }))}
+                    disabled={!selectedPatient}
+                    required
+                  />
+                </label>
+              )}
               <div className="reception-his-form-actions">
                 <button type="submit" className="clinical-btn" disabled={!selectedPatient || loading}>
                   {editingServiceRequestId ? 'Mettre à jour la demande' : 'Créer la demande'}
@@ -2336,7 +2498,6 @@ export default function ReceptionDashboard() {
                     <th>Patient</th>
                     <th>Catégorie</th>
                     <th>Service</th>
-                    <th>Département</th>
                     <th>Statut</th>
                     <th>Créée le</th>
                     <th />
@@ -2349,7 +2510,6 @@ export default function ReceptionDashboard() {
                       <td>{row.patient_name || row.patient_id}</td>
                       <td>{serviceRequestCategoryLabel(row.service_category)}</td>
                       <td>{row.service_name}</td>
-                      <td>{row.department || '—'}</td>
                       <td>{serviceRequestStatusLabel(row.status)}</td>
                       <td>{formatDateTime(row.created_at)}</td>
                       <td>

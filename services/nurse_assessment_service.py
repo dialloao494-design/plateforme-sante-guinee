@@ -35,6 +35,8 @@ def _combine_history(assessment: models.NurseAssessment) -> Optional[str]:
         ("Antécédents gynéco-obstétricaux", assessment.gynecological_history),
         ("Allergies", assessment.allergies),
         ("Traitements en cours", assessment.current_treatments),
+        ("Signes vitaux hospitalisés - soins quotidiens", assessment.hospitalized_daily_vitals),
+        ("Prescription", assessment.prescription),
         ("Notes infirmières", assessment.nurse_notes),
     ]
     for label, value in mapping:
@@ -71,6 +73,8 @@ def _serialize_assessment(row: models.NurseAssessment) -> na_schemas.NurseAssess
         gynecological_history=row.gynecological_history,
         allergies=row.allergies,
         current_treatments=row.current_treatments,
+        hospitalized_daily_vitals=row.hospitalized_daily_vitals,
+        prescription=row.prescription,
         nurse_notes=row.nurse_notes,
         recorded_at=row.recorded_at,
         updated_at=row.updated_at,
@@ -107,8 +111,6 @@ class NurseAssessmentService:
         )
         if admission_id:
             q = q.filter(models.NurseAssessment.admission_id == admission_id)
-        else:
-            q = q.filter(models.NurseAssessment.recorded_at >= NurseAssessmentService._today_start())
         return q.order_by(models.NurseAssessment.recorded_at.desc()).first()
 
     @staticmethod

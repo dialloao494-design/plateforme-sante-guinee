@@ -19,6 +19,7 @@ class Patient(Base):
     age = Column(Integer)
     gender = Column(String)
     date_of_birth = Column(Date, nullable=True)
+    date_of_birth_precision = Column(String(16), nullable=False, default="full")
     patient_number = Column(String(32), nullable=True, index=True)
     qr_token = Column(String(64), nullable=True, unique=True, index=True)
     photo_url = Column(Text, nullable=True)

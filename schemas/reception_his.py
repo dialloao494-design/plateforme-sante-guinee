@@ -43,6 +43,7 @@ class PatientRegistrationCreate(BaseModel):
     last_name: str = Field(..., min_length=1, max_length=128)
     gender: str = Field(..., min_length=1, max_length=16)
     date_of_birth: date
+    date_of_birth_precision: Literal["full", "year"] = "full"
     phone: str = Field(..., min_length=1, max_length=32)
     address: str = Field(..., min_length=1)
     photo_url: Optional[str] = None
@@ -75,6 +76,7 @@ class PatientRegistrationResponse(BaseModel):
     age: int
     gender: str
     date_of_birth: Optional[date] = None
+    date_of_birth_precision: str = "full"
     phone: Optional[str] = None
     phone_secondary: Optional[str] = None
     email: Optional[str] = None
@@ -118,6 +120,7 @@ class PatientSearchResult(BaseModel):
     age: int
     gender: Optional[str] = None
     date_of_birth: Optional[date] = None
+    date_of_birth_precision: Optional[str] = None
     payer_json: Optional[str] = None
     created_at: Optional[datetime] = None
 
@@ -149,7 +152,7 @@ class ReceptionAdmissionCreate(BaseModel):
 class ServiceRequestCreate(BaseModel):
     patient_id: int
     admission_id: Optional[int] = None
-    service_category: Literal["laboratory", "nursing", "imaging", "pharmacy", "doctor", "other"]
+    service_category: Literal["laboratory", "nursing", "imaging", "pharmacy", "doctor", "service", "other"]
     service_name: str = Field(..., min_length=1, max_length=255)
     department: Optional[str] = Field(None, max_length=128)
     notes: Optional[str] = None
@@ -157,7 +160,7 @@ class ServiceRequestCreate(BaseModel):
 
 
 class ServiceRequestUpdate(BaseModel):
-    service_category: Optional[Literal["laboratory", "nursing", "imaging", "pharmacy", "doctor", "other"]] = None
+    service_category: Optional[Literal["laboratory", "nursing", "imaging", "pharmacy", "doctor", "service", "other"]] = None
     service_name: Optional[str] = Field(None, min_length=1, max_length=255)
     department: Optional[str] = Field(None, max_length=128)
     notes: Optional[str] = None

@@ -15,6 +15,7 @@ from data.clinic_branding import (
     CLINIC_COUNTRY,
     CLINIC_EMAIL,
     CLINIC_MINISTRY,
+    CLINIC_MOTTO,
     CLINIC_PHONE,
     CLINIC_PRINT_NAME,
 )
@@ -32,16 +33,42 @@ def append_official_clinic_header(story: list, *, page_width: float, document_ti
         story.append(Spacer(1, 3))
 
     base = getSampleStyleSheet()
-    country = ParagraphStyle("ClinicCountry", parent=base["Normal"], fontSize=9, alignment=TA_CENTER, leading=11)
-    ministry = ParagraphStyle("ClinicMinistry", parent=base["Normal"], fontSize=9, alignment=TA_CENTER, leading=11)
+    country = ParagraphStyle(
+        "ClinicCountry",
+        parent=base["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=13,
+        alignment=TA_CENTER,
+        leading=15,
+        textColor=colors.HexColor("#0f172a"),
+        spaceAfter=1,
+    )
+    motto = ParagraphStyle(
+        "ClinicMotto",
+        parent=base["Normal"],
+        fontSize=9,
+        alignment=TA_CENTER,
+        leading=11,
+        textColor=colors.HexColor("#475569"),
+        spaceAfter=4,
+    )
+    ministry = ParagraphStyle(
+        "ClinicMinistry",
+        parent=base["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=10,
+        alignment=TA_CENTER,
+        leading=12,
+        textColor=colors.HexColor("#334155"),
+    )
     name = ParagraphStyle(
         "ClinicName",
         parent=base["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=11,
+        fontSize=12,
         alignment=TA_CENTER,
         textColor=colors.HexColor("#134e4a"),
-        leading=13,
+        leading=14,
         spaceAfter=2,
     )
     contact = ParagraphStyle("ClinicContact", parent=base["Normal"], fontSize=8, alignment=TA_CENTER, leading=10)
@@ -57,6 +84,7 @@ def append_official_clinic_header(story: list, *, page_width: float, document_ti
     )
 
     story.append(Paragraph(CLINIC_COUNTRY, country))
+    story.append(Paragraph(CLINIC_MOTTO, motto))
     story.append(Paragraph(CLINIC_MINISTRY, ministry))
     story.append(Paragraph(CLINIC_PRINT_NAME, name))
     story.append(Paragraph(CLINIC_ADDRESS, contact))

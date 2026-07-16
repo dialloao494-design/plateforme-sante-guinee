@@ -63,6 +63,7 @@ def _patient_out(patient: models.Patient) -> PatientSearchResult:
         age=patient.age or 0,
         gender=patient.gender,
         date_of_birth=patient.date_of_birth,
+        date_of_birth_precision=getattr(patient, "date_of_birth_precision", None),
         payer_json=patient.payer_json,
         created_at=patient.created_at,
     )
@@ -172,6 +173,7 @@ def billing_catalog(
         CONSULTATION_SERVICES,
         IMAGING_EXAMINATIONS,
         BILLING_DEPARTMENTS,
+        SERVICE_PRESTATIONS,
         SPECIALIZED_SPECIALTIES,
     )
 
@@ -199,6 +201,7 @@ def billing_catalog(
         "consultation_services": CONSULTATION_SERVICES,
         "specialized_specialties": SPECIALIZED_SPECIALTIES,
         "imaging_examinations": IMAGING_EXAMINATIONS,
+        "service_prestations": SERVICE_PRESTATIONS,
         "billing_departments": BILLING_DEPARTMENTS,
         "lab_tests": lab_tests,
     }
