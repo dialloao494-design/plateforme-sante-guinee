@@ -1213,6 +1213,7 @@ def ensure_reception_his_schema(engine: Engine) -> None:
             ("mother_last_name", "VARCHAR(128)"),
             ("is_newborn", "BOOLEAN DEFAULT FALSE"),
             ("registration_date", "DATE"),
+            ("date_of_birth_precision", "VARCHAR(16) DEFAULT 'full'"),
         )
         for col, col_type in patient_cols:
             if col not in cols:
@@ -1437,6 +1438,8 @@ def ensure_nurse_assessment_schema(engine: Engine) -> None:
                 gynecological_history TEXT,
                 allergies TEXT,
                 current_treatments TEXT,
+                hospitalized_daily_vitals TEXT,
+                prescription TEXT,
                 nurse_notes TEXT,
                 recorded_at {datetime_type} NOT NULL,
                 updated_at {datetime_type} NOT NULL,
@@ -1449,6 +1452,19 @@ def ensure_nurse_assessment_schema(engine: Engine) -> None:
             logger.info("Created nurse_assessments table")
         except Exception as exc:
             logger.warning("nurse_assessments migration failed: %s", exc)
+    else:
+        cols = {c["name"] for c in insp.get_columns("nurse_assessments")}
+        for col, col_type in (
+            ("hospitalized_daily_vitals", "TEXT"),
+            ("prescription", "TEXT"),
+        ):
+            if col not in cols:
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE nurse_assessments ADD COLUMN {col} {col_type}"))
+                    logger.info("Added nurse_assessments.%s", col)
+                except Exception as exc:
+                    logger.warning("nurse_assessments.%s migration skipped: %s", col, exc)
 
 
 def ensure_lab_result_reference_range_text(engine: Engine) -> None:

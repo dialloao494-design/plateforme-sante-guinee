@@ -536,7 +536,7 @@ def reception_follow_ups(
 # --- Doctor ---
 
 
-@router.get("/doctor/queue", response_model=List[ClinicalAppointmentResponse])
+@router.get("/doctor/queue")
 def doctor_queue(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -545,23 +545,12 @@ def doctor_queue(
     clinic = resolve_clinic_for_user(db, current_user)
     if current_user.role == "doctor":
         doctor = doctor_for_user(db, current_user)
-        items = ClinicalWorkflowService.doctor_queue(
-            db, clinic_id=clinic.id, doctor_id=doctor.id
-        )
+        doctor_id = doctor.id
     else:
-        items = (
-            db.query(models.RendezVous)
-            .filter(
-                models.RendezVous.clinic_id == clinic.id,
-                models.RendezVous.clinical_status.in_(("checked_in", "in_consultation")),
-                models.RendezVous.status != "cancelled",
-            )
-            .order_by(models.RendezVous.date.asc())
-            .all()
-        )
-    for item in items:
-        db.refresh(item, ["patient", "doctor"])
-    return [_appointment_response(i) for i in items]
+        doctor_id = None
+    return ClinicalWorkflowService.doctor_waiting_queue(
+        db, clinic_id=clinic.id, doctor_id=doctor_id
+    )
 
 
 @router.post("/consultations", response_model=ConsultationResponse, status_code=201)

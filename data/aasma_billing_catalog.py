@@ -44,6 +44,10 @@ IMAGING_EXAMINATIONS = [
     {"code": "dental_panoramic", "label": "Panoramique dentaire", "modality": "dental_panoramic", "price_gnf": 180_000},
 ]
 
+SERVICE_PRESTATIONS = [
+    {"code": "medical_transport_ambulance", "label": "Medical Transport / Ambulance", "price_gnf": 0},
+]
+
 BILLING_DEPARTMENTS = [
     "Consultation urgences",
     "Consultation spécialisée",

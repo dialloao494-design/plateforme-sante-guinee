@@ -75,6 +75,10 @@ const clinicalApi = {
     httpClient.get(`/clinical/nurse/patients/${patientId}/assessment`, {
       params: admissionId ? { admission_id: admissionId } : {},
     }),
+  nurseListAssessments: (patientId, limit = 20) =>
+    httpClient.get(`/clinical/nurse/patients/${patientId}/assessments`, {
+      params: { limit },
+    }),
   nurseSaveAssessment: (data) => httpClient.post('/clinical/nurse/assessments', data),
 
   // Visit workflow queues

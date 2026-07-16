@@ -14,7 +14,13 @@
   max-width: 72px;
 }
 
-.print-clinic-header--compact .print-clinic-header__country,
+.print-clinic-header--compact .print-clinic-header__country {
+  font-size: 0.82rem;
+  margin: 0.05rem 0;
+  line-height: 1.25;
+}
+
+.print-clinic-header--compact .print-clinic-header__motto,
 .print-clinic-header--compact .print-clinic-header__ministry,
 .print-clinic-header--compact .print-clinic-header__contact {
   font-size: 0.65rem;
@@ -44,7 +50,15 @@
   object-fit: contain;
 }
 
-.print-clinic-header__country,
+.print-clinic-header__country {
+  margin: 0.15rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #0f172a;
+}
+
+.print-clinic-header__motto,
 .print-clinic-header__ministry {
   margin: 0.15rem 0 0;
   font-size: 0.78rem;

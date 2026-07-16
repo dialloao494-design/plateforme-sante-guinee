@@ -38,6 +38,8 @@ class NurseAssessment(Base):
     gynecological_history = Column(Text, nullable=True)
     allergies = Column(Text, nullable=True)
     current_treatments = Column(Text, nullable=True)
+    hospitalized_daily_vitals = Column(Text, nullable=True)
+    prescription = Column(Text, nullable=True)
     nurse_notes = Column(Text, nullable=True)
 
     recorded_at = Column(DateTime, default=datetime.utcnow, nullable=False)

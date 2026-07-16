@@ -23,6 +23,8 @@ const EMPTY_FORM = {
   gynecological_history: '',
   allergies: '',
   current_treatments: '',
+  hospitalized_daily_vitals: '',
+  prescription: '',
   nurse_notes: '',
 };
 
@@ -56,8 +58,9 @@ const patientAge = (p) => {
   return '';
 };
 
-const formatDob = (dob) => {
+const formatDob = (dob, precision) => {
   if (!dob) return '';
+  if (precision === 'year') return String(dob).slice(0, 4);
   try {
     return new Date(dob).toLocaleDateString('fr-FR');
   } catch {
@@ -128,6 +131,9 @@ export default function NurseDashboard() {
   const [activeStatBucket, setActiveStatBucket] = useState(null);
   const [queueRows, setQueueRows] = useState([]);
   const [loadingQueue, setLoadingQueue] = useState(false);
+  const [patientAssessments, setPatientAssessments] = useState([]);
+  const [loadingPatientHistory, setLoadingPatientHistory] = useState(false);
+  const [showPatientHistory, setShowPatientHistory] = useState(false);
 
   const bmi = useMemo(() => calcBmi(form.weight_kg, form.height_cm), [form.weight_kg, form.height_cm]);
 
@@ -160,36 +166,16 @@ export default function NurseDashboard() {
     }
   };
 
-  const loadAssessment = async (patientId) => {
-    setAssessmentLoading(true);
+  const loadPatientHistory = async (patientId) => {
+    if (!patientId) return;
+    setLoadingPatientHistory(true);
     try {
-      const { data } = await clinicalApi.nurseGetAssessment(patientId);
-      if (!data) {
-        setForm(EMPTY_FORM);
-        return;
-      }
-      setForm({
-        temperature_c: data.temperature_c ?? '',
-        bp_systolic: data.bp_systolic ?? '',
-        bp_diastolic: data.bp_diastolic ?? '',
-        heart_rate: data.heart_rate ?? '',
-        respiratory_rate: data.respiratory_rate ?? '',
-        height_cm: data.height_cm ?? '',
-        weight_kg: data.weight_kg ?? '',
-        vitals_observations: data.vitals_observations ?? '',
-        reason_for_consultation: data.reason_for_consultation ?? '',
-        history_of_present_illness: data.history_of_present_illness ?? '',
-        medical_history: data.medical_history ?? '',
-        surgical_history: data.surgical_history ?? '',
-        gynecological_history: data.gynecological_history ?? '',
-        allergies: data.allergies ?? '',
-        current_treatments: data.current_treatments ?? '',
-        nurse_notes: data.nurse_notes ?? '',
-      });
+      const { data } = await clinicalApi.nurseListAssessments(patientId);
+      setPatientAssessments(data || []);
     } catch {
-      setForm(EMPTY_FORM);
+      setPatientAssessments([]);
     } finally {
-      setAssessmentLoading(false);
+      setLoadingPatientHistory(false);
     }
   };
 
@@ -201,14 +187,18 @@ export default function NurseDashboard() {
     setMessage('');
     setError('');
     setForm(EMPTY_FORM);
+    setPatientAssessments([]);
+    setShowPatientHistory(false);
     setAssessmentLoading(true);
     try {
       const { data } = await clinicalApi.nurseGetPatient(patient.id);
       setSelectedPatient(data);
-      await loadAssessment(data.id);
+      await loadPatientHistory(data.id);
     } catch (err) {
       setError(formatApiError(err, 'Chargement du patient impossible'));
-      await loadAssessment(patient.id);
+      await loadPatientHistory(patient.id);
+    } finally {
+      setAssessmentLoading(false);
     }
   };
 
@@ -285,9 +275,14 @@ export default function NurseDashboard() {
         gynecological_history: form.gynecological_history || null,
         allergies: form.allergies || null,
         current_treatments: form.current_treatments || null,
+        hospitalized_daily_vitals: form.hospitalized_daily_vitals || null,
+        prescription: form.prescription || null,
         nurse_notes: form.nurse_notes || null,
       });
       setMessage('Évaluation infirmière enregistrée — visible par le médecin.');
+      setForm(EMPTY_FORM);
+      await loadPatientHistory(selectedPatient.id);
+      setShowPatientHistory(true);
       loadDashboard();
     } catch (err) {
       setError(formatApiError(err, 'Enregistrement impossible'));
@@ -469,7 +464,7 @@ export default function NurseDashboard() {
           <fieldset>
             <legend>Identité</legend>
             <div className="reception-his-form-row reception-his-form-row--3">
-              <DisplayField label="Date de naissance" value={formatDob(selectedPatient.date_of_birth)} />
+              <DisplayField label="Date de naissance" value={formatDob(selectedPatient.date_of_birth, selectedPatient.date_of_birth_precision)} />
               <DisplayField label="Lieu de naissance" value={selectedPatient.place_of_birth || ''} />
               <DisplayField label="Nationalité" value={selectedPatient.nationality || ''} />
               <DisplayField label="État civil" value={selectedPatient.marital_status || ''} />
@@ -482,6 +477,60 @@ export default function NurseDashboard() {
               <DisplayField label="Commune / ville" value={selectedPatient.commune || selectedPatient.city || ''} />
               <DisplayField label="Région" value={selectedPatient.region || ''} />
             </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Motif de consultation</legend>
+            <TextAreaField
+              label=""
+              rows={4}
+              value={form.reason_for_consultation}
+              onChange={(e) => updateForm({ reason_for_consultation: e.target.value })}
+            />
+          </fieldset>
+
+          <fieldset>
+            <legend>Histoire de la maladie actuelle</legend>
+            <TextAreaField
+              label=""
+              rows={5}
+              value={form.history_of_present_illness}
+              onChange={(e) => updateForm({ history_of_present_illness: e.target.value })}
+            />
+          </fieldset>
+
+          <fieldset>
+            <legend>Antécédents</legend>
+            <TextAreaField
+              label="Antécédents médicaux"
+              rows={3}
+              value={form.medical_history}
+              onChange={(e) => updateForm({ medical_history: e.target.value })}
+            />
+            <TextAreaField
+              label="Antécédents chirurgicaux"
+              rows={3}
+              value={form.surgical_history}
+              onChange={(e) => updateForm({ surgical_history: e.target.value })}
+            />
+            <TextAreaField
+              label="Antécédents gynéco-obstétricaux"
+              rows={3}
+              value={form.gynecological_history}
+              onChange={(e) => updateForm({ gynecological_history: e.target.value })}
+            />
+            <TextAreaField
+              label="Allergies"
+              rows={2}
+              value={form.allergies}
+              onChange={(e) => updateForm({ allergies: e.target.value })}
+            />
+            <TextAreaField
+              label="Traitements en cours"
+              rows={3}
+              value={form.current_treatments}
+              onChange={(e) => updateForm({ current_treatments: e.target.value })}
+            />
           </fieldset>
 
           <fieldset>
@@ -561,59 +610,11 @@ export default function NurseDashboard() {
               value={form.vitals_observations}
               onChange={(e) => updateForm({ vitals_observations: e.target.value })}
             />
-          </fieldset>
-
-          <fieldset>
-            <legend>Motif de consultation</legend>
             <TextAreaField
-              label=""
-              rows={4}
-              value={form.reason_for_consultation}
-              onChange={(e) => updateForm({ reason_for_consultation: e.target.value })}
-            />
-          </fieldset>
-
-          <fieldset>
-            <legend>Histoire de la maladie actuelle</legend>
-            <TextAreaField
-              label=""
-              rows={5}
-              value={form.history_of_present_illness}
-              onChange={(e) => updateForm({ history_of_present_illness: e.target.value })}
-            />
-          </fieldset>
-
-          <fieldset>
-            <legend>Antécédents</legend>
-            <TextAreaField
-              label="Antécédents médicaux"
+              label="Signes vitaux des patients hospitalisés (soins quotidiens)"
               rows={3}
-              value={form.medical_history}
-              onChange={(e) => updateForm({ medical_history: e.target.value })}
-            />
-            <TextAreaField
-              label="Antécédents chirurgicaux"
-              rows={3}
-              value={form.surgical_history}
-              onChange={(e) => updateForm({ surgical_history: e.target.value })}
-            />
-            <TextAreaField
-              label="Antécédents gynéco-obstétricaux"
-              rows={3}
-              value={form.gynecological_history}
-              onChange={(e) => updateForm({ gynecological_history: e.target.value })}
-            />
-            <TextAreaField
-              label="Allergies"
-              rows={2}
-              value={form.allergies}
-              onChange={(e) => updateForm({ allergies: e.target.value })}
-            />
-            <TextAreaField
-              label="Traitements en cours"
-              rows={3}
-              value={form.current_treatments}
-              onChange={(e) => updateForm({ current_treatments: e.target.value })}
+              value={form.hospitalized_daily_vitals}
+              onChange={(e) => updateForm({ hospitalized_daily_vitals: e.target.value })}
             />
           </fieldset>
 
@@ -627,12 +628,74 @@ export default function NurseDashboard() {
             />
           </fieldset>
 
+          <fieldset>
+            <legend>Ordonnance</legend>
+            <TextAreaField
+              label="Ordonnance"
+              rows={4}
+              value={form.prescription}
+              onChange={(e) => updateForm({ prescription: e.target.value })}
+            />
+          </fieldset>
+
           <div className="nurse-his-save-row">
             <button type="submit" className="clinical-btn" disabled={loading}>
               {loading ? 'Enregistrement…' : 'Enregistrer l\'évaluation'}
             </button>
           </div>
         </form>
+      )}
+
+      {selectedPatient && (
+        <section className="clinical-card nurse-his-patient-history">
+          <div className="nurse-his-history-header">
+            <div>
+              <h2>Historique des évaluations du patient</h2>
+              <p className="clinical-hint">
+                Les anciennes évaluations restent consultables ici et ne préremplissent pas la nouvelle saisie.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="clinical-btn clinical-btn--secondary"
+              onClick={() => {
+                setShowPatientHistory((prev) => !prev);
+                if (!showPatientHistory) loadPatientHistory(selectedPatient.id);
+              }}
+            >
+              {showPatientHistory ? 'Masquer l\'historique' : 'Consulter l\'historique'}
+            </button>
+          </div>
+          {showPatientHistory && (
+            loadingPatientHistory ? (
+              <p className="clinical-hint">Chargement de l&apos;historique…</p>
+            ) : patientAssessments.length === 0 ? (
+              <p className="clinical-hint">Aucune ancienne évaluation pour ce patient.</p>
+            ) : (
+              <div className="nurse-his-history-list">
+                {patientAssessments.map((row) => (
+                  <article key={row.id} className="nurse-his-history-card">
+                    <h3>Évaluation #{row.id}</h3>
+                    <p>
+                      <strong>{row.nurse_name || 'Infirmier(ère)'}</strong>
+                      {' · '}
+                      {formatDateTime(row.recorded_at)}
+                    </p>
+                    <dl>
+                      <div><dt>Motif</dt><dd>{row.reason_for_consultation || '—'}</dd></div>
+                      <div><dt>TA</dt><dd>{row.bp_systolic || '—'}/{row.bp_diastolic || '—'}</dd></div>
+                      <div><dt>Température</dt><dd>{row.temperature_c ?? '—'} °C</dd></div>
+                      <div><dt>Allergies</dt><dd>{row.allergies || '—'}</dd></div>
+                      <div><dt>Traitements en cours</dt><dd>{row.current_treatments || '—'}</dd></div>
+                      <div><dt>Ordonnance</dt><dd>{row.prescription || '—'}</dd></div>
+                      <div><dt>Notes infirmières</dt><dd>{row.nurse_notes || '—'}</dd></div>
+                    </dl>
+                  </article>
+                ))}
+              </div>
+            )
+          )}
+        </section>
       )}
 
       {(stats?.recent_assessments || []).length > 0 && (

@@ -91,7 +91,6 @@ export default function DoctorClinicalDashboard() {
   // Lab request
   const [labSearch, setLabSearch] = useState('');
   const [selectedLabs, setSelectedLabs] = useState([]);
-  const [labNotes, setLabNotes] = useState('');
 
   // Imaging request
   const [imagingForm, setImagingForm] = useState({
@@ -108,7 +107,6 @@ export default function DoctorClinicalDashboard() {
     reason: '',
     duration: '24h',
     custom_days: '',
-    notes: '',
   });
 
   const [message, setMessage] = useState('');
@@ -199,8 +197,7 @@ export default function DoctorClinicalDashboard() {
         target_specialty_other: consult.target_specialty_other || '',
       });
       setSelectedLabs([]);
-      setLabNotes('');
-      setHosp({ requested: false, reason: '', duration: '24h', custom_days: '', notes: '' });
+      setHosp({ requested: false, reason: '', duration: '24h', custom_days: '' });
       setSearchResults([]);
 
       const [idRes, assessRes, histRes] = await Promise.allSettled([
@@ -296,19 +293,16 @@ export default function DoctorClinicalDashboard() {
           test_code: t.code || t.name,
           test_name: t.name,
           priority: 'routine',
-          clinical_notes: labNotes || null,
+          clinical_notes: null,
         });
       }
       await clinicalApi.doctorCreateServiceRequest({
         patient_id: consultation.patient_id,
         service_category: 'laboratory',
         service_name: selectedLabs.map((t) => t.name).join(', '),
-        department: 'Laboratoire',
-        notes: labNotes || null,
       });
       setMessage(`${selectedLabs.length} examen(s) envoyé(s) au laboratoire.`);
       setSelectedLabs([]);
-      setLabNotes('');
       setLabSearch('');
       refreshServiceRequests();
       loadDashboard();
@@ -346,8 +340,6 @@ export default function DoctorClinicalDashboard() {
         patient_id: consultation.patient_id,
         service_category: 'imaging',
         service_name: `${label}${imagingForm.body_part ? ' — ' + imagingForm.body_part : ''}`,
-        department: 'Imagerie médicale',
-        notes: imagingForm.clinical_indication || null,
       });
       setMessage("Demande d'imagerie envoyée.");
       setImagingForm({ modality: 'xray', modality_other: '', body_part: '', clinical_indication: '', priority: 'routine' });
@@ -372,14 +364,12 @@ export default function DoctorClinicalDashboard() {
         consultation_id: consultation.id,
         reason,
         diagnosis_summary: form.diagnosis || null,
-        notes: `Durée: ${durationLabel}${hosp.notes ? ' — ' + hosp.notes : ''}`,
+        notes: `Durée: ${durationLabel}`,
       });
       await clinicalApi.doctorCreateServiceRequest({
         patient_id: consultation.patient_id,
         service_category: 'other',
         service_name: `Hospitalisation (${durationLabel})`,
-        department: 'Hospitalisation',
-        notes: `${reason}${hosp.notes ? ' — ' + hosp.notes : ''}`,
       });
       setMessage("Demande d'hospitalisation créée — assignez un lit à l'hospitalisation.");
       refreshServiceRequests();
@@ -394,10 +384,10 @@ export default function DoctorClinicalDashboard() {
   const sendTo = async (target) => {
     if (!consultation) return;
     const map = {
-      reception: { category: 'other', department: 'Réception', name: 'Retour à la réception' },
-      nurse: { category: 'nursing', department: 'Soins infirmiers', name: 'Soins infirmiers' },
-      lab: { category: 'laboratory', department: 'Laboratoire', name: 'Orientation laboratoire' },
-      imaging: { category: 'imaging', department: 'Imagerie médicale', name: 'Orientation imagerie' },
+      reception: { category: 'other', label: 'Réception', name: 'Retour à la réception' },
+      nurse: { category: 'nursing', label: 'Soins infirmiers', name: 'Soins infirmiers' },
+      lab: { category: 'laboratory', label: 'Laboratoire', name: 'Orientation laboratoire' },
+      imaging: { category: 'imaging', label: 'Imagerie médicale', name: 'Orientation imagerie' },
     };
     const cfg = map[target];
     setBusy(true);
@@ -407,10 +397,8 @@ export default function DoctorClinicalDashboard() {
         patient_id: consultation.patient_id,
         service_category: cfg.category,
         service_name: cfg.name,
-        department: cfg.department,
-        notes: form.diagnosis || null,
       });
-      setMessage(`Patient envoyé vers ${cfg.department}.`);
+      setMessage(`Patient envoyé vers ${cfg.label}.`);
       refreshServiceRequests();
     } catch (err) {
       setError(formatApiError(err, 'Envoi impossible'));
@@ -616,6 +604,12 @@ export default function DoctorClinicalDashboard() {
                       <div><span>IMC</span><strong>{nurseAssessment.bmi ?? '—'}</strong></div>
                     </div>
                     {nurseAssessment.vitals_observations && <p style={{ marginBottom: 0 }}><strong>Observations :</strong> {nurseAssessment.vitals_observations}</p>}
+                    {nurseAssessment.hospitalized_daily_vitals && (
+                      <p style={{ marginBottom: 0 }}>
+                        <strong>Signes vitaux hospitalisés (soins quotidiens) :</strong> {nurseAssessment.hospitalized_daily_vitals}
+                      </p>
+                    )}
+                    {nurseAssessment.prescription && <p style={{ marginBottom: 0 }}><strong>Prescription :</strong> {nurseAssessment.prescription}</p>}
                     {nurseAssessment.nurse_notes && <p style={{ marginBottom: 0 }}><strong>Notes infirmières :</strong> {nurseAssessment.nurse_notes}</p>}
                   </>
                 ) : (
@@ -778,12 +772,6 @@ export default function DoctorClinicalDashboard() {
                   {selectedLabs.length > 0 && (
                     <p className="clinical-hint">Sélectionnés (les bilans) : {selectedLabs.map((t) => t.name).join(', ')}</p>
                   )}
-                  <input
-                    className="doctor-service-search"
-                    value={labNotes}
-                    onChange={(e) => setLabNotes(e.target.value)}
-                    placeholder="Notes…"
-                  />
                   <button type="button" className="clinical-btn" onClick={sendLabRequest} disabled={busy || selectedLabs.length === 0}>Envoyer au laboratoire</button>
                 </div>
 
@@ -852,12 +840,6 @@ export default function DoctorClinicalDashboard() {
                     value={hosp.reason}
                     onChange={(e) => setHosp({ ...hosp, reason: e.target.value })}
                   />
-                  <input
-                    className="doctor-service-search"
-                    placeholder="Notes…"
-                    value={hosp.notes}
-                    onChange={(e) => setHosp({ ...hosp, notes: e.target.value })}
-                  />
                   <button type="button" className="clinical-btn" onClick={requestHospitalization} disabled={busy}>Créer la demande d&apos;hospitalisation</button>
                 </div>
 
@@ -874,7 +856,6 @@ export default function DoctorClinicalDashboard() {
                   <thead>
                     <tr>
                       <th>Service</th>
-                      <th>Département</th>
                       <th>Statut</th>
                       <th>Créée le</th>
                     </tr>
@@ -883,7 +864,6 @@ export default function DoctorClinicalDashboard() {
                     {serviceRequests.map((s) => (
                       <tr key={s.id}>
                         <td>{s.service_name || '—'}</td>
-                        <td>{s.department || '—'}</td>
                         <td><span className="clinical-badge">{s.status || '—'}</span></td>
                         <td>{formatDateTime(s.created_at)}</td>
                       </tr>

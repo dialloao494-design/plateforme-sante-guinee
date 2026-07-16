@@ -35,6 +35,8 @@ def _combine_history(assessment: models.NurseAssessment) -> Optional[str]:
         ("Antécédents gynéco-obstétricaux", assessment.gynecological_history),
         ("Allergies", assessment.allergies),
         ("Traitements en cours", assessment.current_treatments),
+        ("Signes vitaux hospitalisés - soins quotidiens", assessment.hospitalized_daily_vitals),
+        ("Prescription", assessment.prescription),
         ("Notes infirmières", assessment.nurse_notes),
     ]
     for label, value in mapping:
@@ -71,6 +73,8 @@ def _serialize_assessment(row: models.NurseAssessment) -> na_schemas.NurseAssess
         gynecological_history=row.gynecological_history,
         allergies=row.allergies,
         current_treatments=row.current_treatments,
+        hospitalized_daily_vitals=row.hospitalized_daily_vitals,
+        prescription=row.prescription,
         nurse_notes=row.nurse_notes,
         recorded_at=row.recorded_at,
         updated_at=row.updated_at,
@@ -107,8 +111,6 @@ class NurseAssessmentService:
         )
         if admission_id:
             q = q.filter(models.NurseAssessment.admission_id == admission_id)
-        else:
-            q = q.filter(models.NurseAssessment.recorded_at >= NurseAssessmentService._today_start())
         return q.order_by(models.NurseAssessment.recorded_at.desc()).first()
 
     @staticmethod
@@ -148,13 +150,6 @@ class NurseAssessmentService:
             admission_id=payload.admission_id,
         )
 
-        existing = NurseAssessmentService.get_latest(
-            db,
-            clinic_id=clinic_id,
-            patient_id=payload.patient_id,
-            admission_id=admission_id,
-        )
-
         bmi = na_schemas.calc_bmi(payload.weight_kg, payload.height_cm)
         nurse_name = getattr(actor, "full_name", None) or actor.email
         now = datetime.utcnow()
@@ -162,23 +157,15 @@ class NurseAssessmentService:
         data["bmi"] = bmi
         data["admission_id"] = admission_id
 
-        if existing:
-            for key, value in data.items():
-                setattr(existing, key, value)
-            existing.nurse_user_id = actor.id
-            existing.nurse_name = nurse_name
-            existing.updated_at = now
-            row = existing
-        else:
-            row = models.NurseAssessment(
-                clinic_id=clinic_id,
-                nurse_user_id=actor.id,
-                nurse_name=nurse_name,
-                recorded_at=now,
-                updated_at=now,
-                **data,
-            )
-            db.add(row)
+        row = models.NurseAssessment(
+            clinic_id=clinic_id,
+            nurse_user_id=actor.id,
+            nurse_name=nurse_name,
+            recorded_at=now,
+            updated_at=now,
+            **data,
+        )
+        db.add(row)
 
         db.flush()
 
@@ -231,7 +218,7 @@ class NurseAssessmentService:
             db,
             actor=actor,
             patient_id=payload.patient_id,
-            action="create" if not existing else "update",
+            action="create",
             resource_type="nurse_assessment",
             resource_id=row.id,
             client_ip=client_ip,
@@ -335,6 +322,28 @@ class NurseAssessmentService:
     @staticmethod
     def serialize(row: models.NurseAssessment) -> na_schemas.NurseAssessmentResponse:
         return _serialize_assessment(row)
+
+    @staticmethod
+    def list_patient_assessments(
+        db: Session,
+        *,
+        clinic_id: int,
+        patient_id: int,
+        limit: int = 20,
+    ) -> list[models.NurseAssessment]:
+        assert_patient_in_clinic(db, patient_id=patient_id, clinic_id=clinic_id)
+        return (
+            db.query(models.NurseAssessment)
+            .options(joinedload(models.NurseAssessment.patient))
+            .filter(
+                models.NurseAssessment.clinic_id == clinic_id,
+                models.NurseAssessment.patient_id == patient_id,
+                models.NurseAssessment.deleted_at.is_(None),
+            )
+            .order_by(models.NurseAssessment.recorded_at.desc(), models.NurseAssessment.id.desc())
+            .limit(limit)
+            .all()
+        )
 
     @staticmethod
     def _priority_label(admission_type: Optional[str]) -> str:

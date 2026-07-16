@@ -37,6 +37,8 @@ class NurseAssessmentCreate(BaseModel):
     gynecological_history: Optional[str] = Field(None, max_length=10000)
     allergies: Optional[str] = Field(None, max_length=5000)
     current_treatments: Optional[str] = Field(None, max_length=10000)
+    hospitalized_daily_vitals: Optional[str] = Field(None, max_length=10000)
+    prescription: Optional[str] = Field(None, max_length=10000)
     nurse_notes: Optional[str] = Field(None, max_length=10000)
 
     @field_validator(
@@ -92,6 +94,8 @@ class NurseAssessmentResponse(BaseModel):
     gynecological_history: Optional[str] = None
     allergies: Optional[str] = None
     current_treatments: Optional[str] = None
+    hospitalized_daily_vitals: Optional[str] = None
+    prescription: Optional[str] = None
     nurse_notes: Optional[str] = None
 
     recorded_at: datetime
@@ -120,6 +124,7 @@ class NursePatientDetail(BaseModel):
     age: Optional[int] = None
     gender: Optional[str] = None
     date_of_birth: Optional[date] = None
+    date_of_birth_precision: Optional[str] = None
     phone: Optional[str] = None
     phone_secondary: Optional[str] = None
     email: Optional[str] = None
