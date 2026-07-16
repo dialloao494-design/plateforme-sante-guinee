@@ -6,6 +6,7 @@ from typing import List
 import models
 import schemas
 from database import get_db
+from core.roles import PLATFORM_SCOPE_ROLES, user_has_any_role
 from security import get_current_admin, require_roles
 from services.patient_record_service import PatientRecordService
 
@@ -69,9 +70,9 @@ def create_patient(
 @router.get("/", response_model=List[schemas.PatientResponse])
 def get_patients(
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["doctor", "admin"])),
+    current_user=Depends(require_roles(["doctor", "admin", "platform_admin"])),
 ):
-    if current_user.role == "platform_admin":
+    if user_has_any_role(current_user.role, PLATFORM_SCOPE_ROLES):
         return db.query(models.Patient).all()
 
     if current_user.role in ("clinic_admin", "admin"):

@@ -38,7 +38,7 @@ class DoctorOwnershipPolicy:
         Raises 403 when a doctor targets another practitioner's data.
         Raises 404 when a doctor account has no profile.
         """
-        if current_user.role in ("platform_admin", "clinic_admin", "admin"):
+        if current_user.role in ("platform_owner", "platform_admin", "clinic_admin", "admin"):
             doctor = db.query(models.Doctor).filter(models.Doctor.id == target_doctor_id).first()
             if not doctor:
                 raise HTTPException(

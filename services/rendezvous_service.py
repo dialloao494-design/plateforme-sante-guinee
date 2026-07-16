@@ -197,7 +197,7 @@ class RendezVousService:
                 models.RendezVous.doctor_id == doctor.id
             ).all()
 
-        if role == "platform_admin":
+        if role in ("platform_admin", "platform_owner"):
             return db.query(models.RendezVous).all()
 
         if role in ("clinic_admin", "admin"):
