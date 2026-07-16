@@ -73,6 +73,24 @@ def get_patient_assessment(
     return NurseAssessmentService.serialize(row)
 
 
+@router.get("/patients/{patient_id}/assessments", response_model=list[NurseAssessmentResponse])
+def list_patient_assessments(
+    patient_id: int,
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, NURSE_READ_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    rows = NurseAssessmentService.list_patient_assessments(
+        db,
+        clinic_id=clinic.id,
+        patient_id=patient_id,
+        limit=limit,
+    )
+    return [NurseAssessmentService.serialize(row) for row in rows]
+
+
 @router.post("/assessments", response_model=NurseAssessmentResponse, status_code=status.HTTP_201_CREATED)
 def save_assessment(
     body: NurseAssessmentCreate,
