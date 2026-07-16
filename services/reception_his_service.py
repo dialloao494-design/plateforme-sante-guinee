@@ -153,7 +153,15 @@ class ReceptionHisService:
                 },
             )
 
-        age = _calc_age(payload.date_of_birth)
+        if payload.date_of_birth:
+            age = _calc_age(payload.date_of_birth)
+        elif payload.age_years is not None:
+            age = payload.age_years
+        else:
+            raise HTTPException(
+                status_code=422,
+                detail="Indiquez une date de naissance ou saisissez l'âge du patient.",
+            )
         emergency_json = payload.emergency_contact.model_dump()
         if payload.emergency_contact.same_address_as_patient:
             emergency_json["address"] = payload.address

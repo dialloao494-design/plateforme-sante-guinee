@@ -42,8 +42,9 @@ class PatientRegistrationCreate(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=128)
     last_name: str = Field(..., min_length=1, max_length=128)
     gender: str = Field(..., min_length=1, max_length=16)
-    date_of_birth: date
-    date_of_birth_precision: Literal["full", "year"] = "full"
+    date_of_birth: Optional[date] = None
+    date_of_birth_precision: Literal["full", "year", "unknown"] = "full"
+    age_years: Optional[int] = Field(None, ge=0, le=130)
     phone: str = Field(..., min_length=1, max_length=32)
     address: str = Field(..., min_length=1)
     photo_url: Optional[str] = None

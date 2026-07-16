@@ -10,6 +10,7 @@ const genderLabel = (g) => {
 };
 
 const formatDate = (d, precision = 'full') => {
+  if (precision === 'unknown') return 'Date inconnue';
   if (!d) return '—';
   if (precision === 'year') return String(d).slice(0, 4);
   try {
