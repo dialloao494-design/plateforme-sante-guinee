@@ -143,7 +143,6 @@ const EMPTY_BILLING = {
   department: 'Consultation externe',
   exemption_percent: '0',
 };
-const EMPTY_PAYMENT = { amount_gnf: '', payment_method: 'orange_money', reference: '' };
 const newPaymentLineId = () => `pay-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 const emptyPaymentLine = () => ({ id: newPaymentLineId(), amount_gnf: '', payment_method: 'orange_money', reference: '' });
 const EMPTY_REFUND = {
@@ -355,7 +354,6 @@ export default function ReceptionDashboard() {
   const [admissionLabSearchQ, setAdmissionLabSearchQ] = useState('');
   const [admissionLabSelection, setAdmissionLabSelection] = useState(null);
   const [billingForm, setBillingForm] = useState(EMPTY_BILLING);
-  const [paymentForm, setPaymentForm] = useState(EMPTY_PAYMENT);
   const [paymentLines, setPaymentLines] = useState([emptyPaymentLine()]);
   const [selectedSpecialty, setSelectedSpecialty] = useState('');
   const [selectedImaging, setSelectedImaging] = useState('');
@@ -380,7 +378,6 @@ export default function ReceptionDashboard() {
   const updateReg = (v) => setRegForm((p) => ({ ...p, ...v }));
   const updateAdmission = (v) => setAdmissionForm((p) => ({ ...p, ...v }));
   const updateBilling = (v) => setBillingForm((p) => ({ ...p, ...v }));
-  const updatePayment = (v) => setPaymentForm((p) => ({ ...p, ...v }));
   const updatePaymentLine = (id, patch) =>
     setPaymentLines((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const addPaymentLine = () => setPaymentLines((rows) => [...rows, emptyPaymentLine()]);

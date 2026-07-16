@@ -81,6 +81,8 @@ def test_nurse_assessment_save_and_doctor_sync(client, db_session, admin_user):
             "weight_kg": 60,
             "reason_for_consultation": "Douleur thoracique",
             "allergies": "Aspirine",
+            "hospitalized_daily_vitals": "TA 120/80, T 37.8, SpO2 98%",
+            "prescription": "Paracétamol 500 mg si douleur",
             "nurse_notes": "Patient anxieux",
         },
     )
@@ -88,6 +90,8 @@ def test_nurse_assessment_save_and_doctor_sync(client, db_session, admin_user):
     body = r.json()
     assert body["reason_for_consultation"] == "Douleur thoracique"
     assert body["bmi"] == 22.0
+    assert body["hospitalized_daily_vitals"] == "TA 120/80, T 37.8, SpO2 98%"
+    assert body["prescription"] == "Paracétamol 500 mg si douleur"
 
     r2 = client.get(
         f"/clinical/nurse/patients/{patient.id}/assessment",
@@ -95,6 +99,14 @@ def test_nurse_assessment_save_and_doctor_sync(client, db_session, admin_user):
     )
     assert r2.status_code == 200
     assert r2.json()["allergies"] == "Aspirine"
+    assert r2.json()["hospitalized_daily_vitals"] == "TA 120/80, T 37.8, SpO2 98%"
+
+    dq = client.get("/clinical/doctor/queue", headers=_auth(doctor_user))
+    assert dq.status_code == 200, dq.text
+    assert any(
+        item["patient_id"] == patient.id and item.get("source") == "nurse_assessment"
+        for item in dq.json()
+    )
 
     rdv = models.RendezVous(
         clinic_id=clinic_id,
