@@ -183,7 +183,7 @@ def create_room(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _require_role(current_user, ("platform_admin", "clinic_admin", "admin"))
+    _require_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
     clinic = resolve_clinic_for_user(db, current_user)
     room = HospitalizationService.create_room(
         db,
@@ -215,7 +215,7 @@ def add_bed(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _require_role(current_user, ("platform_admin", "clinic_admin", "admin"))
+    _require_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
     clinic = resolve_clinic_for_user(db, current_user)
     bed = HospitalizationService.add_bed(
         db,

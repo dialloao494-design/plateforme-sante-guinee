@@ -72,10 +72,10 @@ class PatientIntakeCreate(BaseModel):
     address: Optional[str] = None
     date_of_birth: Optional[date] = None
     emergency_contact: Optional[str] = None
-    mother_name: str = Field(..., min_length=1, max_length=255)
+    mother_name: Optional[str] = Field(None, max_length=255)
     profession: Optional[str] = None
     quartier: Optional[str] = None
-    visit_destination: str = Field(..., min_length=1, max_length=255)
+    visit_destination: Optional[str] = Field(None, max_length=255)
 
 
 class PatientIntakeResponse(BaseModel):

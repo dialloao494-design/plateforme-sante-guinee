@@ -91,10 +91,10 @@ class ClinicalWorkflowService:
             address=payload.address,
             date_of_birth=payload.date_of_birth,
             emergency_contact=payload.emergency_contact or payload.mother_name,
-            mother_name=payload.mother_name.strip(),
+            mother_name=(payload.mother_name or "").strip() or None,
             profession=(payload.profession or "").strip() or None,
             quartier=(payload.quartier or "").strip() or None,
-            visit_destination=payload.visit_destination.strip(),
+            visit_destination=(payload.visit_destination or "").strip() or None,
         )
         db.add(patient)
         db.commit()

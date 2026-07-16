@@ -10,6 +10,7 @@ from typing import List
 from datetime import datetime
 
 import models
+from core.roles import PLATFORM_SCOPE_ROLES, user_has_any_role
 from database import get_db
 from schemas import rendezvous as rendezvous_schemas
 from security import get_current_user, require_roles
@@ -45,7 +46,7 @@ def _get_doctor_for_user(db: Session, user_id: int) -> models.Doctor | None:
 
 
 def _assert_can_access_appointment(db: Session, appointment: models.RendezVous, current_user) -> None:
-    if current_user.role == "platform_admin":
+    if user_has_any_role(current_user.role, PLATFORM_SCOPE_ROLES):
         return
 
     if current_user.role in ("clinic_admin", "admin"):

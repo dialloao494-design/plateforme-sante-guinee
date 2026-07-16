@@ -15,7 +15,7 @@ from database import get_db
 from models.user import User
 from schemas.billing_unified import InvoiceGenerateRequest, InvoicePayRequest, InvoiceResponse, InvoiceItemResponse
 from security import get_current_user
-from services.pdf_service import invoice_pdf
+from services.pdf_service import invoice_pdf_legacy
 from services.unified_billing_service import UnifiedBillingService
 
 router = APIRouter(prefix="/clinical/billing/unified", tags=["Unified Billing"])
@@ -151,7 +151,7 @@ def invoice_pdf_download(
         raise HTTPException(status_code=404, detail="Invoice not found")
     patient_name = f"{invoice.patient.first_name} {invoice.patient.last_name}".strip() if invoice.patient else "—"
     items = [{"description": i.description, "amount_gnf": i.amount_gnf} for i in invoice.items]
-    pdf_bytes = invoice_pdf(invoice.invoice_number, patient_name, items, invoice.total_amount_gnf, invoice.paid_amount_gnf)
+    pdf_bytes = invoice_pdf_legacy(invoice.invoice_number, patient_name, items, invoice.total_amount_gnf, invoice.paid_amount_gnf)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

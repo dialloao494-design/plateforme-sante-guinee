@@ -12,6 +12,8 @@ from services.user_provisioning import create_clinic_admin_user, create_staff_us
 
 class TestPlatformClinicDirectory:
     def test_summary_defaults_to_production_only(self, client, db_session, admin_headers):
+        baseline = client.get("/platform/summary", headers=admin_headers).json()
+
         with provisioning_channel("test"):
             koloma = Clinic(name="Centre de Santé Koloma", city="Conakry", is_active=True)
             demo = Clinic(name="Clinique Pilote Demo", city="Conakry", is_active=True)
@@ -56,8 +58,18 @@ class TestPlatformClinicDirectory:
         r = client.get("/platform/summary", headers=admin_headers)
         assert r.status_code == 200
         data = r.json()
-        assert data["total_clinics"] == 1
-        assert data["total_patients"] == 1
+        assert data["total_clinics"] == baseline["total_clinics"] + 1
+        assert data["total_patients"] == baseline["total_patients"] + 1
+
+        prod = client.get(
+            "/platform/clinics/directory",
+            params={"category": "production"},
+            headers=admin_headers,
+        )
+        prod_ids = {c["id"] for c in prod.json()}
+        assert koloma.id in prod_ids
+        assert demo.id not in prod_ids
+        assert test_clinic.id not in prod_ids
 
     def test_directory_search_by_name_and_admin(self, client, db_session, admin_headers):
         with provisioning_channel("test"):
