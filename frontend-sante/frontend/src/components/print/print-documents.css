@@ -66,6 +66,12 @@
   color: #334155;
 }
 
+.print-clinic-header__motto {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
 .print-clinic-header__name {
   margin: 0.35rem 0 0.15rem;
   font-size: 0.9rem;

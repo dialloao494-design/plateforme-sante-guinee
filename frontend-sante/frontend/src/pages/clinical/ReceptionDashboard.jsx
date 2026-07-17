@@ -1521,16 +1521,6 @@ export default function ReceptionDashboard() {
                     />
                     Année seulement (AAAA)
                   </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="birth-date-mode"
-                      value="unknown"
-                      checked={regForm.date_of_birth_precision === 'unknown'}
-                      onChange={() => updateReg({ date_of_birth_precision: 'unknown', date_of_birth: '', birth_year: '' })}
-                    />
-                    Date inconnue (âge manuel)
-                  </label>
                 </div>
                 {regForm.date_of_birth_precision === 'year' ? (
                   <input
@@ -1542,17 +1532,6 @@ export default function ReceptionDashboard() {
                     placeholder="AAAA"
                     value={regForm.birth_year}
                     onChange={(e) => updateReg({ birth_year: e.target.value.replace(/[^\d]/g, '').slice(0, 4) })}
-                  />
-                ) : regForm.date_of_birth_precision === 'unknown' ? (
-                  <input
-                    required
-                    type="number"
-                    inputMode="numeric"
-                    min="0"
-                    max="130"
-                    placeholder="Âge en années"
-                    value={regForm.age_years}
-                    onChange={(e) => updateReg({ age_years: e.target.value.replace(/[^\d]/g, '').slice(0, 3) })}
                   />
                 ) : (
                   <input
@@ -1568,17 +1547,13 @@ export default function ReceptionDashboard() {
                 value={
                   regForm.date_of_birth_precision === 'year'
                     ? (regForm.birth_year.length === 4 ? String(new Date().getFullYear() - Number(regForm.birth_year)) : '')
-                    : regForm.date_of_birth_precision === 'unknown'
-                      ? regForm.age_years
                     : (calcAge(regForm.date_of_birth) !== '' ? String(calcAge(regForm.date_of_birth)) : '')
                 }
                 hint={
                   (
                     regForm.date_of_birth_precision === 'year'
                       ? regForm.birth_year.length === 4
-                      : regForm.date_of_birth_precision === 'unknown'
-                        ? regForm.age_years !== ''
-                        : calcAge(regForm.date_of_birth) !== ''
+                      : calcAge(regForm.date_of_birth) !== ''
                   )
                     ? undefined
                     : FIELD_HINTS.age

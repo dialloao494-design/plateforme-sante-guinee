@@ -46,10 +46,11 @@ def append_official_clinic_header(story: list, *, page_width: float, document_ti
     motto = ParagraphStyle(
         "ClinicMotto",
         parent=base["Normal"],
-        fontSize=9,
+        fontName="Helvetica-Bold",
+        fontSize=11,
         alignment=TA_CENTER,
-        leading=11,
-        textColor=colors.HexColor("#475569"),
+        leading=13,
+        textColor=colors.HexColor("#0f172a"),
         spaceAfter=4,
     )
     ministry = ParagraphStyle(

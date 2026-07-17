@@ -281,8 +281,11 @@ export default function NurseDashboard() {
       });
       setMessage('Évaluation infirmière enregistrée — visible par le médecin.');
       setForm(EMPTY_FORM);
-      await loadPatientHistory(selectedPatient.id);
-      setShowPatientHistory(true);
+      setSelectedPatient(null);
+      setPatientAssessments([]);
+      setShowPatientHistory(false);
+      setSearchQ('');
+      setSearchResults([]);
       loadDashboard();
     } catch (err) {
       setError(formatApiError(err, 'Enregistrement impossible'));
@@ -534,6 +537,26 @@ export default function NurseDashboard() {
           </fieldset>
 
           <fieldset>
+            <legend>Signes vitaux des patients hospitalisés (soins quotidiens)</legend>
+            <TextAreaField
+              label="Signes vitaux des patients hospitalisés (soins quotidiens)"
+              rows={3}
+              value={form.hospitalized_daily_vitals}
+              onChange={(e) => updateForm({ hospitalized_daily_vitals: e.target.value })}
+            />
+          </fieldset>
+
+          <fieldset>
+            <legend>Prescription</legend>
+            <TextAreaField
+              label="Prescription"
+              rows={4}
+              value={form.prescription}
+              onChange={(e) => updateForm({ prescription: e.target.value })}
+            />
+          </fieldset>
+
+          <fieldset>
             <legend>Signes vitaux</legend>
             <div className="reception-his-form-row reception-his-form-row--4">
               <label>
@@ -610,12 +633,6 @@ export default function NurseDashboard() {
               value={form.vitals_observations}
               onChange={(e) => updateForm({ vitals_observations: e.target.value })}
             />
-            <TextAreaField
-              label="Signes vitaux des patients hospitalisés (soins quotidiens)"
-              rows={3}
-              value={form.hospitalized_daily_vitals}
-              onChange={(e) => updateForm({ hospitalized_daily_vitals: e.target.value })}
-            />
           </fieldset>
 
           <fieldset>
@@ -625,16 +642,6 @@ export default function NurseDashboard() {
               rows={5}
               value={form.nurse_notes}
               onChange={(e) => updateForm({ nurse_notes: e.target.value })}
-            />
-          </fieldset>
-
-          <fieldset>
-            <legend>Ordonnance</legend>
-            <TextAreaField
-              label="Ordonnance"
-              rows={4}
-              value={form.prescription}
-              onChange={(e) => updateForm({ prescription: e.target.value })}
             />
           </fieldset>
 
