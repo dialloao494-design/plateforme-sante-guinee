@@ -117,6 +117,10 @@ evidence/*.png
 htmlcov/
 .hypothesis/
 .tox/
+frontend-sante/frontend/test-results/
+frontend-sante/frontend/playwright-report/
+frontend-sante/frontend/blob-report/
+frontend-sante/frontend/playwright/.cache/
 
 # ==========================================
 # DEPLOYMENT GENERATED

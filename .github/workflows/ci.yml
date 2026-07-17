@@ -7,6 +7,17 @@ on:
     branches: [main, master]
 
 jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: pytest tests/ -q
+
   frontend-build:
     runs-on: ubuntu-latest
     defaults:
@@ -24,6 +35,33 @@ jobs:
         env:
           VITE_API_URL: https://example.com/api
           VITE_TELECONSULT_PROVIDER: stub
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend-sante/frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend-sante/frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend-sante/frontend
+      - run: npm run test:e2e
+        working-directory: frontend-sante/frontend
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend-sante/frontend/playwright-report/
+          retention-days: 7
 
   secrets-guard:
     runs-on: ubuntu-latest
