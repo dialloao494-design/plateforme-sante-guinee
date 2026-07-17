@@ -930,16 +930,21 @@ export default function ReceptionDashboard() {
     setError('');
     setMessage('');
     try {
+      const manualAge = regForm.age_years !== '' ? Number(regForm.age_years) : null;
       const resolvedDob =
-        regForm.date_of_birth_precision === 'year'
+        regForm.date_of_birth_precision === 'year' && regForm.birth_year.length === 4
           ? `${regForm.birth_year}-01-01`
-          : (regForm.date_of_birth_precision === 'unknown' ? null : regForm.date_of_birth);
+          : (regForm.date_of_birth_precision === 'full' && regForm.date_of_birth ? regForm.date_of_birth : null);
+      if (!resolvedDob && (manualAge == null || !Number.isFinite(manualAge))) {
+        setError('Indiquez une date de naissance, une année de naissance ou saisissez l’âge du patient.');
+        return;
+      }
       const payload = {
         first_name: regForm.first_name.trim(),
         last_name: regForm.last_name.trim(),
         date_of_birth: resolvedDob,
-        date_of_birth_precision: regForm.date_of_birth_precision,
-        age_years: regForm.date_of_birth_precision === 'unknown' ? Number(regForm.age_years) : undefined,
+        date_of_birth_precision: resolvedDob ? regForm.date_of_birth_precision : 'unknown',
+        age_years: manualAge != null && Number.isFinite(manualAge) ? manualAge : undefined,
         gender: regForm.gender,
         is_newborn: regForm.is_newborn,
         registration_date: regForm.registration_date || undefined,
@@ -1507,7 +1512,7 @@ export default function ReceptionDashboard() {
                       name="birth-date-mode"
                       value="full"
                       checked={regForm.date_of_birth_precision === 'full'}
-                      onChange={() => updateReg({ date_of_birth_precision: 'full', birth_year: '', age_years: '' })}
+                      onChange={() => updateReg({ date_of_birth_precision: 'full', birth_year: '' })}
                     />
                     Date complète (JJ/MM/AAAA)
                   </label>
@@ -1517,7 +1522,7 @@ export default function ReceptionDashboard() {
                       name="birth-date-mode"
                       value="year"
                       checked={regForm.date_of_birth_precision === 'year'}
-                      onChange={() => updateReg({ date_of_birth_precision: 'year', date_of_birth: '', age_years: '' })}
+                      onChange={() => updateReg({ date_of_birth_precision: 'year', date_of_birth: '' })}
                     />
                     Année seulement (AAAA)
                   </label>
@@ -1531,34 +1536,45 @@ export default function ReceptionDashboard() {
                     max={new Date().getFullYear()}
                     placeholder="AAAA"
                     value={regForm.birth_year}
-                    onChange={(e) => updateReg({ birth_year: e.target.value.replace(/[^\d]/g, '').slice(0, 4) })}
+                    onChange={(e) => {
+                      const year = e.target.value.replace(/[^\d]/g, '').slice(0, 4);
+                      updateReg({
+                        birth_year: year,
+                        age_years: year.length === 4 ? String(new Date().getFullYear() - Number(year)) : regForm.age_years,
+                      });
+                    }}
                   />
                 ) : (
                   <input
-                    required
                     type="date"
                     value={regForm.date_of_birth}
-                    onChange={(e) => updateReg({ date_of_birth: e.target.value })}
+                    onChange={(e) => {
+                      const dob = e.target.value;
+                      const age = calcAge(dob);
+                      updateReg({
+                        date_of_birth: dob,
+                        age_years: age !== '' ? String(age) : regForm.age_years,
+                      });
+                    }}
                   />
                 )}
               </div>
-              <DisplayField
-                label="Âge"
-                value={
-                  regForm.date_of_birth_precision === 'year'
-                    ? (regForm.birth_year.length === 4 ? String(new Date().getFullYear() - Number(regForm.birth_year)) : '')
-                    : (calcAge(regForm.date_of_birth) !== '' ? String(calcAge(regForm.date_of_birth)) : '')
-                }
-                hint={
-                  (
-                    regForm.date_of_birth_precision === 'year'
-                      ? regForm.birth_year.length === 4
-                      : calcAge(regForm.date_of_birth) !== ''
-                  )
-                    ? undefined
-                    : FIELD_HINTS.age
-                }
-              />
+              <label>
+                Âge *
+                <input
+                  required
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  max="130"
+                  value={regForm.age_years}
+                  onChange={(e) => updateReg({ age_years: e.target.value.replace(/[^\d]/g, '').slice(0, 3) })}
+                  placeholder="Saisir ou corriger l’âge"
+                />
+                <span className="reception-his-field-hint">
+                  Saisissable manuellement si la date exacte est inconnue.
+                </span>
+              </label>
               <label>Sexe *<select required value={regForm.gender} onChange={(e) => updateReg({ gender: e.target.value })}><option value="F">Féminin</option><option value="M">Masculin</option><option value="Autre">Autre</option></select></label>
               <label>État civil<input value={regForm.marital_status} onChange={(e) => updateReg({ marital_status: e.target.value })} /></label>
               <label>Nationalité<input value={regForm.nationality} onChange={(e) => updateReg({ nationality: e.target.value })} /></label>
