@@ -87,7 +87,7 @@ def create_order(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _require_role(current_user, DOCTOR_ROLES)
+    _require_role(current_user, DOCTOR_ROLES + ADMIN_ROLES)
     clinic = resolve_clinic_for_user(db, current_user)
     order = ImagingService.create_order(
         db,

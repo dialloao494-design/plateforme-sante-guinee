@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import DischargeAuthorizationPrint from '../../components/print/DischargeAuthorizationPrint.jsx';
 import { CLINIC_PRINT_NAME } from '../../constants/clinicBranding.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import clinicalApi from '../../services/clinicalApi';
@@ -20,7 +21,32 @@ const CONSULT_FIELDS = [
   { key: 'diagnosis', label: 'Diagnostic', rows: 2 },
   { key: 'treatment_plan', label: 'Plan de traitement', rows: 3 },
   { key: 'observations', label: 'Observations / Notes', rows: 2 },
+  { key: 'hospitalized_vitals', label: 'Signes vitaux patients hospitalisés', rows: 3 },
+  { key: 'post_op_report', label: 'Post-opératoire — Compte rendu', rows: 3 },
+  { key: 'discharge_summary_text', label: 'Résumé de sortie', rows: 3 },
+  { key: 'discharge_authorization', label: 'Autorisation de sortie', rows: 2 },
+  { key: 'discharge_against_advice', label: 'Décharge — Contre avis médical', rows: 2 },
+  { key: 'prescription_text', label: 'Ordonnance', rows: 3 },
 ];
+
+const EMPTY_DISCHARGE_MOTIFS = {
+  guerison: false,
+  stabilise: false,
+  contre_avis: false,
+  transfert: false,
+  demande_patient: false,
+  evacuation: false,
+  autre_checked: false,
+  autre: '',
+  admin_formalities: false,
+  invoice_paid: false,
+  balance_checked: false,
+  balance_remaining: '',
+  discharge_date: '',
+  discharge_time: '',
+  discharge_instructions: '',
+  next_appointment: '',
+};
 
 // Antécédents sub-fields grouped into one boxed section (mockup page 1).
 const ANTECEDENT_FIELDS = [
@@ -109,6 +135,9 @@ export default function DoctorClinicalDashboard() {
     custom_days: '',
   });
 
+  const [dischargeMotifs, setDischargeMotifs] = useState(EMPTY_DISCHARGE_MOTIFS);
+  const [showDischargePrint, setShowDischargePrint] = useState(false);
+
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -195,10 +224,28 @@ export default function DoctorClinicalDashboard() {
         observations: consult.observations || '',
         target_specialty_code: consult.target_specialty_code || '',
         target_specialty_other: consult.target_specialty_other || '',
+        hospitalized_vitals: consult.hospitalized_vitals || '',
+        post_op_report: consult.post_op_report || '',
+        discharge_summary_text: consult.discharge_summary_text || '',
+        discharge_authorization: consult.discharge_authorization || '',
+        discharge_against_advice: consult.discharge_against_advice || '',
+        prescription_text: consult.prescription_text || '',
       });
+      let motifs = { ...EMPTY_DISCHARGE_MOTIFS };
+      if (consult.discharge_form_json) {
+        try {
+          motifs = { ...EMPTY_DISCHARGE_MOTIFS, ...JSON.parse(consult.discharge_form_json) };
+        } catch {
+          /* keep defaults */
+        }
+      }
+      setDischargeMotifs(motifs);
       setSelectedLabs([]);
+      setLabSearch('');
+      setImagingForm({ modality: 'xray', modality_other: '', body_part: '', clinical_indication: '', priority: 'routine' });
       setHosp({ requested: false, reason: '', duration: '24h', custom_days: '' });
       setSearchResults([]);
+      setShowDischargePrint(false);
 
       const [idRes, assessRes, histRes] = await Promise.allSettled([
         clinicalApi.doctorPatientIdentity(patientId),
@@ -243,6 +290,13 @@ export default function DoctorClinicalDashboard() {
     target_specialty_code: form.target_specialty_code || null,
     target_specialty_other:
       form.target_specialty_code === '__other__' ? form.target_specialty_other : null,
+    hospitalized_vitals: form.hospitalized_vitals || '',
+    post_op_report: form.post_op_report || '',
+    discharge_summary_text: form.discharge_summary_text || '',
+    discharge_authorization: form.discharge_authorization || '',
+    discharge_against_advice: form.discharge_against_advice || '',
+    prescription_text: form.prescription_text || '',
+    discharge_form_json: JSON.stringify(dischargeMotifs),
   });
 
   const saveConsultation = async (complete = false) => {
@@ -296,10 +350,15 @@ export default function DoctorClinicalDashboard() {
           clinical_notes: null,
         });
       }
+      const joined = selectedLabs.map((t) => t.name).join(', ');
+      const serviceName =
+        joined.length > 250
+          ? `${selectedLabs.length} examens labo : ${joined.slice(0, 220)}…`
+          : joined;
       await clinicalApi.doctorCreateServiceRequest({
         patient_id: consultation.patient_id,
         service_category: 'laboratory',
-        service_name: selectedLabs.map((t) => t.name).join(', '),
+        service_name: serviceName.slice(0, 255),
       });
       setMessage(`${selectedLabs.length} examen(s) envoyé(s) au laboratoire.`);
       setSelectedLabs([]);
@@ -313,13 +372,23 @@ export default function DoctorClinicalDashboard() {
     }
   };
 
+  const clearImagingForm = () => {
+    setImagingForm({
+      modality: (catalog.imaging || [])[0]?.modality || 'xray',
+      modality_other: '',
+      body_part: '',
+      clinical_indication: '',
+      priority: 'routine',
+    });
+  };
+
   const sendImagingRequest = async () => {
     if (!consultation) return;
     const modality =
       imagingForm.modality === 'other'
         ? (imagingForm.modality_other || 'other').slice(0, 32)
         : imagingForm.modality;
-    if (!modality) {
+    if (!modality || (imagingForm.modality === 'other' && !(imagingForm.modality_other || '').trim())) {
       setError("Précisez l'examen d'imagerie.");
       return;
     }
@@ -336,13 +405,14 @@ export default function DoctorClinicalDashboard() {
         (catalog.imaging || []).find((i) => i.modality === modality)?.label ||
         imagingForm.modality_other ||
         modality;
+      const serviceName = `${label}${imagingForm.body_part ? ' — ' + imagingForm.body_part : ''}`.slice(0, 255);
       await clinicalApi.doctorCreateServiceRequest({
         patient_id: consultation.patient_id,
         service_category: 'imaging',
-        service_name: `${label}${imagingForm.body_part ? ' — ' + imagingForm.body_part : ''}`,
+        service_name: serviceName,
       });
       setMessage("Demande d'imagerie envoyée.");
-      setImagingForm({ modality: 'xray', modality_other: '', body_part: '', clinical_indication: '', priority: 'routine' });
+      clearImagingForm();
       refreshServiceRequests();
       loadDashboard();
     } catch (err) {
@@ -357,20 +427,34 @@ export default function DoctorClinicalDashboard() {
     setBusy(true);
     setError('');
     try {
+      // Persist hospitalization documentation on the consultation first
+      const { data: saved } = await clinicalApi.updateConsultation(
+        consultation.id,
+        buildUpdatePayload()
+      );
+      setConsultation(saved);
       const durationLabel =
         hosp.duration === 'custom' ? `${hosp.custom_days || '?'} jour(s)` : hosp.duration;
       const reason = hosp.reason || form.chief_complaint || 'Hospitalisation requise';
+      const notesParts = [
+        `Durée: ${durationLabel}`,
+        form.hospitalized_vitals ? `SV hospitalisés: ${form.hospitalized_vitals}` : '',
+        form.post_op_report ? `Post-op: ${form.post_op_report}` : '',
+        form.discharge_summary_text ? `Résumé sortie: ${form.discharge_summary_text}` : '',
+        form.prescription_text ? `Ordonnance: ${form.prescription_text}` : '',
+      ].filter(Boolean);
       await clinicalApi.createAdmission({
         consultation_id: consultation.id,
         reason,
         diagnosis_summary: form.diagnosis || null,
-        notes: `Durée: ${durationLabel}`,
+        notes: notesParts.join('\n'),
       });
       await clinicalApi.doctorCreateServiceRequest({
         patient_id: consultation.patient_id,
         service_category: 'other',
-        service_name: `Hospitalisation (${durationLabel})`,
+        service_name: `Hospitalisation (${durationLabel})`.slice(0, 255),
       });
+      setHosp({ ...hosp, requested: true });
       setMessage("Demande d'hospitalisation créée — assignez un lit à l'hospitalisation.");
       refreshServiceRequests();
       loadDashboard();
@@ -420,6 +504,61 @@ export default function DoctorClinicalDashboard() {
     }
   };
 
+  const buildDischargePrintData = () => {
+    const specialty =
+      form.target_specialty_code === '__other__'
+        ? form.target_specialty_other
+        : (catalog.specialties || []).find((s) => s.code === form.target_specialty_code)?.label;
+    return {
+      authorization_number: consultation ? `AS-${consultation.id}` : '',
+      patient_number: identity?.patient_number || '',
+      full_name: [identity?.last_name, identity?.first_name].filter(Boolean).join(' ') || identity?.full_name || '',
+      age: identity?.age ?? identity?.age_years ?? '',
+      gender: identity?.gender || '',
+      service: specialty || 'Médecine générale',
+      doctor_name: user?.full_name || user?.email || '',
+      motifs: {
+        guerison: dischargeMotifs.guerison,
+        stabilise: dischargeMotifs.stabilise,
+        contre_avis: dischargeMotifs.contre_avis || Boolean((form.discharge_against_advice || '').trim()),
+        transfert: dischargeMotifs.transfert,
+        demande_patient: dischargeMotifs.demande_patient,
+        evacuation: dischargeMotifs.evacuation,
+        autre_checked: dischargeMotifs.autre_checked,
+        autre: dischargeMotifs.autre,
+      },
+      discharge_date: dischargeMotifs.discharge_date || new Date().toLocaleDateString('fr-FR'),
+      discharge_time: dischargeMotifs.discharge_time || '',
+      discharge_authorization: form.discharge_authorization || form.discharge_summary_text || '',
+      discharge_instructions: dischargeMotifs.discharge_instructions || form.discharge_summary_text || '',
+      prescription_text: form.prescription_text || '',
+      next_appointment: dischargeMotifs.next_appointment || '',
+      admin_formalities: dischargeMotifs.admin_formalities,
+      invoice_paid: dischargeMotifs.invoice_paid,
+      balance_checked: dischargeMotifs.balance_checked,
+      balance_remaining: dischargeMotifs.balance_remaining,
+      discharge_against_advice: form.discharge_against_advice || '',
+      printed_by: (user?.full_name || user?.email || '').toUpperCase(),
+    };
+  };
+
+  const printDischargeAuthorization = async () => {
+    if (!consultation) return;
+    setError('');
+    try {
+      // Persist latest hospitalization/discharge fields before printing
+      const { data } = await clinicalApi.updateConsultation(consultation.id, buildUpdatePayload());
+      setConsultation(data);
+      setShowDischargePrint(true);
+      window.setTimeout(() => {
+        window.print();
+        window.setTimeout(() => setShowDischargePrint(false), 300);
+      }, 150);
+    } catch (err) {
+      setError(formatApiError(err, "Impossible d'imprimer l'autorisation de sortie"));
+    }
+  };
+
   const statCards = [
     { key: 'patients_waiting', label: 'Patients en attente', value: stats?.patients_waiting ?? 0, variant: 'accent' },
     { key: 'consultations_today', label: "Consultations aujourd'hui", value: stats?.consultations_today ?? 0 },
@@ -429,15 +568,19 @@ export default function DoctorClinicalDashboard() {
     { key: 'completed_consultations', label: 'Consultations terminées', value: stats?.completed_consultations ?? 0, variant: 'success' },
   ];
 
-  const labResults = (catalog.lab_tests || []).filter((t) => {
+  const labResults = (() => {
+    const tests = catalog.lab_tests || [];
     const q = labSearch.trim().toLowerCase();
-    if (!q) return false;
-    return (
-      (t.name || '').toLowerCase().includes(q) ||
-      (t.category || '').toLowerCase().includes(q) ||
-      (t.code || '').toLowerCase().includes(q)
-    );
-  }).slice(0, 25);
+    const filtered = q
+      ? tests.filter(
+          (t) =>
+            (t.name || '').toLowerCase().includes(q) ||
+            (t.category || '').toLowerCase().includes(q) ||
+            (t.code || '').toLowerCase().includes(q)
+        )
+      : tests;
+    return filtered.slice(0, 80);
+  })();
 
   return (
     <div className="clinical-page reception-his">
@@ -585,9 +728,12 @@ export default function DoctorClinicalDashboard() {
               </div>
             </section>
 
-            {/* 2. Paramètres vitaux */}
-            <section className="doctor-box">
-              <div className="doctor-box-title">Paramètres vitaux</div>
+            {/* 2. Paramètres vitaux — lecture seule (saisie infirmière) */}
+            <section className="doctor-box doctor-box--readonly" aria-readonly="true">
+              <div className="doctor-box-title">
+                Paramètres vitaux
+                <span className="doctor-readonly-badge">Lecture seule — saisie infirmière</span>
+              </div>
               <div className="doctor-box-body">
                 {nurseAssessment ? (
                   <>
@@ -605,12 +751,19 @@ export default function DoctorClinicalDashboard() {
                     </div>
                     {nurseAssessment.vitals_observations && <p style={{ marginBottom: 0 }}><strong>Observations :</strong> {nurseAssessment.vitals_observations}</p>}
                     {nurseAssessment.hospitalized_daily_vitals && (
-                      <p style={{ marginBottom: 0 }}>
-                        <strong>Signes vitaux hospitalisés (soins quotidiens) :</strong> {nurseAssessment.hospitalized_daily_vitals}
-                      </p>
+                      <div className="doctor-nurse-readonly-block">
+                        <strong>Signes vitaux hospitalisés (soins quotidiens) — infirmier(ère) :</strong>
+                        <p>{nurseAssessment.hospitalized_daily_vitals}</p>
+                      </div>
                     )}
-                    {nurseAssessment.prescription && <p style={{ marginBottom: 0 }}><strong>Prescription :</strong> {nurseAssessment.prescription}</p>}
+                    {nurseAssessment.reason_for_consultation && (
+                      <p style={{ marginBottom: 0 }}><strong>Motif (infirmière) :</strong> {nurseAssessment.reason_for_consultation}</p>
+                    )}
+                    {nurseAssessment.prescription && <p style={{ marginBottom: 0 }}><strong>Ordonnance (infirmière) :</strong> {nurseAssessment.prescription}</p>}
                     {nurseAssessment.nurse_notes && <p style={{ marginBottom: 0 }}><strong>Notes infirmières :</strong> {nurseAssessment.nurse_notes}</p>}
+                    <p className="clinical-hint" style={{ marginBottom: 0 }}>
+                      Le médecin consulte ces paramètres sans pouvoir les modifier. La saisie se fait uniquement côté infirmier.
+                    </p>
                   </>
                 ) : (
                   <p className="clinical-hint">Aucune évaluation infirmière disponible.</p>
@@ -746,17 +899,20 @@ export default function DoctorClinicalDashboard() {
 
                 {/* Laboratoire */}
                 <div className="doctor-service-block">
-                  <h4>Rechercher examen laboratoire</h4>
+                  <h4>Orientation laboratoire — sélectionner un ou plusieurs examens</h4>
                   <input
                     className="doctor-service-search"
                     value={labSearch}
                     onChange={(e) => setLabSearch(e.target.value)}
-                    placeholder="Nom ou code…"
+                    placeholder="Rechercher un examen (nom ou code)…"
+                    aria-label="Rechercher examen laboratoire"
                   />
-                  {labResults.length > 0 && (
+                  {(catalog.lab_tests || []).length === 0 ? (
+                    <p className="clinical-hint">Catalogue d&apos;examens indisponible. Réessayez ou contactez l&apos;administrateur.</p>
+                  ) : (
                     <ul className="doctor-service-options">
                       {labResults.map((t) => (
-                        <li key={t.code}>
+                        <li key={t.code || t.name}>
                           <label>
                             <input
                               type="checkbox"
@@ -769,19 +925,38 @@ export default function DoctorClinicalDashboard() {
                       ))}
                     </ul>
                   )}
-                  {selectedLabs.length > 0 && (
-                    <p className="clinical-hint">Sélectionnés (les bilans) : {selectedLabs.map((t) => t.name).join(', ')}</p>
+                  {!labSearch.trim() && (catalog.lab_tests || []).length > labResults.length && (
+                    <p className="clinical-hint">Affichage des {labResults.length} premiers examens — affinez la recherche pour les autres.</p>
                   )}
-                  <button type="button" className="clinical-btn" onClick={sendLabRequest} disabled={busy || selectedLabs.length === 0}>Envoyer au laboratoire</button>
+                  {labSearch.trim() && labResults.length === 0 && (
+                    <p className="clinical-hint">Aucun examen ne correspond à « {labSearch} ».</p>
+                  )}
+                  {selectedLabs.length > 0 && (
+                    <p className="clinical-hint">
+                      Sélectionnés ({selectedLabs.length}) : {selectedLabs.map((t) => t.name).join(', ')}
+                      {' '}
+                      <button type="button" className="clinical-btn secondary doctor-inline-clear" onClick={() => setSelectedLabs([])}>
+                        Effacer la sélection
+                      </button>
+                    </p>
+                  )}
+                  <button type="button" className="clinical-btn" onClick={sendLabRequest} disabled={busy || selectedLabs.length === 0}>
+                    Envoyer au laboratoire
+                  </button>
                 </div>
 
                 {/* Imagerie médicale */}
                 <div className="doctor-service-block">
                   <h4>Imagerie médicale — examen</h4>
+                  <label className="doctor-field-label">Type d&apos;examen</label>
                   <div className="doctor-imaging-row">
-                    <select value={imagingForm.modality} onChange={(e) => setImagingForm({ ...imagingForm, modality: e.target.value })}>
+                    <select
+                      value={imagingForm.modality}
+                      onChange={(e) => setImagingForm({ ...imagingForm, modality: e.target.value })}
+                      aria-label="Type d'examen d'imagerie"
+                    >
                       {(catalog.imaging || []).map((i) => (
-                        <option key={i.code} value={i.modality}>{i.label}</option>
+                        <option key={i.code || i.modality} value={i.modality}>{i.label}</option>
                       ))}
                       <option value="other">Autre (préciser)</option>
                     </select>
@@ -794,19 +969,40 @@ export default function DoctorClinicalDashboard() {
                       onChange={(e) => setImagingForm({ ...imagingForm, modality_other: e.target.value })}
                     />
                   )}
+                  <label className="doctor-field-label" htmlFor="imaging-body-part">Région / partie du corps</label>
+                  <div className="doctor-imaging-body-row">
+                    <input
+                      id="imaging-body-part"
+                      className="doctor-service-search"
+                      placeholder="Ex. thorax, abdomen, genou droit…"
+                      value={imagingForm.body_part}
+                      onChange={(e) => setImagingForm({ ...imagingForm, body_part: e.target.value })}
+                    />
+                    <button
+                      type="button"
+                      className="clinical-btn secondary"
+                      onClick={() => setImagingForm({ ...imagingForm, body_part: '' })}
+                      disabled={!imagingForm.body_part}
+                    >
+                      Effacer
+                    </button>
+                  </div>
+                  <label className="doctor-field-label" htmlFor="imaging-indication">Indication clinique</label>
                   <input
-                    className="doctor-service-search"
-                    placeholder="Région / partie du corps…"
-                    value={imagingForm.body_part}
-                    onChange={(e) => setImagingForm({ ...imagingForm, body_part: e.target.value })}
-                  />
-                  <input
+                    id="imaging-indication"
                     className="doctor-service-search"
                     placeholder="Indication clinique…"
                     value={imagingForm.clinical_indication}
                     onChange={(e) => setImagingForm({ ...imagingForm, clinical_indication: e.target.value })}
                   />
-                  <button type="button" className="clinical-btn" onClick={sendImagingRequest} disabled={busy}>Envoyer à l&apos;imagerie</button>
+                  <div className="clinical-actions" style={{ marginTop: '0.5rem' }}>
+                    <button type="button" className="clinical-btn" onClick={sendImagingRequest} disabled={busy}>
+                      Envoyer à l&apos;imagerie
+                    </button>
+                    <button type="button" className="clinical-btn secondary" onClick={clearImagingForm} disabled={busy}>
+                      Effacer le formulaire
+                    </button>
+                  </div>
                 </div>
 
                 {/* Hospitalisation */}
@@ -840,7 +1036,109 @@ export default function DoctorClinicalDashboard() {
                     value={hosp.reason}
                     onChange={(e) => setHosp({ ...hosp, reason: e.target.value })}
                   />
-                  <button type="button" className="clinical-btn" onClick={requestHospitalization} disabled={busy}>Créer la demande d&apos;hospitalisation</button>
+
+                  <div className="doctor-hosp-doc-fields">
+                    <label>
+                      Signes vitaux patients hospitalisés
+                      <textarea
+                        rows={3}
+                        value={form.hospitalized_vitals}
+                        onChange={(e) => setForm({ ...form, hospitalized_vitals: e.target.value })}
+                        placeholder="Suivi quotidien des signes vitaux (médecin)…"
+                      />
+                    </label>
+                    {nurseAssessment?.hospitalized_daily_vitals && (
+                      <p className="doctor-nurse-readonly-block">
+                        <strong>Dernière saisie infirmière (lecture seule) :</strong>{' '}
+                        {nurseAssessment.hospitalized_daily_vitals}
+                      </p>
+                    )}
+                    <label>
+                      Post-opératoire — Compte rendu
+                      <textarea
+                        rows={3}
+                        value={form.post_op_report}
+                        onChange={(e) => setForm({ ...form, post_op_report: e.target.value })}
+                      />
+                    </label>
+                    <label>
+                      Résumé de sortie
+                      <textarea
+                        rows={3}
+                        value={form.discharge_summary_text}
+                        onChange={(e) => setForm({ ...form, discharge_summary_text: e.target.value })}
+                      />
+                    </label>
+                    <label>
+                      Autorisation de sortie
+                      <textarea
+                        rows={2}
+                        value={form.discharge_authorization}
+                        onChange={(e) => setForm({ ...form, discharge_authorization: e.target.value })}
+                      />
+                    </label>
+                    <label>
+                      Décharge — Contre avis médical
+                      <textarea
+                        rows={2}
+                        value={form.discharge_against_advice}
+                        onChange={(e) => setForm({ ...form, discharge_against_advice: e.target.value })}
+                      />
+                    </label>
+                    <label>
+                      Ordonnance
+                      <textarea
+                        rows={3}
+                        value={form.prescription_text}
+                        onChange={(e) => setForm({ ...form, prescription_text: e.target.value })}
+                      />
+                    </label>
+
+                    <fieldset className="doctor-discharge-motifs">
+                      <legend>Motif de la sortie (autorisation)</legend>
+                      <label><input type="checkbox" checked={dischargeMotifs.guerison} onChange={(e) => setDischargeMotifs({ ...dischargeMotifs, guerison: e.target.checked })} /> Guérison / Fin de traitement</label>
+                      <label><input type="checkbox" checked={dischargeMotifs.stabilise} onChange={(e) => setDischargeMotifs({ ...dischargeMotifs, stabilise: e.target.checked })} /> État de santé stabilisé</label>
+                      <label><input type="checkbox" checked={dischargeMotifs.contre_avis} onChange={(e) => setDischargeMotifs({ ...dischargeMotifs, contre_avis: e.target.checked })} /> Sortie contre avis médical</label>
+                      <label><input type="checkbox" checked={dischargeMotifs.transfert} onChange={(e) => setDischargeMotifs({ ...dischargeMotifs, transfert: e.target.checked })} /> Transfert vers un autre établissement</label>
+                      <label><input type="checkbox" checked={dischargeMotifs.demande_patient} onChange={(e) => setDischargeMotifs({ ...dischargeMotifs, demande_patient: e.target.checked })} /> À la demande du patient ou de la famille</label>
+                      <label><input type="checkbox" checked={dischargeMotifs.evacuation} onChange={(e) => setDischargeMotifs({ ...dischargeMotifs, evacuation: e.target.checked })} /> Évacuation</label>
+                      <label className="doctor-discharge-autre">
+                        <input type="checkbox" checked={dischargeMotifs.autre_checked} onChange={(e) => setDischargeMotifs({ ...dischargeMotifs, autre_checked: e.target.checked })} /> Autre
+                        <input
+                          type="text"
+                          value={dischargeMotifs.autre}
+                          onChange={(e) => setDischargeMotifs({ ...dischargeMotifs, autre: e.target.value, autre_checked: true })}
+                          placeholder="Préciser…"
+                        />
+                      </label>
+                      <label>
+                        Consignes de sortie
+                        <input
+                          type="text"
+                          value={dischargeMotifs.discharge_instructions}
+                          onChange={(e) => setDischargeMotifs({ ...dischargeMotifs, discharge_instructions: e.target.value })}
+                        />
+                      </label>
+                      <label>
+                        Prochain rendez-vous
+                        <input
+                          type="text"
+                          value={dischargeMotifs.next_appointment}
+                          onChange={(e) => setDischargeMotifs({ ...dischargeMotifs, next_appointment: e.target.value })}
+                          placeholder="JJ/MM/AAAA à HH h MM"
+                        />
+                      </label>
+                    </fieldset>
+                  </div>
+
+                  <div className="clinical-actions" style={{ marginTop: '0.75rem' }}>
+                    <button type="button" className="clinical-btn" onClick={requestHospitalization} disabled={busy}>
+                      Créer la demande d&apos;hospitalisation
+                    </button>
+                    <button type="button" className="clinical-btn secondary" onClick={printDischargeAuthorization} disabled={busy}>
+                      Imprimer autorisation de sortie
+                    </button>
+                  </div>
                 </div>
 
               </div>
@@ -919,6 +1217,12 @@ export default function DoctorClinicalDashboard() {
           </section>
         )}
       </div>
+
+      {showDischargePrint && (
+        <div className="doctor-discharge-print-root" aria-hidden={!showDischargePrint}>
+          <DischargeAuthorizationPrint data={buildDischargePrintData()} />
+        </div>
+      )}
     </div>
   );
 }

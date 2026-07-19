@@ -217,6 +217,77 @@
   color: #1e293b;
 }
 
+/* —— Autorisation de sortie —— */
+.print-discharge-auth {
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 0.5rem 0.75rem 1rem;
+  color: #0f172a;
+  font-size: 10.5pt;
+  line-height: 1.35;
+}
+
+.print-discharge-auth__meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.print-discharge-auth__meta p {
+  margin: 0.15rem 0;
+}
+
+.print-discharge-auth__section {
+  margin: 0.7rem 0;
+  padding-top: 0.35rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.print-discharge-auth__section h2 {
+  margin: 0 0 0.35rem;
+  font-size: 11pt;
+  color: #134e4a;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.print-discharge-auth__section p {
+  margin: 0.25rem 0;
+}
+
+.print-discharge-auth__motifs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 1.25rem;
+}
+
+.print-discharge-auth__notes {
+  white-space: pre-wrap;
+  margin-top: 0.35rem;
+}
+
+.print-discharge-auth__signatures {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #cbd5e1;
+}
+
+.print-discharge-auth__signatures p {
+  margin: 0.2rem 0;
+  min-height: 1.1em;
+}
+
+.print-discharge-auth__stamp {
+  margin-top: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  color: #134e4a;
+}
+
 @media print {
   @page {
     size: A4 portrait;
@@ -238,7 +309,14 @@
 
   .print-registration-section,
   .print-registration-top,
-  .print-document-footer {
+  .print-document-footer,
+  .print-discharge-auth,
+  .print-discharge-auth__section,
+  .print-discharge-auth__signatures {
     page-break-inside: avoid;
+  }
+
+  .doctor-discharge-print-root {
+    display: block !important;
   }
 }

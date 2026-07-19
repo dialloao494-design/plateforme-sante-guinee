@@ -431,6 +431,13 @@ class ClinicalWorkflowService:
             "observations",
             "target_specialty_code",
             "target_specialty_other",
+            "hospitalized_vitals",
+            "post_op_report",
+            "discharge_summary_text",
+            "discharge_authorization",
+            "discharge_against_advice",
+            "prescription_text",
+            "discharge_form_json",
         ):
             val = getattr(payload, field, None)
             if val is not None:
