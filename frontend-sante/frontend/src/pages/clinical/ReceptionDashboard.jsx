@@ -27,12 +27,15 @@ const DEFAULT_ADMISSION_SERVICES = [
   'Imagerie médicale',
 ];
 const DEFAULT_BILLING_DEPARTMENTS = [
+  'Consultation urgences',
+  'Consultation spécialisée',
   'Consultation externe',
   'Laboratoire',
   'Pharmacie',
   'Hospitalisation',
   'Imagerie médicale',
   'Urgences',
+  'Soins infirmiers',
 ];
 const ADMISSION_TYPES = [
   { value: 'emergency', label: 'Urgence' },
@@ -153,7 +156,6 @@ const EMPTY_REFUND = {
   refund_amount_gnf: '',
   recipient_name: '',
   recipient_phone: '',
-  recipient_relationship: '',
   refund_method: 'orange_money',
   reason: 'service_cancelled',
   reason_notes: '',
@@ -161,8 +163,9 @@ const EMPTY_REFUND = {
 
 const SERVICE_REQUEST_CATEGORIES = [
   { value: 'laboratory', label: 'Laboratoire' },
-  { value: 'nursing', label: 'Soins infirmiers' },
   { value: 'imaging', label: 'Imagerie' },
+  { value: 'consultation', label: 'Consultation spécialisée' },
+  { value: 'nursing', label: 'Soins infirmiers' },
   { value: 'pharmacy', label: 'Pharmacie' },
   { value: 'doctor', label: 'Médecin' },
   { value: 'service', label: 'Services / Prestations' },
@@ -183,7 +186,12 @@ const EMPTY_SERVICE_REQUEST = {
 };
 
 const DEFAULT_SERVICE_PRESTATIONS = [
-  { code: 'medical_transport_ambulance', label: 'Medical Transport / Ambulance' },
+  { code: 'emergency_care_with_serum', label: "Soins d'urgences avec sérum", price_gnf: 500000 },
+  { code: 'injection', label: 'Injection', price_gnf: 25000 },
+  { code: 'small_dressing', label: 'Petit pansement', price_gnf: 30000 },
+  { code: 'large_dressing', label: 'Grand pansement', price_gnf: 80000 },
+  { code: 'pediatric_emergency_care', label: "Soins d'urgences Pédiatrie", price_gnf: 250000 },
+  { code: 'medical_transport_ambulance', label: 'Medical Transport / Ambulance', price_gnf: 0 },
 ];
 
 const DASHBOARD_BUCKET_TITLES = {
@@ -405,19 +413,21 @@ export default function ReceptionDashboard() {
     admissionForm.admission_type === 'specialized_consultation'
     || (admissionForm.services || []).includes('Consultation spécialisée');
 
-  const renderSpecialtyPicker = (idSuffix = '') => (
+  const renderSpecialtyPicker = (idSuffix = '', { required = showSpecialtyPicker } = {}) => (
     <div className="reception-his-specialty-picker">
       <label htmlFor={`specialty-select-${idSuffix}`}>
         Spécialité (consultation spécialisée) *
         <select
           id={`specialty-select-${idSuffix}`}
-          required={showSpecialtyPicker}
+          required={required}
           value={admissionForm.specialty_code || selectedSpecialty}
           onChange={(e) => syncSpecialtyCode(e.target.value)}
         >
           <option value="">Choisir une spécialité…</option>
           {specializedSpecialties.map((spec) => (
-            <option key={spec.code} value={spec.code}>{spec.label}</option>
+            <option key={spec.code} value={spec.code}>
+              {spec.label} · {formatGNF(spec.price_gnf || 250000)}
+            </option>
           ))}
           <option value={SPECIALTY_OTHER_CODE}>Autre</option>
         </select>
@@ -447,17 +457,35 @@ export default function ReceptionDashboard() {
       setError('Précisez la spécialité pour « Autre ».');
       return;
     }
+    const spec = specializedSpecialties.find((s) => s.code === code);
     const svc = (billingCatalog?.consultation_services || []).find((c) => c.code === 'specialized_consultation');
-    if (!svc) return;
+    const price = Number(spec?.price_gnf ?? svc?.price_gnf ?? 250000);
     addBillingLine({
-      charge_type: svc.charge_type,
+      charge_type: svc?.charge_type || 'consultation',
       description: `Consultation spécialisée — ${label}`,
       quantity: 1,
-      unit_price_gnf: svc.price_gnf,
+      unit_price_gnf: price,
     });
-    updateBilling({ department: `Consultation spécialisée — ${label}` });
+    updateBilling({ department: 'Consultation spécialisée' });
     syncSpecialtyCode('');
     syncSpecialtyOther('');
+    setError('');
+  };
+
+  const addEmergencyConsultation = () => {
+    const code = admissionForm.specialty_code || selectedSpecialty;
+    const label = resolveSpecialtyLabel(code, admissionForm.specialty_other);
+    const spec = specializedSpecialties.find((s) => s.code === code);
+    const svc = (billingCatalog?.consultation_services || []).find((c) => c.code === 'emergency_consultation');
+    const price = Number(spec?.emergency_price_gnf ?? svc?.price_gnf ?? 150000);
+    const desc = label ? `Consultation d'urgences — ${label}` : (svc?.label || "Consultation d'urgences");
+    addBillingLine({
+      charge_type: svc?.charge_type || 'consultation',
+      description: desc,
+      quantity: 1,
+      unit_price_gnf: price,
+    });
+    updateBilling({ department: "Consultation urgences" });
     setError('');
   };
 
@@ -1151,6 +1179,9 @@ export default function ReceptionDashboard() {
     e.preventDefault();
     if (!selectedPatient?.id) return setError('Recherchez et sélectionnez un patient avant de créer l’admission.');
     if (!refundForm.invoice_id) return setError('Sélectionnez une facture du patient.');
+    if (refundForm.reason === 'other' && !(refundForm.reason_notes || '').trim()) {
+      return setError('Saisissez le motif du remboursement (Autre).');
+    }
     setLoading(true);
     setError('');
     setMessage('');
@@ -1162,7 +1193,6 @@ export default function ReceptionDashboard() {
         refund_amount_gnf: Number(refundForm.refund_amount_gnf || 0),
         recipient_name: refundForm.recipient_name.trim(),
         recipient_phone: refundForm.recipient_phone.trim(),
-        recipient_relationship: refundForm.recipient_relationship || undefined,
         refund_method: refundForm.refund_method,
         reason: refundForm.reason,
         reason_notes: refundForm.reason_notes || undefined,
@@ -1262,20 +1292,36 @@ export default function ReceptionDashboard() {
   const filteredLabTests = useMemo(() => {
     const tests = billingCatalog?.lab_tests || [];
     const q = labSearchQ.trim().toLowerCase();
-    if (!q) return tests.slice(0, 40);
+    if (!q) return tests;
     return tests.filter(
       (t) => String(t.name || '').toLowerCase().includes(q) || String(t.code || '').toLowerCase().includes(q)
-    ).slice(0, 40);
+    );
   }, [billingCatalog, labSearchQ]);
 
   const filteredServiceRequestLabTests = useMemo(() => {
     const tests = billingCatalog?.lab_tests || [];
     const q = serviceRequestExamSearchQ.trim().toLowerCase();
-    if (!q) return tests.slice(0, 20);
+    if (!q) return tests;
     return tests.filter(
       (t) => String(t.name || '').toLowerCase().includes(q) || String(t.code || '').toLowerCase().includes(q)
-    ).slice(0, 20);
+    );
   }, [billingCatalog, serviceRequestExamSearchQ]);
+
+  const filteredServiceRequestSpecialties = useMemo(() => {
+    const q = serviceRequestExamSearchQ.trim().toLowerCase();
+    if (!q) return specializedSpecialties;
+    return specializedSpecialties.filter(
+      (s) => String(s.label || '').toLowerCase().includes(q) || String(s.code || '').toLowerCase().includes(q)
+    );
+  }, [specializedSpecialties, serviceRequestExamSearchQ]);
+
+  const filteredServiceRequestImaging = useMemo(() => {
+    const q = serviceRequestExamSearchQ.trim().toLowerCase();
+    if (!q) return imagingExaminations;
+    return imagingExaminations.filter(
+      (e) => String(e.label || '').toLowerCase().includes(q) || String(e.code || '').toLowerCase().includes(q)
+    );
+  }, [imagingExaminations, serviceRequestExamSearchQ]);
 
   const filteredServicePrestations = useMemo(() => {
     const q = serviceRequestExamSearchQ.trim().toLowerCase();
@@ -1894,77 +1940,141 @@ export default function ReceptionDashboard() {
               {!activeInvoice && (
                 <form className="reception-his-inline-create" onSubmit={handleCreateInvoice}>
                   <fieldset className="reception-his-nested-fieldset">
-                    <legend>Ajouter des prestations</legend>
-                    <div className="reception-his-billing-quick-add">
-                      {(billingCatalog?.consultation_services || []).map((svc) => (
-                        svc.code === 'specialized_consultation' ? null : (
+                    <legend>Service concerné / tarification</legend>
+                    <p className="clinical-hint">
+                      Sélectionnez le service ci-dessus, puis la spécialité ou l&apos;examen selon la fiche de tarifs AASMA.
+                    </p>
+                    {(billingForm.department === 'Consultation spécialisée'
+                      || String(billingForm.department || '').startsWith('Consultation spécialisée')) && (
+                      <div className="reception-his-specialty-picker">
+                        {renderSpecialtyPicker('billing', { required: true })}
+                        <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addSpecializedConsultation}>
+                          + Consultation spécialisée
+                        </button>
+                      </div>
+                    )}
+                    {(billingForm.department === 'Consultation urgences' || billingForm.department === 'Urgences') && (
+                      <div className="reception-his-specialty-picker">
+                        <label htmlFor="specialty-select-emergency">
+                          Spécialité (tarif urgence)
+                          <select
+                            id="specialty-select-emergency"
+                            value={admissionForm.specialty_code || selectedSpecialty}
+                            onChange={(e) => syncSpecialtyCode(e.target.value)}
+                          >
+                            <option value="">Tarif général urgences…</option>
+                            {specializedSpecialties.map((spec) => (
+                              <option key={spec.code} value={spec.code}>
+                                {spec.label} · {formatGNF(spec.emergency_price_gnf || 150000)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addEmergencyConsultation}>
+                          + Consultation d&apos;urgences
+                        </button>
+                      </div>
+                    )}
+                    {billingForm.department === 'Consultation externe' && (
+                      <button
+                        type="button"
+                        className="clinical-btn clinical-btn--secondary"
+                        onClick={() => {
+                          const svc = (billingCatalog?.consultation_services || []).find((c) => c.code === 'outpatient_consultation');
+                          addBillingLine({
+                            charge_type: svc?.charge_type || 'consultation',
+                            description: svc?.label || 'Consultation externe',
+                            quantity: 1,
+                            unit_price_gnf: svc?.price_gnf || 100000,
+                          });
+                        }}
+                      >
+                        + Consultation externe · {formatGNF((billingCatalog?.consultation_services || []).find((c) => c.code === 'outpatient_consultation')?.price_gnf || 100000)}
+                      </button>
+                    )}
+                    {billingForm.department === 'Hospitalisation' && (
+                      <button
+                        type="button"
+                        className="clinical-btn clinical-btn--secondary"
+                        onClick={() => {
+                          const svc = (billingCatalog?.consultation_services || []).find((c) => c.code === 'hospitalization');
+                          addBillingLine({
+                            charge_type: svc?.charge_type || 'hospitalization',
+                            description: svc?.label || 'Hospitalisation',
+                            quantity: 1,
+                            unit_price_gnf: svc?.price_gnf || 350000,
+                          });
+                        }}
+                      >
+                        + Hospitalisation · {formatGNF((billingCatalog?.consultation_services || []).find((c) => c.code === 'hospitalization')?.price_gnf || 350000)}
+                      </button>
+                    )}
+                    {(billingForm.department === 'Imagerie médicale') && imagingExaminations.length > 0 && (
+                      <div className="reception-his-specialty-picker">
+                        <label>
+                          Imagerie médicale — examen
+                          <select value={selectedImaging} onChange={(e) => setSelectedImaging(e.target.value)}>
+                            <option value="">Choisir un examen…</option>
+                            {imagingExaminations.map((exam) => (
+                              <option key={exam.code} value={exam.code}>{exam.label} · {formatGNF(exam.price_gnf)}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addImagingExam}>
+                          + Imagerie médicale
+                        </button>
+                      </div>
+                    )}
+                    {(billingForm.department === 'Soins infirmiers') && (
+                      <div className="reception-his-service-options">
+                        {servicePrestations.map((svc) => (
                           <button
                             key={svc.code}
                             type="button"
                             className="clinical-btn clinical-btn--secondary"
                             onClick={() => addBillingLine({
-                              charge_type: svc.charge_type,
+                              charge_type: 'procedure',
                               description: svc.label,
                               quantity: 1,
-                              unit_price_gnf: svc.price_gnf,
+                              unit_price_gnf: svc.price_gnf || 0,
                             })}
                           >
-                            + {svc.label}
+                            + {svc.label} · {formatGNF(svc.price_gnf || 0)}
                           </button>
-                        )
-                      ))}
-                      {showSpecialtyPicker && (
-                        <div className="reception-his-specialty-picker">
-                          {renderSpecialtyPicker('billing')}
-                          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addSpecializedConsultation}>
-                            + Consultation spécialisée
-                          </button>
-                        </div>
-                      )}
-                      {imagingExaminations.length > 0 && (
-                        <div className="reception-his-specialty-picker">
-                          <label>
-                            Imagerie médicale — examen
-                            <select value={selectedImaging} onChange={(e) => setSelectedImaging(e.target.value)}>
-                              <option value="">Choisir un examen…</option>
-                              {imagingExaminations.map((exam) => (
-                                <option key={exam.code} value={exam.code}>{exam.label} · {formatGNF(exam.price_gnf)}</option>
-                              ))}
-                            </select>
-                          </label>
-                          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addImagingExam}>
-                            + Imagerie médicale
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <label>
-                      Rechercher examen laboratoire
-                      <input
-                        type="search"
-                        value={labSearchQ}
-                        onChange={(e) => setLabSearchQ(e.target.value)}
-                        placeholder="Nom ou code analyse…"
-                      />
-                    </label>
-                    {filteredLabTests.length > 0 && (
-                      <ul className="reception-his-lab-search-results">
-                        {filteredLabTests.map((test) => (
-                          <li key={test.code}>
-                            <button
-                              type="button"
-                              onClick={() => addBillingLine({
-                                charge_type: 'laboratory',
-                                description: `${test.name} (${test.code})`,
-                                quantity: 1,
-                                unit_price_gnf: test.price_gnf || 0,
-                              })}
-                            >
-                              {test.name} · {formatGNF(test.price_gnf || 0)}
-                            </button>
-                          </li>
                         ))}
-                      </ul>
+                      </div>
+                    )}
+                    {(billingForm.department === 'Laboratoire' || !['Consultation spécialisée', 'Consultation urgences', 'Urgences', 'Imagerie médicale', 'Soins infirmiers'].includes(billingForm.department)) && (
+                      <>
+                        <label>
+                          Rechercher examen laboratoire
+                          <input
+                            type="search"
+                            value={labSearchQ}
+                            onChange={(e) => setLabSearchQ(e.target.value)}
+                            placeholder="Nom ou code analyse…"
+                          />
+                        </label>
+                        {filteredLabTests.length > 0 && (
+                          <ul className="reception-his-lab-search-results">
+                            {filteredLabTests.map((test) => (
+                              <li key={test.code}>
+                                <button
+                                  type="button"
+                                  onClick={() => addBillingLine({
+                                    charge_type: 'laboratory',
+                                    description: `${test.name} (${test.code})`,
+                                    quantity: 1,
+                                    unit_price_gnf: test.price_gnf || 0,
+                                  })}
+                                >
+                                  {test.name} · {formatGNF(test.price_gnf || 0)}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </>
                     )}
                   </fieldset>
                   <table className="reception-his-billing-lines">
@@ -2271,7 +2381,7 @@ export default function ReceptionDashboard() {
                     <input required type="number" min="0" value={refundForm.refund_amount_gnf} onChange={(e) => updateRefund({ refund_amount_gnf: e.target.value })} />
                   </label>
                 </div>
-                <div className="reception-his-form-row reception-his-form-row--3">
+                <div className="reception-his-form-row reception-his-form-row--2">
                   <label>
                     Bénéficiaire *
                     <input required value={refundForm.recipient_name} onChange={(e) => updateRefund({ recipient_name: e.target.value })} />
@@ -2280,15 +2390,24 @@ export default function ReceptionDashboard() {
                     Tél. bénéficiaire *
                     <input required value={refundForm.recipient_phone} onChange={(e) => updateRefund({ recipient_phone: e.target.value })} />
                   </label>
-                  <label>
-                    Lien avec le patient
-                    <input value={refundForm.recipient_relationship} onChange={(e) => updateRefund({ recipient_relationship: e.target.value })} />
-                  </label>
                 </div>
-                <label className="reception-his-notes-field">
-                  Notes
-                  <textarea rows={2} value={refundForm.reason_notes} onChange={(e) => updateRefund({ reason_notes: e.target.value })} />
-                </label>
+                {refundForm.reason === 'other' ? (
+                  <label className="reception-his-notes-field">
+                    Motif (préciser) *
+                    <textarea
+                      required
+                      rows={2}
+                      value={refundForm.reason_notes}
+                      onChange={(e) => updateRefund({ reason_notes: e.target.value })}
+                      placeholder="Saisir le motif du remboursement…"
+                    />
+                  </label>
+                ) : (
+                  <label className="reception-his-notes-field">
+                    Notes
+                    <textarea rows={2} value={refundForm.reason_notes} onChange={(e) => updateRefund({ reason_notes: e.target.value })} />
+                  </label>
+                )}
                 <fieldset className="reception-his-nested-fieldset">
                   <legend>Mode de remboursement</legend>
                   <p className="clinical-hint">Indiquez comment le remboursement sera effectué (espèces, Orange Money, virement, etc.)</p>
@@ -2412,7 +2531,7 @@ export default function ReceptionDashboard() {
 
               {serviceRequestForm.service_category === 'laboratory' && (
                 <fieldset className="reception-his-nested-fieldset">
-                  <legend>Examens de laboratoire</legend>
+                  <legend>Tous les examens de laboratoire</legend>
                   <label>
                     Rechercher un examen
                     <input
@@ -2431,7 +2550,9 @@ export default function ReceptionDashboard() {
                           onClick={() => chooseServiceRequest('laboratory', `${test.name} (${test.code})`)}
                           disabled={!selectedPatient}
                         >
-                          {test.name} ({test.code}) {test.category ? `· ${test.category}` : ''}
+                          {test.name} ({test.code})
+                          {test.category ? ` · ${test.category}` : ''}
+                          {` · ${formatGNF(test.price_gnf || 0)}`}
                         </button>
                       </li>
                     ))}
@@ -2444,9 +2565,19 @@ export default function ReceptionDashboard() {
 
               {serviceRequestForm.service_category === 'imaging' && (
                 <fieldset className="reception-his-nested-fieldset">
-                  <legend>Examens d&apos;imagerie</legend>
+                  <legend>Tous les examens d&apos;imagerie</legend>
+                  <label>
+                    Rechercher un examen
+                    <input
+                      type="search"
+                      value={serviceRequestExamSearchQ}
+                      onChange={(e) => setServiceRequestExamSearchQ(e.target.value)}
+                      placeholder="Nom examen imagerie…"
+                      disabled={!selectedPatient}
+                    />
+                  </label>
                   <div className="reception-his-service-options">
-                    {imagingExaminations.map((exam) => (
+                    {filteredServiceRequestImaging.map((exam) => (
                       <button
                         key={exam.code}
                         type="button"
@@ -2454,10 +2585,52 @@ export default function ReceptionDashboard() {
                         onClick={() => chooseServiceRequest('imaging', exam.label)}
                         disabled={!selectedPatient}
                       >
-                        {exam.label}
+                        {exam.label} · {formatGNF(exam.price_gnf || 0)}
                       </button>
                     ))}
                   </div>
+                  {filteredServiceRequestImaging.length === 0 && (
+                    <p className="clinical-hint">Aucun examen d&apos;imagerie trouvé.</p>
+                  )}
+                </fieldset>
+              )}
+
+              {serviceRequestForm.service_category === 'consultation' && (
+                <fieldset className="reception-his-nested-fieldset">
+                  <legend>Spécialités (tarifs fiche AASMA)</legend>
+                  <label>
+                    Rechercher une spécialité
+                    <input
+                      type="search"
+                      value={serviceRequestExamSearchQ}
+                      onChange={(e) => setServiceRequestExamSearchQ(e.target.value)}
+                      placeholder="Médecine, Chirurgie, Pédiatrie…"
+                      disabled={!selectedPatient}
+                    />
+                  </label>
+                  <div className="reception-his-service-options">
+                    {filteredServiceRequestSpecialties.map((spec) => (
+                      <button
+                        key={spec.code}
+                        type="button"
+                        className="clinical-btn clinical-btn--secondary"
+                        onClick={() => chooseServiceRequest(
+                          'consultation',
+                          `Consultation spécialisée — ${spec.label}`
+                        )}
+                        disabled={!selectedPatient}
+                      >
+                        {spec.label}
+                        {' · spé. '}
+                        {formatGNF(spec.price_gnf || 0)}
+                        {' · urg. '}
+                        {formatGNF(spec.emergency_price_gnf || 0)}
+                      </button>
+                    ))}
+                  </div>
+                  {filteredServiceRequestSpecialties.length === 0 && (
+                    <p className="clinical-hint">Aucune spécialité trouvée.</p>
+                  )}
                 </fieldset>
               )}
 
@@ -2473,7 +2646,7 @@ export default function ReceptionDashboard() {
                         onClick={() => chooseServiceRequest('service', svc.label)}
                         disabled={!selectedPatient}
                       >
-                        {svc.label}
+                        {svc.label} · {formatGNF(svc.price_gnf || 0)}
                       </button>
                     ))}
                   </div>

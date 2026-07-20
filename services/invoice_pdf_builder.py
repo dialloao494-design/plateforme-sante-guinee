@@ -14,6 +14,7 @@ from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Tabl
 
 from data.clinic_branding import CLINIC_FOOTER_LINE, CLINIC_PRINT_NAME
 from services.clinic_print_header import append_official_clinic_header
+from services.pdf_fonts import ensure_clinic_fonts
 
 METHOD_LABELS = {
     "cash": "Espèces",
@@ -29,12 +30,15 @@ def _gnf(amount: int) -> str:
 
 
 def _styles():
+    font_reg, font_bold = ensure_clinic_fonts()
     base = getSampleStyleSheet()
     return {
+        "font_reg": font_reg,
+        "font_bold": font_bold,
         "title": ParagraphStyle(
             "InvTitle",
             parent=base["Heading1"],
-            fontName="Helvetica-Bold",
+            fontName=font_bold,
             fontSize=14,
             alignment=TA_CENTER,
             spaceAfter=4,
@@ -43,7 +47,7 @@ def _styles():
         "clinic": ParagraphStyle(
             "ClinicName",
             parent=base["Normal"],
-            fontName="Helvetica-Bold",
+            fontName=font_bold,
             fontSize=11,
             alignment=TA_CENTER,
             spaceAfter=2,
@@ -52,14 +56,14 @@ def _styles():
         "meta": ParagraphStyle(
             "Meta",
             parent=base["Normal"],
-            fontName="Helvetica",
+            fontName=font_reg,
             fontSize=9,
             leading=12,
         ),
         "meta_right": ParagraphStyle(
             "MetaR",
             parent=base["Normal"],
-            fontName="Helvetica",
+            fontName=font_reg,
             fontSize=9,
             alignment=TA_RIGHT,
             leading=12,
@@ -67,7 +71,7 @@ def _styles():
         "section": ParagraphStyle(
             "Section",
             parent=base["Normal"],
-            fontName="Helvetica-Bold",
+            fontName=font_bold,
             fontSize=10,
             spaceBefore=8,
             spaceAfter=4,
@@ -76,14 +80,14 @@ def _styles():
         "cell": ParagraphStyle(
             "Cell",
             parent=base["Normal"],
-            fontName="Helvetica",
+            fontName=font_reg,
             fontSize=9,
             leading=11,
         ),
         "cell_right": ParagraphStyle(
             "CellR",
             parent=base["Normal"],
-            fontName="Helvetica",
+            fontName=font_reg,
             fontSize=9,
             alignment=TA_RIGHT,
             leading=11,
@@ -91,7 +95,7 @@ def _styles():
         "footer": ParagraphStyle(
             "Footer",
             parent=base["Normal"],
-            fontName="Helvetica",
+            fontName=font_reg,
             fontSize=8,
             textColor=colors.grey,
             leading=10,
@@ -228,8 +232,8 @@ def build_hospital_invoice_pdf(
     summary_table.setStyle(
         TableStyle(
             [
-                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-                ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
+                ("FONTNAME", (0, 0), (0, -1), styles["font_bold"]),
+                ("FONTNAME", (1, 0), (1, -1), styles["font_reg"]),
                 ("FONTSIZE", (0, 0), (-1, -1), 9),
                 ("ALIGN", (1, 0), (1, -1), "RIGHT"),
                 ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#f0fdfa")),
@@ -268,7 +272,7 @@ def build_hospital_invoice_pdf(
 
     def _footer(canvas, doc_obj):
         canvas.saveState()
-        canvas.setFont("Helvetica", 8)
+        canvas.setFont(styles["font_reg"], 8)
         canvas.setFillColor(colors.grey)
         y = 12 * mm
         canvas.drawString(doc.leftMargin, y + 14, f"Imprimé par : {printed_by or '—'}")
