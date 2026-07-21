@@ -1366,6 +1366,13 @@ def ensure_reception_his_schema(engine: Engine) -> None:
             ("observations", "TEXT"),
             ("target_specialty_code", "VARCHAR(64)"),
             ("target_specialty_other", "VARCHAR(255)"),
+            ("hospitalized_vitals", "TEXT"),
+            ("post_op_report", "TEXT"),
+            ("discharge_summary_text", "TEXT"),
+            ("discharge_authorization", "TEXT"),
+            ("discharge_against_advice", "TEXT"),
+            ("prescription_text", "TEXT"),
+            ("discharge_form_json", "TEXT"),
         ):
             if col not in cols:
                 try:

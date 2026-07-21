@@ -38,6 +38,15 @@ class ClinicalConsultation(Base):
     target_specialty_code = Column(String(64), nullable=True)
     target_specialty_other = Column(String(255), nullable=True)
 
+    # Hospitalization / discharge documentation (doctor)
+    hospitalized_vitals = Column(Text, nullable=True)
+    post_op_report = Column(Text, nullable=True)
+    discharge_summary_text = Column(Text, nullable=True)
+    discharge_authorization = Column(Text, nullable=True)
+    discharge_against_advice = Column(Text, nullable=True)
+    prescription_text = Column(Text, nullable=True)
+    discharge_form_json = Column(Text, nullable=True)
+
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     deleted_at = Column(DateTime, nullable=True)

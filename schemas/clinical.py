@@ -163,6 +163,13 @@ class ConsultationUpdate(BaseModel):
     observations: Optional[str] = None
     target_specialty_code: Optional[str] = None
     target_specialty_other: Optional[str] = None
+    hospitalized_vitals: Optional[str] = None
+    post_op_report: Optional[str] = None
+    discharge_summary_text: Optional[str] = None
+    discharge_authorization: Optional[str] = None
+    discharge_against_advice: Optional[str] = None
+    prescription_text: Optional[str] = None
+    discharge_form_json: Optional[str] = None
     status: Optional[str] = None
 
 
@@ -191,6 +198,13 @@ class ConsultationResponse(BaseModel):
     observations: Optional[str] = None
     target_specialty_code: Optional[str] = None
     target_specialty_other: Optional[str] = None
+    hospitalized_vitals: Optional[str] = None
+    post_op_report: Optional[str] = None
+    discharge_summary_text: Optional[str] = None
+    discharge_authorization: Optional[str] = None
+    discharge_against_advice: Optional[str] = None
+    prescription_text: Optional[str] = None
+    discharge_form_json: Optional[str] = None
     started_at: Optional[datetime]
     completed_at: Optional[datetime]
     patient_name: Optional[str] = None
