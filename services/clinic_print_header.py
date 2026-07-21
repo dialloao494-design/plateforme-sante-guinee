@@ -19,6 +19,7 @@ from data.clinic_branding import (
     CLINIC_PHONE,
     CLINIC_PRINT_NAME,
 )
+from services.pdf_fonts import ensure_clinic_fonts
 
 LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "branding" / "aasma-clinic-logo.png"
 GOLD = colors.HexColor("#C9A227")
@@ -26,6 +27,7 @@ GOLD = colors.HexColor("#C9A227")
 
 def append_official_clinic_header(story: list, *, page_width: float, document_title: str | None = None) -> None:
     """Logo, official identity block, gold separator, optional document title."""
+    font_reg, font_bold = ensure_clinic_fonts()
     if LOGO_PATH.is_file():
         img = Image(str(LOGO_PATH), width=38 * mm, height=38 * mm, kind="proportional")
         img.hAlign = "CENTER"
@@ -36,7 +38,7 @@ def append_official_clinic_header(story: list, *, page_width: float, document_ti
     country = ParagraphStyle(
         "ClinicCountry",
         parent=base["Normal"],
-        fontName="Helvetica-Bold",
+        fontName=font_bold,
         fontSize=13,
         alignment=TA_CENTER,
         leading=15,
@@ -46,7 +48,7 @@ def append_official_clinic_header(story: list, *, page_width: float, document_ti
     motto = ParagraphStyle(
         "ClinicMotto",
         parent=base["Normal"],
-        fontName="Helvetica-Bold",
+        fontName=font_bold,
         fontSize=11,
         alignment=TA_CENTER,
         leading=13,
@@ -56,7 +58,7 @@ def append_official_clinic_header(story: list, *, page_width: float, document_ti
     ministry = ParagraphStyle(
         "ClinicMinistry",
         parent=base["Normal"],
-        fontName="Helvetica-Bold",
+        fontName=font_bold,
         fontSize=10,
         alignment=TA_CENTER,
         leading=12,
@@ -65,18 +67,20 @@ def append_official_clinic_header(story: list, *, page_width: float, document_ti
     name = ParagraphStyle(
         "ClinicName",
         parent=base["Normal"],
-        fontName="Helvetica-Bold",
+        fontName=font_bold,
         fontSize=12,
         alignment=TA_CENTER,
         textColor=colors.HexColor("#134e4a"),
         leading=14,
         spaceAfter=2,
     )
-    contact = ParagraphStyle("ClinicContact", parent=base["Normal"], fontSize=8, alignment=TA_CENTER, leading=10)
+    contact = ParagraphStyle(
+        "ClinicContact", parent=base["Normal"], fontName=font_reg, fontSize=8, alignment=TA_CENTER, leading=10
+    )
     title = ParagraphStyle(
         "DocTitle",
         parent=base["Heading1"],
-        fontName="Helvetica-Bold",
+        fontName=font_bold,
         fontSize=13,
         alignment=TA_CENTER,
         textColor=GOLD,

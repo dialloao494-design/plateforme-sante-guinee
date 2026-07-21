@@ -708,9 +708,9 @@ def print_refund_receipt(
         from fastapi import HTTPException
 
         raise HTTPException(status_code=404, detail="Remboursement introuvable")
-    from services.pdf_service import refund_receipt_pdf
+    from services.pdf_service import printed_by_label, refund_receipt_pdf
 
-    pdf_bytes = refund_receipt_pdf(refund, clinic_name=clinic.name)
+    pdf_bytes = refund_receipt_pdf(refund, clinic_name=clinic.name, printed_by=printed_by_label(current_user))
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

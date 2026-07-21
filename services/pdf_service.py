@@ -328,23 +328,35 @@ def clinical_report_pdf(summary: dict) -> bytes:
     return build_simple_pdf("RAPPORT CLINIQUE — Plateforme Santé Guinée", lines)
 
 
-def refund_receipt_pdf(refund, clinic_name: str = "") -> bytes:
+def refund_receipt_pdf(refund, clinic_name: str = "", printed_by: str = "") -> bytes:
+    from datetime import datetime
+
+    from services.refund_receipt_pdf_builder import build_refund_receipt_pdf
+
     patient_name = "—"
+    patient_number = ""
     if getattr(refund, "patient", None):
         patient_name = f"{refund.patient.first_name} {refund.patient.last_name}".strip()
+        patient_number = getattr(refund.patient, "patient_number", None) or getattr(refund.patient, "mrn", None) or ""
     invoice_number = refund.invoice.invoice_number if getattr(refund, "invoice", None) else "—"
-    lines = [
-        f"Clinique: {clinic_name or '—'}",
-        f"Patient: {patient_name}",
-        f"N° remboursement: {refund.refund_number}",
-        f"Facture: {invoice_number}",
-        f"Service: {refund.service_paid_for or '—'}",
-        f"Montant consommé: {refund.amount_consumed_gnf:,} GNF".replace(",", " "),
-        f"Montant remboursé: {refund.refund_amount_gnf:,} GNF".replace(",", " "),
-        f"Motif: {refund.reason}",
-        f"Bénéficiaire: {refund.recipient_name or '—'} ({refund.recipient_relationship or '—'})",
-        f"Tél: {refund.recipient_phone or '—'}",
-        f"Mode: {refund.refund_method or '—'}",
-        f"Statut: {refund.status}",
-    ]
-    return build_simple_pdf("REÇU DE REMBOURSEMENT", lines)
+    now = datetime.now()
+    reason_notes = getattr(refund, "reason_notes", None) or getattr(refund, "notes", None) or ""
+    return build_refund_receipt_pdf(
+        clinic_name=clinic_name or "",
+        refund_number=getattr(refund, "refund_number", "") or "",
+        invoice_number=invoice_number or "",
+        patient_name=patient_name,
+        patient_number=patient_number or "",
+        service_paid_for=getattr(refund, "service_paid_for", None) or "",
+        amount_consumed_gnf=int(getattr(refund, "amount_consumed_gnf", 0) or 0),
+        refund_amount_gnf=int(getattr(refund, "refund_amount_gnf", 0) or 0),
+        reason=getattr(refund, "reason", None) or "",
+        reason_notes=reason_notes or "",
+        recipient_name=getattr(refund, "recipient_name", None) or "",
+        recipient_phone=getattr(refund, "recipient_phone", None) or "",
+        refund_method=getattr(refund, "refund_method", None) or "",
+        status=getattr(refund, "status", None) or "",
+        printed_by=printed_by or "",
+        printed_date=now.strftime("%d/%m/%Y"),
+        printed_time=now.strftime("%H:%M"),
+    )

@@ -14,24 +14,108 @@ ADMISSION_SERVICES = [
 ]
 
 # Billable consultation types (default prices in GNF)
+# Specialized adult default = 250 000; pediatrics overrides via specialty.price_gnf.
 CONSULTATION_SERVICES = [
-    {"code": "emergency_consultation", "label": "Consultation urgences", "charge_type": "consultation", "price_gnf": 150_000},
-    {"code": "specialized_consultation", "label": "Consultation spécialisée", "charge_type": "consultation", "price_gnf": 200_000, "requires_specialty": True},
-    {"code": "outpatient_consultation", "label": "Consultation externe", "charge_type": "consultation", "price_gnf": 100_000},
-    {"code": "hospitalization", "label": "Hospitalisation (forfait journalier)", "charge_type": "hospitalization", "price_gnf": 350_000},
-    {"code": "emergency_care", "label": "Urgences", "charge_type": "procedure", "price_gnf": 175_000},
+    {
+        "code": "emergency_consultation",
+        "label": "Consultation d'urgences",
+        "charge_type": "consultation",
+        "price_gnf": 150_000,
+    },
+    {
+        "code": "specialized_consultation",
+        "label": "Consultation spécialisée",
+        "charge_type": "consultation",
+        "price_gnf": 250_000,
+        "requires_specialty": True,
+    },
+    {
+        "code": "outpatient_consultation",
+        "label": "Consultation externe",
+        "charge_type": "consultation",
+        "price_gnf": 100_000,
+    },
+    {
+        "code": "hospitalization",
+        "label": "Hospitalisation (forfait journalier)",
+        "charge_type": "hospitalization",
+        "price_gnf": 350_000,
+    },
+    {
+        "code": "pediatric_emergency_care",
+        "label": "Soins d'urgences Pédiatrie",
+        "charge_type": "procedure",
+        "price_gnf": 250_000,
+    },
 ]
 
+# Clinic tariff sheet (20-07-26):
+# Médecine / Neurochirurgie / Chirurgie / MIT / Gynéco / Traumato :
+#   spécialisée 250 000 · urgences 150 000
+# Pédiatrie : spécialisée 200 000 · urgence 100 000 · soins urgences 250 000
 SPECIALIZED_SPECIALTIES = [
-    {"code": "pediatrics", "label": "Pédiatrie"},
-    {"code": "pediatric_surgery", "label": "Chirurgie pédiatrique"},
-    {"code": "plastic_reconstructive_cosmetic_burn", "label": "Chirurgie plastique, reconstructrice, esthétique et des brûlures"},
-    {"code": "gynecology_obstetrics", "label": "Gynécologie & Obstétrique"},
-    {"code": "digestive_visceral_surgery", "label": "Chirurgie digestive & viscérale"},
-    {"code": "internal_medicine", "label": "Médecine interne"},
-    {"code": "infectious_tropical", "label": "Maladies infectieuses & tropicales"},
-    {"code": "neurosurgery", "label": "Neurochirurgie"},
-    {"code": "orthopedic_trauma", "label": "Chirurgie orthopédique & traumatologique"},
+    {
+        "code": "medicine",
+        "label": "Médecine",
+        "price_gnf": 250_000,
+        "emergency_price_gnf": 150_000,
+    },
+    {
+        "code": "neurosurgery",
+        "label": "Neurochirurgie",
+        "price_gnf": 250_000,
+        "emergency_price_gnf": 150_000,
+    },
+    {
+        "code": "surgery",
+        "label": "Chirurgie",
+        "price_gnf": 250_000,
+        "emergency_price_gnf": 150_000,
+    },
+    {
+        "code": "infectious_tropical",
+        "label": "MIT (Maladies infectieuses & tropicales)",
+        "price_gnf": 250_000,
+        "emergency_price_gnf": 150_000,
+    },
+    {
+        "code": "gynecology_obstetrics",
+        "label": "Gynécologie & Obstétrique",
+        "price_gnf": 250_000,
+        "emergency_price_gnf": 150_000,
+    },
+    {
+        "code": "traumatology",
+        "label": "Traumatologie",
+        "price_gnf": 250_000,
+        "emergency_price_gnf": 150_000,
+    },
+    {
+        "code": "pediatrics",
+        "label": "Pédiatrie",
+        "price_gnf": 200_000,
+        "emergency_price_gnf": 100_000,
+        "emergency_care_price_gnf": 250_000,
+    },
+    # Kept for compatibility with existing admissions / doctor routing
+    {
+        "code": "pediatric_surgery",
+        "label": "Chirurgie pédiatrique",
+        "price_gnf": 200_000,
+        "emergency_price_gnf": 100_000,
+    },
+    {
+        "code": "internal_medicine",
+        "label": "Médecine interne",
+        "price_gnf": 250_000,
+        "emergency_price_gnf": 150_000,
+    },
+    {
+        "code": "orthopedic_trauma",
+        "label": "Chirurgie orthopédique & traumatologique",
+        "price_gnf": 250_000,
+        "emergency_price_gnf": 150_000,
+    },
 ]
 
 # Medical imaging examinations — configurable prices
@@ -44,7 +128,13 @@ IMAGING_EXAMINATIONS = [
     {"code": "dental_panoramic", "label": "Panoramique dentaire", "modality": "dental_panoramic", "price_gnf": 180_000},
 ]
 
+# Nursing / care prestations from clinic tariff sheet + ambulance
 SERVICE_PRESTATIONS = [
+    {"code": "emergency_care_with_serum", "label": "Soins d'urgences avec sérum", "price_gnf": 500_000},
+    {"code": "injection", "label": "Injection", "price_gnf": 25_000},
+    {"code": "small_dressing", "label": "Petit pansement", "price_gnf": 30_000},
+    {"code": "large_dressing", "label": "Grand pansement", "price_gnf": 80_000},
+    {"code": "pediatric_emergency_care", "label": "Soins d'urgences Pédiatrie", "price_gnf": 250_000},
     {"code": "medical_transport_ambulance", "label": "Medical Transport / Ambulance", "price_gnf": 0},
 ]
 
@@ -57,4 +147,5 @@ BILLING_DEPARTMENTS = [
     "Hospitalisation",
     "Imagerie médicale",
     "Urgences",
+    "Soins infirmiers",
 ]
