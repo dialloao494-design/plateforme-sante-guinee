@@ -12,7 +12,7 @@ import httpx
 from playwright.sync_api import sync_playwright
 
 BASE = "https://web-production-ad6a36.up.railway.app"
-FRONTEND = "https://frontend-seven-rust-94.vercel.app"
+FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 OUT = Path(__file__).resolve().parents[2] / "docs" / "ui_e2e_screenshots" / "aasma-dashboard-proof"
 REPORT = Path(__file__).resolve().parents[2] / "docs" / "AASMA_DASHBOARD_PROOF.json"
 

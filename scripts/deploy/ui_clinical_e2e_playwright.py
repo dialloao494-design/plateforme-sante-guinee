@@ -15,7 +15,7 @@ from pathlib import Path
 import httpx
 from playwright.sync_api import Page, sync_playwright, expect
 
-FRONTEND = "https://frontend-seven-rust-94.vercel.app"
+FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 BACKEND = "https://web-production-ad6a36.up.railway.app"
 RUN_ID = datetime.utcnow().strftime("%Y%m%d-%H%M") + "-" + uuid.uuid4().hex[:6]
 OUT = Path(__file__).resolve().parents[2] / "docs" / "ui_e2e_screenshots" / RUN_ID

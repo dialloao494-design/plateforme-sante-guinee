@@ -10,7 +10,7 @@ import time
 import httpx
 
 BACKEND = "https://web-production-ad6a36.up.railway.app"
-FRONTEND = "https://frontend-seven-rust-94.vercel.app"
+FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 ADMIN = ("contactpolycliniqueaasma@gmail.com", "AasmaAdmin1!")
 
 

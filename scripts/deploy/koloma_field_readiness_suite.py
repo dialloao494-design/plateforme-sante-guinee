@@ -23,7 +23,7 @@ import httpx
 ROOT = Path(__file__).resolve().parents[2]
 DOCS = ROOT / "docs"
 BASE = os.getenv("PRODUCTION_BACKEND", "https://web-production-ad6a36.up.railway.app")
-FRONTEND = os.getenv("PRODUCTION_FRONTEND", "https://frontend-seven-rust-94.vercel.app")
+FRONTEND = os.getenv("PRODUCTION_FRONTEND", "https://plateforme-sante-guinee.vercel.app")
 KOLOMA_CLINIC_ID = 13
 RUN_ID = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M") + "-" + uuid.uuid4().hex[:6]
 SUFFIX = RUN_ID.split("-")[-1][:8]

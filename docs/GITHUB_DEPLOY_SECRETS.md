@@ -12,7 +12,7 @@ The workflow `.github/workflows/deploy-railway-vercel.yml` requires these **repo
 | `VERCEL_ORG_ID` | Vercel project → Settings → General → **Team ID** (or `vercel project ls`) |
 | `VERCEL_PROJECT_ID` | Vercel project → Settings → General → **Project ID** |
 | `VITE_API_URL` | Same value as `RAILWAY_BACKEND_URL` |
-| `VERCEL_FRONTEND_URL` | Production frontend URL, e.g. `https://frontend-seven-rust-94.vercel.app` |
+| `VERCEL_FRONTEND_URL` | Production frontend URL, e.g. `https://plateforme-sante-guinee.vercel.app` |
 
 ## Optional — Railway CLI deploy from Actions
 
@@ -30,7 +30,7 @@ When both optional secrets are set, the workflow runs `railway up --service=...`
 ```
 RAILWAY_BACKEND_URL=https://web-production-ad6a36.up.railway.app
 VITE_API_URL=https://web-production-ad6a36.up.railway.app
-VERCEL_FRONTEND_URL=https://frontend-seven-rust-94.vercel.app
+VERCEL_FRONTEND_URL=https://plateforme-sante-guinee.vercel.app
 ```
 
 You still need `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` from your Vercel dashboard.

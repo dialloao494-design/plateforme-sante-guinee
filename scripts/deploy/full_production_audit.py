@@ -18,7 +18,7 @@ from pathlib import Path
 import httpx
 
 DEFAULT_BACKEND = "https://web-production-ad6a36.up.railway.app"
-DEFAULT_FRONTEND = "https://frontend-seven-rust-94.vercel.app"
+DEFAULT_FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 
 KNOWN_ACCOUNTS = [
     ("clinic_admin", "clinic.admin.a@sante-gn.test", "ClinicAdminA1!"),

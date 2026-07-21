@@ -17,7 +17,7 @@ from pathlib import Path
 import httpx
 
 BASE = "https://web-production-ad6a36.up.railway.app"
-FRONTEND = "https://frontend-seven-rust-94.vercel.app"
+FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 KOLOMA_CLINIC_ID = 13
 RUN_ID = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M") + "-" + uuid.uuid4().hex[:6]
 SUFFIX = RUN_ID.split("-")[-1][:8]

@@ -11,7 +11,7 @@ from playwright.sync_api import sync_playwright
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-FRONTEND = "https://frontend-seven-rust-94.vercel.app"
+FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 EMAIL = "baldoumar14@gmail.com"
 PASSWORD = "AasmaRecep1!"
 RUN_ID = str(int(time.time()))[-6:]

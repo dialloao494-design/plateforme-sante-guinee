@@ -14,7 +14,7 @@ from pathlib import Path
 import httpx
 
 BACKEND = "https://web-production-ad6a36.up.railway.app"
-FRONTEND = "https://frontend-seven-rust-94.vercel.app"
+FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 OUT = Path(__file__).resolve().parents[2] / "docs" / "PRODUCTION_VERIFY_REPORT.json"
 
 ACCOUNTS = {

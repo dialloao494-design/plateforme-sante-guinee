@@ -9,7 +9,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 sys.stdout.reconfigure(encoding="utf-8")
-FRONTEND = "https://frontend-seven-rust-94.vercel.app"
+FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 OUT = Path(__file__).resolve().parents[2] / "docs/ui_e2e_screenshots/stability-proof"
 OUT.mkdir(parents=True, exist_ok=True)
 

@@ -48,12 +48,8 @@ origins = [
     "http://127.0.0.1:5173",
     "https://localhost:5173",
     "https://127.0.0.1:5173",
-    # Current Vercel production project (GitHub-connected)
+    # Canonical Vercel production project (GitHub-connected)
     "https://plateforme-sante-guinee.vercel.app",
-    # Legacy clinic bookmark / old Vercel project alias (still used by staff)
-    "https://frontend-seven-rust-94.vercel.app",
-    # Historical preview deployment hostname kept for compatibility
-    "https://plateforme-sante-guinee-jcny86kfo-dialloa0494-designs-projects.vercel.app",
 ]
 
 for part in (os.getenv("CORS_ORIGINS", "") or "").split(","):

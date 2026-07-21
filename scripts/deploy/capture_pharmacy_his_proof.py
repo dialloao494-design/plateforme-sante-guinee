@@ -9,7 +9,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 OUT = Path(__file__).resolve().parents[2] / "docs/ui_e2e_screenshots/pharmacy-his-proof"
-FRONTEND = "https://frontend-seven-rust-94.vercel.app"
+FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 EMAIL, PWD = "ben752231@gmail.com", "AasmaPharm1!"
 PATIENT_QUERY = "620231409"
 

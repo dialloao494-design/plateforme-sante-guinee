@@ -8,7 +8,7 @@
 | Component | URL / artifact | Status |
 |-----------|----------------|--------|
 | Backend API | https://web-production-ad6a36.up.railway.app | ✅ `/health`, `/health/ready` |
-| Frontend SPA | https://frontend-seven-rust-94.vercel.app | ✅ HTTP 200 |
+| Frontend SPA | https://plateforme-sante-guinee.vercel.app | ✅ HTTP 200 |
 | GitHub Actions | `.github/workflows/deploy-railway-vercel.yml` | ✅ Present |
 | CI pipeline | `.github/workflows/ci.yml` | ✅ Present |
 | DB migrations | `database_migrations.py` + Alembic | ✅ Startup `ensure_*` + `alembic upgrade head` |

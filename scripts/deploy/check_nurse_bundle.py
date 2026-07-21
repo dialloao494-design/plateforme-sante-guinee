@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import httpx, re, sys
-F = "https://frontend-seven-rust-94.vercel.app"
+F = "https://plateforme-sante-guinee.vercel.app"
 html = httpx.get(F + "/", timeout=30).text
 m = re.search(r'src="(/assets/index-[^"]+\.js)"', html)
 idx = httpx.get(F + m.group(1), timeout=30).text
