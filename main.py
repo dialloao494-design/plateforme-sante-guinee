@@ -330,6 +330,54 @@ def health_email():
     return {"status": "ok" if status_payload["configured"] else "not_configured", **status_payload}
 
 
+def _database_fingerprint() -> dict:
+    """Return non-secret DB identity (host + database name) from env + live SQL."""
+    from urllib.parse import urlparse
+
+    from sqlalchemy import text
+
+    db_url = os.getenv("DATABASE_URL", "sqlite:///./sante.db")
+    parsed = urlparse(db_url)
+    host = parsed.hostname or ""
+    # Mask only credentials; keep host/db visible for ops identity checks.
+    if host and len(host) > 12:
+        host_masked = host[:4] + "***" + host[-8:]
+    else:
+        host_masked = host or "(none)"
+    db_name_from_url = (parsed.path or "").lstrip("/") or None
+
+    live = {"current_database": None, "inet_server_addr": None, "server_version": None}
+    db = SessionLocal()
+    try:
+        row = db.execute(
+            text(
+                "SELECT current_database() AS db, "
+                "CAST(inet_server_addr() AS TEXT) AS addr, "
+                "current_setting('server_version') AS ver"
+            )
+        ).mappings().first()
+        if row:
+            live["current_database"] = row["db"]
+            live["inet_server_addr"] = row["addr"]
+            live["server_version"] = row["ver"]
+    except Exception:
+        # SQLite / non-Postgres: fall back to a simple ping.
+        db.execute(text("SELECT 1"))
+    finally:
+        db.close()
+
+    return {
+        "dialect": (parsed.scheme or "").split("+")[0] or "unknown",
+        "host": host,
+        "host_masked": host_masked,
+        "port": parsed.port,
+        "database_name": live["current_database"] or db_name_from_url,
+        "database_name_from_url": db_name_from_url,
+        "inet_server_addr": live["inet_server_addr"],
+        "server_version": live["server_version"],
+    }
+
+
 @app.get("/health/ready", tags=["Monitoring"])
 def health_ready():
     """Readiness: verifies database connectivity (for orchestrators / load balancers)."""
@@ -345,6 +393,21 @@ def health_ready():
     except Exception as exc:
         logger.error("Readiness check failed: %s", exc)
         raise HTTPException(status_code=503, detail="Database not ready")
+
+
+@app.get("/health/database", tags=["Monitoring"])
+def health_database():
+    """
+    Non-secret PostgreSQL identity for proving shared production DB.
+
+    Never returns username/password. Safe for dual-frontend verification.
+    """
+    try:
+        fp = _database_fingerprint()
+        return {"status": "ok", **fp}
+    except Exception as exc:
+        logger.error("Database fingerprint failed: %s", exc)
+        raise HTTPException(status_code=503, detail="Database identity unavailable")
 
 
 @app.get("/", tags=["Root"])
