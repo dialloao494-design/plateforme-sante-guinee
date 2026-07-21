@@ -10,7 +10,7 @@ import httpx
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "docs" / "ui_e2e_screenshots" / "aasma-prod-proof"
-FRONTEND = "https://frontend-seven-rust-94.vercel.app"
+FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 BASE = "https://web-production-ad6a36.up.railway.app"
 
 ACCOUNTS = {

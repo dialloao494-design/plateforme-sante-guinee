@@ -9,7 +9,7 @@ import uuid
 import httpx
 
 BACKEND = "https://web-production-ad6a36.up.railway.app"
-FRONTEND = "https://frontend-seven-rust-94.vercel.app"
+FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 
 
 def login(email: str, password: str) -> str:

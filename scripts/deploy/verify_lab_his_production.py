@@ -10,7 +10,7 @@ from pathlib import Path
 import httpx
 from playwright.sync_api import sync_playwright
 
-FRONTEND = "https://frontend-seven-rust-94.vercel.app"
+FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 BACKEND = "https://web-production-ad6a36.up.railway.app"
 EMAIL = "mamadoudianbarry06@gmail.com"
 PASSWORD = "AasmaLab1!"

@@ -7,7 +7,7 @@ from playwright.sync_api import sync_playwright
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-FRONTEND = "https://frontend-seven-rust-94.vercel.app"
+FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 LAB_EMAIL = "mamadoudianbarry06@gmail.com"
 LAB_PASSWORD = "AasmaLab1!"
 OUT = Path(__file__).resolve().parents[2] / "docs/ui_e2e_screenshots/lab-dashboard-proof"

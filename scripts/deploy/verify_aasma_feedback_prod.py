@@ -10,7 +10,7 @@ from playwright.sync_api import sync_playwright
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-FRONTEND = "https://frontend-seven-rust-94.vercel.app"
+FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 BACKEND = "https://web-production-ad6a36.up.railway.app"
 PHARM_EMAIL, PHARM_PWD = "ben752231@gmail.com", "AasmaPharm1!"
 RECEP_EMAIL, RECEP_PWD = "baldoumar14@gmail.com", "AasmaRecep1!"

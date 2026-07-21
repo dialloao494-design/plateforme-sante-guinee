@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-18  
 **Backend:** https://web-production-ad6a36.up.railway.app  
-**Frontend:** https://frontend-seven-rust-94.vercel.app  
+**Frontend:** https://plateforme-sante-guinee.vercel.app  
 
 **Latest audit:** **57 PASS · 0 FAIL · 0 BLOCKER**  
 **Email verification:** **PASS** (Resend — signup + forgot-password delivered to inbox)  
@@ -22,7 +22,7 @@
 |----------|--------|
 | `RESEND_API_KEY` | Set on Railway (not in repo) |
 | `SENDER_EMAIL` | `onboarding@resend.dev` |
-| `FRONTEND_URL` | `https://frontend-seven-rust-94.vercel.app` |
+| `FRONTEND_URL` | `https://plateforme-sante-guinee.vercel.app` |
 
 Verify: `GET /health/email` → `"configured": true, "provider": "resend"`
 

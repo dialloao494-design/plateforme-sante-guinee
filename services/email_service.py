@@ -27,12 +27,14 @@ def email_config_status() -> dict:
     smtp_host = _env("SMTP_HOST", "SMTP_SERVER")
     resend = _env("RESEND_API_KEY")
     sender = _env("SENDER_EMAIL", "SMTP_FROM", "SMTP_USERNAME", "SMTP_USER")
-    frontend = _env("FRONTEND_URL", "FRONTEND_PRODUCTION_URL", "PUBLIC_FRONTEND_URL")
+    frontend = _env("FRONTEND_URL", "FRONTEND_PRODUCTION_URL", "PUBLIC_FRONTEND_URL").rstrip("/")
     return {
         "configured": bool(smtp_host or resend),
         "provider": "resend" if resend else ("smtp" if smtp_host else "none"),
         "sender_set": bool(sender),
         "frontend_url_set": bool(frontend),
+        # Public app URL used in reset/verify links — not a secret.
+        "frontend_url": frontend or None,
     }
 
 

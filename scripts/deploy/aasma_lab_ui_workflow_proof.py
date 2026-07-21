@@ -10,7 +10,7 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "docs" / "ui_e2e_screenshots" / "aasma-lab-workflow"
-FRONTEND = "https://frontend-seven-rust-94.vercel.app"
+FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 LAB_EMAIL = "mamadoudianbarry06@gmail.com"
 LAB_PASSWORD = "AasmaLab1!"
 

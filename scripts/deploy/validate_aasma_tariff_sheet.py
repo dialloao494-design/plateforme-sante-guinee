@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT))
 from data.aasma_lab_catalog import _AASMA_TARIFF_LINES
 
 API = "https://web-production-ad6a36.up.railway.app"
-FRONTEND = "https://frontend-seven-rust-94.vercel.app"
+FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 OUT = ROOT / "docs" / "AASMA_TARIFF_SHEET_PROOF.json"
 
 

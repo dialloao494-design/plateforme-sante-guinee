@@ -15,7 +15,7 @@ from pathlib import Path
 import httpx
 from playwright.sync_api import sync_playwright
 
-FRONTEND = os.getenv("NURSE_E2E_FRONTEND", "https://frontend-seven-rust-94.vercel.app")
+FRONTEND = os.getenv("NURSE_E2E_FRONTEND", "https://plateforme-sante-guinee.vercel.app")
 BACKEND = os.getenv("NURSE_E2E_BACKEND", "https://web-production-ad6a36.up.railway.app")
 
 CREDS = {

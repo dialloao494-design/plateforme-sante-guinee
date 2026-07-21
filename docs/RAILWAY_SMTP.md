@@ -9,7 +9,7 @@ Set these variables on the **Railway** backend service (Variables tab):
 | `SMTP_USERNAME` | `noreply@yourdomain.com` | Yes for SMTP auth |
 | `SMTP_PASSWORD` | app password | Yes for SMTP auth |
 | `SENDER_EMAIL` | `noreply@yourdomain.com` | Yes |
-| `FRONTEND_URL` | `https://frontend-seven-rust-94.vercel.app` | Yes (reset/verify links) |
+| `FRONTEND_URL` | `https://plateforme-sante-guinee.vercel.app` | Yes (reset/verify links) |
 
 Legacy aliases also supported: `SMTP_SERVER`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
 

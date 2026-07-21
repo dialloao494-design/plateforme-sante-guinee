@@ -9,7 +9,7 @@ import sys
 import httpx
 
 BASE = "https://web-production-ad6a36.up.railway.app"
-FE = "https://frontend-seven-rust-94.vercel.app"
+FE = "https://plateforme-sante-guinee.vercel.app"
 FE_LATEST = "https://frontend-9whoakkqk-dialloao494-designs-projects.vercel.app"
 
 
