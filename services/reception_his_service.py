@@ -48,22 +48,39 @@ def _qr_token(clinic_id: int) -> str:
     return f"AASMA-{clinic_id}-{uuid.uuid4().hex[:12].upper()}"
 
 
-def _admission_number(db: Session, clinic_id: int) -> str:
-    count = db.query(models.Admission).filter(models.Admission.clinic_id == clinic_id).count()
+def _next_serial(db: Session, model, number_col, clinic_id: int, kind: str) -> str:
+    """Allocate the next ADM/INV/RFD serial without colliding after deletions."""
     year = datetime.utcnow().year
-    return f"ADM-{year}-{clinic_id:03d}-{count + 1:05d}"
+    prefix = f"{kind}-{year}-{clinic_id:03d}-"
+    rows = (
+        db.query(number_col)
+        .filter(
+            model.clinic_id == clinic_id,
+            number_col.like(f"{prefix}%"),
+        )
+        .all()
+    )
+    max_n = 0
+    for (num,) in rows:
+        if not num:
+            continue
+        try:
+            max_n = max(max_n, int(str(num).rsplit("-", 1)[-1]))
+        except ValueError:
+            continue
+    return f"{prefix}{max_n + 1:05d}"
+
+
+def _admission_number(db: Session, clinic_id: int) -> str:
+    return _next_serial(db, models.Admission, models.Admission.admission_number, clinic_id, "ADM")
 
 
 def _invoice_number(db: Session, clinic_id: int) -> str:
-    count = db.query(models.Invoice).filter(models.Invoice.clinic_id == clinic_id).count()
-    year = datetime.utcnow().year
-    return f"INV-{year}-{clinic_id:03d}-{count + 1:05d}"
+    return _next_serial(db, models.Invoice, models.Invoice.invoice_number, clinic_id, "INV")
 
 
 def _refund_number(db: Session, clinic_id: int) -> str:
-    count = db.query(models.ClinicRefund).filter(models.ClinicRefund.clinic_id == clinic_id).count()
-    year = datetime.utcnow().year
-    return f"RFD-{year}-{clinic_id:03d}-{count + 1:05d}"
+    return _next_serial(db, models.ClinicRefund, models.ClinicRefund.refund_number, clinic_id, "RFD")
 
 
 def _invoice_status(invoice: models.Invoice) -> str:
