@@ -157,13 +157,6 @@ def purge_patient(db: Session, patient_id: int) -> dict[str, int]:
         _delete(db, models.ClinicCharge, "charges", counts, models.ClinicCharge.id.in_(charge_ids))
 
     # --- Hospitalization / visits / workflows (FK-safe order) ---
-    admission_ids = [
-        row[0] for row in db.query(models.Admission.id).filter(models.Admission.patient_id == patient_id).all()
-    ]
-    if admission_ids:
-        _delete(db, models.PatientStay, "patient_stays", counts, models.PatientStay.admission_id.in_(admission_ids))
-        _delete(db, models.Admission, "admissions", counts, models.Admission.id.in_(admission_ids))
-
     wf_ids = [
         row[0]
         for row in db.query(models.PatientVisitWorkflow.id)
@@ -186,7 +179,35 @@ def purge_patient(db: Session, patient_id: int) -> dict[str, int]:
             models.PatientVisitWorkflow.id.in_(wf_ids),
         )
 
+    # Visits may reference admissions — delete before admissions
     _delete(db, models.ClinicalVisit, "visits", counts, models.ClinicalVisit.patient_id == patient_id)
+
+    admission_ids = [
+        row[0] for row in db.query(models.Admission.id).filter(models.Admission.patient_id == patient_id).all()
+    ]
+    if admission_ids:
+        _delete(db, models.PatientStay, "patient_stays", counts, models.PatientStay.admission_id.in_(admission_ids))
+        _delete(db, models.Admission, "admissions", counts, models.Admission.id.in_(admission_ids))
+
+    # Vitals / history may FK to consultations — delete before consultations
+    _delete(db, models.PatientVitalSigns, "vitals", counts, models.PatientVitalSigns.patient_id == patient_id)
+    _delete(db, models.PatientAllergy, "allergies", counts, models.PatientAllergy.patient_id == patient_id)
+    _delete(
+        db,
+        models.PatientChronicCondition,
+        "chronic_conditions",
+        counts,
+        models.PatientChronicCondition.patient_id == patient_id,
+    )
+    _delete(db, models.FollowUpSchedule, "follow_ups", counts, models.FollowUpSchedule.patient_id == patient_id)
+    _delete(
+        db,
+        models.PatientMedicalRecord,
+        "medical_records",
+        counts,
+        models.PatientMedicalRecord.patient_id == patient_id,
+    )
+
     _delete(
         db,
         models.ClinicalConsultation,
@@ -233,23 +254,6 @@ def purge_patient(db: Session, patient_id: int) -> dict[str, int]:
         "immunizations",
         counts,
         models.ImmunizationRecord.patient_id == patient_id,
-    )
-    _delete(db, models.PatientVitalSigns, "vitals", counts, models.PatientVitalSigns.patient_id == patient_id)
-    _delete(db, models.PatientAllergy, "allergies", counts, models.PatientAllergy.patient_id == patient_id)
-    _delete(
-        db,
-        models.PatientChronicCondition,
-        "chronic_conditions",
-        counts,
-        models.PatientChronicCondition.patient_id == patient_id,
-    )
-    _delete(db, models.FollowUpSchedule, "follow_ups", counts, models.FollowUpSchedule.patient_id == patient_id)
-    _delete(
-        db,
-        models.PatientMedicalRecord,
-        "medical_records",
-        counts,
-        models.PatientMedicalRecord.patient_id == patient_id,
     )
     db.query(models.ClinicalAuditLog).filter(models.ClinicalAuditLog.patient_id == patient_id).update(
         {models.ClinicalAuditLog.patient_id: None},

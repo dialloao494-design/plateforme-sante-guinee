@@ -133,7 +133,6 @@ def cleanup_demo_patients_endpoint(
     current_user=Depends(get_current_platform_admin),
 ):
     """Delete only obvious demo/E2E patients. Never touches pharmacy stock or staff."""
-    from fastapi import HTTPException
     from services.demo_patient_cleanup import cleanup_demo_patients
 
     clinic = db.query(models.Clinic).filter(models.Clinic.id == clinic_id).first()
@@ -145,7 +144,6 @@ def cleanup_demo_patients_endpoint(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Cleanup failed: {exc}") from exc
     if execute and result.get("failures"):
-        # Partial success is still useful — return 207-like payload with 200 + failures list
         result["partial"] = True
     return result
 
