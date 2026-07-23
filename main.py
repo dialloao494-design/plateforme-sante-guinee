@@ -43,24 +43,35 @@ app = FastAPI(
 
 # CORS — applied before routers are included.
 # Development origins use http:// (local only), production must be HTTPS.
+from core.frontend_url import (
+    CANONICAL_FRONTEND_URL,
+    LEGACY_FRONTEND_HOSTS,
+    resolve_frontend_url,
+)
+
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://localhost:5173",
     "https://127.0.0.1:5173",
     # Canonical Vercel production project (GitHub-connected)
-    "https://plateforme-sante-guinee.vercel.app",
+    CANONICAL_FRONTEND_URL,
 ]
 
 for part in (os.getenv("CORS_ORIGINS", "") or "").split(","):
-    part = part.strip()
-    if part and part not in origins:
+    part = part.strip().rstrip("/")
+    if not part:
+        continue
+    host = part.replace("https://", "").replace("http://", "").split("/")[0].lower()
+    if host in LEGACY_FRONTEND_HOSTS:
+        continue
+    if part not in origins:
         origins.append(part)
 
-for env_key in ("FRONTEND_URL", "FRONTEND_PRODUCTION_URL"):
-    fe = (os.getenv(env_key) or "").strip()
-    if fe and fe not in origins:
-        origins.append(fe)
+# Effective FRONTEND_URL only (legacy seven-rust host is remapped away).
+_fe = resolve_frontend_url(allow_localhost_fallback=False)
+if _fe and _fe not in origins:
+    origins.append(_fe)
 
 # CORS: strict in production; LAN/Vercel regex only in dev/staging.
 from services.network_dev import COMBINED_DEV_CORS_REGEX, format_lan_urls
