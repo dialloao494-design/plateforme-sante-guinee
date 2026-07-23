@@ -24,14 +24,9 @@ def _hash_token(raw: str) -> str:
 
 
 def build_verify_link(raw_token: str) -> str:
-    frontend = (
-        os.getenv("FRONTEND_URL")
-        or os.getenv("FRONTEND_PRODUCTION_URL")
-        or os.getenv("PUBLIC_FRONTEND_URL")
-        or ""
-    ).rstrip("/")
-    if not frontend:
-        frontend = "http://localhost:5173"
+    from core.frontend_url import resolve_frontend_url
+
+    frontend = resolve_frontend_url()
     return f"{frontend}/verify-email?token={raw_token}"
 
 

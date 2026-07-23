@@ -13,6 +13,9 @@ Set these variables on the **Railway** backend service (Variables tab):
 
 Legacy aliases also supported: `SMTP_SERVER`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
 
+
+> **Note:** If Railway still has `FRONTEND_URL=https://frontend-seven-rust-94.vercel.app`, the backend remaps it at runtime to `https://plateforme-sante-guinee.vercel.app`. Update the Railway variable when you have dashboard access.
+
 ## Alternative: Resend
 
 | Variable | Value |
