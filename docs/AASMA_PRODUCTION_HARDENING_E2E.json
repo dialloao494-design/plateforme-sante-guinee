@@ -1,0 +1,529 @@
+{
+  "started_at": "2026-07-23T05:43:28.641623+00:00",
+  "backend": "https://web-production-ad6a36.up.railway.app",
+  "frontend": "https://plateforme-sante-guinee.vercel.app",
+  "checks": [
+    {
+      "name": "email_effective_canonical",
+      "pass": true,
+      "detail": "https://plateforme-sante-guinee.vercel.app"
+    },
+    {
+      "name": "email_legacy_remapped_or_clean",
+      "pass": true,
+      "detail": {
+        "raw": "https://frontend-seven-rust-94.vercel.app",
+        "remapped": true
+      }
+    },
+    {
+      "name": "db_identity",
+      "pass": true,
+      "detail": "postgres.railway.internal/railway"
+    },
+    {
+      "name": "cors_legacy_blocked",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "cors_canonical_allowed",
+      "pass": true,
+      "detail": "https://plateforme-sante-guinee.vercel.app"
+    },
+    {
+      "name": "frontend_spa",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "frontend_points_only_canonical_backend",
+      "pass": true,
+      "detail": [
+        "https://web-production-ad6a36.up.railway.app"
+      ]
+    },
+    {
+      "name": "frontend_bundle_no_legacy_host",
+      "pass": true,
+      "detail": "scanned html+js"
+    },
+    {
+      "name": "login_admin",
+      "pass": true,
+      "detail": {
+        "role": "clinic_admin",
+        "clinic_id": 17
+      }
+    },
+    {
+      "name": "login_reception",
+      "pass": true,
+      "detail": {
+        "role": "receptionist",
+        "clinic_id": 17
+      }
+    },
+    {
+      "name": "login_lab",
+      "pass": true,
+      "detail": {
+        "role": "lab_technician",
+        "clinic_id": 17
+      }
+    },
+    {
+      "name": "login_pharmacy",
+      "pass": true,
+      "detail": {
+        "role": "pharmacist",
+        "clinic_id": 17
+      }
+    },
+    {
+      "name": "login_nurse",
+      "pass": true,
+      "detail": {
+        "role": "nurse",
+        "clinic_id": 17
+      }
+    },
+    {
+      "name": "login_doctor",
+      "pass": true,
+      "detail": {
+        "role": "doctor",
+        "clinic_id": 17
+      }
+    },
+    {
+      "name": "login_cashier",
+      "pass": true,
+      "detail": {
+        "role": "cashier",
+        "clinic_id": 17
+      }
+    },
+    {
+      "name": "dashboard_reception",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "dashboard_nurse",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "dashboard_doctor",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "dashboard_lab",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "dashboard_pharmacy",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "dashboard_cashier",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "dashboard_admin",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "rbac_lab_cannot_register_patient",
+      "pass": true,
+      "detail": "status=403"
+    },
+    {
+      "name": "journey_register_patient",
+      "pass": true,
+      "detail": "PAT-017-000374"
+    },
+    {
+      "name": "journey_search_patient",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "journey_admission",
+      "pass": true,
+      "detail": 122
+    },
+    {
+      "name": "journey_invoice",
+      "pass": true,
+      "detail": "INV-2026-017-00099"
+    },
+    {
+      "name": "journey_payment",
+      "pass": true,
+      "detail": "paid"
+    },
+    {
+      "name": "pdf_invoice",
+      "pass": true,
+      "detail": "status=200 bytes=109790"
+    },
+    {
+      "name": "pdf_invoice_unicode_font",
+      "pass": true,
+      "detail": "font=True bytes=109790"
+    },
+    {
+      "name": "pdf_invoice_a4ish",
+      "pass": true,
+      "detail": "bytes=109790"
+    },
+    {
+      "name": "pdf_invoice_no_mojibake",
+      "pass": true,
+      "detail": "mojibake scan"
+    },
+    {
+      "name": "cashier_revenue",
+      "pass": true,
+      "detail": "2026-07-23"
+    },
+    {
+      "name": "cashier_pending",
+      "pass": true,
+      "detail": "count=56"
+    },
+    {
+      "name": "journey_nurse_assessment",
+      "pass": true,
+      "detail": 27
+    },
+    {
+      "name": "doctor_queue",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "journey_doctor_consultation",
+      "pass": true,
+      "detail": 265
+    },
+    {
+      "name": "doctor_sees_nurse_assessment",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "journey_lab_order",
+      "pass": true,
+      "detail": 148
+    },
+    {
+      "name": "journey_prescription",
+      "pass": true,
+      "detail": 175
+    },
+    {
+      "name": "pdf_consultation",
+      "pass": true,
+      "detail": "status=200 bytes=110247"
+    },
+    {
+      "name": "pdf_consultation_unicode_font",
+      "pass": true,
+      "detail": "font=True bytes=110247"
+    },
+    {
+      "name": "pdf_consultation_a4ish",
+      "pass": true,
+      "detail": "bytes=110247"
+    },
+    {
+      "name": "pdf_consultation_no_mojibake",
+      "pass": true,
+      "detail": "mojibake scan"
+    },
+    {
+      "name": "journey_lab_result",
+      "pass": true,
+      "detail": 109
+    },
+    {
+      "name": "journey_lab_validate",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "pdf_lab",
+      "pass": true,
+      "detail": "status=200 bytes=109204"
+    },
+    {
+      "name": "pdf_lab_unicode_font",
+      "pass": true,
+      "detail": "font=True bytes=109204"
+    },
+    {
+      "name": "pdf_lab_a4ish",
+      "pass": true,
+      "detail": "bytes=109204"
+    },
+    {
+      "name": "pdf_lab_no_mojibake",
+      "pass": true,
+      "detail": "mojibake scan"
+    },
+    {
+      "name": "pharmacy_stock",
+      "pass": true,
+      "detail": "count=34"
+    },
+    {
+      "name": "pharmacy_orders",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "journey_pharmacy_dispense",
+      "pass": true,
+      "detail": "dispensed"
+    },
+    {
+      "name": "pdf_reception_report",
+      "pass": true,
+      "detail": "status=200 bytes=57710"
+    },
+    {
+      "name": "pdf_reception_report_unicode_font",
+      "pass": false,
+      "detail": "font=False bytes=57710"
+    },
+    {
+      "name": "pdf_reception_report_a4ish",
+      "pass": true,
+      "detail": "bytes=57710"
+    },
+    {
+      "name": "pdf_reception_report_no_mojibake",
+      "pass": true,
+      "detail": "mojibake scan"
+    },
+    {
+      "name": "pdf_refund",
+      "pass": true,
+      "detail": "status=200 bytes=109768"
+    },
+    {
+      "name": "pdf_refund_unicode_font",
+      "pass": true,
+      "detail": "font=True bytes=109768"
+    },
+    {
+      "name": "pdf_refund_a4ish",
+      "pass": true,
+      "detail": "bytes=109768"
+    },
+    {
+      "name": "pdf_refund_no_mojibake",
+      "pass": true,
+      "detail": "mojibake scan"
+    },
+    {
+      "name": "admin_list_staff",
+      "pass": true,
+      "detail": "count=21"
+    },
+    {
+      "name": "demo_cleanup_preview_api",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "name": "frontend_login_page",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "journey_complete",
+      "pass": true,
+      "detail": "PAT-017-000374"
+    }
+  ],
+  "bugs": [
+    {
+      "title": "Railway FRONTEND_URL still legacy",
+      "severity": "medium",
+      "detail": "raw=https://frontend-seven-rust-94.vercel.app",
+      "fix": "Set Railway FRONTEND_URL to canonical (requires RAILWAY_TOKEN / dashboard)"
+    }
+  ],
+  "pdfs": {
+    "invoice_INV-2026-017-00099": "/opt/cursor/artifacts/hardening/invoice_INV-2026-017-00099.pdf",
+    "consultation_265": "/opt/cursor/artifacts/hardening/consultation_265.pdf",
+    "lab_109": "/opt/cursor/artifacts/hardening/lab_109.pdf",
+    "reception_report": "/opt/cursor/artifacts/hardening/reception_report.pdf",
+    "refund_6": "/opt/cursor/artifacts/hardening/refund_6.pdf"
+  },
+  "journey": {
+    "run": "32F04511",
+    "patient_id": 374,
+    "patient_number": "PAT-017-000374",
+    "admission": {
+      "id": 122,
+      "admission_number": "ADM-2026-017-00103",
+      "patient_id": 374,
+      "patient_name": "Harden E2E32F04511",
+      "department": "Consultation spécialisée",
+      "services": [
+        "Consultation spécialisée"
+      ],
+      "admission_type": "specialized_consultation",
+      "status": "pending",
+      "admitted_at": "2026-07-23T05:43:00",
+      "attending_clinician_user_id": 151
+    },
+    "invoice_id": 102,
+    "invoice_number": "INV-2026-017-00099",
+    "nurse_assessment": {
+      "id": 27,
+      "clinic_id": 17,
+      "patient_id": 374,
+      "admission_id": 122,
+      "appointment_id": null,
+      "consultation_id": null,
+      "nurse_user_id": 165,
+      "nurse_name": "aasma.nurse.test@sante-gn.test",
+      "temperature_c": 37.2,
+      "bp_systolic": 120,
+      "bp_diastolic": 80,
+      "heart_rate": 78,
+      "respiratory_rate": 18,
+      "height_cm": 165.0,
+      "weight_kg": 65.0,
+      "bmi": 23.9,
+      "vitals_observations": null,
+      "reason_for_consultation": "Hardening E2E 32F04511 — céphalées",
+      "history_of_present_illness": null,
+      "medical_history": null,
+      "surgical_history": null,
+      "gynecological_history": null,
+      "allergies": null,
+      "current_treatments": null,
+      "hospitalized_daily_vitals": null,
+      "prescription": null,
+      "nurse_notes": "Constantes stables — parcours durcissement",
+      "recorded_at": "2026-07-23T05:43:35.058935",
+      "updated_at": "2026-07-23T05:43:35.058935",
+      "patient_number": "PAT-017-000374",
+      "patient_name": "E2E32F04511 Harden",
+      "patient_age": 34,
+      "patient_gender": "F"
+    },
+    "consultation_id": 265,
+    "lab_order": {
+      "id": 148,
+      "clinic_id": 17,
+      "consultation_id": 265,
+      "patient_id": 374,
+      "test_code": "NFS",
+      "test_name": "Numération Formule Sanguine",
+      "priority": "routine",
+      "status": "ordered",
+      "patient_name": "Harden E2E32F04511",
+      "patient_first_name": null,
+      "patient_last_name": null,
+      "patient_age": null,
+      "patient_gender": null,
+      "patient_profession": null,
+      "patient_quartier": null,
+      "patient_phone": null,
+      "price_gnf": null,
+      "payment_status": null,
+      "result_status": null,
+      "validated_at": null,
+      "technician_name": null,
+      "clinical_notes": null,
+      "latest_result_id": null,
+      "result_summary": null,
+      "result_data": null,
+      "created_at": null
+    },
+    "prescription": {
+      "id": 175,
+      "clinic_id": 17,
+      "consultation_id": 265,
+      "patient_id": 374,
+      "status": "active",
+      "items": [
+        {
+          "medication_name": "Paracétamol",
+          "dosage": "500 mg",
+          "route": "oral",
+          "frequency": "3x/jour",
+          "duration_days": 3,
+          "quantity": 12,
+          "instructions": "Après les repas"
+        }
+      ],
+      "patient_name": "Harden E2E32F04511"
+    }
+  },
+  "roles": {
+    "admin": {
+      "email": "contactpolycliniqueaasma@gmail.com",
+      "role": "clinic_admin",
+      "clinic_id": 17,
+      "login": true
+    },
+    "reception": {
+      "email": "baldoumar14@gmail.com",
+      "role": "receptionist",
+      "clinic_id": 17,
+      "login": true
+    },
+    "lab": {
+      "email": "mamadoudianbarry06@gmail.com",
+      "role": "lab_technician",
+      "clinic_id": 17,
+      "login": true
+    },
+    "pharmacy": {
+      "email": "ben752231@gmail.com",
+      "role": "pharmacist",
+      "clinic_id": 17,
+      "login": true
+    },
+    "nurse": {
+      "email": "aasma.nurse.test@sante-gn.test",
+      "role": "nurse",
+      "clinic_id": 17,
+      "login": true
+    },
+    "doctor": {
+      "email": "field.verify.doctor.00c7@aasma-clinic.gn",
+      "role": "doctor",
+      "clinic_id": 17,
+      "login": true
+    },
+    "cashier": {
+      "email": "field.verify.cashier.8aac@aasma-clinic.gn",
+      "role": "cashier",
+      "clinic_id": 17,
+      "login": true
+    }
+  },
+  "finished_at": "2026-07-23T05:43:38.034697+00:00",
+  "summary": {
+    "passed": 64,
+    "failed": 1,
+    "total": 65,
+    "bugs": 1,
+    "pass_rate_pct": 98.5
+  }
+}

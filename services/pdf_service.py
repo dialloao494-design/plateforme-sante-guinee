@@ -145,7 +145,14 @@ def _build_pdf_stream_text_only(title: str, lines: list[str]) -> bytes:
 
 
 def build_simple_pdf(title: str, lines: list[str]) -> bytes:
-    """Minimal PDF generator with centered clinic logo header."""
+    """A4 PDF with Unicode clinic fonts (French accents) and logo header."""
+    from services.simple_pdf_builder import build_unicode_simple_pdf
+
+    return build_unicode_simple_pdf(title, lines)
+
+
+def build_simple_pdf_legacy(title: str, lines: list[str]) -> bytes:
+    """Legacy Helvetica PDF builder retained for offline/debug only."""
     logo = _read_logo_image()
     use_logo = logo is not None
     if use_logo:

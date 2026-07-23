@@ -1,7 +1,9 @@
 # Koloma UI Production Validation
 
+> **Superseded (2026-07-23):** Production frontend is now `https://plateforme-sante-guinee.vercel.app`. `https://frontend-seven-rust-94.vercel.app` is retired/archived and must not be used.
+
 - **Run:** 20260620-1211-c3f085
-- **Frontend:** https://frontend-seven-rust-94.vercel.app
+- **Frontend:** https://plateforme-sante-guinee.vercel.app
 - **Screenshots:** `docs\ui_e2e_screenshots\koloma-prod-20260620-1211-c3f085`
 - **Overall:** **FAIL**
 

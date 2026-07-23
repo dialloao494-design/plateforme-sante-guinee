@@ -1,10 +1,12 @@
 # Centre de Santé Koloma — Phase 2 Full Execution Report
 
+> **Superseded (2026-07-23):** Production frontend is now `https://plateforme-sante-guinee.vercel.app`. `https://frontend-seven-rust-94.vercel.app` is retired/archived and must not be used.
+
 ## Production URLs
 
 | Service | URL |
 |---------|-----|
-| Frontend | https://frontend-seven-rust-94.vercel.app |
+| Frontend | https://plateforme-sante-guinee.vercel.app |
 | Backend API | https://web-production-ad6a36.up.railway.app |
 | Patient history | `/clinical/patient-history` |
 | Koloma monthly reports | `/clinical/reports` (section Registres Koloma) |

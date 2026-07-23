@@ -2,7 +2,7 @@
   "run_id": "20260620-1209-7354c0",
   "timestamp": "2026-06-20T12:12:10.767057+00:00",
   "backend": "https://web-production-ad6a36.up.railway.app",
-  "frontend": "https://frontend-seven-rust-94.vercel.app",
+  "frontend": "https://plateforme-sante-guinee.vercel.app",
   "koloma_clinic_id": 13,
   "overall": "PASS",
   "passed": 80,
@@ -516,7 +516,7 @@
       "category": "Deploy",
       "name": "Vercel frontend reachable",
       "status": "PASS",
-      "detail": "https://frontend-seven-rust-94.vercel.app"
+      "detail": "https://plateforme-sante-guinee.vercel.app"
     },
     {
       "phase": "2",

@@ -1,4 +1,6 @@
 # Overnight Autonomous Work Report — AASMA Clinic
+
+> **Superseded (2026-07-23):** Production frontend is now `https://plateforme-sante-guinee.vercel.app`. `https://frontend-seven-rust-94.vercel.app` is retired/archived and must not be used.
 **Date:** 2026-07-02  
 **Scope:** Reception, Admission, Laboratory, Pharmacy, Nurse Dashboard, Billing/PDFs, Browser E2E, Production
 
@@ -93,7 +95,7 @@
 
 ## Production URLs & credentials
 
-- Frontend: https://frontend-seven-rust-94.vercel.app  
+- Frontend: https://plateforme-sante-guinee.vercel.app  
 - Backend: https://web-production-ad6a36.up.railway.app  
 - Reception: `baldoumar14@gmail.com` / `AasmaRecep1!`  
 - Lab: `mamadoudianbarry06@gmail.com` / `AasmaLab1!`  

@@ -1,7 +1,9 @@
 # Production Audit Report
 
+> **Superseded (2026-07-23):** Production frontend is now `https://plateforme-sante-guinee.vercel.app`. `https://frontend-seven-rust-94.vercel.app` is retired/archived and must not be used.
+
 - **Backend:** https://web-production-ad6a36.up.railway.app
-- **Frontend:** https://frontend-seven-rust-94.vercel.app
+- **Frontend:** https://plateforme-sante-guinee.vercel.app
 - **Started:** 2026-06-18T14:50:06.197311Z
 
 ## Summary

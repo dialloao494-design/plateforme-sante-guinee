@@ -110,6 +110,37 @@ def clinic_staff(
     return list_clinic_staff(db, clinic_id)
 
 
+@router.get("/clinics/{clinic_id}/demo-patients")
+def preview_demo_patients(
+    clinic_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_platform_admin),
+):
+    """Preview synthetic demo/test patients matching safe name patterns."""
+    from services.demo_patient_cleanup import cleanup_demo_patients
+
+    clinic = db.query(models.Clinic).filter(models.Clinic.id == clinic_id).first()
+    if not clinic:
+        raise HTTPException(status_code=404, detail="Clinic not found")
+    return cleanup_demo_patients(db, clinic_id, execute=False)
+
+
+@router.post("/clinics/{clinic_id}/cleanup-demo-patients")
+def cleanup_demo_patients_endpoint(
+    clinic_id: int,
+    execute: bool = Query(False, description="If false, dry-run preview only"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_platform_admin),
+):
+    """Delete only obvious demo/E2E patients. Never touches pharmacy stock or staff."""
+    from services.demo_patient_cleanup import cleanup_demo_patients
+
+    clinic = db.query(models.Clinic).filter(models.Clinic.id == clinic_id).first()
+    if not clinic:
+        raise HTTPException(status_code=404, detail="Clinic not found")
+    return cleanup_demo_patients(db, clinic_id, execute=execute)
+
+
 @router.post("/clinics/{clinic_id}/staff/{user_id}/reset-password")
 def reset_clinic_staff_password(
     clinic_id: int,

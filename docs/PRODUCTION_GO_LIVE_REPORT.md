@@ -1,5 +1,7 @@
 # Production Go-Live Report — Centre de Santé Koloma
 
+> **Superseded (2026-07-23):** Production frontend is now `https://plateforme-sante-guinee.vercel.app`. `https://frontend-seven-rust-94.vercel.app` is retired/archived and must not be used.
+
 **Date:** 2026-05-25  
 **Environment:** Production (Railway + Vercel)
 
@@ -43,7 +45,7 @@ Field readiness validation executed a **full end-to-end patient journey** (recep
 
 | Service | URL |
 |---------|-----|
-| Frontend | https://frontend-seven-rust-94.vercel.app |
+| Frontend | https://plateforme-sante-guinee.vercel.app |
 | Backend | https://web-production-ad6a36.up.railway.app |
 | Patient history | `/clinical/patient-history` |
 | Reports | `/clinical/reports` |

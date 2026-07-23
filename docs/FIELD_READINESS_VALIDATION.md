@@ -1,9 +1,11 @@
 # Field Readiness Validation — Centre de Santé Koloma
 
+> **Superseded (2026-07-23):** Production frontend is now `https://plateforme-sante-guinee.vercel.app`. `https://frontend-seven-rust-94.vercel.app` is retired/archived and must not be used.
+
 - **Run:** 20260620-1209-7354c0
 - **Overall:** **PASS** (80 pass / 0 fail)
 - **Backend:** https://web-production-ad6a36.up.railway.app
-- **Frontend:** https://frontend-seven-rust-94.vercel.app
+- **Frontend:** https://plateforme-sante-guinee.vercel.app
 - **Test patient:** 232
 - **Screenshots:** `docs\ui_e2e_screenshots\koloma-prod-20260620-1211-c3f085`
 
@@ -81,7 +83,7 @@
 | 2 | Auth | Timeline requires auth | PASS | authenticated OK |
 | 2 | Auth | Timeline rejects anonymous | PASS | status=401 |
 | 2 | Deploy | Railway backend reachable | PASS | https://web-production-ad6a36.up.railway.app |
-| 2 | Deploy | Vercel frontend reachable | PASS | https://frontend-seven-rust-94.vercel.app |
+| 2 | Deploy | Vercel frontend reachable | PASS | https://plateforme-sante-guinee.vercel.app |
 | 2 | Deploy | GitHub Actions workflow present | PASS | deploy-railway-vercel.yml |
 | 2 | Deploy | DB migrations module present | PASS | ensure_clinical_modules_schema |
 | 4 | Multi-clinic | Create clinic | PASS | id=16 name=Clinique Pilote Field-7354c0 |
