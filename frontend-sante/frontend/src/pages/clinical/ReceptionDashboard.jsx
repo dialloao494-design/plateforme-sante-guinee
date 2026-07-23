@@ -186,16 +186,16 @@ const EMPTY_SERVICE_REQUEST = {
 };
 
 const DEFAULT_SERVICE_PRESTATIONS = [
-  { code: 'emergency_care_with_serum', label: "Soins d'urgences avec sérum", price_gnf: 500000 },
+  { code: 'emergency_care_with_serum', label: "Soins d'urgence avec sérum", price_gnf: 500000 },
   { code: 'injection', label: 'Injection', price_gnf: 25000 },
   { code: 'small_dressing', label: 'Petit pansement', price_gnf: 30000 },
   { code: 'large_dressing', label: 'Grand pansement', price_gnf: 80000 },
-  { code: 'pediatric_emergency_care', label: "Soins d'urgences Pédiatrie", price_gnf: 250000 },
-  { code: 'medical_transport_ambulance', label: 'Medical Transport / Ambulance', price_gnf: 0 },
+  { code: 'pediatric_emergency_care', label: "Soins d'urgence pédiatrie", price_gnf: 250000 },
+  { code: 'medical_transport_ambulance', label: 'Transport médical / Ambulance', price_gnf: 0 },
 ];
 
 const DASHBOARD_BUCKET_TITLES = {
-  total_patients: 'Patients total',
+  total_patients: 'Total patients',
   patients_registered_today: 'Patients inscrits aujourd\'hui',
   admissions_today: 'Admissions aujourd\'hui',
   hospitalized_patients: 'Patients hospitalisés',
@@ -1243,7 +1243,7 @@ export default function ReceptionDashboard() {
   const statCards = useMemo(() => {
     if (!stats) return [];
     return [
-      { key: 'total_patients', label: 'Patients total', value: stats.total_patients ?? 0 },
+      { key: 'total_patients', label: 'Total patients', value: stats.total_patients ?? 0 },
       { key: 'patients_registered_today', label: 'Patients inscrits aujourd\'hui', value: stats.patients_registered_today ?? 0, variant: 'success' },
       { key: 'admissions_today', label: 'Admissions aujourd\'hui', value: stats.admissions_today ?? 0 },
       { key: 'hospitalized_patients', label: 'Patients hospitalisés', value: stats.hospitalized_patients ?? 0, variant: 'warning' },

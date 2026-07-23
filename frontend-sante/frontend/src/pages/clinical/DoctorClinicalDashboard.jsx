@@ -700,7 +700,7 @@ export default function DoctorClinicalDashboard() {
         {consultation ? (
           <section className="clinical-card doctor-consult" style={{ gridColumn: '1 / -1' }}>
             <div className="doctor-consult-head">
-              <h2>Dashboard Doctor — Consultation #{consultation.id}</h2>
+              <h2>Médecin — Consultation #{consultation.id}</h2>
               <span className="clinical-badge">{consultation.status || 'in_progress'}</span>
             </div>
 
@@ -1198,7 +1198,11 @@ export default function DoctorClinicalDashboard() {
                           <button
                             type="button"
                             className="clinical-btn secondary"
-                            onClick={() => clinicalApi.downloadConsultationPdf(h.id, `consultation_${h.id}.pdf`).catch(() => {})}
+                            onClick={() =>
+                              clinicalApi
+                                .downloadConsultationPdf(h.id, `consultation_${h.id}.pdf`)
+                                .catch(() => setError("Impossible de télécharger le PDF de consultation."))
+                            }
                           >
                             Imprimer
                           </button>

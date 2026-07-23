@@ -1,0 +1,42 @@
+{
+  "reception": [
+    [
+      "Register workflow",
+      false,
+      "Locator.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"label:has-text(\\\"Date naissance\\\") input\")\n"
+    ]
+  ],
+  "admission": [
+    [
+      "Admission workflow",
+      false,
+      "Locator.select_option: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"#specialty-select-admission\")\n    - locator resolved to <select required=\"\" id=\"specialty-select-admission\">…</select>\n  - attempting select option action\n    2 × waiting for element to be visible and enabled\n      - did not find some options\n    - retrying select option action\n    - waiting 20ms\n    2 × waiting for element to be visible and enabled\n      - did not find some options\n    - retrying select option action\n      - waiting 100ms\n    60 × waiting for element to be visible and enabled\n       - did not find some options\n     - retrying select option action\n       - waiting 500ms\n"
+    ]
+  ],
+  "billing": [
+    [
+      "Billing workflow",
+      false,
+      "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"button:has-text(\\\"Créer facture\\\")\")\n    - locator resolved to <button disabled type=\"submit\" class=\"clinical-btn\">Créer facture</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 100ms\n    58 × waiting for element to be visible, enabled and stable\n       - element is not enabled\n     - retrying click action\n       - waiting 500ms\n"
+    ]
+  ],
+  "laboratory": [
+    [
+      "Lab workflow",
+      false,
+      "Locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\".reception-his-search-results button\").first\n"
+    ]
+  ],
+  "pharmacy": [
+    [
+      "Stock tab",
+      true,
+      ""
+    ],
+    [
+      "Patient search",
+      false,
+      "hits=0"
+    ]
+  ]
+}

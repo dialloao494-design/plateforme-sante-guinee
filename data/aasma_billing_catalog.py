@@ -43,7 +43,7 @@ CONSULTATION_SERVICES = [
     },
     {
         "code": "pediatric_emergency_care",
-        "label": "Soins d'urgences Pédiatrie",
+        "label": "Soins d'urgence pédiatrie",
         "charge_type": "procedure",
         "price_gnf": 250_000,
     },
@@ -130,12 +130,12 @@ IMAGING_EXAMINATIONS = [
 
 # Nursing / care prestations from clinic tariff sheet + ambulance
 SERVICE_PRESTATIONS = [
-    {"code": "emergency_care_with_serum", "label": "Soins d'urgences avec sérum", "price_gnf": 500_000},
+    {"code": "emergency_care_with_serum", "label": "Soins d'urgence avec sérum", "price_gnf": 500_000},
     {"code": "injection", "label": "Injection", "price_gnf": 25_000},
     {"code": "small_dressing", "label": "Petit pansement", "price_gnf": 30_000},
     {"code": "large_dressing", "label": "Grand pansement", "price_gnf": 80_000},
-    {"code": "pediatric_emergency_care", "label": "Soins d'urgences Pédiatrie", "price_gnf": 250_000},
-    {"code": "medical_transport_ambulance", "label": "Medical Transport / Ambulance", "price_gnf": 0},
+    {"code": "pediatric_emergency_care", "label": "Soins d'urgence pédiatrie", "price_gnf": 250_000},
+    {"code": "medical_transport_ambulance", "label": "Transport médical / Ambulance", "price_gnf": 0},
 ]
 
 BILLING_DEPARTMENTS = [

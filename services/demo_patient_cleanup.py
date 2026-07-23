@@ -6,12 +6,16 @@ Never deletes pharmacy inventory or staff accounts.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 import models
+
+logger = logging.getLogger(__name__)
 
 # Match last_name OR first_name (case-insensitive).
 TEST_NAME_PATTERNS = (
@@ -25,6 +29,9 @@ TEST_NAME_PATTERNS = (
     r"^ClinicE2E",
     r"^Harden",
     r"^LabDbg",
+    r"^NURSE",
+    r"^RECEP",
+    r"^Flow$",
     r"^Recep\d+",
     r"^Form\d+",
     r"^Test\d+",
@@ -63,6 +70,7 @@ def purge_patient(db: Session, patient_id: int) -> dict[str, int]:
     """Hard-delete a patient and dependent clinical/billing rows."""
     counts: dict[str, int] = {}
 
+    # --- Orders / results linked to consultations ---
     lab_order_ids = [
         row[0] for row in db.query(models.LabOrder.id).filter(models.LabOrder.patient_id == patient_id).all()
     ]
@@ -126,6 +134,7 @@ def purge_patient(db: Session, patient_id: int) -> dict[str, int]:
     )
     _delete(db, models.ClinicalNote, "clinical_notes", counts, models.ClinicalNote.patient_id == patient_id)
 
+    # --- Billing ---
     invoice_ids = [row[0] for row in db.query(models.Invoice.id).filter(models.Invoice.patient_id == patient_id).all()]
     if invoice_ids:
         _delete(db, models.PaymentRecord, "payment_records", counts, models.PaymentRecord.invoice_id.in_(invoice_ids))
@@ -147,14 +156,37 @@ def purge_patient(db: Session, patient_id: int) -> dict[str, int]:
         )
         _delete(db, models.ClinicCharge, "charges", counts, models.ClinicCharge.id.in_(charge_ids))
 
+    # --- Hospitalization / visits / workflows (FK-safe order) ---
     admission_ids = [
         row[0] for row in db.query(models.Admission.id).filter(models.Admission.patient_id == patient_id).all()
     ]
     if admission_ids:
         _delete(db, models.PatientStay, "patient_stays", counts, models.PatientStay.admission_id.in_(admission_ids))
         _delete(db, models.Admission, "admissions", counts, models.Admission.id.in_(admission_ids))
-    _delete(db, models.ClinicalVisit, "visits", counts, models.ClinicalVisit.patient_id == patient_id)
 
+    wf_ids = [
+        row[0]
+        for row in db.query(models.PatientVisitWorkflow.id)
+        .filter(models.PatientVisitWorkflow.patient_id == patient_id)
+        .all()
+    ]
+    if wf_ids:
+        _delete(
+            db,
+            models.PatientVisitWorkflowStep,
+            "visit_workflow_steps",
+            counts,
+            models.PatientVisitWorkflowStep.workflow_id.in_(wf_ids),
+        )
+        _delete(
+            db,
+            models.PatientVisitWorkflow,
+            "visit_workflows",
+            counts,
+            models.PatientVisitWorkflow.id.in_(wf_ids),
+        )
+
+    _delete(db, models.ClinicalVisit, "visits", counts, models.ClinicalVisit.patient_id == patient_id)
     _delete(
         db,
         models.ClinicalConsultation,
@@ -163,31 +195,36 @@ def purge_patient(db: Session, patient_id: int) -> dict[str, int]:
         models.ClinicalConsultation.patient_id == patient_id,
     )
 
-    if hasattr(models, "PatientVisitWorkflowStep") and hasattr(models, "PatientVisitWorkflow"):
-        wf_ids = [
-            row[0]
-            for row in db.query(models.PatientVisitWorkflow.id)
-            .filter(models.PatientVisitWorkflow.patient_id == patient_id)
-            .all()
-        ]
-        if wf_ids:
-            _delete(
-                db,
-                models.PatientVisitWorkflowStep,
-                "visit_workflow_steps",
-                counts,
-                models.PatientVisitWorkflowStep.workflow_id.in_(wf_ids),
-            )
-            _delete(
-                db,
-                models.PatientVisitWorkflow,
-                "visit_workflows",
-                counts,
-                models.PatientVisitWorkflow.id.in_(wf_ids),
-            )
-
-    _delete(db, models.AppointmentReminder, "reminders", counts, models.AppointmentReminder.patient_id == patient_id)
+    # --- Appointments / reminders / stripe payments ---
+    appt_ids = [
+        row[0] for row in db.query(models.RendezVous.id).filter(models.RendezVous.patient_id == patient_id).all()
+    ]
+    reminder_ids = [
+        row[0]
+        for row in db.query(models.AppointmentReminder.id).filter(
+            models.AppointmentReminder.patient_id == patient_id
+        ).all()
+    ]
+    if reminder_ids:
+        _delete(db, models.ReminderEvent, "reminder_events", counts, models.ReminderEvent.reminder_id.in_(reminder_ids))
+        _delete(
+            db,
+            models.AppointmentReminder,
+            "reminders",
+            counts,
+            models.AppointmentReminder.id.in_(reminder_ids),
+        )
+    if appt_ids:
+        _delete(db, models.Payment, "stripe_payments", counts, models.Payment.appointment_id.in_(appt_ids))
+        _delete(
+            db,
+            models.AppointmentReminder,
+            "reminders",
+            counts,
+            models.AppointmentReminder.appointment_id.in_(appt_ids),
+        )
     _delete(db, models.RendezVous, "appointments", counts, models.RendezVous.patient_id == patient_id)
+
     _delete(db, models.PatientDocument, "documents", counts, models.PatientDocument.patient_id == patient_id)
     _delete(db, models.NutritionAssessment, "nutrition", counts, models.NutritionAssessment.patient_id == patient_id)
     _delete(
@@ -214,7 +251,6 @@ def purge_patient(db: Session, patient_id: int) -> dict[str, int]:
         counts,
         models.PatientMedicalRecord.patient_id == patient_id,
     )
-    # Keep audit rows but null patient link where allowed
     db.query(models.ClinicalAuditLog).filter(models.ClinicalAuditLog.patient_id == patient_id).update(
         {models.ClinicalAuditLog.patient_id: None},
         synchronize_session=False,
@@ -242,17 +278,29 @@ def cleanup_demo_patients(
         for p in patients
     ]
     totals: dict[str, int] = {}
+    failures: list[dict[str, Any]] = []
+    deleted_ids: list[int] = []
     if execute:
         for p in patients:
-            row = purge_patient(db, p.id)
-            for k, v in row.items():
-                totals[k] = totals.get(k, 0) + v
+            nested = db.begin_nested()
+            try:
+                row = purge_patient(db, p.id)
+                nested.commit()
+                deleted_ids.append(p.id)
+                for k, v in row.items():
+                    totals[k] = totals.get(k, 0) + v
+            except SQLAlchemyError as exc:
+                nested.rollback()
+                logger.exception("Failed to purge demo patient %s", p.id)
+                failures.append({"id": p.id, "last_name": p.last_name, "error": str(exc)[:400]})
         db.commit()
     return {
         "clinic_id": clinic_id,
         "matched": len(preview),
         "patients": preview,
         "executed": bool(execute),
+        "deleted_patient_ids": deleted_ids,
         "deleted_counts": totals,
+        "failures": failures,
         "patterns": list(TEST_NAME_PATTERNS),
     }
