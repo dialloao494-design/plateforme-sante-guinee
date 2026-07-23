@@ -68,7 +68,7 @@ def main() -> int:
             click_tab(page, "Enregistrement")
             page.get_by_role("textbox", name=re.compile(r"Nom \*")).fill(PATIENT["last_name"])
             page.get_by_role("textbox", name=re.compile(r"Prénom \*")).fill(PATIENT["first_name"])
-            page.locator('label:has-text("Date naissance") input').fill(PATIENT["dob"])
+            page.locator('label:has-text("Date naissance") input[type=date], .reception-his-birthdate-field input[type=date]').fill(PATIENT["dob"])
             page.get_by_role("textbox", name=re.compile(r"Adresse \*")).fill("Kobaya test E2E")
             page.get_by_role("textbox", name=re.compile(r"Tél. principal \*")).fill(PATIENT["phone"])
             page.get_by_role("textbox", name=re.compile(r"Nom du contact \*")).fill("Contact E2E")
@@ -95,7 +95,7 @@ def main() -> int:
         try:
             click_tab(page, "Admission")
             page.locator('label.reception-his-check:has-text("Consultation spécialisée") input').check()
-            page.locator("#specialty-select-admission").select_option(label="Pédiatrie")
+            page.locator("#specialty-select-admission").select_option(value="pediatrics")
             page.select_option('label:has-text("Type d\'admission") select', value="specialized_consultation")
             time.sleep(0.3)
             specialty_val = page.locator("#specialty-select-admission").input_value()

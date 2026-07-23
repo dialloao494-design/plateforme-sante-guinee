@@ -146,8 +146,8 @@ def stress_api():
         )
         check(
             "stress_duplicate_guard",
-            dup.status_code in (201, 409, 422) or "duplicate" in dup.text.lower() or dup.status_code == 200,
-            dup.status_code,
+            dup.status_code in (201, 409, 422),
+            f"status={dup.status_code} body={dup.text[:120]}",
         )
 
     # Invalid date
@@ -213,8 +213,8 @@ def reception_ui(page) -> dict:
     page.locator("nav.reception-his-tabs button:has-text('Admission')").click()
     time.sleep(0.5)
     page.locator('label.reception-his-check:has-text("Consultation spécialisée") input').check()
-    time.sleep(0.3)
-    page.locator("#specialty-select-admission").select_option(label="Médecine")
+    time.sleep(0.5)
+    page.locator("#specialty-select-admission").select_option(value="medicine")
     page.select_option('label:has-text("Type d\'admission") select', value="specialized_consultation")
     shot(page, "ui_reception_admission")
     page.click('button:has-text("Créer l\'admission")')

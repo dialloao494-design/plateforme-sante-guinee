@@ -1,0 +1,139 @@
+{
+  "started_at": "2026-07-23T15:24:19.187734+00:00",
+  "run": "F7BD26",
+  "checks": [
+    {
+      "name": "stress_empty_registration",
+      "pass": true,
+      "detail": 422
+    },
+    {
+      "name": "stress_long_name_rejected_or_truncated",
+      "pass": true,
+      "detail": 422
+    },
+    {
+      "name": "stress_unicode_registration",
+      "pass": true,
+      "detail": "PAT-017-000377"
+    },
+    {
+      "name": "stress_duplicate_guard",
+      "pass": false,
+      "detail": 500
+    },
+    {
+      "name": "stress_old_date_handled",
+      "pass": true,
+      "detail": 201
+    },
+    {
+      "name": "stress_cors_legacy_blocked",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "stress_concurrent_role_logins",
+      "pass": true,
+      "detail": "7/7"
+    },
+    {
+      "name": "ui_reception_register",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "ui_reception_workflow",
+      "pass": false,
+      "detail": "Locator.select_option: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"#specialty-select-admission\")\n    - locator resolved to <select required=\"\" id=\"specialty-select-admission\">…</select>\n  - attempting select option action\n    2 × waiting for element to be visible and enabled\n      - did not find some options\n    - retrying select option action\n    - waiting 20ms\n    2 × waiting for element to be visible and enabled\n      - did not find some options\n    - retrying select option action\n      - waiting 100ms\n    60 × waiting for element to be visible and enabled\n       - did not find some options\n     - retrying select option action\n       - waiting 500ms\n"
+    },
+    {
+      "name": "ui_nurse_save_assessment",
+      "pass": true,
+      "detail": "Input should be greater than or equal to 20"
+    },
+    {
+      "name": "ui_doctor_dashboard_loaded",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "ui_lab_search",
+      "pass": true,
+      "detail": "hits=2"
+    },
+    {
+      "name": "ui_pharmacy_stock_visible",
+      "pass": true,
+      "detail": "rows=34"
+    },
+    {
+      "name": "ui_pharmacy_dispensation_tab",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "ui_cashier_billing_access",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "ui_admin_dashboard",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "sec_frontend_effective_canonical",
+      "pass": true,
+      "detail": "https://plateforme-sante-guinee.vercel.app"
+    },
+    {
+      "name": "sec_legacy_remapped_or_clean",
+      "pass": true,
+      "detail": {
+        "raw": "https://frontend-seven-rust-94.vercel.app",
+        "remapped": true
+      }
+    },
+    {
+      "name": "pdf_reception_report_unicode",
+      "pass": true,
+      "detail": "bytes=108751 font=True"
+    }
+  ],
+  "bugs": [
+    {
+      "title": "Reception UI workflow failed",
+      "severity": "critical",
+      "detail": "Locator.select_option: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"#specialty-select-admission\")\n    - locator resolved to <select required=\"\" id=\"specialty-select-admission\">…</select>\n  - attempting select option action\n    2 × waiting for element to be visible and enabled\n      - did not find some options\n    - retrying select option action\n    - waiting 20ms\n    2 × waiting for element to be visible and enabled\n      - did not find some options\n    - retrying select option action\n      - waiting 100ms\n    60 × waiting for element to be visible and enabled\n       - did not find some options\n     - retrying select option action\n       - waiting 500ms\n"
+    }
+  ],
+  "screenshots": [
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_reception_home.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_reception_register_filled.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_reception_error.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_nurse_home.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_nurse_assessment.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_doctor_home.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_doctor_workspace.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_doctor_consultation.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_lab_home.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_lab_dashboard.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_pharmacy_home.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_pharmacy_stock.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_pharmacy_dispensation.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_cashier_home.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_cashier_billing.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_admin_home.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_admin_dashboard.png"
+  ],
+  "pdfs": [],
+  "finished_at": "2026-07-23T15:25:31.201394+00:00",
+  "summary": {
+    "passed": 17,
+    "failed": 2,
+    "total": 19,
+    "bugs": 1,
+    "pass_rate_pct": 89.5
+  }
+}

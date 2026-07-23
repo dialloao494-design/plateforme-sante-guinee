@@ -179,17 +179,81 @@ def purge_patient(db: Session, patient_id: int) -> dict[str, int]:
             models.PatientVisitWorkflow.id.in_(wf_ids),
         )
 
-    # Visits may reference admissions — delete before admissions
-    _delete(db, models.ClinicalVisit, "visits", counts, models.ClinicalVisit.patient_id == patient_id)
-
     admission_ids = [
         row[0] for row in db.query(models.Admission.id).filter(models.Admission.patient_id == patient_id).all()
     ]
+    # Clear visit FKs that would block visit/admission deletes
+    visit_ids = [
+        row[0]
+        for row in db.query(models.ClinicalVisit.id).filter(models.ClinicalVisit.patient_id == patient_id).all()
+    ]
     if admission_ids:
+        visit_ids.extend(
+            row[0]
+            for row in db.query(models.ClinicalVisit.id)
+            .filter(models.ClinicalVisit.admission_id.in_(admission_ids))
+            .all()
+        )
+    visit_ids = list(set(visit_ids))
+    if visit_ids:
+        db.query(models.Invoice).filter(models.Invoice.visit_id.in_(visit_ids)).update(
+            {models.Invoice.visit_id: None}, synchronize_session=False
+        )
+        db.query(models.ClinicCharge).filter(models.ClinicCharge.visit_id.in_(visit_ids)).update(
+            {models.ClinicCharge.visit_id: None}, synchronize_session=False
+        )
+        db.query(models.DischargeSummary).filter(models.DischargeSummary.visit_id.in_(visit_ids)).update(
+            {models.DischargeSummary.visit_id: None}, synchronize_session=False
+        )
+        db.query(models.PatientVisitWorkflow).filter(
+            models.PatientVisitWorkflow.clinical_visit_id.in_(visit_ids)
+        ).update({models.PatientVisitWorkflow.clinical_visit_id: None}, synchronize_session=False)
+
+    _delete(db, models.ClinicalVisit, "visits", counts, models.ClinicalVisit.patient_id == patient_id)
+    if admission_ids:
+        _delete(
+            db,
+            models.ClinicalVisit,
+            "visits",
+            counts,
+            models.ClinicalVisit.admission_id.in_(admission_ids),
+        )
+        # Last resort: detach any remaining visit → admission links
+        db.query(models.ClinicalVisit).filter(models.ClinicalVisit.admission_id.in_(admission_ids)).update(
+            {models.ClinicalVisit.admission_id: None}, synchronize_session=False
+        )
         _delete(db, models.PatientStay, "patient_stays", counts, models.PatientStay.admission_id.in_(admission_ids))
         _delete(db, models.Admission, "admissions", counts, models.Admission.id.in_(admission_ids))
 
     # Vitals / history may FK to consultations — delete before consultations
+    consult_ids = [
+        row[0]
+        for row in db.query(models.ClinicalConsultation.id)
+        .filter(models.ClinicalConsultation.patient_id == patient_id)
+        .all()
+    ]
+    if consult_ids:
+        _delete(
+            db,
+            models.PatientVitalSigns,
+            "vitals",
+            counts,
+            models.PatientVitalSigns.consultation_id.in_(consult_ids),
+        )
+        _delete(
+            db,
+            models.FollowUpSchedule,
+            "follow_ups",
+            counts,
+            models.FollowUpSchedule.consultation_id.in_(consult_ids),
+        )
+        _delete(
+            db,
+            models.ClinicalVisit,
+            "visits",
+            counts,
+            models.ClinicalVisit.consultation_id.in_(consult_ids),
+        )
     _delete(db, models.PatientVitalSigns, "vitals", counts, models.PatientVitalSigns.patient_id == patient_id)
     _delete(db, models.PatientAllergy, "allergies", counts, models.PatientAllergy.patient_id == patient_id)
     _delete(

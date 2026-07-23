@@ -149,7 +149,7 @@ class ReceptionHisService:
                 detail={
                     "code": "duplicate_patient",
                     "message": "Un ou plusieurs patients similaires existent déjà",
-                    "matches": [m.model_dump() for m in dupes],
+                    "matches": [m.model_dump(mode="json") for m in dupes],
                 },
             )
 
