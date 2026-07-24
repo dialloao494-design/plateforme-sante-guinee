@@ -68,7 +68,7 @@ def main() -> int:
             click_tab(page, "Enregistrement")
             page.get_by_role("textbox", name=re.compile(r"Nom \*")).fill(PATIENT["last_name"])
             page.get_by_role("textbox", name=re.compile(r"Prénom \*")).fill(PATIENT["first_name"])
-            page.locator('label:has-text("Date naissance") input[type=date], .reception-his-birthdate-field input[type=date]').fill(PATIENT["dob"])
+            page.locator("input[type=date]").nth(1).fill(PATIENT["dob"])
             page.get_by_role("textbox", name=re.compile(r"Adresse \*")).fill("Kobaya test E2E")
             page.get_by_role("textbox", name=re.compile(r"Tél. principal \*")).fill(PATIENT["phone"])
             page.get_by_role("textbox", name=re.compile(r"Nom du contact \*")).fill("Contact E2E")

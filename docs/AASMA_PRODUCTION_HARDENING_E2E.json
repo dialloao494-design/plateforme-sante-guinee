@@ -1,5 +1,5 @@
 {
-  "started_at": "2026-07-23T05:43:28.641623+00:00",
+  "started_at": "2026-07-24T02:05:17.864674+00:00",
   "backend": "https://web-production-ad6a36.up.railway.app",
   "frontend": "https://plateforme-sante-guinee.vercel.app",
   "checks": [
@@ -147,7 +147,7 @@
     {
       "name": "journey_register_patient",
       "pass": true,
-      "detail": "PAT-017-000374"
+      "detail": "PAT-017-000396"
     },
     {
       "name": "journey_search_patient",
@@ -157,12 +157,12 @@
     {
       "name": "journey_admission",
       "pass": true,
-      "detail": 122
+      "detail": 135
     },
     {
       "name": "journey_invoice",
       "pass": true,
-      "detail": "INV-2026-017-00099"
+      "detail": "INV-2026-017-00097"
     },
     {
       "name": "journey_payment",
@@ -172,17 +172,17 @@
     {
       "name": "pdf_invoice",
       "pass": true,
-      "detail": "status=200 bytes=109790"
+      "detail": "status=200 bytes=109791"
     },
     {
       "name": "pdf_invoice_unicode_font",
       "pass": true,
-      "detail": "font=True bytes=109790"
+      "detail": "font=True bytes=109791"
     },
     {
       "name": "pdf_invoice_a4ish",
       "pass": true,
-      "detail": "bytes=109790"
+      "detail": "bytes=109791"
     },
     {
       "name": "pdf_invoice_no_mojibake",
@@ -192,17 +192,17 @@
     {
       "name": "cashier_revenue",
       "pass": true,
-      "detail": "2026-07-23"
+      "detail": "2026-07-24"
     },
     {
       "name": "cashier_pending",
       "pass": true,
-      "detail": "count=56"
+      "detail": "count=29"
     },
     {
       "name": "journey_nurse_assessment",
       "pass": true,
-      "detail": 27
+      "detail": 31
     },
     {
       "name": "doctor_queue",
@@ -212,7 +212,7 @@
     {
       "name": "journey_doctor_consultation",
       "pass": true,
-      "detail": 265
+      "detail": 271
     },
     {
       "name": "doctor_sees_nurse_assessment",
@@ -222,27 +222,27 @@
     {
       "name": "journey_lab_order",
       "pass": true,
-      "detail": 148
+      "detail": 151
     },
     {
       "name": "journey_prescription",
       "pass": true,
-      "detail": 175
+      "detail": 178
     },
     {
       "name": "pdf_consultation",
       "pass": true,
-      "detail": "status=200 bytes=110247"
+      "detail": "status=200 bytes=110252"
     },
     {
       "name": "pdf_consultation_unicode_font",
       "pass": true,
-      "detail": "font=True bytes=110247"
+      "detail": "font=True bytes=110252"
     },
     {
       "name": "pdf_consultation_a4ish",
       "pass": true,
-      "detail": "bytes=110247"
+      "detail": "bytes=110252"
     },
     {
       "name": "pdf_consultation_no_mojibake",
@@ -252,7 +252,7 @@
     {
       "name": "journey_lab_result",
       "pass": true,
-      "detail": 109
+      "detail": 112
     },
     {
       "name": "journey_lab_validate",
@@ -262,17 +262,17 @@
     {
       "name": "pdf_lab",
       "pass": true,
-      "detail": "status=200 bytes=109204"
+      "detail": "status=200 bytes=109207"
     },
     {
       "name": "pdf_lab_unicode_font",
       "pass": true,
-      "detail": "font=True bytes=109204"
+      "detail": "font=True bytes=109207"
     },
     {
       "name": "pdf_lab_a4ish",
       "pass": true,
-      "detail": "bytes=109204"
+      "detail": "bytes=109207"
     },
     {
       "name": "pdf_lab_no_mojibake",
@@ -297,17 +297,17 @@
     {
       "name": "pdf_reception_report",
       "pass": true,
-      "detail": "status=200 bytes=57710"
+      "detail": "status=200 bytes=108754"
     },
     {
       "name": "pdf_reception_report_unicode_font",
-      "pass": false,
-      "detail": "font=False bytes=57710"
+      "pass": true,
+      "detail": "font=True bytes=108754"
     },
     {
       "name": "pdf_reception_report_a4ish",
       "pass": true,
-      "detail": "bytes=57710"
+      "detail": "bytes=108754"
     },
     {
       "name": "pdf_reception_report_no_mojibake",
@@ -342,7 +342,7 @@
     {
       "name": "demo_cleanup_preview_api",
       "pass": true,
-      "detail": "status=404"
+      "detail": "status=200"
     },
     {
       "name": "frontend_login_page",
@@ -352,7 +352,7 @@
     {
       "name": "journey_complete",
       "pass": true,
-      "detail": "PAT-017-000374"
+      "detail": "PAT-017-000396"
     }
   ],
   "bugs": [
@@ -364,37 +364,37 @@
     }
   ],
   "pdfs": {
-    "invoice_INV-2026-017-00099": "/opt/cursor/artifacts/hardening/invoice_INV-2026-017-00099.pdf",
-    "consultation_265": "/opt/cursor/artifacts/hardening/consultation_265.pdf",
-    "lab_109": "/opt/cursor/artifacts/hardening/lab_109.pdf",
+    "invoice_INV-2026-017-00097": "/opt/cursor/artifacts/hardening/invoice_INV-2026-017-00097.pdf",
+    "consultation_271": "/opt/cursor/artifacts/hardening/consultation_271.pdf",
+    "lab_112": "/opt/cursor/artifacts/hardening/lab_112.pdf",
     "reception_report": "/opt/cursor/artifacts/hardening/reception_report.pdf",
     "refund_6": "/opt/cursor/artifacts/hardening/refund_6.pdf"
   },
   "journey": {
-    "run": "32F04511",
-    "patient_id": 374,
-    "patient_number": "PAT-017-000374",
+    "run": "52ACCE12",
+    "patient_id": 396,
+    "patient_number": "PAT-017-000396",
     "admission": {
-      "id": 122,
-      "admission_number": "ADM-2026-017-00103",
-      "patient_id": 374,
-      "patient_name": "Harden E2E32F04511",
+      "id": 135,
+      "admission_number": "ADM-2026-017-00105",
+      "patient_id": 396,
+      "patient_name": "Harden E2E52ACCE12",
       "department": "Consultation spécialisée",
       "services": [
         "Consultation spécialisée"
       ],
       "admission_type": "specialized_consultation",
       "status": "pending",
-      "admitted_at": "2026-07-23T05:43:00",
+      "admitted_at": "2026-07-24T02:05:00",
       "attending_clinician_user_id": 151
     },
-    "invoice_id": 102,
-    "invoice_number": "INV-2026-017-00099",
+    "invoice_id": 108,
+    "invoice_number": "INV-2026-017-00097",
     "nurse_assessment": {
-      "id": 27,
+      "id": 31,
       "clinic_id": 17,
-      "patient_id": 374,
-      "admission_id": 122,
+      "patient_id": 396,
+      "admission_id": 135,
       "appointment_id": null,
       "consultation_id": null,
       "nurse_user_id": 165,
@@ -408,7 +408,7 @@
       "weight_kg": 65.0,
       "bmi": 23.9,
       "vitals_observations": null,
-      "reason_for_consultation": "Hardening E2E 32F04511 — céphalées",
+      "reason_for_consultation": "Hardening E2E 52ACCE12 — céphalées",
       "history_of_present_illness": null,
       "medical_history": null,
       "surgical_history": null,
@@ -418,24 +418,24 @@
       "hospitalized_daily_vitals": null,
       "prescription": null,
       "nurse_notes": "Constantes stables — parcours durcissement",
-      "recorded_at": "2026-07-23T05:43:35.058935",
-      "updated_at": "2026-07-23T05:43:35.058935",
-      "patient_number": "PAT-017-000374",
-      "patient_name": "E2E32F04511 Harden",
+      "recorded_at": "2026-07-24T02:05:24.893062",
+      "updated_at": "2026-07-24T02:05:24.893062",
+      "patient_number": "PAT-017-000396",
+      "patient_name": "E2E52ACCE12 Harden",
       "patient_age": 34,
       "patient_gender": "F"
     },
-    "consultation_id": 265,
+    "consultation_id": 271,
     "lab_order": {
-      "id": 148,
+      "id": 151,
       "clinic_id": 17,
-      "consultation_id": 265,
-      "patient_id": 374,
+      "consultation_id": 271,
+      "patient_id": 396,
       "test_code": "NFS",
       "test_name": "Numération Formule Sanguine",
       "priority": "routine",
       "status": "ordered",
-      "patient_name": "Harden E2E32F04511",
+      "patient_name": "Harden E2E52ACCE12",
       "patient_first_name": null,
       "patient_last_name": null,
       "patient_age": null,
@@ -455,10 +455,10 @@
       "created_at": null
     },
     "prescription": {
-      "id": 175,
+      "id": 178,
       "clinic_id": 17,
-      "consultation_id": 265,
-      "patient_id": 374,
+      "consultation_id": 271,
+      "patient_id": 396,
       "status": "active",
       "items": [
         {
@@ -471,8 +471,9 @@
           "instructions": "Après les repas"
         }
       ],
-      "patient_name": "Harden E2E32F04511"
-    }
+      "patient_name": "Harden E2E52ACCE12"
+    },
+    "demo_patients_matched": 1
   },
   "roles": {
     "admin": {
@@ -518,12 +519,12 @@
       "login": true
     }
   },
-  "finished_at": "2026-07-23T05:43:38.034697+00:00",
+  "finished_at": "2026-07-24T02:05:28.226922+00:00",
   "summary": {
-    "passed": 64,
-    "failed": 1,
+    "passed": 65,
+    "failed": 0,
     "total": 65,
     "bugs": 1,
-    "pass_rate_pct": 98.5
+    "pass_rate_pct": 100.0
   }
 }

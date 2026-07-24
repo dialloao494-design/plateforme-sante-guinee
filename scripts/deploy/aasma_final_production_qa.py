@@ -275,12 +275,16 @@ def nurse_ui(page, patient_query: str):
     page.locator(".reception-his-search-results button").first.wait_for(timeout=30000)
     page.locator(".reception-his-search-results button").first.click()
     page.wait_for_selector('fieldset:has(legend:has-text("Signes vitaux"))', timeout=30000)
-    page.locator('label:has-text("Température") input, input[name="temperature_c"]').first.fill("37.1")
-    # fill common vitals if present
-    for label, val in (("Systolique", "120"), ("Diastolique", "80"), ("Pouls", "78"), ("Fréquence", "18")):
-        loc = page.locator(f'label:has-text("{label}") input')
-        if loc.count():
-            loc.first.fill(val)
+    page.locator('label:has-text("Température") input').first.fill("37.1")
+    # BP has two inputs under one label
+    bp_inputs = page.locator('label:has-text("Tension artérielle") input')
+    if bp_inputs.count() >= 2:
+        bp_inputs.nth(0).fill("120")
+        bp_inputs.nth(1).fill("80")
+    page.locator('label:has-text("Fréquence cardiaque") input').first.fill("78")
+    page.locator('label:has-text("Fréquence respiratoire") input').first.fill("18")
+    page.locator('label:has-text("Poids") input').first.fill("65")
+    page.locator('label:has-text("Taille") input').first.fill("165")
     motif = page.locator('label:has-text("Motif") textarea, textarea').first
     if motif.count():
         motif.fill(f"Céphalées QA {RUN}")
@@ -288,8 +292,10 @@ def nurse_ui(page, patient_query: str):
     page.click('button:has-text("Enregistrer")')
     page.wait_for_timeout(4000)
     notes = " ".join(page.locator(".clinical-message, .clinical-success, .clinical-error").all_inner_texts())
-    ok = any(t in notes.lower() for t in ("enregistr", "succès", "sauvegard", "évaluation")) or "erreur" not in notes.lower()
+    ok = any(t in notes.lower() for t in ("enregistr", "succès", "sauvegard")) and "greater than or equal" not in notes.lower()
     check("ui_nurse_save_assessment", ok, notes[:160])
+    if not ok:
+        bug("Nurse assessment save validation", "major", notes[:300])
 
 
 def doctor_ui(page, patient_query: str):

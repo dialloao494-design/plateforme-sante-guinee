@@ -1,6 +1,6 @@
 {
-  "started_at": "2026-07-23T15:24:19.187734+00:00",
-  "run": "F7BD26",
+  "started_at": "2026-07-24T02:05:28.417864+00:00",
+  "run": "0060EA",
   "checks": [
     {
       "name": "stress_empty_registration",
@@ -15,12 +15,12 @@
     {
       "name": "stress_unicode_registration",
       "pass": true,
-      "detail": "PAT-017-000377"
+      "detail": "PAT-017-000397"
     },
     {
       "name": "stress_duplicate_guard",
-      "pass": false,
-      "detail": 500
+      "pass": true,
+      "detail": "status=409 body={\"detail\":{\"code\":\"duplicate_patient\",\"message\":\"Un ou plusieurs patients similaires existent déjà\",\"matches\":[{\"id\":397"
     },
     {
       "name": "stress_old_date_handled",
@@ -43,14 +43,44 @@
       "detail": null
     },
     {
-      "name": "ui_reception_workflow",
-      "pass": false,
-      "detail": "Locator.select_option: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"#specialty-select-admission\")\n    - locator resolved to <select required=\"\" id=\"specialty-select-admission\">…</select>\n  - attempting select option action\n    2 × waiting for element to be visible and enabled\n      - did not find some options\n    - retrying select option action\n    - waiting 20ms\n    2 × waiting for element to be visible and enabled\n      - did not find some options\n    - retrying select option action\n      - waiting 100ms\n    60 × waiting for element to be visible and enabled\n       - did not find some options\n     - retrying select option action\n       - waiting 500ms\n"
+      "name": "ui_reception_admission",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "ui_reception_invoice",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "ui_reception_payment",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "ui_reception_print_receipt",
+      "pass": true,
+      "detail": "invoice_ui_0060EA.pdf"
+    },
+    {
+      "name": "ui_reception_refunds_tab",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "ui_reception_mobile_layout",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "ui_browser_refresh_keeps_session",
+      "pass": true,
+      "detail": "https://plateforme-sante-guinee.vercel.app/clinical/reception"
     },
     {
       "name": "ui_nurse_save_assessment",
       "pass": true,
-      "detail": "Input should be greater than or equal to 20"
+      "detail": "Évaluation infirmière enregistrée — visible par le médecin."
     },
     {
       "name": "ui_doctor_dashboard_loaded",
@@ -98,20 +128,17 @@
     {
       "name": "pdf_reception_report_unicode",
       "pass": true,
-      "detail": "bytes=108751 font=True"
+      "detail": "bytes=108754 font=True"
     }
   ],
-  "bugs": [
-    {
-      "title": "Reception UI workflow failed",
-      "severity": "critical",
-      "detail": "Locator.select_option: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"#specialty-select-admission\")\n    - locator resolved to <select required=\"\" id=\"specialty-select-admission\">…</select>\n  - attempting select option action\n    2 × waiting for element to be visible and enabled\n      - did not find some options\n    - retrying select option action\n    - waiting 20ms\n    2 × waiting for element to be visible and enabled\n      - did not find some options\n    - retrying select option action\n      - waiting 100ms\n    60 × waiting for element to be visible and enabled\n       - did not find some options\n     - retrying select option action\n       - waiting 500ms\n"
-    }
-  ],
+  "bugs": [],
   "screenshots": [
     "/opt/cursor/artifacts/final-qa/screenshots/ui_reception_home.png",
     "/opt/cursor/artifacts/final-qa/screenshots/ui_reception_register_filled.png",
-    "/opt/cursor/artifacts/final-qa/screenshots/ui_reception_error.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_reception_admission.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_reception_billing.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_reception_refunds.png",
+    "/opt/cursor/artifacts/final-qa/screenshots/ui_reception_mobile.png",
     "/opt/cursor/artifacts/final-qa/screenshots/ui_nurse_home.png",
     "/opt/cursor/artifacts/final-qa/screenshots/ui_nurse_assessment.png",
     "/opt/cursor/artifacts/final-qa/screenshots/ui_doctor_home.png",
@@ -127,13 +154,15 @@
     "/opt/cursor/artifacts/final-qa/screenshots/ui_admin_home.png",
     "/opt/cursor/artifacts/final-qa/screenshots/ui_admin_dashboard.png"
   ],
-  "pdfs": [],
-  "finished_at": "2026-07-23T15:25:31.201394+00:00",
+  "pdfs": [
+    "/opt/cursor/artifacts/final-qa/pdfs/invoice_ui_0060EA.pdf"
+  ],
+  "finished_at": "2026-07-24T02:06:17.634381+00:00",
   "summary": {
-    "passed": 17,
-    "failed": 2,
-    "total": 19,
-    "bugs": 1,
-    "pass_rate_pct": 89.5
+    "passed": 25,
+    "failed": 0,
+    "total": 25,
+    "bugs": 0,
+    "pass_rate_pct": 100.0
   }
 }
