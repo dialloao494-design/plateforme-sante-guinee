@@ -23,7 +23,11 @@ If these are **not** set, the backend job waits for Railway’s GitHub auto-depl
 | `RAILWAY_TOKEN` | Railway → **Project** → **Settings** → **Tokens** → **Create token**. Use a **project token**, not an account API token from railway.com/account/tokens. |
 | `RAILWAY_SERVICE_ID` | Railway → open the **backend service** → **Settings**. Copy the service UUID (browser URL: `.../service/<UUID>`). |
 
-When both optional secrets are set, the workflow runs `railway up --service=...` and `railway run ... staging_e2e_seed.py`.
+When both optional secrets are set, the workflow:
+
+1. Sets `FRONTEND_URL` (and related keys) to the canonical production frontend  
+2. Runs `railway up --service=...`  
+3. Runs `railway run ... staging_e2e_seed.py`
 
 ## Quick copy-paste values (Koloma production)
 

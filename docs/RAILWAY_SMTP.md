@@ -13,8 +13,9 @@ Set these variables on the **Railway** backend service (Variables tab):
 
 Legacy aliases also supported: `SMTP_SERVER`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
 
-
-> **Note:** If Railway still has `FRONTEND_URL=https://frontend-seven-rust-94.vercel.app`, the backend remaps it at runtime to `https://plateforme-sante-guinee.vercel.app`. Update the Railway variable when you have dashboard access.
+> **Migration note:** Production must not keep `FRONTEND_URL=https://frontend-seven-rust-94.vercel.app`.  
+> The backend remaps that legacy host at runtime, but the Railway variable itself should be updated to the canonical URL (see `docs/ZERO_LEGACY_ACCESS_BLOCKERS.md`).  
+> If GitHub Actions secrets `RAILWAY_TOKEN` + `RAILWAY_SERVICE_ID` are set, the deploy workflow enforces the canonical `FRONTEND_URL` automatically.
 
 ## Alternative: Resend
 

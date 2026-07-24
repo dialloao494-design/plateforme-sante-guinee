@@ -11,9 +11,8 @@ concurrency:
 
 env:
   DEFAULT_BACKEND_URL: https://web-production-ad6a36.up.railway.app
-  # Canonical production frontend for the GitHub-connected Vercel project.
-  # Legacy alias https://plateforme-sante-guinee.vercel.app is a separate/stale
-  # Vercel project and is NOT updated by vercel[bot] deployments from this repo.
+  # Canonical production frontend (GitHub-connected Vercel project).
+  # Do NOT use frontend-seven-rust-94.vercel.app — that project is retired.
   DEFAULT_FRONTEND_URL: https://plateforme-sante-guinee.vercel.app
 
 jobs:
@@ -40,6 +39,21 @@ jobs:
         if: env.RAILWAY_TOKEN != '' && env.SVC_ID != ''
         run: npm install -g @railway/cli@4.5.4
 
+      - name: Enforce canonical FRONTEND_URL on Railway
+        if: env.RAILWAY_TOKEN != '' && env.SVC_ID != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          canonical="${{ secrets.VERCEL_FRONTEND_URL }}"
+          if [ -z "${canonical:-}" ]; then
+            canonical="${DEFAULT_FRONTEND_URL}"
+          fi
+          echo "Setting Railway FRONTEND_URL=${canonical} on service ${SVC_ID}"
+          railway variables --service="$SVC_ID" --set "FRONTEND_URL=${canonical}"
+          # Clear alternate keys that could still inject the legacy host
+          railway variables --service="$SVC_ID" --set "FRONTEND_PRODUCTION_URL=${canonical}" || true
+          railway variables --service="$SVC_ID" --set "PUBLIC_FRONTEND_URL=${canonical}" || true
+
       - name: Deploy via Railway CLI
         if: env.RAILWAY_TOKEN != '' && env.SVC_ID != ''
         run: |
@@ -51,7 +65,8 @@ jobs:
         shell: bash
         run: |
           echo "::warning title=Railway CLI deploy skipped::RAILWAY_TOKEN and/or RAILWAY_SERVICE_ID not set. Waiting for Railway GitHub auto-deploy instead."
-          echo "Add secrets per docs/GITHUB_DEPLOY_SECRETS.md to enable CLI deploy from Actions."
+          echo "Add secrets per docs/GITHUB_DEPLOY_SECRETS.md to enable CLI deploy + FRONTEND_URL enforcement from Actions."
+          echo "Until then, runtime remaps legacy seven-rust FRONTEND_URL to ${DEFAULT_FRONTEND_URL}."
 
       - uses: actions/setup-python@v5
         with:

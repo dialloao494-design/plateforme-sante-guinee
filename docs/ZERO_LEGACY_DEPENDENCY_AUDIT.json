@@ -1,0 +1,206 @@
+{
+  "audited_at": "2026-07-24T15:37:10.783190+00:00",
+  "canonical_frontend": "https://plateforme-sante-guinee.vercel.app",
+  "legacy_frontend": "https://frontend-seven-rust-94.vercel.app",
+  "checks": [
+    {
+      "name": "effective_frontend_canonical",
+      "pass": true,
+      "detail": "https://plateforme-sante-guinee.vercel.app"
+    },
+    {
+      "name": "raw_frontend_not_legacy",
+      "pass": false,
+      "detail": "https://frontend-seven-rust-94.vercel.app"
+    },
+    {
+      "name": "cors_legacy_blocked",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "cors_canonical_allowed",
+      "pass": true,
+      "detail": "https://plateforme-sante-guinee.vercel.app"
+    },
+    {
+      "name": "canonical_spa_up",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "canonical_bundle_no_legacy_host",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "canonical_bundle_points_railway",
+      "pass": true,
+      "detail": [
+        "https://web-production-ad6a36.up.railway.app"
+      ]
+    },
+    {
+      "name": "legacy_host_reachable_but_unused_by_api",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "repo_no_prod_config_pointing_at_legacy",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "blockers": [
+    {
+      "id": "railway_frontend_url_raw_legacy",
+      "severity": "high",
+      "what": "Railway env FRONTEND_URL (and/or FRONTEND_PRODUCTION_URL / PUBLIC_FRONTEND_URL) still equals the old seven-rust host",
+      "evidence": {
+        "status": "ok",
+        "configured": true,
+        "provider": "resend",
+        "sender_set": true,
+        "frontend_url_set": true,
+        "frontend_url_raw": "https://frontend-seven-rust-94.vercel.app",
+        "frontend_url": "https://plateforme-sante-guinee.vercel.app",
+        "frontend_url_remapped_from_legacy": true,
+        "canonical_frontend_url": "https://plateforme-sante-guinee.vercel.app",
+        "legacy_frontend_hosts": [
+          "frontend-seven-rust-94.vercel.app"
+        ]
+      },
+      "needed_to_fix": [
+        "RAILWAY_TOKEN (project token for sunny-illumination / web service)",
+        "OR Railway dashboard admin access to Variables",
+        "Set FRONTEND_URL=https://plateforme-sante-guinee.vercel.app",
+        "Delete any FRONTEND_PRODUCTION_URL / PUBLIC_FRONTEND_URL pointing at seven-rust"
+      ]
+    },
+    {
+      "id": "no_railway_token_in_agent",
+      "severity": "blocker",
+      "what": "This cloud agent environment has no RAILWAY_TOKEN (and railway CLI is not authenticated). Cannot call Railway Variables API/CLI to update FRONTEND_URL.",
+      "needed_to_fix": [
+        "Create a Railway **project token** (Project → Settings → Tokens) for project containing service web-production-ad6a36",
+        "Provide it to the agent as env RAILWAY_TOKEN (or add GitHub Actions secret RAILWAY_TOKEN + RAILWAY_SERVICE_ID)",
+        "Also useful: RAILWAY_SERVICE_ID of the backend web service"
+      ]
+    },
+    {
+      "id": "no_vercel_token_in_agent",
+      "severity": "blocker",
+      "what": "No VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID in this environment. Cannot list/archive/delete frontend-seven-rust-94 via API.",
+      "needed_to_fix": [
+        "Vercel account token with permission to manage projects in dialloao494-designs-projects team",
+        "VERCEL_ORG_ID and the Project ID of frontend-seven-rust-94 (to archive/delete)",
+        "Optionally VERCEL_PROJECT_ID of plateforme-sante-guinee for verification"
+      ]
+    },
+    {
+      "id": "github_secrets_admin_scope_missing",
+      "severity": "medium",
+      "what": "gh auth works for repo git/PRs/runs, but Actions secrets API returns 403 — cannot read or write repository secrets.",
+      "needed_to_fix": [
+        "A GitHub PAT or app token with actions:write / secrets admin on dialloao494-design/plateforme-sante-guinee",
+        "OR manually add secrets listed in docs/GITHUB_DEPLOY_SECRETS.md"
+      ]
+    }
+  ],
+  "repo_references": {
+    "runtime_or_config": [
+      {
+        "path": "core/frontend_url.py",
+        "count": 3
+      }
+    ],
+    "tests_scripts": [
+      {
+        "path": "tests/test_frontend_url.py",
+        "count": 6
+      },
+      {
+        "path": "scripts/deploy/aasma_final_production_qa.py",
+        "count": 4
+      },
+      {
+        "path": "scripts/deploy/aasma_production_hardening_e2e.py",
+        "count": 3
+      }
+    ],
+    "docs_historical": [
+      {
+        "path": "docs/FIELD_READINESS_VALIDATION.md",
+        "count": 2
+      },
+      {
+        "path": "docs/KOLOMA_PHASE2_FULL_REPORT.md",
+        "count": 2
+      },
+      {
+        "path": "docs/KOLOMA_PRODUCTION_VALIDATION.md",
+        "count": 2
+      },
+      {
+        "path": "docs/KOLOMA_UI_PRODUCTION_VALIDATION.md",
+        "count": 2
+      },
+      {
+        "path": "docs/OVERNIGHT_AUTONOMOUS_REPORT.md",
+        "count": 2
+      },
+      {
+        "path": "docs/PRODUCTION_AUDIT_REPORT.md",
+        "count": 2
+      },
+      {
+        "path": "docs/PRODUCTION_GO_LIVE_REPORT.md",
+        "count": 2
+      },
+      {
+        "path": "docs/RAILWAY_SMTP.md",
+        "count": 2
+      },
+      {
+        "path": "docs/AASMA_PRODUCTION_HARDENING_E2E.json",
+        "count": 4
+      },
+      {
+        "path": "docs/PRODUCTION_HARDENING_FINAL_REPORT.md",
+        "count": 2
+      },
+      {
+        "path": "docs/FRONTEND_MIGRATION_DEPENDENCY_REPORT.md",
+        "count": 3
+      },
+      {
+        "path": "docs/FINAL_PRODUCTION_QA.json",
+        "count": 2
+      },
+      {
+        "path": "docs/FINAL_PRODUCTION_READINESS_REPORT.md",
+        "count": 1
+      }
+    ]
+  },
+  "legacy_host_still_reachable": {
+    "status": 200,
+    "note": "Still online on Vercel; archive/delete requires VERCEL_TOKEN + project admin"
+  },
+  "access": {
+    "github_cli": "authenticated as cursor integration (limited scopes)",
+    "github_actions_secrets": "403 Resource not accessible by integration",
+    "railway_cli_installed": false,
+    "railway_token_in_env": false,
+    "vercel_cli_installed": false,
+    "vercel_token_in_env": false
+  },
+  "summary": {
+    "passed": 8,
+    "failed": 1,
+    "total": 9,
+    "migration_complete": false,
+    "zero_legacy_runtime_dependency": true,
+    "zero_legacy_including_railway_env": false
+  }
+}
