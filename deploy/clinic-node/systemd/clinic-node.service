@@ -1,0 +1,18 @@
+[Unit]
+Description=Santé Guinée Clinic Node (Docker Compose)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/sante-guinee/deploy/clinic-node
+# Adjust WorkingDirectory to the cloned repo path on the mini-PC.
+EnvironmentFile=-/opt/sante-guinee/deploy/clinic-node/.env
+ExecStart=/usr/bin/docker compose --env-file .env -f compose.yml up -d
+ExecStop=/usr/bin/docker compose --env-file .env -f compose.yml stop
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

@@ -69,6 +69,9 @@ def resolve_frontend_url(*, allow_localhost_fallback: bool = True) -> str:
     is_deployed = bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID"))
     if is_deployed or env in {"production", "prod", "staging"}:
         return CANONICAL_FRONTEND_URL
+    # Clinic Node serves its own SPA on LAN HTTPS — never remap to Vercel.
+    if env in {"clinic-node", "clinic_node"}:
+        return "https://sante-locale"
 
     if allow_localhost_fallback:
         return "http://localhost:5173"
