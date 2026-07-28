@@ -169,6 +169,23 @@ def bootstrap_clinic_node(db: Session) -> dict | None:
 
     # Persist clinic id hint for ops (node metadata file is optional later).
     os.environ.setdefault("CLINIC_ID", str(clinic.id))
+
+    try:
+        from services.clinic_node_license_service import activate_or_renew_license
+
+        lic = activate_or_renew_license(
+            db,
+            clinic_id=int(clinic.id),
+            node_id=os.getenv("NODE_ID"),
+            renew=False,
+        )
+        result["license_state"] = "activated"
+        result["license_id"] = lic.id
+        logger.info("Clinic Node bootstrap: signed license active id=%s", lic.id)
+    except Exception as lic_exc:
+        logger.error("Clinic Node license activation failed: %s", lic_exc)
+        result["license_state"] = "error"
+
     return result
 
 

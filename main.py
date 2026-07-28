@@ -124,6 +124,76 @@ async def low_bandwidth_cache_headers(request, call_next):
         response.headers.setdefault("Cache-Control", "public, max-age=60")
     return response
 
+
+@app.middleware("http")
+async def clinic_node_license_middleware(request, call_next):
+    """Care-safe license enforcement on Clinic Node only."""
+    if not _settings.is_clinic_node:
+        return await call_next(request)
+    path = request.url.path
+    from services.clinic_node_license_service import enforce_license_for_request, path_is_always_allowed
+
+    if path_is_always_allowed(path):
+        return await call_next(request)
+
+    clinic_id = None
+    raw = os.getenv("CLINIC_ID") or ""
+    if raw.isdigit():
+        clinic_id = int(raw)
+    # Prefer JWT claim when present
+    auth = request.headers.get("authorization") or ""
+    if auth.lower().startswith("bearer "):
+        try:
+            from jose import jwt as jose_jwt
+
+            token = auth.split(" ", 1)[1]
+            payload = jose_jwt.get_unverified_claims(token)
+            # Resolve clinic via user id if needed later; env CLINIC_ID is primary on appliance
+            _ = payload
+        except Exception:
+            pass
+
+    if clinic_id is None:
+        # Fallback: first clinic on node (single-tenant appliance)
+        try:
+            from database import SessionLocal
+            from models.clinic import Clinic
+
+            s = SessionLocal()
+            try:
+                c = s.query(Clinic).order_by(Clinic.id.asc()).first()
+                if c:
+                    clinic_id = int(c.id)
+            finally:
+                s.close()
+        except Exception:
+            clinic_id = None
+
+    if clinic_id is not None:
+        from database import SessionLocal
+        from services.clinic_node_license_service import activate_or_renew_license, get_active_license
+
+        s = SessionLocal()
+        try:
+            row = get_active_license(s, clinic_id)
+            if row is not None and not (row.signature or "").strip():
+                activate_or_renew_license(s, clinic_id=clinic_id, node_id=os.getenv("NODE_ID"), renew=True)
+            elif row is None:
+                # First boot: auto-activate signed offline license (care continuity)
+                activate_or_renew_license(s, clinic_id=clinic_id, node_id=os.getenv("NODE_ID"), renew=False)
+            state = enforce_license_for_request(s, request, clinic_id)
+        except HTTPException as exc:
+            from fastapi.responses import JSONResponse
+
+            return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+        finally:
+            s.close()
+        response = await call_next(request)
+        if state:
+            response.headers["X-Clinic-License-State"] = state
+        return response
+    return await call_next(request)
+
 # Rate limiting
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -510,6 +580,13 @@ async def startup_event():
         ensure_nurse_assessment_schema(engine)
         ensure_lab_result_reference_range_text(engine)
         ensure_clinic_node_ops_schema(engine)
+
+        try:
+            from services.clinic_node_sync_hooks import register_clinic_node_sync_hooks
+
+            register_clinic_node_sync_hooks()
+        except Exception as hook_exc:
+            logger.warning("Clinic Node sync hooks not registered: %s", hook_exc)
 
         from database import SessionLocal
         from services.user_provisioning import bootstrap_initial_admin, bootstrap_platform_owner
