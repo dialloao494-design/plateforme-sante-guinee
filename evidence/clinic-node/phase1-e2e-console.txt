@@ -117,18 +117,18 @@
  Container clinic-node-backend-1 Waiting 
  Container clinic-node-backend-1 Healthy 
 {"status":"ready","database":"ok"}{"setup_required":false}- [x] PASS: Platform owner wizard disabled on Clinic Node
-{"access_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbkBjbGluaWMubG9jYWwiLCJ1c2VyX2lkIjoxLCJ1c2VyX3JvbGUiOiJjbGluaWNfYWRtaW4iLCJyb2xlIjoiY2xpbmljX2FkbWluIiwiZXhwIjoxNzg1MjY0MTgyfQ.uSfv1KS3jxB42ZK_Jh1Hth8seiosSDTJUhdq7yCvRZo","token_type":"bearer","user_id":1,"user_role":"clinic_admin","role":"clinic_admin","email":"admin@clinic.local","must_change_password":false}
+{"access_token":"REDACTED_JWT","token_type":"bearer","user_id":1,"user_role":"clinic_admin","role":"clinic_admin","email":"admin@clinic.local","must_change_password":false}
 - [x] PASS: Local admin login succeeds
 {"id":1,"email":"admin@clinic.local","role":"clinic_admin","doctor_id":null,"full_name":"Admin","clinic_id":1,"clinic_name":"Clinique-Pilote-Locale","email_verified":true,"must_change_password":false}
 - [x] PASS: Local session /auth/me returns clinic-scoped profile
 {"id":2,"email":"reception.p1@clinic.local","role":"receptionist","clinic_id":1,"is_active":true}
-{"access_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyZWNlcHRpb24ucDFAY2xpbmljLmxvY2FsIiwidXNlcl9pZCI6MiwidXNlcl9yb2xlIjoicmVjZXB0aW9uaXN0Iiwicm9sZSI6InJlY2VwdGlvbmlzdCIsImV4cCI6MTc4NTI2NDE4Mn0.Y4-vItJGi-0E6O2iJx5fTLPa-l1Ep9JyYkliHqYajRI","token_type":"bearer","user_id":2,"user_role":"receptionist","role":"receptionist","email":"reception.p1@clinic.local","must_change_password":false}
+{"access_token":"REDACTED_JWT","token_type":"bearer","user_id":2,"user_role":"receptionist","role":"receptionist","email":"reception.p1@clinic.local","must_change_password":false}
 - [x] PASS: Role-based staff account can log in locally
 422
 - [x] PASS: Permissions enforced for staff vs platform setup
 {"id":2,"email":"reception.p1@clinic.local","reset":true,"must_change_password":true}
 401
-{"access_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyZWNlcHRpb24ucDFAY2xpbmljLmxvY2FsIiwidXNlcl9pZCI6MiwidXNlcl9yb2xlIjoicmVjZXB0aW9uaXN0Iiwicm9sZSI6InJlY2VwdGlvbmlzdCIsImV4cCI6MTc4NTI2NDE4M30.wdHLR1bl1Sf-QuT6lYcM-tK7-Gx1YGtYp6zqUaKjCtI","token_type":"bearer","user_id":2,"user_role":"receptionist","role":"receptionist","email":"reception.p1@clinic.local","must_change_password":true}
+{"access_token":"REDACTED_JWT","token_type":"bearer","user_id":2,"user_role":"receptionist","role":"receptionist","email":"reception.p1@clinic.local","must_change_password":true}
 must_change_password= True
 - [x] PASS: Admin password reset works; must_change_password forced
 - [x] PASS: Login/logout validation complete (JWT session local)

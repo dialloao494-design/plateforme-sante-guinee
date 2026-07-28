@@ -1496,3 +1496,29 @@ def ensure_lab_result_reference_range_text(engine: Engine) -> None:
     except Exception as exc:
         logger.warning("lab_results.reference_range migration skipped: %s", exc)
 
+
+def ensure_clinic_node_ops_schema(engine: Engine) -> None:
+    """Widen Clinic Node heartbeat disk counters past Integer overflow (mini-PC disks)."""
+    insp = inspect(engine)
+    if "clinic_node_heartbeats" not in insp.get_table_names():
+        return
+    dialect = engine.dialect.name
+    if dialect != "postgresql":
+        return
+    cols = {c["name"]: c for c in insp.get_columns("clinic_node_heartbeats")}
+    for col_name in ("disk_free_bytes", "disk_total_bytes"):
+        col = cols.get(col_name)
+        if not col:
+            continue
+        col_type = str(col.get("type", "")).upper()
+        if "BIGINT" in col_type or "BIGINTEGER" in col_type:
+            continue
+        try:
+            with engine.begin() as conn:
+                conn.execute(
+                    text(f"ALTER TABLE clinic_node_heartbeats ALTER COLUMN {col_name} TYPE BIGINT")
+                )
+            logger.info("Widened clinic_node_heartbeats.%s to BIGINT", col_name)
+        except Exception as exc:
+            logger.warning("clinic_node_heartbeats.%s widen skipped: %s", col_name, exc)
+

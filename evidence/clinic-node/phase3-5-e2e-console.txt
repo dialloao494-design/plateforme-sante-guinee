@@ -1,0 +1,42 @@
+[p35] Rebuild backend with ops routers…
+ Image clinic-node-backend Building 
+ Image clinic-node-backend Built 
+ Container clinic-node-db-1 Running 
+ Container clinic-node-backend-1 Recreate 
+ Container clinic-node-backend-1 Recreated 
+ Container clinic-node-db-1 Waiting 
+ Container clinic-node-db-1 Healthy 
+ Container clinic-node-backend-1 Starting 
+ Container clinic-node-backend-1 Started 
+#9 CACHED
+
+#10 [5/7] RUN pip install --upgrade pip && pip install -r requirements-prod.txt
+#10 CACHED
+
+#11 [6/7] COPY . .
+#11 DONE 0.6s
+
+#12 [7/7] RUN sed -i 's/\r$//' scripts/docker/entrypoint-backend.sh scripts/docker/start-uvicorn.sh     && mkdir -p uploads logs     && chmod +x scripts/docker/entrypoint-backend.sh scripts/docker/start-uvicorn.sh
+#12 DONE 0.9s
+
+#13 exporting to image
+#13 exporting layers
+#13 exporting layers 0.7s done
+#13 writing image sha256:5924d72e02f032cfda974aa0248e590e45a29743194aed1d5f25b4ae452bb50b done
+#13 naming to docker.io/library/clinic-node-backend done
+#13 DONE 0.8s
+
+#14 resolving provenance for metadata file
+#14 DONE 0.0s
+{"clinic_id":1,"plan":"offline-v1","valid_until":"2027-07-28T17:46:57.597155Z","grace_until":"2028-01-24T17:46:57.597155Z","state":"OK"}
+- [x] PASS: License jeton local issued/validated
+{"event_id":"ad398297-fba0-4149-a70f-fb7bdb98c2a2","queued":true}
+[{"event_id":"ad398297-fba0-4149-a70f-fb7bdb98c2a2","entity_type":"patient","operation":"create","entity_uid":"uid-demo-1","created_at":"2026-07-28T17:46:57.681073Z"}]
+{"acked":1}
+- [x] PASS: Delta sync outbox enqueue/list/ack works
+{"id":1,"status":"open"}
+[{"id":1,"entity_type":"stock_movement","entity_uid":"mov-1","status":"open"}]
+- [x] PASS: Conflict detection/storage works
+{"ok":true,"path":"/workspace/deploy/clinic-node/data/backups/clinic-node-20260728T174657Z.sql.gz","bytes":20,"created_at":"20260728T174657Z","method":"pg_dump"}
+- [x] PASS: Automatic/local backup run succeeds
+curl: (22) The requested URL returned error: 500
