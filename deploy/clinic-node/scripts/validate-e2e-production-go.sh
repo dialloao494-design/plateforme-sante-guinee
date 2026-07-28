@@ -118,7 +118,7 @@ log_pass "Doctor consultation"
 # Nurse assessment
 NURSE_ASSESS="$(curl -ksS -X POST "${BASE}/api/clinical/nurse/assessments" \
   -H "Authorization: Bearer ${NURSE_TOKEN}" -H 'Content-Type: application/json' \
-  -d "{\"patient_id\":${PATIENT_ID},\"temperature_c\":37.2,\"pulse_bpm\":78,\"blood_pressure\":\"120/80\",\"chief_complaint\":\"Fièvre\"}")"
+  -d "{\"patient_id\":${PATIENT_ID},\"consultation_id\":${CONSULT_ID},\"temperature_c\":37.2,\"heart_rate\":78,\"bp_systolic\":120,\"bp_diastolic\":80,\"reason_for_consultation\":\"Fièvre\"}")"
 echo "${NURSE_ASSESS}" | tee "${RUN}/13-nurse-assessment.json"
 echo "${NURSE_ASSESS}" | grep -qiE '"id"|patient_id|assessment' || log_fail "nurse assessment"
 log_pass "Nurse assessment workflow"
@@ -140,8 +140,9 @@ log_pass "Laboratory order + validate"
 # Pharmacy inventory + dispense for THIS patient
 INV="$(curl -ksS -X POST "${BASE}/api/clinical/pharmacy/inventory" \
   -H "Authorization: Bearer ${PHARM_TOKEN}" -H 'Content-Type: application/json' \
-  -d '{"medication_name":"Paracetamol 500mg","quantity_on_hand":100,"unit":"tablet","reorder_level":10}')"
+  -d "{\"sku\":\"PARA${UNIQUE}\",\"medication_name\":\"Paracetamol 500mg\",\"quantity\":100,\"unit\":\"tablet\",\"reorder_level\":10}")"
 echo "${INV}" | tee "${RUN}/15-inventory.json"
+echo "${INV}" | grep -q '"id"' || log_fail "pharmacy inventory upsert"
 RX="$(curl -kfsS -X POST "${BASE}/api/clinical/consultations/${CONSULT_ID}/prescriptions" \
   -H "Authorization: Bearer ${DOCTOR_TOKEN}" -H 'Content-Type: application/json' \
   -d '{"items":[{"medication_name":"Paracetamol 500mg","dosage":"500 mg","frequency":"3x/day"}]}')"
@@ -149,13 +150,13 @@ echo "${RX}" | tee "${RUN}/15-rx.json"
 ORDERS="$(curl -kfsS "${BASE}/api/clinical/pharmacy/orders" -H "Authorization: Bearer ${PHARM_TOKEN}")"
 echo "${ORDERS}" | tee "${RUN}/15-orders.json"
 ORDER_ID="$(python3 -c 'import json,sys; rows=json.load(sys.stdin); pid='"${PATIENT_ID}"';
-print(next((r["id"] for r in rows if r.get("patient_id")==pid), rows[-1]["id"] if rows else ""))')"
-[[ -n "${ORDER_ID}" ]] || log_fail "pharmacy order missing"
+print(next((r["id"] for r in rows if r.get("patient_id")==pid and r.get("status")=="pending"), ""))' <<<"${ORDERS}")"
+[[ -n "${ORDER_ID}" ]] || log_fail "pharmacy order missing for patient ${PATIENT_ID}"
 DISP="$(curl -kfsS -X PATCH "${BASE}/api/clinical/pharmacy/orders/${ORDER_ID}" \
   -H "Authorization: Bearer ${PHARM_TOKEN}" -H 'Content-Type: application/json' \
   -d '{"status":"dispensed"}')"
 echo "${DISP}" | tee "${RUN}/15-dispensed.json"
-python3 -c 'import json; d=json.load(open("'"${RUN}/15-dispensed.json"'")); assert int(d.get("patient_id"))=='"${PATIENT_ID}"', d'
+python3 -c 'import json; d=json.load(open("'"${RUN}/15-dispensed.json"'")); assert int(d.get("patient_id"))=='"${PATIENT_ID}"', d; assert d.get("status")=="dispensed", d'
 log_pass "Pharmacy inventory + dispense for workflow patient"
 
 # Billing for THIS patient
