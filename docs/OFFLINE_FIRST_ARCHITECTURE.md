@@ -2,13 +2,13 @@
 
 **Statut :** Direction **validée** (2026-07-28) — décisions d’architecture figées ci-dessous  
 **Implémentation :** **interdite** tant que ce document reste la référence non encore décomposée en tickets d’exécution  
-**Date :** 2026-07-28 (rév. décisions validées)  
+**Date :** 2026-07-28 (rév. décisions validées + ops / licences / migration)  
 **Frontend cloud de référence :** `https://plateforme-sante-guinee.vercel.app`  
 **Backend cloud actuel :** FastAPI + PostgreSQL (Railway)  
-**Public cible :** produit, architecture, sécurité, ops cliniques, techniciens terrain  
+**Public cible :** produit, architecture, sécurité, ops cliniques, techniciens terrain, owner  
 
 > Objectif métier : **fonctionnement clinique quotidien 100 % sans Internet, durée illimitée**.  
-> Internet n’est requis que pour : synchronisation, sauvegarde distante, mises à jour, supervision, administration centrale, statistiques, restauration après sinistre.
+> Internet n’est requis que pour : synchronisation, sauvegarde distante, mises à jour, supervision, administration centrale, statistiques, restauration après sinistre, activation/renouvellement de licence (hors période de grâce).
 
 ---
 
@@ -25,6 +25,11 @@
 | D7 | **Zéro perte de données** patient : opérations transactionnelles + journalisées | **Validé** |
 | D8 | **Installation < 30 minutes** par un technicien terrain | **Validé** |
 | D9 | **Disaster Recovery** détaillé ; objectif de reprise clinique **< 1 heure** sans perte des données persistées | **Validé** |
+| D10 | **Licences** liées à la clinique : activation initiale Internet, grâce multi-mois offline, renouvellement transparent | **Validé** |
+| D11 | **Administration à distance** (télémétrie ops) sans accès aux données médicales patients | **Validé** |
+| D12 | **Déploiement USB ultra-simple** : mini-PC + UPS + clé USB → tout automatique, aucune commande complexe | **Validé** |
+| D13 | **Migration Cloud (Railway) → Clinic Node** documentée, sans perte, interruption minimale | **Validé** |
+| D14 | **Tableau de bord Owner** : sync, offline, backups, disque, version, état serveur | **Validé** |
 
 ---
 
@@ -201,12 +206,14 @@ Usages cloud exclusivement :
 - sauvegardes distantes chiffrées  
 - synchronisation d’événements / deltas  
 - distribution des mises à jour  
-- supervision (santé nœuds, dernière sync, espace disque)  
-- administration centrale multi-cliniques  
-- statistiques agrégées  
-- restauration après sinistre (copie offsite)
+- **supervision / télémétrie ops** (santé nœuds, sync, backups, disque, version) — **sans données médicales** (§23–§24)  
+- administration centrale multi-cliniques + **tableau de bord Owner**  
+- **gestion des licences** et paquets d’activation (§22)  
+- statistiques agrégées (non nominatives)  
+- restauration après sinistre (copie offsite)  
+- **orchestration de migration** Cloud → Clinic Node (§25)
 
-Même si Internet disparaît plusieurs semaines : **la clinique continue normalement**.
+Même si Internet disparaît plusieurs semaines : **la clinique continue normalement** (y compris pendant la période de grâce licence).
 
 ---
 
@@ -421,38 +428,68 @@ Clé maître clinique créée à l’installation ; procédure de coffre (copie 
 
 ---
 
-## 15. Installation extrêmement simple (< 30 minutes)
+## 15. Déploiement ultra-simple (< 30 minutes) — D8 / D12
 
 ### 15.1 Objectif
 
-Un technicien arrive, installe le serveur, connecte les postes, et la clinique travaille.
+Un technicien arrive avec **trois objets uniquement** :
 
-### 15.2 Procédure cible (chrono)
+1. le **mini-PC** (matériel de référence)  
+2. un **onduleur (UPS)**  
+3. une **clé USB** d’installation signée  
 
-| Étape | Durée indicative | Action |
-|-------|------------------|--------|
-| 1 | 5 min | Brancher NUC + UPS + réseau ; IP fixe |
-| 2 | 5 min | Boot clé USB d’installation (ou image préchargée) ; lancer `install` |
-| 3 | 5 min | Saisir paquet d’activation clinique (QR / fichier chiffré fourni par le cloud) |
-| 4 | 5 min | Génération auto HTTPS + premier admin local |
-| 5 | 5 min | Connecter 1–2 postes ; installer confiance CA (script) ; login test |
-| 6 | 5 min | Parcours smoke : créer patient test, facture test, imprimer |
+En **moins de 30 minutes** : installation, PostgreSQL, utilisateurs, réseau, backend, frontend — **tout fonctionne**.  
+**Aucune commande complexe** (pas de `docker compose` manuel, pas d’édition de YAML, pas de SQL à la main).
 
-**Total ≤ 30 min** pour une clinique standard.
+### 15.2 Ce que la clé USB fait automatiquement
 
-### 15.3 Livrables d’installation
+Au boot / lancement de l’installateur graphique (ou assistant plein écran) :
 
-- Image / clé USB signée « Santé Guinée Clinic Node »  
-- Paquet d’activation par clinique (`clinic_id`, catalogues initiaux, bootstrap admin)  
-- Guide papier 1 page + checklist  
-- Compte rendu d’installation (version, node_id, IP, heure)
+| # | Action automatique |
+|---|--------------------|
+| 1 | Partitionnement / montage du volume `/data` (chiffré) |
+| 2 | Déploiement de l’appliance (containers ou services) |
+| 3 | **Création automatique de PostgreSQL** + schéma + migrations |
+| 4 | Génération PKI locale + **HTTPS** |
+| 5 | Configuration réseau (IP fixe proposée, DHCP réservé documenté) |
+| 6 | Démarrage **backend FastAPI** + healthcheck |
+| 7 | Démarrage / service de la **SPA frontend** locale |
+| 8 | Création des **rôles / utilisateurs bootstrap** (admin clinique + comptes modèles optionnels) |
+| 9 | Activation licence (voir §25) via Internet une fois, ou import paquet offline |
+| 10 | Écran « Installation réussie » avec URL `https://sante-locale` et checklist smoke |
+
+### 15.3 Procédure terrain (chrono)
+
+| Étape | Durée | Action technicien (UI uniquement) |
+|-------|-------|-----------------------------------|
+| 1 | 5 min | Brancher NUC + UPS + Ethernet/Wi‑Fi ; allumer |
+| 2 | 5 min | Boot clé USB → cliquer **Installer** |
+| 3 | 5 min | Scanner QR / importer fichier d’activation clinique |
+| 4 | 5 min | Confirmer réseau (IP proposée) + mot de passe admin local |
+| 5 | 5 min | Sur 1 poste : ouvrir l’URL, accepter/confiance CA (script 1 clic fourni) |
+| 6 | 5 min | Smoke : login → patient test → facture test → impression |
+
+**Total ≤ 30 min.** Si une étape échoue : écran d’erreur lisible + code support (pas de stack trace brute).
+
+### 15.4 Ce qui est explicitement interdit en procédure terrain
+
+- Éditer des fichiers de config à la main  
+- Lancer des commandes Docker/SQL/Linux hors mode « Support avancé » (réservé siège)  
+- Dépendre d’un compte cloud personnel du technicien pour les soins locaux  
+
+### 15.5 Livrables d’installation
+
+- Clé USB signée « Santé Guinée Clinic Node » (ou image préflashée sur le NUC)  
+- Paquet d’activation par clinique (`clinic_id`, licence, catalogues, bootstrap)  
+- Guide papier **1 page** + checklist  
+- Compte rendu auto (version, `node_id`, IP, heure) envoyé au cloud si Internet, sinon fichier local à remettre
 
 ---
 
 ## 16. Déploiement multi-cliniques
 
-- 1 clinique = 1 Clinic Node autonome.  
-- Cloud : inventaire nœuds, versions, dernière sync, alertes DR.  
+- 1 clinique = 1 Clinic Node autonome = **1 licence clinique** (§25).  
+- Cloud : inventaire nœuds, versions, dernière sync, alertes DR / télémétrie (§26–§27).  
 - Révocation nœud volé : rotation `node_secret` + procédure wipe.  
 - Pas de sync directe clinique ↔ clinique.
 
@@ -483,8 +520,10 @@ Accès physique serveur · RBAC · audit · volume chiffré · HTTPS LAN · upda
 | Impressions PDF | Oui | |
 | Hospitalisation | Architecture prête | **Métier V1.1** |
 | Imagerie | Architecture prête | **Métier V1.1** |
-| Sync / backup / updates / supervision | Opportuniste cloud | |
-| Admin plateforme / stats globales | Cloud | |
+| Licence locale (jeton + grâce) | Oui | Renouvellement via cloud |
+| Sync / backup / updates / heartbeat ops | Opportuniste cloud | Sans PHI |
+| Owner dashboard / alertes / licences | Cloud | |
+| Migration Railway → Node | Outil + runbook | Cliniques existantes |
 
 ---
 
@@ -616,22 +655,281 @@ Les suppressions métiers sont soft-delete + journal ; le hard-delete massif n�
 
 ---
 
-## 22. Plan de livraison (après validation d’exécution)
+## 22. Gestion des licences (D10)
 
-| Phase | Objectif |
+Objectif : ne **jamais** découvrir le contrôle d’usage après coup. Le modèle de licence est un composant d’architecture V1.
+
+### 22.1 Principes
+
+| Règle | Détail |
 |-------|--------|
-| **P0** | Appliance + Postgres + SPA locale + **HTTPS auto** + auth locale + install < 30 min |
-| **P1** | Parité modules V1 (accueil → caisse) + zéro perte (transactions, journaux, brouillons) |
-| **P2** | Sync deltas + historique stock + hub cloud |
-| **P3** | Backup local fréquent + offsite + update agent + USB |
-| **P4** | DR kit, PITR, exercices restore, durcissement (TOTP admin, mTLS optionnel) |
-| **V1.1** | Hospitalisation + imagerie (schéma déjà prévu) |
+| Portée | **1 licence = 1 clinique** (`clinic_id`), liée au Clinic Node activé |
+| Activation initiale | **Requiert Internet une fois** (ou paquet d’activation pré-signé émis par le cloud) |
+| Fonctionnement offline | **Plusieurs mois** sans reconnexion (période de grâce longue) |
+| Renouvellement | **Transparent** dès que le nœud revoit le cloud — sans intervention du staff soignant |
+| Soins | Une licence expirée en grâce **ne bloque jamais** les soins en cours ; elle alerte l’admin |
 
-Chaque phase se termine par recette des scénarios §20 et §21.
+### 22.2 Cycle de vie
+
+```text
+[Cloud Owner] crée licence clinique
+        │
+        ▼
+Paquet d’activation (fichier / QR) ──► installateur Clinic Node
+        │
+        ▼
+Handshake activation (Internet) ──► jeton licence signé stocké dans /data
+        │
+        ▼
+Horloge locale + date_fin_grâce embarquée dans le jeton
+        │
+   ┌────┴────┐
+   │ Online  │ ── renouvellement auto (pull entitlement)
+   │ Offline │ ── soins OK jusqu’à grace_until
+   └─────────┘
+```
+
+### 22.3 Contenu du jeton de licence (local)
+
+Stocké chiffré dans `/data` ; vérifiable hors ligne :
+
+- `clinic_id`, `node_id` (après binding)  
+- `plan` / modules autorisés (ex. V1, V1.1 hospit/imagerie)  
+- `issued_at`, `valid_until`, `grace_until`  
+- signature cloud (clé publique embarquée dans l’image)  
+- compteur anti-clonage soft : `node_fingerprint` (matériel) — alerte si écart majeur  
+
+**Durée de grâce offline cible :** **90 à 180 jours** après `valid_until` (paramétrable Owner).  
+Au-delà de `grace_until` : mode **restreint admin** (bandeau + blocage des *nouveaux* comptes staff / *nouvelles* activations optionnelles) — **pas** d’effacement de données, **pas** de coupure brutale des consultations déjà possibles selon politique Owner (défaut recommandé : soins toujours possibles + alerte critique).
+
+### 22.4 Renouvellement transparent
+
+1. Nœud online → sync agent appelle `GET /entitlements`.  
+2. Nouveau jeton signé remplace l’ancien atomiquement.  
+3. Aucune action réception / médecin.  
+4. Owner dashboard affiche `licence OK` / `expire bientôt` / `en grâce` / `critique`.
+
+### 22.5 Cas particuliers
+
+| Cas | Comportement |
+|-----|--------------|
+| Clinique neuve sans Internet le jour J | Paquet d’activation **pré-signé** (USB) avec `grace_until` ; activation cloud différée au premier contact |
+| Remplacement NUC (DR) | Procédure « transfer licence » Owner : débind ancien `node_id`, bind nouveau après restore |
+| Vol / clone suspect | Révocation cloud + rotation ; ancien jeton refusé au prochain contact |
+| Multi-sites | Une licence par site / `clinic_id` — pas de licence « flottante » non tracée |
 
 ---
 
-## 23. Critères d’acceptation (architecture)
+## 23. Administration à distance sans données médicales (D11)
+
+### 23.1 Objectif
+
+Depuis la France (ou ailleurs), l’équipe Owner / support doit pouvoir :
+
+- voir si le serveur d’une clinique est **en ligne** ;  
+- connaître la **version** installée ;  
+- savoir si les **sauvegardes** se font ;  
+- recevoir des **alertes** si un serveur ne synchronise plus ;
+
+**sans jamais accéder aux dossiers patients, comptes-rendus, résultats labo, ou lignes de facturation nominatives.**
+
+### 23.2 Télémétrie autorisée (ops only)
+
+Le Clinic Node envoie périodiquement (quand Internet est dispo) un **heartbeat ops** vers le cloud :
+
+| Champ | Exemple | PHI ? |
+|-------|---------|-------|
+| `clinic_id` / `node_id` | uuid | Non |
+| `software_version` / `schema_version` | `1.4.2` | Non |
+| `node_status` | `ONLINE` / `DEGRADED` / `OFFLINE` (dérivé) | Non |
+| `last_heartbeat_at` | timestamp | Non |
+| `last_sync_success_at` / `outbox_depth` | timestamp / compteur | Non |
+| `last_backup_local_at` / `last_backup_remote_at` | timestamp | Non |
+| `disk_free_bytes` / `disk_total_bytes` | nombres | Non |
+| `db_size_bytes` | nombre | Non |
+| `ups_status` (si exposé) | `OK` / `ON_BATTERY` | Non |
+| `license_state` | `OK` / `GRACE` / … | Non |
+| `cpu_load` / `mem_available` (optionnel) | nombres | Non |
+| Compteurs **agrégés anonymes** (optionnel Owner) | ex. nb patients créés/jour | **Pas de noms, pas d’IDs patients** |
+
+### 23.3 Interdit en canal admin distante
+
+- Lecture / export de tables patients, visites, labo, Rx, factures  
+- Shell distant ouvert par défaut  
+- VPN permanent exposant PostgreSQL  
+- Captures d’écran automatiques de l’UI clinique  
+
+**Support exceptionnel** (si un jour requis) : session assistée **explicitement consentie** par l’admin clinique, journalisée, durée limitée — hors canal heartbeat.
+
+### 23.4 Alertes (push Owner)
+
+| Alerte | Condition cible |
+|--------|-----------------|
+| Nœud silencieux | Aucun heartbeat > **24 h** (configurable) |
+| Sync en panne | Aucune sync réussie > **48 h** alors qu’Internet était attendu / outbox qui croît |
+| Backup local manquant | Aucun backup local réussi > **6 h** |
+| Backup distant manquant | Aucun upload > **48 h** (si clinique non air-gap) |
+| Disque faible | `< 15 %` libre (warning), `< 5 %` (critique) |
+| Version obsolète | Écart > N versions mineures vs recommandée |
+| Licence | Entre dans la grâce / approche `grace_until` |
+
+Canaux : tableau Owner + email / webhook (Slack, etc.) selon config.
+
+---
+
+## 24. Tableau de bord Owner — supervision (D14)
+
+### 24.1 Rôle
+
+Vue unique multi-cliniques pour le propriétaire / ops siège.  
+Données = télémétrie §23 uniquement.
+
+### 24.2 Vue liste (par clinique)
+
+| Colonne | Source |
+|---------|--------|
+| Clinique (nom) | Registre cloud |
+| État serveur | Dérivé heartbeat (`En ligne` / `Hors ligne` / `Dégradé`) |
+| Dernière sync | `last_sync_success_at` |
+| Statut sync | `OK` / `En retard` / `Hors ligne` |
+| Dernière sauvegarde locale | `last_backup_local_at` |
+| Dernière sauvegarde distante | `last_backup_remote_at` |
+| Espace disque restant | `disk_free_bytes` (+ %) |
+| Version logicielle | `software_version` |
+| Licence | `license_state` + dates |
+| Outbox | `outbox_depth` (indicateur charge sync) |
+
+### 24.3 Vue détail clinique
+
+- Timeline heartbeats (7 / 30 jours)  
+- Historique versions  
+- Historique backups (succès / échec, sans contenu)  
+- Alertes ouvertes  
+- Actions Owner autorisées : révoquer nœud, émettre paquet d’activation, forcer « attendu air-gap », annoter ticket support  
+
+### 24.4 Ce que le dashboard ne montre jamais
+
+Identité patient, motifs cliniques, résultats, montants nominatifs, contenus de dossiers.
+
+### 24.5 Placement produit
+
+Module cloud **Owner / Platform admin** (frontend cloud existant étendu) — distinct des écrans cliniques LAN.
+
+---
+
+## 25. Migration Cloud (Railway) → Clinic Node (D13)
+
+### 25.1 Contexte
+
+Aujourd’hui certaines cliniques (ex. AASMA) ont leurs données sur **Railway (PostgreSQL cloud)**.  
+Le passage offline-first exige un **transfert propre** vers le serveur local, **sans perte**, avec **interruption minimale**.
+
+### 25.2 Principes de migration
+
+1. **Freeze écritures** court et contrôlé (fenêtre de bascule).  
+2. **Export déterministe** scoped `clinic_id`.  
+3. **Import transactionnel** sur Clinic Node + vérifications d’intégrité.  
+4. Cloud bascule en mode **hub secondaire** (plus source de vérité des soins).  
+5. Rollback documenté si la validation échoue avant cutover.
+
+### 25.3 Fenêtre d’interruption cible
+
+| Phase | Indisponibilité soins | Durée indicative |
+|-------|----------------------|------------------|
+| Préparation (J−7…J−1) | Aucune | — |
+| Export final + import | **Courte** (clinique en lecture seule ou fermée) | **15–45 min** typique |
+| Validation smoke | Limitée | 10–15 min |
+| Réouverture sur LAN local | — | — |
+
+**Objectif global d’interruption :** **&lt; 1 heure** pour une clinique de taille moyenne (aligné RTO). Grosses bases : allonger la fenêtre ou migration en deux temps (seed + catch-up).
+
+### 25.4 Procédure détaillée
+
+#### Phase A — Préparation (sans coupure)
+
+1. Owner crée la licence + paquet d’activation pour la clinique.  
+2. Technicien installe le Clinic Node **vide** (§15) sur le LAN clinique.  
+3. Vérifier HTTPS, disque, UPS, backup local OK.  
+4. Lancer un **export à blanc** depuis Railway (dry-run) : compter tables, checksums, durée.  
+5. Communiquer la fenêtre de bascule au personnel.
+
+#### Phase B — Seed (optionnel, réduit la coupure)
+
+1. Export cloud `clinic_id` → artefact chiffré `migration-<clinic>-<ts>.sgmig`.  
+2. Import sur nœud local **sans** couper le cloud (nœud pas encore primaire).  
+3. Mesurer écart ; planifier catch-up.
+
+#### Phase C — Cutover (coupure courte)
+
+1. **Freeze** : passer la clinique cloud en `MIGRATING` (API cloud refuse les écritures métier pour ce `clinic_id`).  
+2. Export **final** delta depuis le seed (ou full si pas de seed).  
+3. Import final sur Clinic Node (transaction + rebuild index + séquences).  
+4. Contrôles d’intégrité :  
+   - counts patients / visites / factures / mouvements stock  
+   - checksums sur tables clés  
+   - échantillon manuel (5–10 dossiers)  
+5. Activer le nœud comme **source de vérité** ; démarrer sync outbox vide (ou catch-up events post-cutover).  
+6. Cloud : marquer clinique `NODE_PRIMARY` ; conserver snapshot pré-migration.  
+7. Ouvrir les postes sur `https://sante-locale` ; smoke complet.  
+8. Lever le freeze cloud (écritures cloud soins **désactivées** pour cette clinique).
+
+#### Phase D — Hypercare (J+0…J+7)
+
+- Surveiller Owner dashboard (sync, backups, disque).  
+- Conserver le snapshot Railway pré-cutover **≥ 30 jours**.  
+- Interdiction de « double écriture » cloud + local.
+
+### 25.5 Contenu de l’artefact de migration
+
+- Métadonnées : `clinic_id`, versions schéma, `exported_at`, hash  
+- Données métier scoped clinique (patients, staff hashés, catalogues locaux, stock + **historique mouvements**, facturation, labo, etc.)  
+- **Pas** les secrets cloud globaux ; nouveaux secrets nœud générés à l’install  
+- Mapping IDs : conserver `entity_uid` globaux ; réassigner séquences locales propres  
+
+### 25.6 Critères de succès migration
+
+- [ ] Counts et checksums OK  
+- [ ] Login staff locaux OK  
+- [ ] Création patient + facture + mouvement stock OK hors Internet  
+- [ ] Backup local réussi post-import  
+- [ ] Heartbeat visible Owner  
+- [ ] Cloud n’accepte plus les écritures soins pour cette clinique  
+
+### 25.7 Rollback
+
+Si validation Phase C échoue **avant** ouverture aux utilisateurs :
+
+1. Garder freeze cloud.  
+2. Ne pas marquer `NODE_PRIMARY`.  
+3. Rouvrir cloud comme primaire après diagnostic.  
+4. Analyser logs migration ; replanifier.
+
+Après ouverture utilisateurs sur le nœud : rollback cloud = restore snapshot + procédure exceptionnelle Owner (à éviter) — d’où l’importance des contrôles avant levée du freeze.
+
+### 25.8 Migration des cliniques futures
+
+Toute nouvelle clinique peut naître **directement** en Clinic Node (pas de passage Railway).  
+Railway / cloud reste hub pour sync, backups, Owner — pas l’OLTP de soins.
+
+---
+
+## 26. Plan de livraison (après validation d’exécution)
+
+| Phase | Objectif |
+|-------|--------|
+| **P0** | Appliance USB + Postgres auto + SPA locale + **HTTPS auto** + auth locale + install &lt; 30 min **sans commande complexe** |
+| **P1** | Parité modules V1 (accueil → caisse) + zéro perte (transactions, journaux, brouillons) |
+| **P2** | Sync deltas + historique stock + hub cloud |
+| **P3** | Backup local/offsite + update agent + **licences** + heartbeat ops |
+| **P4** | **Owner dashboard** + alertes + DR kit + PITR + exercices restore |
+| **P5** | **Outil / runbook migration Railway → Node** (export/import, freeze, checksums) pour cliniques existantes |
+| **V1.1** | Hospitalisation + imagerie (schéma déjà prévu) |
+
+Chaque phase se termine par recette des scénarios §20, §21 et des procédures §22–§25.
+
+---
+
+## 27. Critères d’acceptation (architecture)
 
 - [x] Direction Clinic Node validée  
 - [x] HTTPS LAN V1 + cert auto  
@@ -640,19 +938,25 @@ Chaque phase se termine par recette des scénarios §20 et §21.
 - [x] Hospit / imagerie dans l’architecture, métier V1.1  
 - [x] Cloud secondaire (liste d’usages figée)  
 - [x] Zéro perte des données soumises  
-- [x] Install < 30 min  
+- [x] Install &lt; 30 min  
 - [x] Schéma d’architecture de référence  
-- [x] DR détaillé avec RTO < 1 h  
+- [x] DR détaillé avec RTO &lt; 1 h  
+- [x] Licences clinique (activation, grâce multi-mois, renouvellement transparent)  
+- [x] Admin distante / télémétrie **sans PHI**  
+- [x] Déploiement USB ultra-simple (aucune commande complexe)  
+- [x] Migration Cloud → Node documentée  
+- [x] Tableau de bord Owner spécifié  
 
 **Prochaine étape :** décomposition en tickets d’implémentation P0 — **pas de code** tant que le plan d’exécution n’est pas ordonné explicitement.
 
 ---
 
-## 24. Références
+## 28. Références
 
 - Frontend cloud : `https://plateforme-sante-guinee.vercel.app`  
+- Backend cloud actuel : Railway FastAPI + PostgreSQL  
 - Roadmap PWA historique (subordonnée) : `docs/OFFLINE_STRATEGY_ROADMAP.md`
 
 ---
 
-*Document d’architecture — décisions validées le 2026-07-28.*
+*Document d’architecture — décisions validées le 2026-07-28 (rév. licences, admin distante, migration, Owner).*
