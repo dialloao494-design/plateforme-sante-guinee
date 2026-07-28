@@ -1,676 +1,658 @@
 # Architecture Offline-First — Plateforme Santé Guinée
 
-**Statut :** Proposition d’architecture — **aucune implémentation** avant validation  
-**Date :** 2026-07-28  
-**Frontend de production de référence (cloud) :** `https://plateforme-sante-guinee.vercel.app`  
+**Statut :** Direction **validée** (2026-07-28) — décisions d’architecture figées ci-dessous  
+**Implémentation :** **interdite** tant que ce document reste la référence non encore décomposée en tickets d’exécution  
+**Date :** 2026-07-28 (rév. décisions validées)  
+**Frontend cloud de référence :** `https://plateforme-sante-guinee.vercel.app`  
 **Backend cloud actuel :** FastAPI + PostgreSQL (Railway)  
-**Public cible du document :** équipe produit, architecture, sécurité, ops cliniques  
+**Public cible :** produit, architecture, sécurité, ops cliniques, techniciens terrain  
 
-> Ce document **remplace** la vision « PWA / IndexedDB seule » de `OFFLINE_STRATEGY_ROADMAP.md` pour l’objectif métier : **fonctionnement clinique quotidien 100 % sans Internet, durée illimitée**.  
-> Internet n’est requis que pour : synchronisation, sauvegarde distante, mises à jour logicielles, administration centralisée.
+> Objectif métier : **fonctionnement clinique quotidien 100 % sans Internet, durée illimitée**.  
+> Internet n’est requis que pour : synchronisation, sauvegarde distante, mises à jour, supervision, administration centrale, statistiques, restauration après sinistre.
+
+---
+
+## 0. Décisions d’architecture validées
+
+| # | Décision | Statut |
+|---|----------|--------|
+| D1 | Modèle **Clinic Node** : FastAPI local + PostgreSQL local + SPA en LAN | **Validé** |
+| D2 | **HTTPS LAN dès la V1** ; certificat local généré à l’installation | **Validé** |
+| D3 | **Matériel de référence** (NUC/équivalent, SSD, ≥16 Go RAM, UPS) ; compatibilité matériels équivalents | **Validé** |
+| D4 | Stock pharmacie : sync par **deltas uniquement** + **historique complet** des mouvements | **Validé** |
+| D5 | Hospitalisation & imagerie : **prévues dans l’architecture** ; implémentation métier en **V1.1** | **Validé** |
+| D6 | Cloud **secondaire** : backup, sync, updates, supervision, admin centrale, stats, DR — jamais le système principal des soins | **Validé** |
+| D7 | **Zéro perte de données** patient : opérations transactionnelles + journalisées | **Validé** |
+| D8 | **Installation < 30 minutes** par un technicien terrain | **Validé** |
+| D9 | **Disaster Recovery** détaillé ; objectif de reprise clinique **< 1 heure** sans perte des données persistées | **Validé** |
 
 ---
 
 ## 1. Principes directeurs
 
-1. **Local-first, cloud-second**  
-   La source de vérité opérationnelle d’une clinique est le **nœud local** (serveur clinique). Le cloud est un hub de synchronisation, de sauvegarde et de pilotage multi-cliniques.
-
-2. **Internet jamais sur le chemin critique**  
-   Accueil, soins, laboratoire, pharmacie, facturation, impressions PDF, authentification du personnel : **zéro dépendance réseau public**.
-
-3. **Multi-utilisateur en LAN**  
-   Plusieurs postes (réception, infirmier, médecin, labo, pharmacie, caisse) travaillent simultanément contre le même serveur local.
-
-4. **Identité et données cloisonnées par clinique**  
-   Chaque clinique est un tenant isolé (`clinic_id` + secrets locaux). Pas de fusion accidentelle entre établissements.
-
-5. **Pas de perte de données**  
-   Journal d’opérations (append-only), sauvegardes locales automatiques, sync idempotente, conflits explicites — jamais d’écrasement silencieux de faits cliniques.
-
-6. **Continuité avec le produit actuel**  
-   Réutiliser le modèle métier existant (patients, admissions, consultations, labo, pharmacie, facturation, rôles) et l’API FastAPI, déployée en **mode clinic-node** plutôt que réécrire un second produit.
+1. **Local-first, cloud-second** — la source de vérité opérationnelle est le Clinic Node.  
+2. **Internet jamais sur le chemin critique** des soins, de l’accueil, du labo, de la pharmacie, de la caisse.  
+3. **Multi-utilisateur en LAN** sur une seule BDD locale.  
+4. **Cloisonnement par clinique** (`clinic_id` + secrets nœud).  
+5. **Zéro perte** — ACID + journal d’événements + backups + sync idempotente.  
+6. **Continuité produit** — réutiliser FastAPI / SQLAlchemy / React en **mode clinic-node**.  
+7. **Simplicité d’ops** — une appliance standard, une procédure d’install courte, un matériel de référence.
 
 ---
 
-## 2. Architecture générale
+## 2. Schéma d’architecture de référence
 
-### 2.1 Vue d’ensemble
+Ce schéma est la **référence technique du projet**.
 
+```text
+╔══════════════════════════════════════════════════════════════════════════════════════════╗
+║                              CLOUD SANTÉ GUINÉE (secondaire)                             ║
+║                                                                                          ║
+║   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌────────────────────┐ ║
+║   │ Hub Sync API    │  │ Backup Store    │  │ Update Registry │  │ Admin / Stats /    │ ║
+║   │ (événements)    │  │ (snapshots      │  │ (images signées)│  │ Supervision multi- │ ║
+║   │                 │  │  chiffrés)      │  │                 │  │ cliniques          │ ║
+║   └────────▲────────┘  └────────▲────────┘  └────────▲────────┘  └─────────▲──────────┘ ║
+║            │                    │                    │                     │            ║
+╚════════════╪════════════════════╪════════════════════╪═════════════════════╪════════════╝
+             │ HTTPS              │ HTTPS              │ HTTPS               │ HTTPS
+             │ (si Internet)      │ (si Internet)      │ (si Internet)       │ (si Internet)
+             │                    │                    │                     │
+╔════════════╪════════════════════╪════════════════════╪═════════════════════╪════════════╗
+║            │         CLINIQUE — RÉSEAU LOCAL PRIVÉ (LAN) — AUTONOME        │            ║
+║            │                    │                    │                     │            ║
+║   ┌────────┴────────────────────┴────────────────────┴─────────────────────┴──────────┐ ║
+║   │                        CLINIC NODE (Mini-PC / NUC de référence)                   │ ║
+║   │                              + UPS (obligatoire)                                  │ ║
+║   │                                                                                   │ ║
+║   │  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────────┐  │ ║
+║   │  │ Proxy HTTPS  │──▶│ FastAPI      │──▶│ PostgreSQL   │   │ Volume /data     │  │ ║
+║   │  │ (TLS local,  │   │ (mode clinic │   │ local        │   │ (BDD, fichiers,  │  │ ║
+║   │  │  cert auto)  │   │  node)       │   │              │   │  journaux, PKI)  │  │ ║
+║   │  └──────▲───────┘   └──────┬───────┘   └──────────────┘   └────────▲─────────┘  │ ║
+║   │         │                  │                                       │            │ ║
+║   │         │           ┌──────┴───────┐                               │            │ ║
+║   │         │           │ SPA React    │ (servie en local)             │            │ ║
+║   │         │           └──────────────┘                               │            │ ║
+║   │         │                                                          │            │ ║
+║   │  ┌──────┴──────────┐  ┌────────────────┐  ┌────────────────────┐  │            │ ║
+║   │  │ Sync engine     │  │ Backup engine  │  │ Update engine      │──┘            │ ║
+║   │  │ outbox / inbox  │  │ snapshots      │  │ images + migrate   │               │ ║
+║   │  │ deltas métier   │  │ locaux + cloud │  │ blue/green local   │               │ ║
+║   │  └─────────────────┘  └───────┬────────┘  └────────────────────┘               │ ║
+║   │                              │                                                 │ ║
+║   │                     ┌────────▼────────┐                                        │ ║
+║   │                     │ Sauvegarde      │  (SSD interne + 2e disque optionnel /  │ ║
+║   │                     │ locale auto     │   NAS pour grandes cliniques)          │ ║
+║   │                     └─────────────────┘                                        │ ║
+║   └────────────────────────────────────────────────────────────────────────────────┘ ║
+║            ▲ HTTPS LAN                                                               ║
+║            │                                                                         ║
+║   ┌────────┴────────┬──────────────┬──────────────┬──────────────┬──────────────┐  ║
+║   │                 │              │              │              │              │  ║
+║   ▼                 ▼              ▼              ▼              ▼              ▼  ║
+║ ┌────────┐   ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐ ║
+║ │Poste   │   │Poste     │  │Poste     │  │Poste     │  │Poste     │  │Poste  │ ║
+║ │Réception│  │Médecin   │  │Infirmier │  │Laboratoire│ │Pharmacie │  │Caisse │ ║
+║ │(SPA)   │   │(SPA)     │  │(SPA)     │  │(SPA)     │  │(SPA)     │  │(SPA)  │ ║
+║ └────────┘   └──────────┘  └──────────┘  └──────────┘  └──────────┘  └────────┘ ║
+║                                                                                  ║
+║   Imprimantes (PDF / reçus) ── via navigateurs ou partage LAN                    ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
 ```
-                         ┌──────────────────────────────────────┐
-                         │         CLOUD (optionnel)            │
-                         │  Hub sync · Backup · Updates · Admin │
-                         │  API Railway + Postgres central      │
-                         │  Frontend admin (Vercel)             │
-                         └──────────────▲───────────────────────┘
-                                        │ sync / backup / update
-                                        │ (quand Internet dispo)
-┌───────────────────────────────────────┴───────────────────────────────────┐
-│                     CLINIQUE — RÉSEAU LOCAL (LAN)                         │
-│                                                                           │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │
-│  │ Poste       │  │ Poste       │  │ Poste       │  │ Poste       │     │
-│  │ Réception   │  │ Infirmier   │  │ Médecin     │  │ Labo / Phcie│ ... │
-│  │ Navigateur  │  │ Navigateur  │  │ Navigateur  │  │ Navigateur  │     │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘     │
-│         │ HTTP/HTTPS LAN  │                │                │            │
-│         └─────────────────┴────────┬───────┴────────────────┘            │
-│                                    ▼                                      │
-│                    ┌───────────────────────────────┐                      │
-│                    │   CLINIC NODE (serveur local) │                      │
-│                    │  - API FastAPI (mode offline) │                      │
-│                    │  - PostgreSQL local           │                      │
-│                    │  - Sync agent                 │                      │
-│                    │  - Backup agent               │                      │
-│                    │  - Update agent               │                      │
-│                    │  - SPA servie en local        │                      │
-│                    └───────────────────────────────┘                      │
-│                                                                           │
-│  Option : NAS / 2e disque pour snapshots  ·  Onduleur (UPS) obligatoire  │
-└───────────────────────────────────────────────────────────────────────────┘
+
+### Variante Mermaid (même référence)
+
+```mermaid
+flowchart TB
+  subgraph CLD["Cloud Santé Guinée — secondaire"]
+    HUB["Hub Sync API<br/>événements / deltas"]
+    BSTORE["Backup Store<br/>snapshots chiffrés"]
+    UREG["Update Registry<br/>images signées"]
+    ADM["Admin / Stats / Supervision"]
+  end
+
+  subgraph LOC["Clinic Node — Mini-PC + UPS"]
+    PROXY["Proxy HTTPS<br/>certificat local auto"]
+    API["FastAPI local"]
+    PG[("PostgreSQL local<br/>source de vérité")]
+    SPA["SPA React locale"]
+    SYNC["Moteur sync<br/>outbox / inbox"]
+    BAK["Sauvegardes locales auto"]
+    UPD["Moteur mises à jour"]
+    DATA["Volume /data<br/>BDD · PKI · journaux"]
+    PROXY --> SPA
+    PROXY --> API
+    API --> PG
+    SYNC --> PG
+    BAK --> PG
+    BAK --> DATA
+    UPD --> DATA
+    PG --> DATA
+  end
+
+  subgraph LAN["Réseau local clinique"]
+    R["Réception"]
+    M["Médecin"]
+    N["Infirmier"]
+    L["Laboratoire"]
+    P["Pharmacie"]
+    C["Caisse"]
+  end
+
+  R & M & N & L & P & C -->|HTTPS LAN| PROXY
+  SYNC <-->|si Internet| HUB
+  BAK -.->|si Internet| BSTORE
+  UPD <-->|si Internet| UREG
+  SYNC -.-> ADM
 ```
 
-### 2.2 Composants et responsabilités
+### Lecture du schéma
 
-| Composant | Rôle | Internet requis ? |
-|-----------|------|-------------------|
-| **Clinic Node** | API + BDD + fichiers + agents | Non (quotidien) |
-| **Postes clients** | SPA React dans navigateur, LAN uniquement | Non |
-| **Imprimantes** | PDF / tickets via Clinic Node ou impression navigateur | Non |
-| **Cloud Hub** | Agrégation multi-cliniques, backup offsite, distribution d’updates | Oui (hors chemin critique) |
-| **Console plateforme** | Admin central (déjà existant côté cloud) | Oui |
-
-### 2.3 Modes de déploiement d’un Clinic Node
-
-| Mode | Matériel typique | Usage |
-|------|------------------|--------|
-| **A — Mini-serveur clinique** | PC / NUC Linux + UPS + disque + SSD | Clinique permanente (recommandé AASMA / Koloma) |
-| **B — Appliance Docker** | Même matériel, stack Docker Compose | Installation reproductible |
-| **C — Poste unique « serveur + client »** | Un PC fort pour petites structures | Acceptable si ≤ 3 utilisateurs |
-
-**Recommandation produit :** Mode B (Docker Compose) comme unité de déploiement standard.
-
-### 2.4 Découpage logique des services (même machine au départ)
-
-1. `api` — FastAPI (réutilise le code actuel avec feature flags offline)  
-2. `db` — PostgreSQL local  
-3. `proxy` — Caddy/Nginx (TLS local optionnel, HTTP LAN accepté en phase 1)  
-4. `sync-agent` — file d’attente + protocole sync  
-5. `backup-agent` — snapshots locaux + upload cloud si online  
-6. `update-agent` — télécharge images/versions, bascule atomique  
-7. `web` — assets SPA (build Vercel ou build local servi par proxy)
-
-Les agents peuvent démarrer comme **processus/co-routines** dans le même conteneur API en V1, puis être séparés en V2.
-
-### 2.5 Relation avec le cloud actuel
-
-- Le **cloud** conserve le rôle actuel pour cliniques online-only et pour le hub multi-cliniques.  
-- Chaque Clinic Node possède un `clinic_id` stable (ex. AASMA = 17) et un `node_id` unique.  
-- Le cloud n’est **pas** interrogé pendant les soins.  
-- Quand online : le sync-agent pousse/tire des **événements métier** (pas un dump SQL brut comme mécanisme principal).
+| Zone | Rôle |
+|------|------|
+| Postes métiers | Clients légers (navigateur) ; aucun stockage métier critique |
+| Proxy HTTPS | Termine TLS LAN ; certificat local installé automatiquement |
+| FastAPI | Toute la logique métier + auth locale |
+| PostgreSQL local | Source de vérité de la clinique |
+| Sync engine | Pousse/tire des **événements / deltas** vers le cloud |
+| Backup engine | Snapshots locaux automatiques + upload distant opportuniste |
+| Update engine | Télécharge / applique versions sans toucher au volume data |
+| Cloud | Hub secondaire uniquement |
 
 ---
 
-## 3. Base de données locale
+## 3. Architecture générale des composants
 
-### 3.1 Choix : PostgreSQL local (recommandé)
+### 3.1 Clinic Node (cœur)
 
-| Critère | PostgreSQL local | SQLite | IndexedDB seule |
-|---------|------------------|--------|-----------------|
-| Multi-utilisateurs concurrent | Excellent | Limité / fragile | Non (par navigateur) |
-| Alignement code actuel (SQLAlchemy) | Direct | Gros écart | Très gros écart |
-| Intégrité clinique / transactions | Fort | Moyen | Faible |
-| Offline illimité multi-postes | Oui | Difficile | Non |
-| Ops backup/PITR | Mature | Possible mais plus pauvre | N/A |
+Appliance Docker Compose standard :
 
-**Décision d’architecture :** PostgreSQL 16+ en local, schéma compatible avec le modèle cloud actuel (même ORM), avec extensions offline (tables sync, outbox, audit).
+1. `proxy` — Caddy (ou Nginx) **HTTPS obligatoire**  
+2. `api` — FastAPI mode clinic-node  
+3. `db` — PostgreSQL 16+  
+4. `sync-agent` — moteur de synchronisation  
+5. `backup-agent` — sauvegardes  
+6. `update-agent` — mises à jour  
+7. `web` — assets SPA  
 
-SQLite / IndexedDB restent éventuellement utiles pour **cache UI** ou mode secours poste isolé, **pas** comme BDD primaire multi-utilisateurs.
+Les agents peuvent être co-localisés dans l’API en première livraison technique, puis séparés sans changer le modèle.
 
-### 3.2 Rôle de la BDD locale
+### 3.2 Matériel de référence (validé)
 
-- Source de vérité opérationnelle de la clinique  
-- Stockage patients, parcours cliniques, facturation, stock pharmacie, catalogues locaux  
-- Journal d’audit CIS / actions utilisateurs  
-- Tables techniques sync :
-  - `sync_outbox` — mutations locales à pousser  
-  - `sync_inbox` — mutations cloud/autres nœuds à appliquer  
-  - `sync_cursor` — watermarks par stream  
-  - `sync_conflicts` — conflits non résolus  
-  - `idempotency_keys` — déduplication  
-  - `node_metadata` — identité nœud, dernière sync, version logicielle  
+| Élément | Spécification de référence |
+|---------|----------------------------|
+| Ordinateur | Mini-PC type **Intel NUC** ou équivalent x86_64 |
+| Stockage | **SSD** qualité (endurance clinique) |
+| Mémoire | **16 Go RAM minimum** |
+| Alimentation | **UPS / onduleur obligatoire** |
+| Sauvegarde locale | Automatique sur volume dédié (partition / 2e SSD) |
+| NAS | Optionnel, recommandé pour **grandes cliniques** (rétention longue) |
+| Réseau | Switch Ethernet et/ou Wi-Fi clinique dédié ; IP fixe du serveur |
 
-### 3.3 Identifiants
+**Compatibilité :** tout matériel équivalent (CPU x86_64, SSD, ≥16 Go RAM, UPS) doit pouvoir exécuter la même appliance. Le matériel de référence simplifie support et documentation ; il n’est pas un verrou constructeur.
 
-Pour éviter les collisions multi-cliniques / multi-nœuds :
+### 3.3 Rôle du cloud (validé — secondaire)
+
+Le cloud **n’est pas** le système principal. Chaque clinique reste **totalement autonome**.
+
+Usages cloud exclusivement :
+
+- sauvegardes distantes chiffrées  
+- synchronisation d’événements / deltas  
+- distribution des mises à jour  
+- supervision (santé nœuds, dernière sync, espace disque)  
+- administration centrale multi-cliniques  
+- statistiques agrégées  
+- restauration après sinistre (copie offsite)
+
+Même si Internet disparaît plusieurs semaines : **la clinique continue normalement**.
+
+---
+
+## 4. Base de données locale
+
+### 4.1 Choix
+
+**PostgreSQL local** — aligné sur le code actuel, transactions ACID, multi-utilisateurs concurrent.
+
+### 4.2 Responsabilités
+
+- Données métier (patients, soins, labo, pharmacie, facturation, …)  
+- Tables techniques : `sync_outbox`, `sync_inbox`, `sync_cursor`, `sync_conflicts`, `idempotency_keys`, `node_metadata`  
+- Journal d’audit append-only  
+- Historique des mouvements de stock (`stock_movements`)  
+
+### 4.3 Identifiants
 
 | Entité | Stratégie |
 |--------|-----------|
-| `clinic_id` | Attribué par le cloud à l’installation (entier ou UUID) |
-| `node_id` | UUID généré à l’installation du Clinic Node |
-| IDs métier locaux (patient, invoice…) | Surrogate local (bigint) **+** `entity_uid` UUID global |
-| Numéros affichés (PAT-, INV-, ADM-) | Générés localement avec préfixe clinique (déjà proche du modèle actuel) |
+| `clinic_id` | Attribué à l’installation |
+| `node_id` | UUID unique du Clinic Node |
+| Entités métier | `id` local + `entity_uid` UUID global |
+| Numéros affichés (PAT/INV/ADM) | Générés localement avec préfixe clinique |
 
-**Règle :** la sync s’effectue sur `entity_uid` / clés métier stables, jamais uniquement sur les `id` auto-incrémentés locaux.
+La sync utilise `entity_uid` / clés métier, jamais les seuls auto-incréments locaux.
 
-### 3.4 Catalogues et configuration
+### 4.4 Modules prévus dès l’architecture (implémentation échelonnée)
 
-Répliqués en local (lecture fréquente, écriture rare) :
+| Module | Schéma / API prévus dès V1 architecture | Implémentation UI/métier |
+|--------|----------------------------------------|---------------------------|
+| Accueil, soins, labo, pharmacie, caisse | Oui | V1 |
+| **Hospitalisation / lits** | Oui (tables, events, droits) | **V1.1** |
+| **Imagerie** | Oui (orders/results/events) | **V1.1** |
 
-- Catalogue labo  
-- Tarifs / spécialités  
-- Stock pharmacie (quantités mutables)  
-- Utilisateurs et rôles de la clinique  
-- Branding / paramètres d’impression  
-
-Les catalogues « master » peuvent être versionnés (`catalog_version`) pour sync contrôlée depuis le cloud.
+Aucune dette structurante : les streams sync et le modèle de données incluent ces domaines dès le départ.
 
 ---
 
-## 4. Authentification locale et sessions
+## 5. Authentification locale et sessions
 
-### 4.1 Principes
-
-- Authentification **100 % locale** (email + mot de passe hashés en BDD locale).  
-- JWT (ou session opaque) signé avec un **`NODE_JWT_SECRET` local**, distinct du cloud.  
-- Aucun appel Resend / SMTP pour se connecter au quotidien.  
-- Reset de mot de passe **local** : procédure admin clinique (réinitialisation par `clinic_admin`) ; reset par email uniquement si Internet + politique activée.
-
-### 4.2 Provisionnement initial des comptes
-
-À l’installation du nœud :
-
-1. Bootstrap d’un compte `clinic_admin` local (mot de passe fort, rotation obligatoire).  
-2. Import optionnel des comptes staff existants depuis un **paquet d’installation chiffré** généré par le cloud (one-time).  
-3. Ensuite, création/édition des utilisateurs **en local** (même APIs `/clinical/staff` adaptées).
-
-### 4.3 Sessions
-
-| Aspect | Règle |
-|--------|-------|
-| Durée access token | Courte (ex. 15–60 min) |
-| Refresh token | Stocké httpOnly / local sécurisé ; rotation |
-| Révocation | Liste de révocation locale + invalidation au changement de mot de passe |
-| Multi-postes | Même utilisateur peut ouvrir N sessions ; audit par poste (`device_id`) |
-| Verrouillage écran | Timeout d’inactivité côté SPA (exigence clinique) |
-
-### 4.4 Autorisations
-
-Réutiliser le modèle RBAC actuel (`receptionist`, `nurse`, `doctor`, `lab_technician`, `pharmacist`, `cashier`, `clinic_admin`, …) évalué **localement**.  
-Aucun rôle cloud (`platform_admin`) n’est requis pour le quotidien clinique.
-
-### 4.5 Horloge et sécurité temps
-
-- NTP LAN / horloge matérielle ; si dérive excessive, alerte admin (la sync et les signatures en dépendent).  
-- Les timestamps métier sont stockés en UTC + fuseau clinique affiché.
+- Auth **100 % locale** (hash mots de passe en BDD locale).  
+- JWT / refresh signés avec `NODE_JWT_SECRET` local.  
+- Reset quotidien : admin clinique local ; email seulement si Internet + politique activée.  
+- RBAC inchangé conceptuellement (`receptionist`, `doctor`, `nurse`, `lab_technician`, `pharmacist`, `cashier`, `clinic_admin`, …).  
+- Timeout d’inactivité SPA obligatoire.  
+- Horloge : NTP / contrôle de dérive (alerte admin).
 
 ---
 
-## 5. Réseau local multi-utilisateurs
+## 6. HTTPS sur le réseau local (V1)
 
-### 5.1 Topologie
+### 6.1 Exigence
 
-- Switch Ethernet et/ou Wi-Fi clinique dédié (SSID privé).  
-- Clinic Node en IP fixe LAN (DHCP reservation).  
-- Postes accèdent à `http://sante-locale` ou `http://192.168.x.y` (mDNS / DNS local).  
-- **Pas de dépendance DNS public.**
+Dès la V1, tous les postes accèdent au Clinic Node en **HTTPS**.  
+Objectif : protéger les données médicales même sur un LAN clinique.
 
-### 5.2 Concurrence
+### 6.2 Certificat local automatique
 
-- PostgreSQL gère les transactions concurrentes (ex. deux réceptionnistes).  
-- Verrouillage optimiste sur dossiers sensibles (`version` / `updated_at`) pour consultations et stock.  
-- File d’attente métier (admission → infirmier → médecin) reste cohérente car une seule BDD.
+À l’installation (`install.sh` / first-boot) :
 
-### 5.3 Impression et fichiers
+1. Génération d’une **CA locale** du nœud (stockée dans `/data/pki`).  
+2. Génération d’un certificat serveur pour les noms/IP locaux (`sante-locale`, IP LAN).  
+3. Configuration du proxy (Caddy recommandé pour renouvellement/local TLS simple).  
+4. Export d’un **petit paquet trust** (certificat CA) à installer une fois sur les postes Windows/Linux (script fourni), **ou** page d’aide « faire confiance au certificat » pour le navigateur.
 
-- Génération PDF **sur le Clinic Node** (ReportLab déjà en place) → téléchargement LAN.  
-- Pièces jointes / photos patients stockées sur volume local chiffré (`/data/attachments`).
+### 6.3 Noms d’accès
 
-### 5.4 Isolation réseau recommandée
+- `https://sante-locale` (mDNS / DNS local)  
+- `https://<ip-fixe>` en secours  
 
-- Clinic Node **sans exposition Internet entrante** (pas de port-forward).  
-- Sortie Internet uniquement sortante (HTTPS) pour sync/backup/update, filtrable par firewall.  
-- Option « air-gap volontaire » : admin coupe la sortie ; la clinique continue.
+HTTP clair : **redirigé vers HTTPS** (pas de mode production en HTTP).
 
 ---
 
-## 6. Moteur de synchronisation avec le cloud
+## 7. Réseau local multi-utilisateurs
 
-### 6.1 Modèle : Event sourcing léger + outbox
-
-Chaque mutation métier locale produit :
-
-1. Écriture transactionnelle dans les tables métier  
-2. Insertion atomique dans `sync_outbox` d’un **événement** :
-
-```text
-{
-  event_id,          // UUID
-  clinic_id,
-  node_id,
-  entity_type,       // patient | admission | invoice | ...
-  entity_uid,
-  op,                // create | update | delete | status_change
-  payload,           // JSON canonique
-  schema_version,
-  occurred_at,
-  actor_user_uid,
-  causation_id,      // optionnel
-  idempotency_key
-}
-```
-
-### 6.2 Direction des flux
-
-| Flux | Contenu typique |
-|------|-----------------|
-| **Push (clinique → cloud)** | Patients, admissions, consultations, résultats labo, prescriptions, dispensations, factures/paiements, audit |
-| **Pull (cloud → clinique)** | Mises à jour catalogues, politiques, corrections admin plateforme, (rare) fusion d’identité patient validée |
-
-Pas de sync poste-à-poste entre cliniques. Une clinique = un nœud primaire.
-
-### 6.3 Protocole
-
-- Transport : HTTPS vers Cloud Hub (`/sync/v1/...`)  
-- Auth nœud : `node_id` + `node_secret` (mTLS optionnel en V2)  
-- Batching : paquets de N événements + curseur  
-- Idempotency : le cloud ignore les `event_id` / `idempotency_key` déjà vus  
-- ACK : le nœud marque l’outbox `acked` seulement après ACK cloud durable  
-
-### 6.4 Ordre et causalité
-
-- Ordre par `(occurred_at, event_id)` au sein d’une entité.  
-- Dépendances explicites si besoin (`requires_entity_uid`).  
-- Le cloud applique dans l’ordre ; rejette les événements dont le schéma est inconnu → quarantine + alerte (pas de drop silencieux).
-
-### 6.5 Mode dégradé sync
-
-| État | Comportement |
-|------|--------------|
-| Offline | Outbox grossit ; UI badge « Sync en attente : N » |
-| Online instable | Retry exponentiel + jitter ; circuit breaker |
-| Online stable | Drain continu de l’outbox + pull périodique |
-
-**Internet coupé pendant un mois :** aucun impact soins ; sync reprend au retour (voir scénarios).
-
-### 6.6 Ce que l’on ne synchronise pas (par défaut)
-
-- Secrets locaux (`NODE_JWT_SECRET`, clés de chiffrement disque)  
-- Backups bruts (canal backup dédié)  
-- Logs techniques verbeux (sauf incidents ciblés)
+- IP fixe du Clinic Node (réservation DHCP).  
+- Postes : navigateurs modernes uniquement.  
+- Concurrence : transactions PostgreSQL + verrouillage optimiste (`version` / `updated_at`) sur dossiers sensibles.  
+- Pas d’exposition Internet entrante du nœud.  
+- Sortie HTTPS sortante uniquement pour sync / backup / update (coupable volontairement = air-gap).
 
 ---
 
-## 7. Gestion des conflits
+## 8. Moteur de synchronisation
 
-### 7.1 Taxonomie
+### 8.1 Modèle
 
-| Type | Exemple | Stratégie par défaut |
-|------|---------|----------------------|
-| **Concurrent update** | Deux médecins éditent la même consultation | Version vector / `updated_at` ; **dernier écrit gagne sur champs non critiques** + conservation des deux versions en historique ; champs critiques → conflit manuel |
-| **Création dupliquée** | Même patient créé offline sur 2 postes (rare : 1 BDD locale) | Peu probable en LAN mono-nœud ; si import/cloud : rapprochement par téléphone + nom + DOB |
-| **Stock pharmacie** | Quantité divergente | **Compteur à deltas** (mouvements), pas écrasement de quantité absolue |
-| **Paiement / facture** | Double paiement | Idempotency keys + états de machine (`issued → partial → paid`) |
-| **Catalogue** | Tarif cloud vs local modifié | Catalogue cloud versionné ; override local marqué `local_override=true` |
+**Event / delta outbox** — jamais de « dump complet de la base » comme mécanisme de sync.
 
-### 7.2 Règles cliniques (non négociables)
+Chaque mutation métier = transaction qui écrit :
 
-- **Ne jamais perdre** une observation clinique saisie (vitaux, diagnostic, résultat labo validé).  
-- En conflit de texte clinique : conserver **les deux** dans un historique / `conflict_payload`, signaler à l’admin/médecin.  
-- Facturation : préférer la cohérence comptable (pas de montant « magique ») ; écarts → file d’exceptions.
+1. l’état métier  
+2. un événement dans `sync_outbox` (atomique)
 
-### 7.3 UI conflits
+### 8.2 Stock pharmacie (validé)
 
-Écran admin clinique :
+- Quantité courante = **projection** reconstruisible.  
+- Toute entrée/sortie/ajustement/dispensation = ligne dans `stock_movements` (historique append-only).  
+- Sync cloud = **deltas de mouvements**, pas remplacement aveugle du stock.  
+- En cas de doute : rejouer l’historique des mouvements pour reconstruire le stock.
 
-- Liste des conflits ouverts  
-- Diff JSON / champs  
-- Actions : « Garder local », « Garder cloud », « Fusionner » (selon type)
+### 8.3 Flux
 
-### 7.4 Pourquoi les conflits restent rares
+| Direction | Contenu |
+|-----------|---------|
+| Push clinique → cloud | Événements patients, soins, labo, Rx, **mouvements stock**, facturation, audit |
+| Pull cloud → clinique | Catalogues versionnés, politiques, corrections admin rares |
 
-Avec **un seul Clinic Node + PostgreSQL**, les conflits intra-clinique sont des courses classiques BDD (gérées par transactions), pas des conflits CRDT complexes.  
-Les vrais conflits concernent surtout **clinique ↔ cloud** après longue déconnexion ou corrections plateforme.
+### 8.4 Garanties sync
 
----
-
-## 8. Sauvegardes locales et distantes
-
-### 8.1 Sauvegardes locales (obligatoires)
-
-| Type | Fréquence | Contenu | Rétention |
-|------|-----------|---------|-----------|
-| Snapshot logique `pg_dump` (custom) | Toutes les 1–6 h | BDD complète | 7–14 jours locaux |
-| WAL / PITR (si disque le permet) | Continu | Point-in-time | 24–72 h |
-| Snapshot volume (LVM/ZFS/Btrfs) | Quotidien | BDD + attachments | 7 jours |
-| Copie vers 2e disque / NAS LAN | Quotidien | Derniers snapshots | 30 jours |
-
-**Règle 3-2-1 adaptée clinique :**  
-3 copies · 2 supports · 1 offsite (cloud) **quand Internet disponible**.
-
-### 8.2 Sauvegardes distantes (opportunistes)
-
-- Upload chiffré (AES-256-GCM) des snapshots vers le cloud / object storage.  
-- Jamais de backup en clair.  
-- Metadata : `clinic_id`, `node_id`, `backup_id`, `app_version`, `schema_version`, hash.  
-- Si offline prolongé : les backups restent locaux ; reprise d’upload ensuite.
-
-### 8.3 Vérification
-
-- Job hebdomadaire `backup verify` (restore test dans sandbox local).  
-- Alerte admin si aucun backup réussi > 24 h.
+- Idempotence (`event_id`, `idempotency_key`)  
+- ACK cloud avant marquage outbox  
+- Retry exponentiel  
+- Conflits explicites (UI admin) — pas d’écrasement silencieux de faits cliniques  
 
 ---
 
-## 9. Chiffrement
+## 9. Gestion des conflits (rappel)
 
-### 9.1 Au repos
+| Type | Stratégie |
+|------|-----------|
+| Texte clinique concurrent | Historiser les deux versions + file conflit |
+| Stock | Deltas / mouvements uniquement |
+| Paiements | Machine à états + idempotency |
+| Catalogues | Version cloud + `local_override` |
 
-| Donnée | Mécanisme |
-|--------|-----------|
-| Volume `/data` | LUKS (disque) ou équivalent OS |
-| Backups | Chiffrement applicatif avant écriture/upload (clé clinique) |
-| Secrets | Fichier env / Docker secrets, permissions 600 |
-| Pièces jointes | Volume chiffré ; noms non significatifs |
-
-**Gestion des clés :**  
-- Clé maître clinique dérivée à l’installation (stockée hors BDD, backup papier/coffre admin).  
-- Rotation documentée ; jamais embarquée dans les dépôts Git.
-
-### 9.2 En transit
-
-| Lien | Protection |
-|------|------------|
-| Postes ↔ Clinic Node (LAN) | HTTP accepté en V1 si LAN de confiance ; **HTTPS local** (certificat interne) recommandé dès V1.1 |
-| Clinic Node ↔ Cloud | TLS 1.2+ uniquement |
-| Sync auth | Bearer node token / mTLS (V2) |
-
-### 9.3 Données sensibles
-
-Alignement CIS / confidentialité patient déjà présent côté audit : conserver et étendre les logs d’accès en local.
+Avec un seul Clinic Node, les conflits intra-LAN restent des courses BDD classiques ; les conflits majeurs apparaissent surtout clinique ↔ cloud après longue déconnexion.
 
 ---
 
-## 10. Reprise automatique après coupure Internet
+## 10. Zéro perte de données (exigence D7)
 
-### 10.1 Ce qui ne doit PAS s’arrêter
+### 10.1 Règles non négociables
 
-API locale, BDD, sessions, impressions, files d’attente sync (accumulation).
+1. Toute opération métier réussie est **commitée en transaction ACID**.  
+2. Toute opération métier génère un **événement journalisé** (outbox et/ou audit).  
+3. Aucun DELETE dur des audits / mouvements de stock.  
+4. Soft-delete pour patients / dossiers lorsque suppression fonctionnelle.  
+5. Brouillons autosave sur formulaires longs (réception, consultation) pour limiter la perte des saisies non encore soumises.  
+6. Interdiction des jobs de reset destructifs sur nœud de production.  
+7. Backup local automatique **avant** toute migration / update.
 
-### 10.2 Détection
+### 10.2 Couverture des pannes
 
-- Healthcheck sortant périodique vers Cloud Hub (`/sync/v1/ping`).  
-- États nœud : `ONLINE` · `DEGRADED` · `OFFLINE`.  
-- SPA : bandeau informatif (« Hors ligne Internet — clinique opérationnelle »).
+| Événement | Garantie |
+|-----------|----------|
+| Coupure Internet | Aucun impact sur commits locaux ; outbox conserve tout |
+| Coupure électrique | UPS + crash recovery PostgreSQL (WAL) ; actes commités conservés |
+| Redémarrage brutal | Idem WAL ; restart automatique des services |
+| Fermeture inattendue du navigateur | Données déjà soumises persistées ; brouillons locaux pour le reste |
 
-### 10.3 Reprise
-
-1. Détection online  
-2. Reprise backup upload (basse priorité)  
-3. Drain `sync_outbox` (haute priorité)  
-4. Pull catalogues / inbox  
-5. Rapport de sync (durée offline, volume d’événements, conflits)
-
-Aucun redémarrage utilisateur requis.
-
----
-
-## 11. Mises à jour logicielles sans interruption des données
-
-### 11.1 Principes
-
-- **Les données vivent hors du conteneur applicatif** (`volume /data` persistant).  
-- Update = remplacer images/binaires, **jamais** reformater le volume data.  
-- Migrations Alembic **forward-only**, testées, avec `schema_version` en BDD.
-
-### 11.2 Pipeline update
-
-1. Cloud publie une version (`app_version`, changelog, checksum, migrations min).  
-2. `update-agent` télécharge hors heures de pointe (si online).  
-3. Pré-checks : espace disque, backup frais obligatoire, compatibilité schéma.  
-4. Déploiement **blue/green local** ou restart contrôlé :
-   - Arrêt bref API (< 1–2 min cible) **ou** rolling si multi-instance (rare en clinique)  
-   - Migration  
-   - Healthcheck  
-   - Bascule  
-5. Rollback image précédent si healthcheck échoue (**data intacte**).
-
-### 11.3 Travail utilisateurs pendant l’update
-
-- Fenêtre de maintenance courte planifiée **ou** update nocturne.  
-- Si update forcée : message « Mise à jour — reconnexion dans 2 min » ; les navigateurs se reconnectent ; **aucune perte** grâce aux transactions déjà commit.
-
-### 11.4 Updates offline
-
-- Possibilité d’installer depuis une **clé USB signée** (paquet update) apportée par l’équipe terrain — critique pour cliniques sans Internet fiable.
+**Définition de « zéro perte » :** aucune donnée **déjà validée/soumise** ne peut disparaître. Les frappes non soumises sont mitigées par autosave, pas par magie réseau.
 
 ---
 
-## 12. Déploiement multi-cliniques indépendantes
+## 11. Sauvegardes
 
-### 12.1 Modèle
+### 11.1 Locales (toujours)
 
-Chaque clinique = **1 Clinic Node** + N postes.  
-Aucune dépendance runtime entre cliniques.
+| Type | Fréquence cible | Support |
+|------|-----------------|--------|
+| Snapshot `pg_dump` / base backup | Toutes les **15–60 min** (paramétrable ; défaut 30 min) | Volume backup local |
+| WAL / PITR | Continu si activé | Volume backup |
+| Copie vers 2e disque | Quotidienne + après chaque snapshot « daily » | 2e SSD |
+| NAS (grandes cliniques) | Quotidienne | NAS LAN |
 
-### 12.2 Installation type
+### 11.2 Distantes (opportunistes)
 
-1. Provision cloud : créer clinique + `clinic_id` + paquet d’activation chiffré  
-2. Sur site : installer appliance Docker, importer paquet  
-3. Configurer IP LAN, UPS, 2e disque  
-4. Créer admin local / importer staff  
-5. Premier sync (si Internet) pour catalogues  
-6. Recette métier (parcours patient test)  
-7. Mise en production locale  
+- Upload chiffré AES-256-GCM vers cloud object store.  
+- Metadata : `clinic_id`, `node_id`, `backup_id`, versions, hash.  
+- Si offline prolongé : rétention 100 % locale jusqu’au retour réseau.
 
-### 12.3 Administration centralisée (cloud)
+### 11.3 Vérification
 
-- Inventaire des nœuds (version, dernière sync, santé backups)  
-- Pousser catalogues / politiques  
-- Révoquer un nœud volé (`node_secret` rotate + wipe instruction)  
-- **Ne pas** piloter les soins en temps réel
-
-### 12.4 Isolation légale / données
-
-- Données d’une clinique A invisibles à la clinique B  
-- Exports uniquement via droits admin + audit  
+- Restore test automatisé hebdomadaire en sandbox local.  
+- Alerte si aucun backup réussi > 6 h (local) ou > 48 h (distant, si Internet attendu).
 
 ---
 
-## 13. Scalabilité et maintenance
+## 12. Chiffrement
 
-### 13.1 Scalabilité par clinique
+| Couche | Mesure |
+|--------|--------|
+| Disque `/data` | LUKS (ou équivalent) |
+| Backups | Chiffrement applicatif avant stockage/upload |
+| LAN | HTTPS (TLS) obligatoire |
+| Cloud | TLS 1.2+ |
+| Secrets | Fichiers protégés ; hors Git |
 
-| Charge | Approche |
-|--------|----------|
-| 5–20 utilisateurs concurrent | 1 VM/NUC 4–8 Go RAM, SSD, PostgreSQL local |
-| 20–50 utilisateurs | CPU/RAM ↑, pool connexions, éventuel split lecture (rare) |
-| Croissance données | Archivage dossiers anciens (toujours consultables), vacuum, monitoring disque |
-
-La scalabilité **inter-cliniques** se fait par **multiplication de nœuds**, pas par un plus gros serveur cloud.
-
-### 13.2 Observabilité locale
-
-- Métriques : CPU, disque, latence API, taille outbox, âge dernière sync, succès backups  
-- Logs structurés locaux + export optionnel cloud  
-- Tableau de bord admin clinique « Santé du système »
-
-### 13.3 Maintenance
-
-- Patch OS mensuel (fenêtre planifiée)  
-- Test restore trimestriel  
-- Revue conflits sync  
-- Rotation secrets annuelle ou après incident  
+Clé maître clinique créée à l’installation ; procédure de coffre (copie admin) documentée.
 
 ---
 
-## 14. Sécurité globale
+## 13. Reprise après coupure Internet
 
-| Domaine | Mesure |
-|---------|--------|
-| Accès physique | Serveur dans local fermé ; UPS ; câbles LAN contrôlés |
-| Comptes | MFA admin souhaitable dès que faisable offline (TOTP local) |
-| RBAC | Rôles minimaux ; séparation caisse / soins |
-| Audit | Journal append-only des accès dossiers |
-| Malware | OS durci, maj USB signées uniquement |
-| Vol de serveur | Volume chiffré ; révocation nœud côté cloud |
-| Injection / API | Même discipline FastAPI (validation Pydantic, authz) |
-| Impressions | Pas de PHI dans noms de fichiers exposés |
+- États nœud : `ONLINE` / `DEGRADED` / `OFFLINE`.  
+- UI : bandeau « Hors ligne Internet — clinique opérationnelle ».  
+- À la reprise : drain outbox → pull catalogues → rapport sync.  
+- Aucun redémarrage utilisateur obligatoire.
 
 ---
 
-## 15. Intégrité des données et anti-perte
+## 14. Mises à jour logicielles
 
-### 15.1 Mécanismes
-
-1. **Transactions ACID** PostgreSQL pour chaque acte métier + outbox  
-2. **Idempotency keys** sur créations critiques (paiement, patient, résultat labo)  
-3. **Append-only audit** (pas de delete hard des audits)  
-4. **Soft-delete** patients / documents avec archive  
-5. **Checksums** backups + vérification  
-6. **Sync ACK** seulement après durabilité cloud  
-7. **Interdiction** des jobs « truncate / reset prod » sur Clinic Node  
-8. **Gardes migrations** : backup obligatoire avant migrate  
-
-### 15.2 Ce qui est explicitement interdit
-
-- Sync qui écrase une consultation locale plus récente sans conflit visible  
-- Suppression de l’outbox non ACK  
-- Update applicatif qui monte une image sans volume data monté  
-- Réutilisation d’un `node_secret` sur deux machines  
+- Données **toujours** hors image (`/data` persistant).  
+- Update agent : download (réseau ou USB signée) → backup obligatoire → migrate → healthcheck → bascule.  
+- Rollback image si échec.  
+- Fenêtre courte (cible < 2 min d’indisponibilité API) ou créneau planifié.  
+- HTTPS et certificats locaux **conservés** (PKI dans `/data/pki`).
 
 ---
 
-## 16. Cartographie fonctionnelle offline (périmètre V1)
+## 15. Installation extrêmement simple (< 30 minutes)
 
-| Module | Offline complet | Notes |
-|--------|-----------------|-------|
-| Authentification staff | Oui | Local |
-| Réception (patients, admissions, factures, paiements, remboursements) | Oui | |
-| Infirmier (vitaux, évaluations) | Oui | |
-| Médecin (consultation, Rx, demandes labo/imagerie) | Oui | |
-| Laboratoire (saisie, validation, PDF) | Oui | |
-| Pharmacie (stock, dispensation) | Oui | Deltas stock |
-| Caisse / recettes du jour | Oui | |
+### 15.1 Objectif
+
+Un technicien arrive, installe le serveur, connecte les postes, et la clinique travaille.
+
+### 15.2 Procédure cible (chrono)
+
+| Étape | Durée indicative | Action |
+|-------|------------------|--------|
+| 1 | 5 min | Brancher NUC + UPS + réseau ; IP fixe |
+| 2 | 5 min | Boot clé USB d’installation (ou image préchargée) ; lancer `install` |
+| 3 | 5 min | Saisir paquet d’activation clinique (QR / fichier chiffré fourni par le cloud) |
+| 4 | 5 min | Génération auto HTTPS + premier admin local |
+| 5 | 5 min | Connecter 1–2 postes ; installer confiance CA (script) ; login test |
+| 6 | 5 min | Parcours smoke : créer patient test, facture test, imprimer |
+
+**Total ≤ 30 min** pour une clinique standard.
+
+### 15.3 Livrables d’installation
+
+- Image / clé USB signée « Santé Guinée Clinic Node »  
+- Paquet d’activation par clinique (`clinic_id`, catalogues initiaux, bootstrap admin)  
+- Guide papier 1 page + checklist  
+- Compte rendu d’installation (version, node_id, IP, heure)
+
+---
+
+## 16. Déploiement multi-cliniques
+
+- 1 clinique = 1 Clinic Node autonome.  
+- Cloud : inventaire nœuds, versions, dernière sync, alertes DR.  
+- Révocation nœud volé : rotation `node_secret` + procédure wipe.  
+- Pas de sync directe clinique ↔ clinique.
+
+---
+
+## 17. Scalabilité et maintenance
+
+- 5–20 users : NUC 16 Go suffit.  
+- Grandes cliniques : RAM/SSD ↑ + NAS.  
+- Observabilité locale : disque, outbox, âge sync, backups, UPS.  
+- Patch OS / test restore : calendrier ops.
+
+---
+
+## 18. Sécurité globale
+
+Accès physique serveur · RBAC · audit · volume chiffré · HTTPS LAN · updates signées · pas d’admin cloud requis pour les soins · journalisation des accès dossiers.
+
+---
+
+## 19. Périmètre fonctionnel
+
+| Module | Offline V1 | Notes |
+|--------|------------|-------|
+| Auth staff | Oui | Local |
+| Réception / facturation / caisse | Oui | |
+| Infirmier / médecin / labo / pharmacie | Oui | Stock = deltas + historique |
 | Impressions PDF | Oui | |
-| Hospitalisation / lit | Oui (V1.1 si besoin) | |
-| Sync / backup cloud | Opportuniste | |
-| Téléconsult / paiements Stripe | Non / dégradé | Hors chemin clinique local |
-| Admin plateforme multi-cliniques | Cloud only | |
+| Hospitalisation | Architecture prête | **Métier V1.1** |
+| Imagerie | Architecture prête | **Métier V1.1** |
+| Sync / backup / updates / supervision | Opportuniste cloud | |
+| Admin plateforme / stats globales | Cloud | |
 
 ---
 
-## 17. Scénarios détaillés
+## 20. Scénarios opérationnels
 
-### 17.1 Clinique sans Internet pendant un mois
+### 20.1 Sans Internet pendant un mois
 
-1. Les postes continuent via LAN vers le Clinic Node.  
-2. Tous les actes sont persistés en PostgreSQL local.  
-3. `sync_outbox` accumule des dizaines/centaines de milliers d’événements (dimensionner disque).  
-4. Backups locaux horaires + copie NAS continuent.  
-5. Badge UI : « Internet indisponible — N événements en attente ».  
-6. Au retour Internet : drain outbox par lots, pull catalogues, rapport de sync, résolution conflits s’il y en a.  
-7. **Aucun soin n’a été bloqué** pendant le mois.
+Soins normaux sur LAN ; outbox et backups locaux ; reprise sync au retour ; **zéro blocage clinique**.
 
-**Risques à mitiger :** saturation disque (alertes 80/90 %), dérive horloge, absence de backup offsite pendant la période (compensée par NAS local).
+### 20.2 Panne électrique
 
-### 17.2 Panne électrique + redémarrage serveur
+UPS → shutdown propre si possible ; sinon crash recovery PostgreSQL ; restart auto ; actes commités intacts ; brouillons pour saisies non soumises.
 
-1. UPS tient le temps du shutdown propre (idéal) ou coupe brutale.  
-2. PostgreSQL récupère via WAL (crash recovery).  
-3. Docker restart policies (`unless-stopped`) relance api/db/proxy/agents.  
-4. Healthcheck local ; SPA se reconnecte.  
-5. Sessions JWT : certaines expirées → re-login rapide.  
-6. Outbox intacte (disque) → aucune perte des actes commités avant la panne.  
-7. Acte en cours non soumis : l’utilisateur resaisit (limite inévitable sans brouillon auto — **brouillons locaux recommandés** sur formulaires longs).
+### 20.3 Sync après plusieurs jours offline
 
-### 17.3 Restauration complète après défaillance disque
+Drain outbox par lots, dédup cloud, pull catalogues, UI conflits si besoin, rapport de sync.
 
-1. Constater panne disque primaire.  
-2. Remplacer matériel / rattacher 2e disque / NAS.  
-3. Réinstaller appliance (même `clinic_id` / `node_id` si restauration identité).  
-4. Restore dernier snapshot vérifié + WAL si dispo.  
-5. Vérifier `schema_version` / `app_version`.  
-6. Démarrer services ; contrôle d’intégrité (comptages patients, dernière facture, stock).  
-7. Si Internet : sync catch-up (push des événements non ACK si backup les contenait ; sinon cloud peut renvoyer l’historique ACK pour réconciliation).  
-8. Recette métier avant réouverture complète.
+### 20.4 Nouvelle version logicielle
 
-**RTO cible :** quelques heures avec NAS local.  
-**RPO cible :** ≤ 1 h (fréquence snapshot) ; ≤ minutes avec PITR.
+Backup → bascule image → migrate → health → rollback si besoin ; `/data` intact ; PKI intacte.
 
-### 17.4 Synchronisation après plusieurs jours hors ligne
+### 20.5 Clinique « air-gap » volontaire
 
-1. Passage `OFFLINE` → `ONLINE`.  
-2. Auth nœud cloud.  
-3. Push outbox par pages (ex. 500 events), pause si erreur réseau.  
-4. Cloud déduplique par `event_id`.  
-5. Pull inbox (catalogues, corrections).  
-6. Ouverture éventuelle de conflits stock/catalogue.  
-7. Rapport : durée offline, events poussés, conflicts ouverts, dernière facture sync.  
-8. Reprise du rythme de sync normal.
-
-### 17.5 Déploiement d’une nouvelle version sans interrompre (ou presque) le travail
-
-1. Backup automatique déclenché.  
-2. Téléchargement image + checksum OK (ou USB signée).  
-3. Annonce courte aux utilisateurs (bandeau).  
-4. Bascule : arrêt API ~1–2 min, migrate, health OK.  
-5. Les navigateurs rechargent la SPA (cache bust).  
-6. Données `/data` inchangées.  
-7. Si échec : rollback image précédente en < 5 min, data intacte.  
-8. Sync-agent reprend avec `schema_version` nouveau.
+Couper la sortie Internet : aucun impact soins ; sync/backup distant en pause.
 
 ---
 
-## 18. Plan de livraison architectural (sans code ici)
+## 21. Disaster Recovery (reprise après sinistre) — référence
 
-| Phase | Objectif | Résultat |
-|-------|--------|----------|
-| **P0 — Fondations nœud** | Appliance Docker + Postgres local + SPA locale + auth locale | Clinique mono-site offline illimitée |
-| **P1 — Parité métier** | Tous modules critiques du tableau §16 | Remplace le cloud pour le quotidien |
-| **P2 — Sync** | Outbox/inbox + hub cloud + UI conflits | Multi-clinique + continuité cloud |
-| **P3 — Backup/update** | Snapshots, offsite chiffré, update agent + USB | Ops production durable |
-| **P4 — Durcissement** | HTTPS local, mTLS, TOTP admin, PITR | Niveau hôpital |
+### 21.1 Objectifs
 
-Chaque phase se termine par une **recette scénarios §17** avant la suivante.
+| Indicateur | Cible |
+|------------|-------|
+| **RTO** (clinique à nouveau opérationnelle) | **< 1 heure** |
+| **RPO** (perte maximale de données commitées) | **≤ 30 minutes** (intervalle snapshot local) ; → minutes si PITR/WAL actif |
+| Perte de dossiers patients validés | **Interdite** |
+
+Prérequis transverses toujours en place :
+
+- Snapshots locaux automatiques fréquents  
+- Copie sur **2e support** (2e SSD) autant que possible  
+- Backup cloud chiffré dès qu’Internet existe  
+- Clé de déchiffrement des backups disponible hors serveur (coffre admin / siège)  
+- Clé USB d’installation + dernière image applicative  
+- Inventaire `clinic_id` / `node_id` connu du cloud  
+
+### 21.2 Matrice des sinistres
+
+#### A) Mini-PC / NUC en panne (carte mère, alimentation, etc.)
+
+| Étape | Action | Durée indicative |
+|-------|--------|------------------|
+| 1 | Constater panne ; basculer sur UPS/arrêt | 5 min |
+| 2 | Remplacer par NUC de secours (stock siège / kit terrain) **ou** équivalent | 10 min |
+| 3 | Brancher le **SSD data** d’origine s’il est sain **ou** attacher le 2e disque de backup | 5 min |
+| 4 | Boot clé d’install → « Restaurer depuis backup local » | 15–25 min |
+| 5 | Vérifier HTTPS, login admin, smoke patient/facture | 10 min |
+| 6 | Reprise soins | — |
+
+**Si le SSD data d’origine est sain :** remontage du volume `/data` sur nouveau NUC (plus rapide, souvent < 30–40 min).  
+**Si SSD data perdu :** restore depuis 2e disque / dernier snapshot (voir B).
+
+#### B) SSD principal défectueux
+
+| Étape | Action |
+|-------|--------|
+| 1 | Remplacer le SSD |
+| 2 | Installer appliance (USB) |
+| 3 | Restore du **dernier snapshot vérifié** depuis 2e disque / NAS |
+| 4 | Appliquer WAL si disponible (PITR) pour coller au RPO |
+| 5 | Smoke tests + reprise |
+| 6 | Dès Internet : resynchroniser avec le cloud (réconciliation) |
+
+**Sans 2e disque local :** restore depuis **backup cloud** (exige Internet + clé de déchiffrement) — toujours viser RTO < 1 h si le dernier backup distant < 30–60 min et la bande passante locale est correcte ; sinon RTO dépend du téléchargement (mitigation : toujours un 2e support local).
+
+#### C) Serveur volé
+
+| Étape | Action |
+|-------|--------|
+| 1 | Alerte immédiate ; **révoquer** le `node_secret` côté cloud (nœud compromis) |
+| 2 | Considérer le volume volé comme exposé mais **chiffré au repos** (LUKS) — réduire le risque de lecture |
+| 3 | Nouveau NUC + restore depuis 2e disque resté sur site **ou** backup cloud |
+| 4 | Nouvel `node_id` secret ; ré-enrolment cloud |
+| 5 | Rotation mots de passe staff recommandée |
+| 6 | Reprise soins après smoke tests |
+
+Les données patients ne sont pas « perdues » si une copie backup (2e disque ou cloud) existe — c’est une exigence d’ops obligatoire.
+
+#### D) Ransomware / chiffrement malveillant du serveur
+
+| Étape | Action |
+|-------|--------|
+| 1 | **Isoler** la machine du LAN (débrancher réseau) |
+| 2 | Ne pas payer / ne pas « négocier » avec l’attaquant |
+| 3 | Provisionner un **NUC propre** (image d’install saine) |
+| 4 | Restore uniquement depuis backup **hors ligne** (2e disque déconnecté au moment de l’attaque, ou cloud) — **jamais** depuis un volume suspect |
+| 5 | Vérifier intégrité (hash backup, compteurs patients) |
+| 6 | Remettre en service ; audit accès ; rotation secrets |
+| 7 | Analyse forensique du matériel infecté hors prod |
+
+**Prévention :** PAS d’admin quotidien en root sur le poste serveur ; updates signées ; PAS de navigation web sur le NUC ; comptes utilisateurs limités.
+
+#### E) Erreur humaine (suppression massive de dossiers)
+
+| Étape | Action |
+|-------|--------|
+| 1 | Stopper immédiatement les suppressions ; passer la clinique en lecture seule si besoin |
+| 2 | Identifier l’heure de l’erreur (`occurred_at`) |
+| 3 | **Point-in-time recovery** : restore snapshot + WAL à T−ε avant l’erreur **ou** |
+| 4 | Restauration sélective des `entity_uid` depuis backup / journal d’événements |
+| 5 | Soft-deleted : restauration native (undelete admin) si encore en fenêtre soft-delete |
+| 6 | Rapport d’incident + formation |
+
+Les suppressions métiers sont soft-delete + journal ; le hard-delete massif n’est pas exposé à la réception.
+
+### 21.3 Kit de reprise terrain (contenu obligatoire)
+
+- 1 NUC de secours (ou équivalent)  
+- 1 SSD vierge  
+- Clé USB d’installation signée  
+- Document des `clinic_id` / procédure d’activation  
+- Copie offline de la clé de déchiffrement backups (coffre)  
+- Checklist DR 1 page  
+
+### 21.4 Exercices
+
+- Simulation restore **trimestrielle** par clinique ou par région.  
+- Mesure réelle du RTO ; écart → correctifs ops.
 
 ---
 
-## 19. Décisions ouvertes à valider (avant implémentation)
+## 22. Plan de livraison (après validation d’exécution)
 
-1. **HTTPS LAN obligatoire dès V1** ou HTTP LAN de confiance accepté temporairement ?  
-2. **Matériel de référence** (NUC + UPS + NAS) imposé aux cliniques partenaires ?  
-3. **Politique de conflit stock** : strict deltas only — confirmé ?  
-4. **Durée max outbox / rétention events** après ACK ?  
-5. **Le cloud reste-t-il utilisable en mode online-only** en parallèle des Clinic Nodes (oui recommandé) ?  
-6. **Périmètre V1 hospitalisation / imagerie** inclus ou reporté V1.1 ?  
+| Phase | Objectif |
+|-------|--------|
+| **P0** | Appliance + Postgres + SPA locale + **HTTPS auto** + auth locale + install < 30 min |
+| **P1** | Parité modules V1 (accueil → caisse) + zéro perte (transactions, journaux, brouillons) |
+| **P2** | Sync deltas + historique stock + hub cloud |
+| **P3** | Backup local fréquent + offsite + update agent + USB |
+| **P4** | DR kit, PITR, exercices restore, durcissement (TOTP admin, mTLS optionnel) |
+| **V1.1** | Hospitalisation + imagerie (schéma déjà prévu) |
 
----
-
-## 20. Critères d’acceptation de l’architecture
-
-L’architecture est validée si le comité confirme que :
-
-- [ ] Une clinique peut opérer **sans Internet indéfiniment** pour tous les modules V1  
-- [ ] Multi-utilisateurs LAN sur une seule source de vérité locale  
-- [ ] Aucune perte d’acte commité après crash électrique (WAL/UPS)  
-- [ ] Restore disque avec RPO/RTO acceptables  
-- [ ] Sync après longue coupure sans corruption  
-- [ ] Update sans destruction du volume data  
-- [ ] Isolation stricte multi-cliniques  
-- [ ] Chiffrement repos + transit cloud  
-
-**Aucune ligne de code d’implémentation offline-first ne doit démarrer avant validation écrite de ce document** (éventuellement amendé).
+Chaque phase se termine par recette des scénarios §20 et §21.
 
 ---
 
-## 21. Références internes
+## 23. Critères d’acceptation (architecture)
 
-- Produit cloud actuel : FastAPI + SQLAlchemy + PostgreSQL + React (SPA)  
-- Frontend production cloud : `https://plateforme-sante-guinee.vercel.app`  
-- Ancien roadmap (périmètre plus étroit, PWA) : `docs/OFFLINE_STRATEGY_ROADMAP.md` — **subordonné** à ce document pour l’objectif « offline illimité »
+- [x] Direction Clinic Node validée  
+- [x] HTTPS LAN V1 + cert auto  
+- [x] Matériel de référence + compatibilité équivalents  
+- [x] Stock = deltas + historique  
+- [x] Hospit / imagerie dans l’architecture, métier V1.1  
+- [x] Cloud secondaire (liste d’usages figée)  
+- [x] Zéro perte des données soumises  
+- [x] Install < 30 min  
+- [x] Schéma d’architecture de référence  
+- [x] DR détaillé avec RTO < 1 h  
+
+**Prochaine étape :** décomposition en tickets d’implémentation P0 — **pas de code** tant que le plan d’exécution n’est pas ordonné explicitement.
 
 ---
 
-*Fin du document d’architecture — en attente de validation.*
+## 24. Références
+
+- Frontend cloud : `https://plateforme-sante-guinee.vercel.app`  
+- Roadmap PWA historique (subordonnée) : `docs/OFFLINE_STRATEGY_ROADMAP.md`
+
+---
+
+*Document d’architecture — décisions validées le 2026-07-28.*
