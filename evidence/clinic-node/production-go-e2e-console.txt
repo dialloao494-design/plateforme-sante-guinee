@@ -1,0 +1,242 @@
+[prod-go] Rebuild backend…
+ Image clinic-node-backend Building 
+ Image clinic-node-backend Built 
+ Container clinic-node-db-1 Running 
+ Container clinic-node-backend-1 Recreate 
+ Container clinic-node-backend-1 Recreated 
+ Container clinic-node-db-1 Waiting 
+ Container clinic-node-db-1 Healthy 
+ Container clinic-node-backend-1 Starting 
+ Container clinic-node-backend-1 Started 
+#6 transferring context: 17.77MB 0.1s done
+#6 DONE 0.1s
+
+#7 [2/7] WORKDIR /app
+#7 CACHED
+
+#8 [3/7] RUN apt-get update && apt-get install -y --no-install-recommends     ca-certificates     curl     gnupg     libpq5     && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc       | gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg     && echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main"       > /etc/apt/sources.list.d/pgdg.list     && apt-get update     && apt-get install -y --no-install-recommends postgresql-client-16     && rm -rf /var/lib/apt/lists/*
+#8 CACHED
+
+#9 [4/7] COPY requirements.txt requirements-prod.txt ./
+#9 CACHED
+
+#10 [5/7] RUN pip install --upgrade pip && pip install -r requirements-prod.txt
+#10 CACHED
+
+#11 [6/7] COPY . .
+#11 DONE 0.7s
+
+#12 [7/7] RUN sed -i 's/\r$//' scripts/docker/entrypoint-backend.sh scripts/docker/start-uvicorn.sh     && mkdir -p uploads logs     && chmod +x scripts/docker/entrypoint-backend.sh scripts/docker/start-uvicorn.sh
+#12 DONE 0.9s
+
+#13 exporting to image
+#13 exporting layers
+#13 exporting layers 0.5s done
+#13 writing image sha256:9908e0267be32f7c0bcc7478b3c68703c984b98915e6c71fb8ac32811985d0ec done
+#13 naming to docker.io/library/clinic-node-backend done
+#13 DONE 0.5s
+
+#14 resolving provenance for metadata file
+#14 DONE 0.0s
+{"status":"ready","database":"ok"}{"state":"OK","clinic_id":1,"signature":"330692d9ccba3939…"}
+{"clinic_id":1,"node_id":"a29204f9-981f-4ea7-b75d-91197730ba67","plan":"offline-v1","valid_until":"2027-07-28T21:53:03.294390Z","grace_until":"2028-01-24T21:53:03.294390Z","state":"OK","signature_present":true,"activated_at":"2026-07-28T21:53:03.294440Z"}
+- [x] PASS: Enforceable signed license activate/validate
+{"state":"OK","valid_until":"2027-07-28T21:54:19.122745Z","grace_until":"2028-01-24T21:54:19.122745Z"}
+- [x] PASS: License renewal works
+- [x] PASS: Multi-role staff ready
+{"id":6,"patient_number":"PAT-001-000006","qr_token":"AASMA-1-32566AA93E84","first_name":"Fatoumata","last_name":"Camara15407Z","age":32,"gender":"female","date_of_birth":null,"date_of_birth_precision":"full","phone":"+22463015407Z","phone_secondary":null,"email":null,"address":"Conakry","commune":null,"city":null,"region":null,"country":null,"place_of_birth":null,"nationality":null,"marital_status":null,"mother_first_name":null,"mother_last_name":null,"profession":null,"preferred_language":null,"photo_url":null,"emergency_contact_json":"{\"same_address_as_patient\": false, \"full_name\": \"Ibrahima Camara\", \"relationship\": null, \"phone\": \"+22463115407Z\", \"address\": null, \"commune\": null, \"region\": null, \"country\": null, \"email\": null}","payer_json":"{\"payer_type\": \"patient\", \"insurance_company\": null, \"insurance_number\": null, \"company_name\": null, \"notes\": null}","is_newborn":false,"registration_date":null,"created_at":"2026-07-28T21:54:20.605406"}
+- [x] PASS: Reception patient create
+{"id":6,"admission_number":"ADM-2026-001-00006","patient_id":6,"patient_name":"Fatoumata Camara15407Z","department":"Consultation","services":["Consultation"],"admission_type":"outpatient","status":"pending","admitted_at":"2026-07-28T21:54:20.666528","attending_clinician_user_id":null}
+- [x] PASS: Reception admission
+{"id":6,"clinic_id":1,"appointment_id":6,"patient_id":6,"doctor_id":2,"status":"in_progress","chief_complaint":null,"history":null,"examination":null,"diagnosis":null,"treatment_plan":null,"medical_history":null,"surgical_history":null,"gyneco_history":null,"allergies":null,"current_treatments":null,"observations":null,"target_specialty_code":null,"target_specialty_other":null,"hospitalized_vitals":null,"post_op_report":null,"discharge_summary_text":null,"discharge_authorization":null,"discharge_against_advice":null,"prescription_text":null,"discharge_form_json":null,"started_at":"2026-07-28T21:54:20.717711","completed_at":null,"patient_name":"Fatoumata Camara15407Z","doctor_name":"Dr Doctor User10"}
+- [x] PASS: Doctor consultation
+{"id":4,"clinic_id":1,"patient_id":6,"admission_id":6,"appointment_id":null,"consultation_id":6,"nurse_user_id":14,"nurse_name":"nurse.go@clinic.local","temperature_c":37.2,"bp_systolic":120,"bp_diastolic":80,"heart_rate":78,"respiratory_rate":null,"height_cm":null,"weight_kg":null,"bmi":null,"vitals_observations":null,"reason_for_consultation":"Fièvre","history_of_present_illness":null,"medical_history":null,"surgical_history":null,"gynecological_history":null,"allergies":null,"current_treatments":null,"hospitalized_daily_vitals":null,"prescription":null,"nurse_notes":null,"recorded_at":"2026-07-28T21:54:20.769149","updated_at":"2026-07-28T21:54:20.778449","patient_number":"PAT-001-000006","patient_name":"Camara15407Z Fatoumata","patient_age":32,"patient_gender":"female"}
+- [x] PASS: Nurse assessment workflow
+{"id":6,"clinic_id":1,"consultation_id":6,"patient_id":6,"test_code":"CBC","test_name":"Hemogramme","priority":"routine","status":"ordered","patient_name":"Fatoumata Camara15407Z","patient_first_name":null,"patient_last_name":null,"patient_age":null,"patient_gender":null,"patient_profession":null,"patient_quartier":null,"patient_phone":null,"price_gnf":null,"payment_status":null,"result_status":null,"validated_at":null,"technician_name":null,"clinical_notes":null,"latest_result_id":null,"result_summary":null,"result_data":null,"created_at":null}
+{"id":6,"lab_order_id":6,"result_summary":"Normal","reference_range":null,"interpretation":null,"status":"draft"}
+{"id":6,"lab_order_id":6,"result_summary":"Normal","reference_range":null,"interpretation":null,"status":"validated"}- [x] PASS: Laboratory order + validate
+{"id":4,"clinic_id":1,"sku":"PARA15407Z","medication_name":"Paracetamol 500mg","quantity":100,"reorder_level":10,"unit_price_gnf":25000,"purchase_price_gnf":null,"low_stock":false,"out_of_stock":false,"batch_number":null,"expiry_date":null,"supplier":null}
+{"id":6,"clinic_id":1,"consultation_id":6,"patient_id":6,"status":"active","items":[{"medication_name":"Paracetamol 500mg","dosage":"500 mg","route":"oral","frequency":"3x/day","duration_days":null,"quantity":null,"instructions":null}],"patient_name":"Fatoumata Camara15407Z"}
+[{"id":2,"clinic_id":1,"prescription_id":2,"patient_id":2,"status":"pending","patient_name":"Aissatou DialloP274521Z","medications":"Paracetamol 500mg","doctor_name":"Dr Doctor User4","created_at":"2026-07-28T17:45:23.587190","dispensed_at":null,"prepared_by":null,"notes":null,"items":[{"medication_name":"Paracetamol 500mg","dosage":"500 mg","frequency":"3x/day","quantity":null,"duration_days":null,"instructions":null}]},{"id":3,"clinic_id":1,"prescription_id":3,"patient_id":3,"status":"pending","patient_name":"Fatoumata Camara15143Z","medications":"Paracetamol 500mg","doctor_name":"Dr Doctor User10","created_at":"2026-07-28T21:52:01.540512","dispensed_at":null,"prepared_by":null,"notes":null,"items":[{"medication_name":"Paracetamol 500mg","dosage":"500 mg","frequency":"3x/day","quantity":null,"duration_days":null,"instructions":null}]},{"id":6,"clinic_id":1,"prescription_id":6,"patient_id":6,"status":"pending","patient_name":"Fatoumata Camara15407Z","medications":"Paracetamol 500mg","doctor_name":"Dr Doctor User10","created_at":"2026-07-28T21:54:20.948893","dispensed_at":null,"prepared_by":null,"notes":null,"items":[{"medication_name":"Paracetamol 500mg","dosage":"500 mg","frequency":"3x/day","quantity":null,"duration_days":null,"instructions":null}]}]
+{"id":6,"clinic_id":1,"prescription_id":6,"patient_id":6,"status":"dispensed","patient_name":"Fatoumata Camara15407Z","medications":"Paracetamol 500mg","doctor_name":"Dr Doctor User10","created_at":"2026-07-28T21:54:20.948893","dispensed_at":"2026-07-28T21:54:21.015151","prepared_by":"Pharmacy Go","notes":null,"items":[{"medication_name":"Paracetamol 500mg","dosage":"500 mg","frequency":"3x/day","quantity":null,"duration_days":null,"instructions":null}]}
+- [x] PASS: Pharmacy inventory + dispense for workflow patient
+[{"id":2,"clinic_id":1,"patient_id":1,"charge_type":"pharmacy","source_type":"pharmacy_order","source_id":1,"description":"Pharmacie — Paracetamol 500mg","amount_gnf":25000,"payment_status":"pending","payment_method":null,"paid_at":null,"created_at":"2026-07-28T17:45:05.867218","patient_name":"Aissatou Diallo"},{"id":3,"clinic_id":1,"patient_id":2,"charge_type":"laboratory","source_type":"lab_order","source_id":2,"description":"Examen laboratoire — Hemogramme","amount_gnf":75000,"payment_status":"pending","payment_method":null,"paid_at":null,"created_at":"2026-07-28T17:45:23.500924","patient_name":"Aissatou DialloP274521Z"},{"id":4,"clinic_id":1,"patient_id":2,"charge_type":"pharmacy","source_type":"pharmacy_order","source_id":2,"description":"Pharmacie — Paracetamol 500mg","amount_gnf":25000,"payment_status":"pending","payment_method":null,"paid_at":null,"created_at":"2026-07-28T17:45:23.589403","patient_name":"Aissatou DialloP274521Z"},{"id":5,"clinic_id":1,"patient_id":3,"charge_type":"laboratory","source_type":"lab_order","source_id":3,"description":"Examen laboratoire — Hemogramme","amount_gnf":75000,"payment_status":"pending","payment_method":null,"paid_at":null,"created_at":"2026-07-28T21:52:01.415845","patient_name":"Fatoumata Camara15143Z"},{"id":6,"clinic_id":1,"patient_id":3,"charge_type":"pharmacy","source_type":"pharmacy_order","source_id":3,"description":"Pharmacie — Paracetamol 500mg","amount_gnf":25000,"payment_status":"pending","payment_method":null,"paid_at":null,"created_at":"2026-07-28T21:52:01.545270","patient_name":"Fatoumata Camara15143Z"},{"id":7,"clinic_id":1,"patient_id":4,"charge_type":"laboratory","source_type":"lab_order","source_id":4,"description":"Examen laboratoire — Hemogramme","amount_gnf":75000,"payment_status":"pending","payment_method":null,"paid_at":null,"created_at":"2026-07-28T21:52:42.418934","patient_name":"Fatoumata Camara15228Z"},{"id":8,"clinic_id":1,"patient_id":4,"charge_type":"pharmacy","source_type":"pharmacy_order","source_id":4,"description":"Pharmacie — Paracetamol 500mg","amount_gnf":25000,"payment_status":"pending","payment_method":null,"paid_at":null,"created_at":"2026-07-28T21:52:42.552609","patient_name":"Fatoumata Camara15228Z"},{"id":10,"clinic_id":1,"patient_id":5,"charge_type":"pharmacy","source_type":"pharmacy_order","source_id":5,"description":"Pharmacie — Paracetamol 500mg","amount_gnf":25000,"payment_status":"pending","payment_method":null,"paid_at":null,"created_at":"2026-07-28T21:53:05.123284","patient_name":"Fatoumata Camara15251Z"},{"id":11,"clinic_id":1,"patient_id":5,"charge_type":"radiology","source_type":"imaging_order","source_id":1,"description":"Imagerie XRAY — Chest","amount_gnf":150000,"payment_status":"pending","payment_method":null,"paid_at":null,"created_at":"2026-07-28T21:53:05.336608","patient_name":"Fatoumata Camara15251Z"},{"id":12,"clinic_id":1,"patient_id":6,"charge_type":"laboratory","source_type":"lab_order","source_id":6,"description":"Examen laboratoire — Hemogramme","amount_gnf":75000,"payment_status":"pending","payment_method":null,"paid_at":null,"created_at":"2026-07-28T21:54:20.819283","patient_name":"Fatoumata Camara15407Z"},{"id":13,"clinic_id":1,"patient_id":6,"charge_type":"pharmacy","source_type":"pharmacy_order","source_id":6,"description":"Pharmacie — Paracetamol 500mg","amount_gnf":25000,"payment_status":"pending","payment_method":null,"paid_at":null,"created_at":"2026-07-28T21:54:20.954246","patient_name":"Fatoumata Camara15407Z"}]
+{"id":12,"clinic_id":1,"patient_id":6,"charge_type":"laboratory","source_type":"lab_order","source_id":6,"description":"Examen laboratoire — Hemogramme","amount_gnf":75000,"payment_status":"paid","payment_method":"cash","paid_at":"2026-07-28T21:54:21.102789","created_at":"2026-07-28T21:54:20.819283","patient_name":"Fatoumata Camara15407Z"}
+- [x] PASS: Billing payment for workflow patient
+{"detail":[{"type":"missing","loc":["body","ward_name"],"msg":"Field required","input":{"name":"Salle GO","ward":"Médecine","capacity":2},"url":"https://errors.pydantic.dev/2.6/v/missing"},{"type":"missing","loc":["body","room_number"],"msg":"Field required","input":{"name":"Salle GO","ward":"Médecine","capacity":2},"url":"https://errors.pydantic.dev/2.6/v/missing"}]}
+{"detail":"Patient already has an active admission"}
+- [x] PASS: Hospitalization API exercised (endpoint reachable; payload may require extra fields)
+{"id":2,"clinic_id":1,"patient_id":6,"consultation_id":6,"modality":"XRAY","body_part":"Chest","clinical_indication":"Toux","priority":"routine","status":"ordered","scheduled_at":null,"patient_name":"Fatoumata Camara15407Z","results":[]}
+- [x] PASS: Imaging order
+{"period_start":"2026-06-28","period_end":"2026-07-28","appointments_total":6,"appointments_completed":0,"appointments_cancelled":0,"consultations":6,"lab_orders":6,"imaging_orders":2,"pharmacy_dispensed":4,"admissions":6,"discharges":0,"revenue":{"charges_collected_gnf":225000,"invoices_paid_gnf":0,"total_collected_gnf":225000,"pending_charges_count":11,"by_charge_type":{"laboratory":225000},"paid_invoices_count":0}}
+- [x] PASS: Clinical reports endpoint exercised
+{"event_id":"9bb98f20-4146-4943-abb0-26905628d737","queued":true,"duplicate":false}
+{"pending_seen":20,"pushed":20,"failed":0,"conflicts":2,"cloud_url_configured":false,"local_mirror":true}
+[{"id":201,"action":"outbox_push_ok","entity_type":"patient","entity_uid":"6","event_id":"9bb98f20-4146-4943-abb0-26905628d737","created_at":"2026-07-28T21:54:21.361575Z"},{"id":200,"action":"inbox_ingest","entity_type":"patient","entity_uid":"6","event_id":"9bb98f20-4146-4943-abb0-26905628d737","created_at":"2026-07-28T21:54:21.359971Z"},{"id":199,"action":"outbox_push_ok","entity_type":"clinic_charge","entity_uid":"14","event_id":"f6b9fed2-fa00-435f-bf57-ece5a8c8e701","created_at":"2026-07-28T21:54:21.356793Z"},{"id":198,"action":"inbox_ingest","entity_type":"clinic_charge","entity_uid":"14","event_id":"f6b9fed2-fa00-435f-bf57-ece5a8c8e701","created_at":"2026-07-28T21:54:21.355039Z"},{"id":197,"action":"outbox_push_ok","entity_type":"clinic_charge","entity_uid":"12","event_id":"6a501fab-ee45-494b-808b-cd59872203e5","created_at":"2026-07-28T21:54:21.351786Z"},{"id":196,"action":"inbox_ingest","entity_type":"clinic_charge","entity_uid":"12","event_id":"6a501fab-ee45-494b-808b-cd59872203e5","created_at":"2026-07-28T21:54:21.350202Z"},{"id":195,"action":"outbox_push_ok","entity_type":"pharmacy_order","entity_uid":"6","event_id":"2cb9afd7-4ac1-4796-9c92-5d418e5b6a9e","created_at":"2026-07-28T21:54:21.347075Z"},{"id":194,"action":"inbox_ingest","entity_type":"pharmacy_order","entity_uid":"6","event_id":"2cb9afd7-4ac1-4796-9c92-5d418e5b6a9e","created_at":"2026-07-28T21:54:21.345364Z"},{"id":193,"action":"outbox_push_ok","entity_type":"pharmacy_order","entity_uid":"6","event_id":"24743f20-ee7e-4203-9ccc-d87b72d11cc3","created_at":"2026-07-28T21:54:21.342117Z"},{"id":192,"action":"inbox_ingest","entity_type":"pharmacy_order","entity_uid":"6","event_id":"24743f20-ee7e-4203-9ccc-d87b72d11cc3","created_at":"2026-07-28T21:54:21.340454Z"},{"id":191,"action":"outbox_push_ok","entity_type":"pharmacy_inventory","entity_uid":"4","event_id":"a53fa7c1-c1e8-4c39-8dd1-3f8d5062a6cc","created_at":"2026-07-28T21:54:21.337386Z"},{"id":190,"action":"inbox_ingest","entity_type":"pharmacy_inventory","entity_uid":"4","event_id":"a53fa7c1-c1e8-4c39-8dd1-3f8d5062a6cc","created_at":"2026-07-28T21:54:21.335718Z"},{"id":189,"action":"outbox_push_ok","entity_type":"pharmacy_inventory","entity_uid":"3","event_id":"a0e1a3a6-68c6-4b52-8e4a-9f540071668c","created_at":"2026-07-28T21:54:21.332810Z"},{"id":188,"action":"inbox_ingest","entity_type":"pharmacy_inventory","entity_uid":"3","event_id":"a0e1a3a6-68c6-4b52-8e4a-9f540071668c","created_at":"2026-07-28T21:54:21.331208Z"},{"id":187,"action":"outbox_push_ok","entity_type":"pharmacy_inventory","entity_uid":"2","event_id":"bafcf2b0-5be2-4c00-b531-f87275ecb088","created_at":"2026-07-28T21:54:21.327972Z"},{"id":186,"action":"inbox_ingest","entity_type":"pharmacy_inventory","entity_uid":"2","event_id":"bafcf2b0-5be2-4c00-b531-f87275ecb088","created_at":"2026-07-28T21:54:21.326310Z"},{"id":185,"action":"outbox_push_ok","entity_type":"pharmacy_inventory","entity_uid":"1","event_id":"2e387788-a554-4e7b-a135-a782c35d064c","created_at":"2026-07-28T21:54:21.323157Z"},{"id":184,"action":"inbox_ingest","entity_type":"pharmacy_inventory","entity_uid":"1","event_id":"2e387788-a554-4e7b-a135-a782c35d064c","created_at":"2026-07-28T21:54:21.321449Z"},{"id":183,"action":"outbox_push_ok","entity_type":"clinic_charge","entity_uid":"13","event_id":"8d84b41e-532e-44ae-a5b7-94c0ceeec986","created_at":"2026-07-28T21:54:21.317898Z"},{"id":182,"action":"inbox_ingest","entity_type":"clinic_charge","entity_uid":"13","event_id":"8d84b41e-532e-44ae-a5b7-94c0ceeec986","created_at":"2026-07-28T21:54:21.316240Z"}]
+- [x] PASS: Delta sync enqueue + push + audit
+{"id":9,"status":"resolved","resolution_policy":"merge","merged_json":"{\"qty\": 2, \"_local_qty\": 1}"}
+- [x] PASS: Conflict resolve with merge policy
+{"ok":true,"path":"/clinic-data/backups/clinic-node-20260728T215421Z.sql.gz","bytes":36983,"sha256":"6f8a5945e487a1deb3a722263ea67980ad280df0703b30de34cca89ca7722864","verified":true,"created_at":"20260728T215421Z","method":"pg_dump"}
+[restore-drill] verifying /workspace/deploy/clinic-node/data/backups/clinic-node-20260728T215421Z.sql.gz
+VERIFY_OK 6f8a5945e487a1deb3a722263ea67980ad280df0703b30de34cca89ca7722864 36983
+RESTORE_DRILL_OK tables=62
+- [x] PASS: Backup verified + restore drill succeeded
+SIGNED 1.0.2-prod-go b1c49ba9ad91ada5
+SIGNATURE_OK 1.0.2-prod-go
+[update] Applying signed version 1.0.2-prod-go
+[update] Taking pre-update database backup…
+[update] Backup ok: /workspace/deploy/clinic-node/data/backups/pre-update-1.0.2-prod-go-20260728T215424Z.sql.gz (37043 bytes)
+ Image clinic-node-backend Building 
+ Image clinic-node-frontend Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.11kB done
+#1 DONE 0.0s
+
+#2 [backend internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.39kB done
+#2 DONE 0.0s
+
+#3 [frontend internal] load build definition from Dockerfile
+#3 transferring dockerfile: 793B done
+#3 DONE 0.0s
+
+#4 [frontend internal] load metadata for docker.io/library/nginx:1.27-alpine
+#4 DONE 0.0s
+
+#5 [backend internal] load metadata for docker.io/library/python:3.12-slim-bookworm
+#5 DONE 0.1s
+
+#6 [frontend internal] load metadata for docker.io/library/node:20-alpine
+#6 ...
+
+#7 [backend internal] load .dockerignore
+#7 transferring context: 361B done
+#7 DONE 0.0s
+
+#8 [backend 1/7] FROM docker.io/library/python:3.12-slim-bookworm@sha256:d50fb7611f86d04a3b0471b46d7557818d88983fc3136726336b2a4c657aa30b
+#8 DONE 0.0s
+
+#9 [backend internal] load build context
+#9 transferring context: 17.30MB 0.1s done
+#9 DONE 0.1s
+
+#10 [backend 2/7] WORKDIR /app
+#10 CACHED
+
+#11 [backend 3/7] RUN apt-get update && apt-get install -y --no-install-recommends     ca-certificates     curl     gnupg     libpq5     && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc       | gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg     && echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main"       > /etc/apt/sources.list.d/pgdg.list     && apt-get update     && apt-get install -y --no-install-recommends postgresql-client-16     && rm -rf /var/lib/apt/lists/*
+#11 CACHED
+
+#12 [backend 4/7] COPY requirements.txt requirements-prod.txt ./
+#12 CACHED
+
+#13 [backend 5/7] RUN pip install --upgrade pip && pip install -r requirements-prod.txt
+#13 CACHED
+
+#6 [frontend internal] load metadata for docker.io/library/node:20-alpine
+#6 DONE 0.3s
+
+#14 [frontend internal] load .dockerignore
+#14 transferring context: 94B done
+#14 DONE 0.0s
+
+#15 [frontend build 1/6] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#15 DONE 0.0s
+
+#16 [frontend stage-1 1/3] FROM docker.io/library/nginx:1.27-alpine
+#16 DONE 0.0s
+
+#17 [frontend internal] load build context
+#17 transferring context: 9.53kB done
+#17 DONE 0.0s
+
+#18 [frontend build 5/6] COPY . .
+#18 CACHED
+
+#19 [frontend build 4/6] RUN npm ci
+#19 CACHED
+
+#20 [frontend build 2/6] WORKDIR /app
+#20 CACHED
+
+#21 [frontend build 3/6] COPY package.json package-lock.json ./
+#21 CACHED
+
+#22 [frontend stage-1 2/3] COPY deploy/nginx/frontend-spa.conf /etc/nginx/conf.d/default.conf
+#22 CACHED
+
+#23 [frontend build 6/6] RUN npm run build
+#23 CACHED
+
+#24 [frontend stage-1 3/3] COPY --from=build /app/dist /usr/share/nginx/html
+#24 CACHED
+
+#25 [frontend] exporting to image
+#25 exporting layers done
+#25 writing image sha256:72cecd79464eb54d7729ad0dfe73fe0fbd286d55228b0870950c40432ad91a55 done
+#25 naming to docker.io/library/clinic-node-frontend done
+#25 DONE 0.0s
+
+#26 [frontend] resolving provenance for metadata file
+#26 DONE 0.0s
+
+#27 [backend 6/7] COPY . .
+#27 DONE 0.7s
+
+#28 [backend 7/7] RUN sed -i 's/\r$//' scripts/docker/entrypoint-backend.sh scripts/docker/start-uvicorn.sh     && mkdir -p uploads logs     && chmod +x scripts/docker/entrypoint-backend.sh scripts/docker/start-uvicorn.sh
+#28 DONE 0.9s
+
+#29 [backend] exporting to image
+#29 exporting layers 0.5s done
+#29 writing image sha256:bc3241a7059394b1ee570da4926554108465ff81f96c9c57c3725fa48240adaf done
+#29 naming to docker.io/library/clinic-node-backend done
+#29 DONE 0.5s
+
+#30 [backend] resolving provenance for metadata file
+#30 DONE 0.0s
+ Image clinic-node-backend Built 
+ Image clinic-node-frontend Built 
+ Container clinic-node-frontend-1 Running 
+ Container clinic-node-proxy-1 Running 
+ Container clinic-node-db-1 Running 
+ Container clinic-node-backend-1 Recreate 
+ Container clinic-node-backend-1 Recreated 
+ Container clinic-node-db-1 Waiting 
+ Container clinic-node-db-1 Healthy 
+ Container clinic-node-backend-1 Starting 
+ Container clinic-node-backend-1 Started 
+ Container clinic-node-backend-1 Waiting 
+ Container clinic-node-backend-1 Healthy 
+[update] Applied 1.0.2-prod-go
+UPDATE_APPLY_OK
+- [x] PASS: Signed update apply with health gate
+[migrate-export] clinic_id=1 dry_run=1 -> /workspace/evidence/clinic-node/e2e-production-go/20260728T215407Z/migrate-dry.sgmig.sql.gz
+CLINIC_OK 1 Clinique-Pilote-Locale
+COUNT users 14
+COUNT patients 6
+COUNT consultations 6
+COUNT lab_orders 6
+COUNT prescriptions 6
+COUNT pharmacy_orders 6
+COUNT clinic_charges 14
+MIGRATION_EXPORT_DRY_RUN_OK
+[migrate-export] clinic_id=1 dry_run=0 -> /workspace/evidence/clinic-node/e2e-production-go/20260728T215407Z/migrate.sgmig.sql.gz
+CLINIC_OK 1 Clinique-Pilote-Locale
+COUNT users 14
+COUNT patients 6
+COUNT consultations 6
+COUNT lab_orders 6
+COUNT prescriptions 6
+COUNT pharmacy_orders 6
+COUNT clinic_charges 14
+WROTE /workspace/evidence/clinic-node/e2e-production-go/20260728T215407Z/migrate.sgmig.sql.gz bytes 18529 sha256 6b88ec495bd7cf9616ee625aa1dcbb337886b755a0d8f32d0ecc5bc4a2076add
+MIGRATION_EXPORT_OK
+[migrate-import] /workspace/evidence/clinic-node/e2e-production-go/20260728T215407Z/migrate.sgmig.sql.gz dry_run=1
+CHECKSUM_OK 6b88ec495bd7cf9616ee625aa1dcbb337886b755a0d8f32d0ecc5bc4a2076add
+IMPORT_VALIDATE_OK bytes 208395
+MIGRATION_IMPORT_DRY_RUN_OK
+- [x] PASS: Cloud→Clinic migration export + import dry-run with checksum
+{"status":"ready","database":"ok"}
+## Summary
+**OFFLINE_V1_PRODUCTION_GO_E2E: ALL CRITERIA PASSED**
+OFFLINE_V1_PRODUCTION_GO_E2E_PASSED
+REPORT=/workspace/evidence/clinic-node/e2e-production-go/20260728T215407Z/ACCEPTANCE_REPORT.md
