@@ -80,6 +80,14 @@ import uuid
 print(str(uuid.uuid4()))
 PY
 )"
+  ADMIN_EMAIL="${CLINIC_NODE_ADMIN_EMAIL:-admin@clinic.local}"
+  ADMIN_PASSWORD="${CLINIC_NODE_ADMIN_PASSWORD:-$(python3 - <<'PY'
+import secrets
+print("Adm-" + secrets.token_urlsafe(12) + "!")
+PY
+)}"
+  CLINIC_NAME="${CLINIC_NODE_CLINIC_NAME:-Clinique Locale}"
+  # Quote values that may contain spaces for safe shell sourcing
   cat > "${ENV_FILE}" <<EOF
 ENVIRONMENT=clinic-node
 DEBUG=false
@@ -107,9 +115,25 @@ ENABLE_DEMO_CLINIC_SEED=false
 ENABLE_LAN_DEV=false
 BYPASS_AVAILABILITY_VALIDATION=false
 CLINIC_NODE_NETWORK=${CLINIC_NODE_NETWORK:-auto}
+ENABLE_CLINIC_NODE_BOOTSTRAP=true
+CLINIC_NODE_CLINIC_NAME="${CLINIC_NAME}"
+CLINIC_NODE_CLINIC_CITY="${CLINIC_NODE_CLINIC_CITY:-}"
+CLINIC_NODE_ADMIN_EMAIL=${ADMIN_EMAIL}
+CLINIC_NODE_ADMIN_PASSWORD=${ADMIN_PASSWORD}
+CLINIC_NODE_ADMIN_MUST_CHANGE_PASSWORD=${CLINIC_NODE_ADMIN_MUST_CHANGE_PASSWORD:-true}
+CLINIC_NODE_BOOTSTRAP_STAFF=${CLINIC_NODE_BOOTSTRAP_STAFF:-false}
 EOF
   chmod 600 "${ENV_FILE}"
+  umask 077
+  cat > "${DATA_DIR}/ADMIN_CREDENTIALS.txt" <<CREDS
+Clinic Node — initial admin (change after first login)
+Clinic: ${CLINIC_NAME}
+Email: ${ADMIN_EMAIL}
+Password: ${ADMIN_PASSWORD}
+CREDS
+  chmod 600 "${DATA_DIR}/ADMIN_CREDENTIALS.txt"
   echo "[install] Wrote ${ENV_FILE}"
+  echo "[install] Initial admin credentials saved to ${DATA_DIR}/ADMIN_CREDENTIALS.txt"
 else
   echo "[install] Reusing existing ${ENV_FILE}"
   # Persist requested ports into .env when provided by operator
@@ -210,8 +234,9 @@ cat <<EOF
  Network:  ${NETWORK_MODE}
  Node ID:  $(grep -E '^NODE_ID=' "${ENV_FILE}" | cut -d= -f2)
  Trust CA: ${DATA_DIR}/pki/ca-trust.crt
-           (install once on each workstation browser/OS)
+ Admin:    see ${DATA_DIR}/ADMIN_CREDENTIALS.txt (if freshly generated)
+ Login:    local clinic admin — change password on first login
 
- Next: Phase 1 will add local staff login bootstrap.
+ Phase 1: local auth bootstrap enabled.
 ============================================
 EOF

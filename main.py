@@ -528,8 +528,8 @@ async def startup_event():
     else:
         logger.info("Startup test user seed skipped (ENABLE_STARTUP_TEST_USER not set).")
 
-    # Pilot accounts — off by default in production (use ENABLE_PILOT_SEED or Docker entrypoint)
-    _default_pilot = not _is_production
+    # Pilot accounts — off by default in production AND clinic-node (use ENABLE_PILOT_SEED explicitly)
+    _default_pilot = not _is_production and not _settings.is_clinic_node
     if _env_flag("ENABLE_PILOT_SEED", default=_default_pilot):
         try:
             from services.pilot_seed import seed_pilot_accounts
@@ -542,6 +542,20 @@ async def startup_event():
             logger.error("Failed to seed pilot accounts: %s", exc)
     else:
         logger.info("Pilot seed skipped (ENABLE_PILOT_SEED not set).")
+
+    # Clinic Node local clinic + admin bootstrap (offline appliance)
+    if _settings.is_clinic_node:
+        try:
+            from database import SessionLocal
+            from services.clinic_node_bootstrap import bootstrap_clinic_node
+
+            node_db = SessionLocal()
+            try:
+                bootstrap_clinic_node(node_db)
+            finally:
+                node_db.close()
+        except Exception as exc:
+            logger.error("Clinic Node bootstrap failed: %s", exc)
 
     if _env_flag("ENABLE_DEMO_CLINIC_SEED", default=False):
         try:

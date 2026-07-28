@@ -45,6 +45,10 @@ def _reject_disposable_setup_email(email: str) -> None:
 @router.get("/platform/setup/status", response_model=PlatformSetupStatusResponse)
 def platform_setup_status(db: Session = Depends(get_db)):
     """Returns whether the first-time owner setup wizard should be shown."""
+    # Clinic Node is local-first: never redirect staff to cloud platform-owner wizard.
+    env = (os.getenv("ENVIRONMENT") or "").strip().lower()
+    if env in {"clinic-node", "clinic_node"}:
+        return PlatformSetupStatusResponse(setup_required=False)
     return PlatformSetupStatusResponse(setup_required=not platform_owner_exists(db))
 
 
@@ -58,7 +62,15 @@ def complete_platform_owner_setup(
     Create the first Platform Owner account (one-time only).
 
     Disabled permanently once a platform_owner user exists.
+    Disabled entirely on Clinic Node appliances.
     """
+    env = (os.getenv("ENVIRONMENT") or "").strip().lower()
+    if env in {"clinic-node", "clinic_node"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Platform owner setup is not available on Clinic Node. Use the local clinic admin account.",
+        )
+
     if platform_owner_exists(db):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

@@ -155,6 +155,7 @@ def _persist_user(
         "admin_bootstrap",
         "admin_cli",
         "test_fixture",
+        "clinic_node_bootstrap",
     }:
         raise PrivilegedRoleAssignmentError(
             f"Role '{normalized_role}' cannot be assigned via channel '{channel}'"
@@ -170,6 +171,7 @@ def _persist_user(
         "test_fixture",
         "platform_owner_bootstrap",
         "platform_owner_setup",
+        "clinic_node_bootstrap",
     }
 
     with authorized_channel(channel):

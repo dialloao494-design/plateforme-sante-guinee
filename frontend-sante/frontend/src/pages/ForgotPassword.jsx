@@ -3,11 +3,34 @@ import { Link } from 'react-router-dom';
 import { authAPI } from '../services/api.js';
 import './Login.css';
 
+const IS_CLINIC_NODE =
+  String(import.meta.env.VITE_CLINIC_NODE || '').toLowerCase() === 'true' ||
+  String(import.meta.env.VITE_SAME_ORIGIN_API || '').toLowerCase() === 'true';
+
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  if (IS_CLINIC_NODE) {
+    return (
+      <div className="login-page">
+        <div className="login-card login-card--narrow">
+          <p className="login-eyebrow">Santé Guinée · Clinic Node</p>
+          <h1 className="login-title">Mot de passe oublié</h1>
+          <p className="login-lead">
+            Sur le serveur local de la clinique, la réinitialisation par email n’est pas disponible hors ligne.
+            Contactez l’administrateur de la clinique pour qu’il réinitialise votre mot de passe depuis
+            le tableau d’administration.
+          </p>
+          <p className="login-footer-text">
+            <Link to="/login">Retour à la connexion</Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();

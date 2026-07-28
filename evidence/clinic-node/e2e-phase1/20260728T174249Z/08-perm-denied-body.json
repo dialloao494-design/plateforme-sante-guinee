@@ -1,0 +1,1 @@
+{"detail":[{"type":"missing","loc":["body","password_confirm"],"msg":"Field required","input":{"email":"x@y.com","password":"NotAllowed1!"},"url":"https://errors.pydantic.dev/2.6/v/missing"}]}

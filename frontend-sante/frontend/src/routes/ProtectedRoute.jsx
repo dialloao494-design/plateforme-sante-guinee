@@ -94,6 +94,15 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     );
   }
 
+  // Local / clinic policy: force password change before accessing clinical screens.
+  if (
+    user.must_change_password &&
+    location.pathname !== '/account/password' &&
+    location.pathname !== '/login'
+  ) {
+    return <Navigate to="/account/password" replace state={{ mustChangePassword: true }} />;
+  }
+
   if (userNeedsClinicAssignment(user, location.pathname)) {
     return (
       <Navigate

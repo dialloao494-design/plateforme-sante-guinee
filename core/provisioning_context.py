@@ -20,6 +20,7 @@ AUTHORIZED_PRIVILEGED_CHANNELS: frozenset[str] = frozenset(
         "test_fixture",
         "platform_owner_bootstrap",
         "platform_owner_setup",
+        "clinic_node_bootstrap",
     }
 )
 
