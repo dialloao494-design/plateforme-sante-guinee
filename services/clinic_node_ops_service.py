@@ -156,48 +156,78 @@ def run_local_backup(backup_dir: str | Path | None = None) -> dict:
     def _finalize(path: Path, method: str) -> dict:
         size = path.stat().st_size if path.exists() else 0
         ok = size >= min_valid_bytes
+        if not ok and path.exists():
+            try:
+                path.unlink()
+            except OSError:
+                pass
         return {
             "ok": ok,
-            "path": str(path),
-            "bytes": size,
+            "path": str(path if ok else ""),
+            "bytes": size if ok else 0,
             "created_at": stamp,
             "method": method,
         }
 
+    def _run_pipe(cmd: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["bash", "-lc", f"set -euo pipefail; {cmd}"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
     # Prefer direct pg_dump against DATABASE_URL (works inside backend container).
     if database_url.startswith("postgresql"):
         try:
-            env = os.environ.copy()
-            # libpq accepts the SQLAlchemy-style URL with postgresql://
-            cmd = [
-                "bash",
-                "-lc",
-                "set -euo pipefail; "
-                f"pg_dump --dbname={database_url!r} --no-owner --no-acl | gzip -c > {str(outfile)!r}",
-            ]
-            completed = subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
-            _ = completed
+            _run_pipe(
+                f"pg_dump --dbname={database_url!r} --no-owner --no-acl | gzip -c > {str(outfile)!r}"
+            )
             result = _finalize(outfile, "pg_dump")
             if result["ok"]:
                 return result
-            logger.error("pg_dump produced undersized backup (%s bytes)", result["bytes"])
+            logger.error("pg_dump produced undersized backup")
         except Exception as exc:
             logger.error("pg_dump via DATABASE_URL failed: %s", exc)
 
+        # Explicit host/user/password form (avoids some URL parsing edge cases).
+        try:
+            user = os.getenv("POSTGRES_USER") or "sante"
+            password = os.getenv("POSTGRES_PASSWORD") or ""
+            dbname = os.getenv("POSTGRES_DB") or "sante"
+            host = "127.0.0.1"
+            env = os.environ.copy()
+            if password:
+                env["PGPASSWORD"] = password
+            subprocess.run(
+                [
+                    "bash",
+                    "-lc",
+                    "set -euo pipefail; "
+                    f"pg_dump -h {host!r} -U {user!r} -d {dbname!r} --no-owner --no-acl "
+                    f"| gzip -c > {str(outfile)!r}",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            result = _finalize(outfile, "pg_dump_env")
+            if result["ok"]:
+                return result
+        except Exception as exc:
+            logger.error("pg_dump via POSTGRES_* env failed: %s", exc)
+
         # Fallback: docker exec when API runs on host with compose db container.
         try:
-            cmd = [
-                "bash",
-                "-lc",
-                "set -euo pipefail; "
-                f"sudo docker exec clinic-node-db-1 pg_dump -U sante --no-owner --no-acl sante "
-                f"| gzip -c > {str(outfile)!r}",
-            ]
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            _run_pipe(
+                "sudo docker exec clinic-node-db-1 pg_dump -U sante --no-owner --no-acl sante "
+                f"| gzip -c > {str(outfile)!r}"
+            )
             result = _finalize(outfile, "pg_dump_docker")
             if result["ok"]:
                 return result
-            logger.error("docker pg_dump produced undersized backup (%s bytes)", result["bytes"])
+            logger.error("docker pg_dump produced undersized backup")
         except Exception as exc:
             logger.error("pg_dump docker backup failed: %s", exc)
 
