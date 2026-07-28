@@ -46,7 +46,13 @@ sudo systemctl enable --now clinic-node.service
 ./deploy/clinic-node/scripts/validate-reboot-safe.sh
 ```
 
-Evidence is written under `evidence/clinic-node/`.
+## Full Phase 0 E2E acceptance (required to close Phase 0)
+
+```bash
+./deploy/clinic-node/scripts/validate-e2e-phase0.sh
+```
+
+Evidence is written under `evidence/clinic-node/` (and `e2e-phase0/` for full acceptance).
 
 ## Network modes
 

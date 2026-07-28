@@ -1,0 +1,5 @@
+NAME                     IMAGE                  COMMAND                  SERVICE    CREATED              STATUS                             PORTS
+clinic-node-backend-1    clinic-node-backend    "/app/scripts/docker…"   backend    About a minute ago   Up 44 seconds (healthy)            
+clinic-node-db-1         postgres:16-alpine     "docker-entrypoint.s…"   db         About a minute ago   Up 50 seconds (healthy)            
+clinic-node-frontend-1   clinic-node-frontend   "/docker-entrypoint.…"   frontend   About a minute ago   Up 50 seconds (health: starting)   
+clinic-node-proxy-1      nginx:1.27-alpine      "/docker-entrypoint.…"   proxy      About a minute ago   Up 39 seconds                      

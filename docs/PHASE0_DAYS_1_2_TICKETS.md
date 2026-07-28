@@ -25,7 +25,7 @@
 | **CN-P0-07** | Automatic startup after reboot | `restart: unless-stopped` on all services + optional systemd unit `clinic-node.service` that runs compose on boot |
 | **CN-P0-08** | Reboot-safe validation harness | `deploy/clinic-node/scripts/validate-reboot-safe.sh`: stop/kill simulation → restart → assert Postgres + API ready + HTTPS OK; writes evidence under `evidence/clinic-node/` |
 | **CN-P0-09** | Technician 1-page runbook | `deploy/clinic-node/README.md` — plug UPS, run install, open `https://sante-locale` (or IP), trust CA note |
-| **CN-P0-10** | Automated tests + evidence | Unit tests for clinic-node settings; compose config validation; Day 1–2 evidence report committed |
+| **CN-P0-10** | Automated tests + evidence | Unit tests: 32 passed. **E2E acceptance: ALL PASSED** — see `evidence/clinic-node/PHASE0_E2E_ACCEPTANCE.md` |
 
 ---
 
@@ -39,12 +39,25 @@
 
 ---
 
+## Phase 0 closure gate
+
+Phase 0 is **complete** only after E2E acceptance:
+
+```bash
+./deploy/clinic-node/scripts/validate-e2e-phase0.sh
+```
+
+Latest run: **ALL CRITERIA PASSED** (`PHASE0_E2E_ACCEPTANCE_PASSED`).
+
+---
+
 ## Execution order today
 
 1. CN-P0-03 → CN-P0-01 → CN-P0-02 → CN-P0-04 → CN-P0-05  
 2. CN-P0-06 → CN-P0-07 → CN-P0-08 → CN-P0-09 → CN-P0-10  
-3. Daily report with evidence  
+3. Full E2E acceptance harness  
+4. Daily report with evidence  
 
 ---
 
-*Tickets locked for Days 1–2 — proceed to implementation.*
+*Tickets locked for Days 1–2 — Phase 0 E2E acceptance complete.*

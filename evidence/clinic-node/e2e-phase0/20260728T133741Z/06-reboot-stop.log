@@ -1,0 +1,1 @@
+compose stop/up output captured in console.log during E2E run
