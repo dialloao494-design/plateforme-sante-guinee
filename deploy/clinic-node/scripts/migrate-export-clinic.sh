@@ -13,8 +13,11 @@ export CLINIC_ID SOURCE_DATABASE_URL OUT DRY_RUN
 
 echo "[migrate-export] clinic_id=${CLINIC_ID} dry_run=${DRY_RUN} -> ${OUT}"
 
+if docker info >/dev/null 2>&1; then DOCKER=docker; else DOCKER="sudo docker"; fi
+export DOCKER
+
 python3 <<'PY'
-import gzip, hashlib, os, sys
+import gzip, hashlib, os, subprocess, sys
 from pathlib import Path
 import psycopg2
 
@@ -22,6 +25,7 @@ url = os.environ["SOURCE_DATABASE_URL"]
 cid = int(os.environ["CLINIC_ID"])
 out = Path(os.environ["OUT"])
 dry = os.environ.get("DRY_RUN") == "1"
+docker = os.environ.get("DOCKER", "sudo docker")
 
 conn = psycopg2.connect(url)
 cur = conn.cursor()
@@ -35,18 +39,16 @@ print("CLINIC_OK", row[0], row[1])
 tables = [
     ("users", "clinic_id"),
     ("patients", "clinic_id"),
-    ("clinical_consultations", "clinic_id"),
+    ("consultations", "clinic_id"),
     ("lab_orders", "clinic_id"),
     ("prescriptions", "clinic_id"),
     ("pharmacy_orders", "clinic_id"),
     ("clinic_charges", "clinic_id"),
 ]
-counts = {}
 for t, c in tables:
     try:
         cur.execute(f"SELECT count(*) FROM {t} WHERE {c}=%s", (cid,))
-        counts[t] = cur.fetchone()[0]
-        print(f"COUNT {t}", counts[t])
+        print(f"COUNT {t}", cur.fetchone()[0])
     except Exception as e:
         conn.rollback()
         print(f"COUNT {t} SKIP", e)
@@ -56,12 +58,31 @@ if dry:
     conn.close()
     sys.exit(0)
 
-# schema
-import subprocess
-schema = subprocess.check_output(
-    ["pg_dump", f"--dbname={url}", "--schema-only", "--no-owner", "--no-acl"],
-    text=True,
-)
+def dump_schema() -> str:
+    # Prefer local pg_dump; fall back to clinic-node db container.
+    try:
+        return subprocess.check_output(
+            ["pg_dump", f"--dbname={url}", "--schema-only", "--no-owner", "--no-acl"],
+            text=True,
+        )
+    except FileNotFoundError:
+        return subprocess.check_output(
+            [
+                *docker.split(),
+                "exec",
+                "clinic-node-db-1",
+                "pg_dump",
+                "-U",
+                "sante",
+                "--schema-only",
+                "--no-owner",
+                "--no-acl",
+                "sante",
+            ],
+            text=True,
+        )
+
+schema = dump_schema()
 
 def sql_literal(v):
     if v is None:
@@ -90,7 +111,6 @@ for table, col in tables:
     cols = [d[0] for d in cur.description]
     fetched = cur.fetchall()
     parts.append(f"-- data {table} n={len(fetched)}\n")
-    # Avoid accidental full overwrite: delete only this clinic's rows when column exists
     parts.append(f"DELETE FROM {table} WHERE {col}={cid};\n")
     for row in fetched:
         vals = ",".join(sql_literal(v) for v in row)

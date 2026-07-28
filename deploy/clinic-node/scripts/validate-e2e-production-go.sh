@@ -163,8 +163,8 @@ log_pass "Pharmacy inventory + dispense for workflow patient"
 CHARGES="$(curl -kfsS "${BASE}/api/clinical/billing/charges/pending" -H "Authorization: Bearer ${CASH_TOKEN}")"
 echo "${CHARGES}" | tee "${RUN}/16-charges.json"
 CHARGE_ID="$(python3 -c 'import json,sys; rows=json.load(sys.stdin); pid='"${PATIENT_ID}"';
-print(next((str(r["id"]) for r in rows if r.get("patient_id")==pid), ""))')"
-[[ -n "${CHARGE_ID}" ]] || log_fail "no charge for patient"
+print(next((str(r["id"]) for r in rows if r.get("patient_id")==pid), ""))' <<<"${CHARGES}")"
+[[ -n "${CHARGE_ID}" ]] || log_fail "no charge for patient ${PATIENT_ID}"
 PAY="$(curl -kfsS -X POST "${BASE}/api/clinical/billing/charges/${CHARGE_ID}/pay" \
   -H "Authorization: Bearer ${CASH_TOKEN}" -H 'Content-Type: application/json' \
   -d '{"payment_method":"cash"}')"
