@@ -1,8 +1,9 @@
 # Architecture Offline-First — Plateforme Santé Guinée
 
 **Statut :** Direction **validée** (2026-07-28) — décisions d’architecture figées ci-dessous  
-**Implémentation :** **interdite** tant que ce document reste la référence non encore décomposée en tickets d’exécution  
+**Implémentation :** **interdite** tant que le [roadmap d’exécution](./OFFLINE_IMPLEMENTATION_ROADMAP.md) n’est pas validé explicitement  
 **Date :** 2026-07-28 (rév. décisions validées + ops / licences / migration)  
+**Roadmap d’exécution :** [`OFFLINE_IMPLEMENTATION_ROADMAP.md`](./OFFLINE_IMPLEMENTATION_ROADMAP.md) (Phase 0 → Production)  
 **Frontend cloud de référence :** `https://plateforme-sante-guinee.vercel.app`  
 **Backend cloud actuel :** FastAPI + PostgreSQL (Railway)  
 **Public cible :** produit, architecture, sécurité, ops cliniques, techniciens terrain, owner  
@@ -915,17 +916,23 @@ Railway / cloud reste hub pour sync, backups, Owner — pas l’OLTP de soins.
 
 ## 26. Plan de livraison (après validation d’exécution)
 
+Le détail opérationnel (travaux, DoD, tickets indicatifs, contraintes terrain) est dans :
+
+→ **[`OFFLINE_IMPLEMENTATION_ROADMAP.md`](./OFFLINE_IMPLEMENTATION_ROADMAP.md)**
+
+Synthèse :
+
 | Phase | Objectif |
 |-------|--------|
-| **P0** | Appliance USB + Postgres auto + SPA locale + **HTTPS auto** + auth locale + install &lt; 30 min **sans commande complexe** |
-| **P1** | Parité modules V1 (accueil → caisse) + zéro perte (transactions, journaux, brouillons) |
-| **P2** | Sync deltas + historique stock + hub cloud |
-| **P3** | Backup local/offsite + update agent + **licences** + heartbeat ops |
-| **P4** | **Owner dashboard** + alertes + DR kit + PITR + exercices restore |
-| **P5** | **Outil / runbook migration Railway → Node** (export/import, freeze, checksums) pour cliniques existantes |
+| **0** | Foundation appliance : Postgres, Docker, install USB, HTTPS, reboot-safe |
+| **1** | Auth locale · sessions · permissions |
+| **2** | API locale · frontend LAN · multi-utilisateurs |
+| **3** | Sauvegardes · sync deltas · conflits · licences |
+| **4** | Mises à jour · Owner dashboard · monitoring / alertes |
+| **5** | Pilote · migration Cloud→Node · validation · production |
 | **V1.1** | Hospitalisation + imagerie (schéma déjà prévu) |
 
-Chaque phase se termine par recette des scénarios §20, §21 et des procédures §22–§25.
+Chaque phase se termine par recette des scénarios §20, §21, procédures §22–§25, et contraintes terrain du roadmap §1.
 
 ---
 
@@ -947,7 +954,7 @@ Chaque phase se termine par recette des scénarios §20, §21 et des procédures
 - [x] Migration Cloud → Node documentée  
 - [x] Tableau de bord Owner spécifié  
 
-**Prochaine étape :** décomposition en tickets d’implémentation P0 — **pas de code** tant que le plan d’exécution n’est pas ordonné explicitement.
+**Prochaine étape :** valider le [`OFFLINE_IMPLEMENTATION_ROADMAP.md`](./OFFLINE_IMPLEMENTATION_ROADMAP.md) — **pas de code** tant que ce plan d’exécution n’est pas approuvé explicitement.
 
 ---
 
@@ -955,6 +962,7 @@ Chaque phase se termine par recette des scénarios §20, §21 et des procédures
 
 - Frontend cloud : `https://plateforme-sante-guinee.vercel.app`  
 - Backend cloud actuel : Railway FastAPI + PostgreSQL  
+- Roadmap d’exécution P0→Prod : `docs/OFFLINE_IMPLEMENTATION_ROADMAP.md`  
 - Roadmap PWA historique (subordonnée) : `docs/OFFLINE_STRATEGY_ROADMAP.md`
 
 ---
