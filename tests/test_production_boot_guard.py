@@ -32,6 +32,12 @@ def _apply_valid_production_env(monkeypatch) -> None:
     monkeypatch.setenv("ENABLE_DEMO_CLINIC_SEED", "false")
     monkeypatch.setenv("TRUSTED_PROXY_HOSTS", "127.0.0.1,backend")
     monkeypatch.setenv("REMINDER_RESPOND_TOKEN", "reminder-respond-token-" + "R" * 32)
+    # Security Wave 3 — PHI attachment encryption required in production by default.
+    from cryptography.fernet import Fernet
+
+    monkeypatch.setenv("ATTACHMENT_ENCRYPTION_KEY", Fernet.generate_key().decode("ascii"))
+    monkeypatch.delenv("RAILWAY_ENVIRONMENT", raising=False)
+    monkeypatch.delenv("ALLOW_INSECURE_DB_SSL", raising=False)
     _clear_settings_cache()
 
 
@@ -148,6 +154,31 @@ class TestProductionBootSecrets:
         monkeypatch.delenv("REMINDER_RESPOND_TOKEN", raising=False)
         with pytest.raises(RuntimeError, match="REMINDER_RESPOND_TOKEN"):
             AppSettings().enforce_production_boot()
+
+    def test_missing_attachment_encryption_key_rejected_in_production(self, monkeypatch):
+        _apply_valid_production_env(monkeypatch)
+        monkeypatch.delenv("ATTACHMENT_ENCRYPTION_KEY", raising=False)
+        with pytest.raises(RuntimeError, match="ATTACHMENT_ENCRYPTION_KEY"):
+            AppSettings().enforce_production_boot()
+
+    def test_railway_production_requires_db_sslmode(self, monkeypatch):
+        _apply_valid_production_env(monkeypatch)
+        monkeypatch.setenv("RAILWAY_ENVIRONMENT", "production")
+        monkeypatch.setenv(
+            "DATABASE_URL",
+            "postgresql://sante:StrongProductionDb!ZZZZZZZZ@db:5432/sante",
+        )
+        with pytest.raises(RuntimeError, match="sslmode"):
+            AppSettings().enforce_production_boot()
+
+    def test_railway_production_accepts_sslmode_require(self, monkeypatch):
+        _apply_valid_production_env(monkeypatch)
+        monkeypatch.setenv("RAILWAY_ENVIRONMENT", "production")
+        monkeypatch.setenv(
+            "DATABASE_URL",
+            "postgresql://sante:StrongProductionDb!ZZZZZZZZ@db:5432/sante?sslmode=require",
+        )
+        AppSettings().enforce_production_boot()
 
 
     def test_staging_bootstrap_env_passes_boot_guard(self, monkeypatch):
