@@ -87,7 +87,7 @@ const ensureNginxApiPath = (url = '') => {
   return `/api${path}`;
 };
 
-import { clearAllClientStorage, getAuthToken, setAuthToken } from '../utils/authStorage.js';
+import { clearAllClientStorage, getAuthToken, setAuthToken, getRefreshToken, setRefreshToken } from '../utils/authStorage.js';
 import { invalidateCache } from '../utils/apiCache.js';
 
 // Resolve API base URL from environment variable
@@ -154,7 +154,14 @@ if (import.meta.env.DEV) {
   console.info('[API_BASE_URL]', API_BASE_URL);
 }
 
-const PUBLIC_PATHS = ['/auth/login', '/auth/login-json', '/auth/register'];
+const PUBLIC_PATHS = [
+  '/auth/login',
+  '/auth/login-json',
+  '/auth/register',
+  '/auth/refresh',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+];
 
 /** False until AuthProvider finishes the first session bootstrap attempt. */
 let authSessionReady = false;
@@ -302,16 +309,62 @@ httpClient.interceptors.response.use(
     }
 
     if (error?.response?.status === 401) {
+      const urlPath = String(config?.url || '');
+      const isAuthEndpoint =
+        urlPath.includes('/auth/login') ||
+        urlPath.includes('/auth/refresh') ||
+        urlPath.includes('/auth/logout');
       const sentAuth = String(config?.headers?.Authorization || '');
       const currentToken = getAuthToken();
       const stillOurSession =
         currentToken && sentAuth === `Bearer ${currentToken}`;
+
+      if (!isAuthEndpoint && stillOurSession && authSessionReady && !config.__refreshRetried) {
+        const refreshToken = getRefreshToken();
+        if (refreshToken) {
+          try {
+            config.__refreshRetried = true;
+            const refreshResponse = await httpClient.post('/auth/refresh', {
+              refresh_token: refreshToken,
+            });
+            const nextAccess = refreshResponse?.data?.access_token;
+            const nextRefresh = refreshResponse?.data?.refresh_token;
+            if (nextAccess) {
+              setAuthToken(nextAccess);
+              if (nextRefresh) {
+                setRefreshToken(nextRefresh);
+              }
+              syncAuthHeader();
+              config.headers = config.headers || {};
+              if (typeof config.headers.set === 'function') {
+                config.headers.set('Authorization', `Bearer ${nextAccess}`);
+              } else {
+                config.headers.Authorization = `Bearer ${nextAccess}`;
+              }
+              return httpClient(config);
+            }
+          } catch {
+            /* fall through to clear session */
+          }
+        }
+      }
+
       if (stillOurSession && authSessionReady) {
         if (import.meta.env.DEV) {
           console.warn(`[HTTP ${statusCode}] Clearing tab session and redirecting to login`);
         }
         clearClientAuth();
         redirectToLogin();
+      }
+    }
+
+    if (error?.response?.status === 403) {
+      const detail = String(error?.response?.data?.detail || '');
+      const required =
+        error?.response?.headers?.['x-password-change-required'] === '1' ||
+        /password change required/i.test(detail);
+      if (required && typeof window !== 'undefined' && !window.location.pathname.includes('/account/change-password')) {
+        window.location.replace('/account/change-password');
       }
     }
 

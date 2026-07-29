@@ -28,6 +28,14 @@ class User(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     must_change_password = Column(Boolean, nullable=False, default=False)
     email_verified_at = Column(DateTime, nullable=True)
+    # Security Wave 0 — identity / session hardening
+    failed_login_attempts = Column(Integer, nullable=False, default=0)
+    locked_until = Column(DateTime, nullable=True)
+    token_version = Column(Integer, nullable=False, default=0)
+    password_changed_at = Column(DateTime, nullable=True)
+    last_login_at = Column(DateTime, nullable=True)
+    mfa_secret = Column(String, nullable=True)
+    mfa_enabled = Column(Boolean, nullable=False, default=False)
 
     patient_profile = relationship("Patient", back_populates="user", uselist=False)
     doctor_profile = relationship("Doctor", back_populates="user", uselist=False)

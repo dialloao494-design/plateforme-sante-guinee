@@ -5,6 +5,7 @@ import { invalidateCache } from './apiCache.js';
 export const AUTH_STORAGE_KEYS = [
   'token',
   'access_token',
+  'refresh_token',
   'user_role',
   'user_id',
   'must_change_password',
@@ -111,6 +112,18 @@ export function setAuthToken(token) {
   }
   setAuthItem('token', token);
   setAuthItem('access_token', token);
+}
+
+export function getRefreshToken() {
+  return getAuthItem('refresh_token');
+}
+
+export function setRefreshToken(token) {
+  if (!token) {
+    removeAuthItem('refresh_token');
+    return;
+  }
+  setAuthItem('refresh_token', token);
 }
 
 export function touchSessionActivity() {

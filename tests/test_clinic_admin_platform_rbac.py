@@ -56,7 +56,7 @@ def test_clinic_admin_cannot_provision_staff_for_other_clinic(client, db_session
         "/clinical/staff",
         json={
             "email": "rbac.cross.clinic@test.gn",
-            "password": "Secret12!",
+            "password": "Secret12Pass!",
             "role": "receptionist",
             "clinic_id": clinic_b.id,
         },

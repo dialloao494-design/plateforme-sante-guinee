@@ -20,12 +20,18 @@ const PILOT_DEMO_ACCOUNTS = import.meta.env.DEV
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaRequired, setMfaRequired] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const { login, loading, user, authLoading, error: authError } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!authLoading && user) {
+      if (user.must_change_password) {
+        navigate('/account/change-password', { replace: true });
+        return;
+      }
       const target = getRoleHomePath(user.role, user.clinic_id);
       console.info('[AUTH-DEBUG] Login redirect (session user)', { role: user.role, target });
       navigate(target, { replace: true });
@@ -62,11 +68,18 @@ const Login = () => {
     setSubmitError('');
 
     try {
-      const result = await login(email, password);
+      const result = await login(email, password, mfaRequired ? mfaCode : undefined);
       if (result.success) {
+        if (result.must_change_password) {
+          navigate('/account/change-password', { replace: true });
+          return;
+        }
         const target = getRoleHomePath(result.role, result.clinic_id);
         console.info('[AUTH-DEBUG] Login redirect (submit)', { role: result.role, target });
         navigate(target, { replace: true });
+      } else if (result.mfaRequired) {
+        setMfaRequired(true);
+        setSubmitError(result.error || 'Code MFA requis');
       } else {
         setSubmitError(result.error || 'Une erreur est survenue, veuillez réessayer');
       }
@@ -121,6 +134,22 @@ const Login = () => {
             autoComplete="current-password"
             disabled={loading}
           />
+          {mfaRequired && (
+            <div className="login-field">
+              <label htmlFor="mfa">Code MFA</label>
+              <input
+                id="mfa"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="000000"
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value)}
+                disabled={loading}
+                required
+              />
+            </div>
+          )}
           <p className="login-forgot">
             <Link to="/forgot-password">Mot de passe oublié ?</Link>
           </p>

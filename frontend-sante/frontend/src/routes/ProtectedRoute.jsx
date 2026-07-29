@@ -94,6 +94,10 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     );
   }
 
+  if (user.must_change_password && !location.pathname.includes('/account/change-password')) {
+    return <Navigate to="/account/change-password" replace />;
+  }
+
   if (userNeedsClinicAssignment(user, location.pathname)) {
     return (
       <Navigate

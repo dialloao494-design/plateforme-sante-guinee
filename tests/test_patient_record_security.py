@@ -29,13 +29,13 @@ def dossier_context(db_session, admin_user):
     suffix = uuid.uuid4().hex[:8]
 
     patient_user = register_public_user(
-        db_session, email=f"pat.dossier.{suffix}@test.gn", password="Secret12", role="patient"
+        db_session, email=f"pat.dossier.{suffix}@test.gn", password="Secret12Pass!", role="patient"
     ).user
     doctor_a_user = register_public_user(
-        db_session, email=f"dr.a.dossier.{suffix}@test.gn", password="Secret12", role="doctor"
+        db_session, email=f"dr.a.dossier.{suffix}@test.gn", password="Secret12Pass!", role="doctor"
     ).user
     doctor_b_user = register_public_user(
-        db_session, email=f"dr.b.dossier.{suffix}@test.gn", password="Secret12", role="doctor"
+        db_session, email=f"dr.b.dossier.{suffix}@test.gn", password="Secret12Pass!", role="doctor"
     ).user
     admin = admin_user
 
@@ -83,7 +83,7 @@ class TestPatientDossierRBAC:
     def test_patient_cannot_read_other_dossier(self, client, dossier_context, db_session):
         ctx = dossier_context
         other = register_public_user(
-            db_session, email=f"other.pat.{uuid.uuid4().hex[:6]}@test.gn", password="Secret12", role="patient"
+            db_session, email=f"other.pat.{uuid.uuid4().hex[:6]}@test.gn", password="Secret12Pass!", role="patient"
         ).user
         other_patient = db_session.query(Patient).filter(Patient.user_id == other.id).first()
         response = client.get(f"/patients/{other_patient.id}", headers=ctx["patient_headers"])

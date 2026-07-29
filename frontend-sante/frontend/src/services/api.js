@@ -11,12 +11,16 @@ const api = {
 };
 
 // Login via JSON (same credential validation as form login; avoids URL-encoding edge cases).
-export const login = async (email, password) => {
+export const login = async (email, password, mfaCode) => {
   try {
-    const response = await httpClient.post('/auth/login-json', {
+    const payload = {
       email: String(email || '').trim().toLowerCase(),
       password,
-    });
+    };
+    if (mfaCode) {
+      payload.mfa_code = String(mfaCode).trim();
+    }
+    const response = await httpClient.post('/auth/login-json', payload);
     return response?.data;
   } catch (err) {
     const detail = err?.response?.data?.detail || err?.response?.data?.message;
@@ -44,6 +48,10 @@ export const authAPI = {
       current_password: currentPassword,
       new_password: newPassword,
     }),
+  refresh: (refreshToken) =>
+    httpClient.post('/auth/refresh', { refresh_token: refreshToken }),
+  logout: (refreshToken) =>
+    httpClient.post('/auth/logout', refreshToken ? { refresh_token: refreshToken } : {}),
   forgotPassword: (email) =>
     httpClient.post('/auth/forgot-password', { email: String(email || '').trim().toLowerCase() }),
   resetPassword: (token, newPassword) =>
