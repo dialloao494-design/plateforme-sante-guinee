@@ -24,4 +24,12 @@ def test_backend_env_example_has_security_vars():
     assert "TRUSTED_PROXY_HOSTS=" in example
     assert "REMINDER_RESPOND_TOKEN=" in example
     assert "ENABLE_STARTUP_TEST_USER=false" in example
+    assert "JWT_SECRET=" in example
+    assert "ATTACHMENT_ENCRYPTION_KEY=" in example
+
+
+def test_compose_prod_requires_reminder_and_encryption_keys():
+    prod = Path("docker-compose.prod.yml").read_text(encoding="utf-8")
+    assert "REMINDER_RESPOND_TOKEN:?" in prod
+    assert "ATTACHMENT_ENCRYPTION_KEY:?" in prod
 

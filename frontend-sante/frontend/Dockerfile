@@ -23,6 +23,9 @@ FROM nginx:1.27-alpine
 COPY deploy/nginx/frontend-spa.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 
+# Static SPA only — TLS terminates at edge nginx / Vercel / Railway.
+# Compose applies no-new-privileges + read_only + tmpfs (Security Wave 3).
+
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

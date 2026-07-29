@@ -4,6 +4,9 @@
 #   cp deploy/env/.env.frontend.example deploy/env/.env.frontend
 #   cp .env.production.example .env.production
 #   docker compose --env-file .env.production up -d --build
+#
+# Security Wave 3: POSTGRES_PASSWORD is required (no weak default).
+# Postgres is not published to the host (bridge network only).
 
 name: plateforme-sante
 
@@ -13,7 +16,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-sante}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sante_dev_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the env file}
       POSTGRES_DB: ${POSTGRES_DB:-sante}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -22,6 +25,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    security_opt:
+      - no-new-privileges:true
     networks:
       - internal
 
@@ -33,9 +38,9 @@ services:
     env_file:
       - deploy/env/.env.backend
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-sante}:${POSTGRES_PASSWORD:-sante_dev_password}@db:5432/${POSTGRES_DB:-sante}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sante}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-sante}
       ENVIRONMENT: ${ENVIRONMENT:-staging}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sante_dev_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - uploads:/app/uploads
       - ./logs:/app/logs
@@ -50,6 +55,13 @@ services:
       timeout: 5s
       retries: 12
       start_period: 120s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M,mode=1777
     networks:
       - internal
 
@@ -67,6 +79,13 @@ services:
     restart: unless-stopped
     expose:
       - "80"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:size=16M,mode=1777
+      - /var/run:size=8M,mode=1777
+      - /tmp:size=8M,mode=1777
     networks:
       - internal
 
@@ -83,6 +102,8 @@ services:
         condition: service_healthy
       frontend:
         condition: service_started
+    security_opt:
+      - no-new-privileges:true
     networks:
       - internal
 

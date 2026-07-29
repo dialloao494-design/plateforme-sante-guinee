@@ -1,5 +1,6 @@
 # Railway — FastAPI backend (Dockerfile) + linked PostgreSQL
 # Docs: https://docs.railway.app/reference/config-as-code
+# Security Wave 3: healthcheck + restart policy
 
 [build]
 builder = "DOCKERFILE"
@@ -8,3 +9,5 @@ dockerfilePath = "Dockerfile"
 [deploy]
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
+healthcheckPath = "/health/ready"
+healthcheckTimeout = 30
