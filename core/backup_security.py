@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import gzip
 import hashlib
+import hmac
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -54,8 +55,6 @@ def verify_sha256_sidecar(path: Path) -> tuple[bool, str]:
     sidecar = Path(str(path) + ".sha256")
     if not sidecar.is_file():
         return False, "sidecar_missing"
-    import hmac
-
     expected = sidecar.read_text(encoding="utf-8").strip().split()[0]
     actual = sha256_file(path)
     if not hmac.compare_digest(expected, actual):
