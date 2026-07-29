@@ -1,12 +1,12 @@
 {
   "id": "LAN-01",
-  "timestamp": "2026-07-29T14:14:56.399714+00:00",
+  "timestamp": "2026-07-29T14:26:08.893696+00:00",
   "operator": "wave6-automated-harness",
   "environment": "lab-sqlite-testclient",
-  "result": "N/A_LAB",
+  "result": "BLOCKED",
   "severity": "Critical",
   "notes": "Host-network Postgres bind must remain 127.0.0.1 when used",
   "evidence": {
-    "host_network_guard_module": true
+    "host_compose_localhost_postgres": true
   }
 }

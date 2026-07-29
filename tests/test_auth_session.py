@@ -42,7 +42,7 @@ def test_change_password_updates_hash(client, db_session, admin_user):
   old_hash = admin_user.hashed_password
   r = client.post(
       "/auth/change-password",
-      json={"current_password": "AdminPass1", "new_password": "NewSecure12!"},
+      json={"current_password": "AdminPass12!", "new_password": "NewSecure12!"},
       headers=_auth_headers(admin_user),
   )
   assert r.status_code == 200, r.text

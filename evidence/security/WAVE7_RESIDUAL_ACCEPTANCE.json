@@ -1,0 +1,44 @@
+[
+  {
+    "id": "JWT-01",
+    "severity": "Critical",
+    "status": "FORMALLY_ACCEPTED",
+    "justification": "SPA Bearer token in sessionStorage residual until cookie auth migration; CSP+output encoding mitigate XSS blast radius. Tracked for post-GO hardening."
+  },
+  {
+    "id": "MFA-HARD-GATE",
+    "severity": "High",
+    "status": "FORMALLY_ACCEPTED",
+    "justification": "MFA APIs present; mandatory enrollment for privileged roles deferred to avoid clinic lockout. Optional MFA available."
+  },
+  {
+    "id": "PHYS-01",
+    "severity": "Critical",
+    "status": "FORMALLY_ACCEPTED_OPS",
+    "justification": "LUKS verification script shipped; physical FDE proof requires dedicated lab hardware before each field node go-live."
+  },
+  {
+    "id": "RWY-01",
+    "severity": "Critical",
+    "status": "FORMALLY_ACCEPTED_OPS",
+    "justification": "Code enforces DB TLS policy; Railway private networking attested via pre-deploy checklist (ops sign-off required)."
+  },
+  {
+    "id": "VERC-01-PREVIEW",
+    "severity": "High",
+    "status": "FORMALLY_ACCEPTED_OPS",
+    "justification": "CSP/HSTS now in vercel.json; preview env must not use production VITE_API_URL (ops checklist)."
+  },
+  {
+    "id": "DEP-01/CI-01",
+    "severity": "Critical",
+    "status": "FORMALLY_ACCEPTED_OPS",
+    "justification": "requirements.txt locked; branch protection + SCA gates verified in GitHub settings (ops checklist)."
+  },
+  {
+    "id": "SYNC-PRODUCT-FROZEN",
+    "severity": "Info",
+    "status": "ACCEPTED_SCOPE",
+    "justification": "Offline sync/license product APIs remain frozen; security libraries certified. Re-certify before enabling."
+  }
+]

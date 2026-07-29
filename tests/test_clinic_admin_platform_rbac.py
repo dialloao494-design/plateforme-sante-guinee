@@ -18,7 +18,7 @@ def _clinic_admin(db_session, clinic_id: int, *, email: str | None = None):
     with provisioning_channel("test_fixture"):
         user = models.User(
             email=email or f"rbac.clinic.admin.{clinic_id}@test.gn",
-            hashed_password=hash_password("Secret12"),
+            hashed_password=hash_password("Secret12Pass!"),
             role="clinic_admin",
             clinic_id=clinic_id,
         )
@@ -56,7 +56,7 @@ def test_clinic_admin_cannot_provision_staff_for_other_clinic(client, db_session
         "/clinical/staff",
         json={
             "email": "rbac.cross.clinic@test.gn",
-            "password": "Secret12!",
+            "password": "Secret12Pass!",
             "role": "receptionist",
             "clinic_id": clinic_b.id,
         },
@@ -68,7 +68,7 @@ def test_clinic_admin_cannot_provision_staff_for_other_clinic(client, db_session
     with provisioning_channel("platform_owner_bootstrap"):
         owner = models.User(
             email="rbac.platform.owner@test.gn",
-            hashed_password=hash_password("Secret12"),
+            hashed_password=hash_password("Secret12Pass!"),
             role="platform_owner",
         )
         db_session.add(owner)
@@ -88,7 +88,7 @@ def test_platform_admin_can_create_clinic(client, db_session):
     with provisioning_channel("test_fixture"):
         admin = models.User(
             email="rbac.platform.admin@test.gn",
-            hashed_password=hash_password("Secret12"),
+            hashed_password=hash_password("Secret12Pass!"),
             role="platform_admin",
         )
         db_session.add(admin)

@@ -124,7 +124,7 @@ def admin_user(db_session: Session) -> User:
     with provisioning_channel("test_fixture"):
         user = User(
             email=email,
-            hashed_password=hash_password("AdminPass1"),
+            hashed_password=hash_password("AdminPass12!"),
             role="platform_owner",
         )
         db_session.add(user)
@@ -137,7 +137,7 @@ def admin_user(db_session: Session) -> User:
 def admin_headers(client: TestClient, admin_user: User) -> dict[str, str]:
     response = client.post(
         "/auth/login-json",
-        json={"email": admin_user.email, "password": "AdminPass1"},
+        json={"email": admin_user.email, "password": "AdminPass12!"},
     )
     assert response.status_code == 200, response.text
     token = response.json()["access_token"]

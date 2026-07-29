@@ -5,6 +5,7 @@ Production boot guard tests — A3 (pilot seed) and A4 (availability bypass) + s
 from __future__ import annotations
 
 import pytest
+from cryptography.fernet import Fernet
 
 from core.settings import AppSettings, get_settings, is_insecure_secret
 
@@ -32,6 +33,7 @@ def _apply_valid_production_env(monkeypatch) -> None:
     monkeypatch.setenv("ENABLE_DEMO_CLINIC_SEED", "false")
     monkeypatch.setenv("TRUSTED_PROXY_HOSTS", "127.0.0.1,backend")
     monkeypatch.setenv("REMINDER_RESPOND_TOKEN", "reminder-respond-token-" + "R" * 32)
+    monkeypatch.setenv("ATTACHMENT_ENCRYPTION_KEY", Fernet.generate_key().decode("ascii"))
     _clear_settings_cache()
 
 
@@ -183,3 +185,18 @@ class TestProductionStartupIntegration:
         settings = AppSettings()
         with pytest.raises(RuntimeError):
             settings.enforce_production_boot()
+
+
+class TestAttachmentEncryptionBoot:
+    def test_attachment_encryption_required_in_production(self, monkeypatch):
+        _apply_valid_production_env(monkeypatch)
+        monkeypatch.delenv("ATTACHMENT_ENCRYPTION_KEY", raising=False)
+        monkeypatch.delenv("REQUIRE_ATTACHMENT_ENCRYPTION", raising=False)
+        with pytest.raises(RuntimeError, match="ATTACHMENT_ENCRYPTION_KEY"):
+            AppSettings().enforce_production_boot()
+
+    def test_attachment_encryption_emergency_bypass(self, monkeypatch):
+        _apply_valid_production_env(monkeypatch)
+        monkeypatch.delenv("ATTACHMENT_ENCRYPTION_KEY", raising=False)
+        monkeypatch.setenv("REQUIRE_ATTACHMENT_ENCRYPTION", "false")
+        AppSettings().enforce_production_boot()

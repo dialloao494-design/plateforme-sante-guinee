@@ -201,6 +201,38 @@ class AppSettings:
                 "REMINDER_RESPOND_TOKEN must be a strong random value (32+ chars) in production"
             )
 
+        # PHI attachment encryption — required in production (Wave 7 certification)
+        if self.is_production:
+            enc_key = (os.getenv("ATTACHMENT_ENCRYPTION_KEY") or "").strip()
+            if enc_key:
+                try:
+                    from cryptography.fernet import Fernet
+
+                    Fernet(enc_key.encode("utf-8"))
+                except Exception:
+                    failures.append(
+                        "ATTACHMENT_ENCRYPTION_KEY must be a valid Fernet key when set"
+                    )
+            elif _env_flag("REQUIRE_ATTACHMENT_ENCRYPTION", default=True):
+                failures.append(
+                    "ATTACHMENT_ENCRYPTION_KEY must be set in production "
+                    "(Fernet key for PHI attachment encryption; "
+                    "set REQUIRE_ATTACHMENT_ENCRYPTION=false only for emergency rollback)"
+                )
+
+        # TLS to Postgres — reject sslmode=disable; require SSL on Railway production
+        try:
+            from core.deploy_hardening import assert_database_tls_policy
+
+            assert_database_tls_policy(
+                os.getenv("DATABASE_URL") or "",
+                is_production=self.is_production,
+                railway_environment=os.getenv("RAILWAY_ENVIRONMENT"),
+                allow_insecure_db_ssl=_env_flag("ALLOW_INSECURE_DB_SSL", default=False),
+            )
+        except RuntimeError as exc:
+            failures.append(str(exc))
+
         if failures:
             raise RuntimeError("Insecure deployment secrets: " + "; ".join(failures))
 

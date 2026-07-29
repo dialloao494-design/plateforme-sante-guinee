@@ -1,0 +1,168 @@
+[
+  {
+    "domain": "Authentication",
+    "status": "CONDITIONAL",
+    "evidence": {
+      "password_policy": true,
+      "auth_session": true,
+      "mfa_service": true,
+      "refresh_model": true
+    },
+    "notes": "Lockout/refresh/denylist/must_change/password\u226512 present; MFA optional (formally accepted residual)",
+    "timestamp": "2026-07-29T14:25:47.548070+00:00"
+  },
+  {
+    "domain": "Authorization",
+    "status": "PASS",
+    "evidence": {
+      "rbac": true,
+      "authorize": true,
+      "tenancy": true
+    },
+    "notes": "RBAC + tenancy helpers; Wave 6 AUTHZ-01/02 BLOCKED",
+    "timestamp": "2026-07-29T14:25:47.548111+00:00"
+  },
+  {
+    "domain": "API",
+    "status": "PASS",
+    "evidence": {
+      "security_headers_mw": true,
+      "slowapi_mw": true,
+      "docs_gated": true
+    },
+    "notes": "",
+    "timestamp": "2026-07-29T14:25:47.548199+00:00"
+  },
+  {
+    "domain": "Database",
+    "status": "PASS",
+    "evidence": {
+      "sslmode_connect_arg": true,
+      "tls_policy_boot": true
+    },
+    "notes": "App rejects sslmode=disable in production; Railway private DB still requires ops attestation",
+    "timestamp": "2026-07-29T14:25:47.548256+00:00"
+  },
+  {
+    "domain": "Docker",
+    "status": "PASS",
+    "evidence": {
+      "appuser": true,
+      "gosu": true,
+      "no_docker_sock": true,
+      "cap_drop": true
+    },
+    "notes": "",
+    "timestamp": "2026-07-29T14:25:47.548291+00:00"
+  },
+  {
+    "domain": "Railway",
+    "status": "CONDITIONAL",
+    "evidence": {
+      "railway_toml": true,
+      "tls_boot_guard": true
+    },
+    "notes": "Code enforces TLS policy; private networking must be attested in Railway dashboard",
+    "timestamp": "2026-07-29T14:25:47.548303+00:00"
+  },
+  {
+    "domain": "Vercel",
+    "status": "PASS",
+    "evidence": {
+      "csp": true,
+      "hsts": true,
+      "xfo": true
+    },
+    "notes": "Preview\u2192prod API binding remains ops attestation",
+    "timestamp": "2026-07-29T14:25:47.548330+00:00"
+  },
+  {
+    "domain": "Offline Node",
+    "status": "PASS",
+    "evidence": {
+      "package": true,
+      "compose": true,
+      "https_proxy": true,
+      "luks_script": true,
+      "encrypt_backup": true
+    },
+    "notes": "Package restored; physical FDE lab validation remains residual (PHYS-01)",
+    "timestamp": "2026-07-29T14:25:47.548392+00:00"
+  },
+  {
+    "domain": "Synchronization",
+    "status": "PASS",
+    "evidence": {
+      "sync_security": true
+    },
+    "notes": "HMAC/replay/token libraries present; product sync APIs remain frozen",
+    "timestamp": "2026-07-29T14:25:47.548402+00:00"
+  },
+  {
+    "domain": "Backup",
+    "status": "PASS",
+    "evidence": {
+      "backup_security": true,
+      "encrypt_script": true
+    },
+    "notes": "",
+    "timestamp": "2026-07-29T14:25:47.548420+00:00"
+  },
+  {
+    "domain": "Disaster Recovery",
+    "status": "PASS",
+    "evidence": {
+      "dr_doc": true
+    },
+    "notes": "",
+    "timestamp": "2026-07-29T14:25:47.548431+00:00"
+  },
+  {
+    "domain": "Licensing",
+    "status": "PASS",
+    "evidence": {
+      "clinic_node_security": true
+    },
+    "notes": "Secret separation helpers; license product API frozen",
+    "timestamp": "2026-07-29T14:25:47.548440+00:00"
+  },
+  {
+    "domain": "Updates",
+    "status": "PASS",
+    "evidence": {
+      "update_security": true
+    },
+    "notes": "",
+    "timestamp": "2026-07-29T14:25:47.548448+00:00"
+  },
+  {
+    "domain": "Encryption",
+    "status": "PASS",
+    "evidence": {
+      "attachment": true,
+      "backup": true,
+      "prod_requires_attachment_key": true
+    },
+    "notes": "",
+    "timestamp": "2026-07-29T14:25:47.548467+00:00"
+  },
+  {
+    "domain": "Logging",
+    "status": "CONDITIONAL",
+    "evidence": {
+      "clinical_audit": true
+    },
+    "notes": "Audit model present; append-only DB role + PHI-minimized logs residual",
+    "timestamp": "2026-07-29T14:25:47.548477+00:00"
+  },
+  {
+    "domain": "Monitoring",
+    "status": "PASS",
+    "evidence": {
+      "monitoring": true,
+      "health_in_main": true
+    },
+    "notes": "",
+    "timestamp": "2026-07-29T14:25:47.548489+00:00"
+  }
+]

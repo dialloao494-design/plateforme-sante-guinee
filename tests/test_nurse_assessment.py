@@ -15,7 +15,7 @@ def _seed_nurse_clinic(db_session, admin_user, salt=""):
 
     nurse = models.User(
         email=f"nurse.{suffix}@test.com",
-        hashed_password=hash_password("NurseTest1!"),
+        hashed_password=hash_password("NurseTest12!"),
         role="nurse",
         clinic_id=clinic.id,
     )

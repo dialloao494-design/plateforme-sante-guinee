@@ -30,25 +30,25 @@ def test_full_clinic_workflow(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         reception = models.User(
             email=f"e2e.reception.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="receptionist",
             clinic_id=clinic_id,
         )
         radtech = models.User(
             email=f"e2e.rad.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="lab_technician",
             clinic_id=clinic_id,
         )
         pharmacist = models.User(
             email=f"e2e.pharma.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="pharmacist",
             clinic_id=clinic_id,
         )
         doc_user = models.User(
             email=f"e2e.doctor.{suffix}@test.com",
-            hashed_password=hash_password("DoctorPass1"),
+            hashed_password=hash_password("DoctorPass12!"),
             role="doctor",
             clinic_id=clinic_id,
         )

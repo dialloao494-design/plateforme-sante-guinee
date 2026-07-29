@@ -24,7 +24,7 @@ def _staff(db, email, role, clinic_id):
     with provisioning_channel("test_fixture"):
         user = models.User(
             email=email,
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role=role,
             clinic_id=clinic_id,
         )
@@ -54,7 +54,7 @@ def _setup_clinic(client, db, admin_user):
     with provisioning_channel("test_fixture"):
         doc_user = models.User(
             email=f"readiness.doctor.{suffix}@test.com",
-            hashed_password=hash_password("DoctorPass1"),
+            hashed_password=hash_password("DoctorPass12!"),
             role="doctor",
             clinic_id=clinic_id,
         )

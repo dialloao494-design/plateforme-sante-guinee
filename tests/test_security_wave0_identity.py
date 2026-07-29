@@ -31,7 +31,7 @@ def test_password_policy_requires_12_and_complexity():
     except ValueError:
         pass
     try:
-        validate_password("password123")
+        validate_password("password1234")
         assert False, "expected common password rejection"
     except ValueError:
         pass
@@ -54,7 +54,7 @@ def test_rbac_matrix_covers_every_role():
 def test_login_issues_refresh_and_short_access_ttl(client, admin_user):
     r = client.post(
         "/auth/login-json",
-        json={"email": admin_user.email, "password": "AdminPass1"},
+        json={"email": admin_user.email, "password": "AdminPass12!"},
     )
     assert r.status_code == 200, r.text
     body = r.json()
@@ -70,7 +70,7 @@ def test_login_issues_refresh_and_short_access_ttl(client, admin_user):
 def test_refresh_rotates_and_reuse_revokes(client, admin_user, db_session):
     login = client.post(
         "/auth/login-json",
-        json={"email": admin_user.email, "password": "AdminPass1"},
+        json={"email": admin_user.email, "password": "AdminPass12!"},
     ).json()
     refresh1 = login["refresh_token"]
     r2 = client.post("/auth/refresh", json={"refresh_token": refresh1})
@@ -88,7 +88,7 @@ def test_refresh_rotates_and_reuse_revokes(client, admin_user, db_session):
 def test_logout_denylists_access_token(client, admin_user):
     login = client.post(
         "/auth/login-json",
-        json={"email": admin_user.email, "password": "AdminPass1"},
+        json={"email": admin_user.email, "password": "AdminPass12!"},
     ).json()
     access = login["access_token"]
     refresh = login["refresh_token"]
@@ -107,7 +107,7 @@ def test_must_change_password_blocks_clinical_api(client, db_session, admin_user
 
     login = client.post(
         "/auth/login-json",
-        json={"email": admin_user.email, "password": "AdminPass1"},
+        json={"email": admin_user.email, "password": "AdminPass12!"},
     ).json()
     access = login["access_token"]
     assert login.get("must_change_password") is True
@@ -129,12 +129,12 @@ def test_must_change_password_blocks_clinical_api(client, db_session, admin_user
 def test_change_password_revokes_old_token_and_issues_new(client, db_session, admin_user):
     login = client.post(
         "/auth/login-json",
-        json={"email": admin_user.email, "password": "AdminPass1"},
+        json={"email": admin_user.email, "password": "AdminPass12!"},
     ).json()
     old_access = login["access_token"]
     r = client.post(
         "/auth/change-password",
-        json={"current_password": "AdminPass1", "new_password": "NewerSecure99!"},
+        json={"current_password": "AdminPass12!", "new_password": "NewerSecure99!"},
         headers=_headers(old_access),
     )
     assert r.status_code == 200, r.text
@@ -149,7 +149,7 @@ def test_change_password_revokes_old_token_and_issues_new(client, db_session, ad
     assert new_me.status_code == 200
 
     # restore password for other tests
-    admin_user.hashed_password = hash_password("AdminPass1")
+    admin_user.hashed_password = hash_password("AdminPass12!")
     admin_user.token_version = 0
     admin_user.must_change_password = False
     db_session.add(admin_user)
@@ -189,7 +189,7 @@ def test_account_lockout_after_failures(client, db_session, admin_user):
 
     locked = client.post(
         "/auth/login-json",
-        json={"email": admin_user.email, "password": "AdminPass1"},
+        json={"email": admin_user.email, "password": "AdminPass12!"},
     )
     assert locked.status_code == 429
 
@@ -230,7 +230,7 @@ def test_mfa_challenge_when_enabled(client, db_session, admin_user):
 
     denied = client.post(
         "/auth/login-json",
-        json={"email": admin_user.email, "password": "AdminPass1"},
+        json={"email": admin_user.email, "password": "AdminPass12!"},
     )
     assert denied.status_code == 401
     assert "MFA" in denied.json()["detail"]
@@ -238,7 +238,7 @@ def test_mfa_challenge_when_enabled(client, db_session, admin_user):
     code = pyotp.TOTP(secret).now()
     ok = client.post(
         "/auth/login-json",
-        json={"email": admin_user.email, "password": "AdminPass1", "mfa_code": code},
+        json={"email": admin_user.email, "password": "AdminPass12!", "mfa_code": code},
     )
     assert ok.status_code == 200, ok.text
 

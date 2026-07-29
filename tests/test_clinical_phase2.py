@@ -30,13 +30,13 @@ def _setup(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         nurse = models.User(
             email=f"nurse.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1!"),
+            hashed_password=hash_password("StaffPass12!"),
             role="nurse",
             clinic_id=clinic_id,
         )
         reception = models.User(
             email=f"recv.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1!"),
+            hashed_password=hash_password("StaffPass12!"),
             role="receptionist",
             clinic_id=clinic_id,
         )
@@ -91,7 +91,7 @@ def test_nutrition_register_json_serializable(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         nutritionist = models.User(
             email=f"nutri2.{uuid.uuid4().hex[:8]}@test.com",
-            hashed_password=hash_password("StaffPass1!"),
+            hashed_password=hash_password("StaffPass12!"),
             role="nutritionist",
             clinic_id=clinic_id,
         )
@@ -150,13 +150,13 @@ def test_lab_and_pharmacy_dashboards(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         lab = models.User(
             email=f"lab.{uuid.uuid4().hex[:8]}@test.com",
-            hashed_password=hash_password("StaffPass1!"),
+            hashed_password=hash_password("StaffPass12!"),
             role="lab_technician",
             clinic_id=clinic_id,
         )
         pharmacist = models.User(
             email=f"ph.{uuid.uuid4().hex[:8]}@test.com",
-            hashed_password=hash_password("StaffPass1!"),
+            hashed_password=hash_password("StaffPass12!"),
             role="pharmacist",
             clinic_id=clinic_id,
         )

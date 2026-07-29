@@ -30,7 +30,7 @@ def test_reminder_scheduling_and_patient_response(client, db_session, admin_user
     with provisioning_channel("test_fixture"):
         reception = models.User(
             email=f"rem.reception.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="receptionist",
             clinic_id=clinic_id,
         )
@@ -106,7 +106,7 @@ def test_reschedule_requested_notification(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         reception = models.User(
             email=f"res.reception.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="receptionist",
             clinic_id=clinic_id,
         )

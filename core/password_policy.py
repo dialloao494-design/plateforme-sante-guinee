@@ -15,6 +15,8 @@ _COMMON_PASSWORDS = frozenset(
         "password1",
         "password12",
         "password123",
+        "password1234",
+        "password12345",
         "12345678",
         "123456789",
         "1234567890",

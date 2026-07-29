@@ -29,7 +29,7 @@ def test_medical_history_read_and_allergy_write(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         doc_user = models.User(
             email=f"mh.doc.{suffix}@test.com",
-            hashed_password=hash_password("DoctorPass1"),
+            hashed_password=hash_password("DoctorPass12!"),
             role="doctor",
             clinic_id=clinic_id,
         )
@@ -51,7 +51,7 @@ def test_medical_history_read_and_allergy_write(client, db_session, admin_user):
         db_session.refresh(doctor)
         reception = models.User(
             email=f"mh.reception.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="receptionist",
             clinic_id=clinic_id,
         )

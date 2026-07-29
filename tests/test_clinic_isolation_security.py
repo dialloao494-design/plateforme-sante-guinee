@@ -28,7 +28,7 @@ def _seed_clinic(client, db_session, admin_user, label: str) -> tuple[int, model
     with provisioning_channel("test_fixture"):
         reception = models.User(
             email=f"{label}.reception.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="receptionist",
             clinic_id=clinic_id,
         )
@@ -97,13 +97,13 @@ def test_invoice_access_is_scoped_to_clinic(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         cashier_a = models.User(
             email=f"cashier.a.{uuid.uuid4().hex[:6]}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="cashier",
             clinic_id=clinic_a_id,
         )
         cashier_b = models.User(
             email=f"cashier.b.{uuid.uuid4().hex[:6]}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="cashier",
             clinic_id=clinic_b_id,
         )
@@ -136,7 +136,7 @@ def test_patient_clinic_user_composite_unique(db_session):
         clinic = models.Clinic(name="Unique Clinic", city="Conakry", is_active=True)
         user = models.User(
             email=f"dup.patient.{uuid.uuid4().hex[:8]}@test.com",
-            hashed_password=hash_password("Secret12"),
+            hashed_password=hash_password("Secret12Pass!"),
             role="patient",
         )
         db_session.add_all([clinic, user])
@@ -195,7 +195,7 @@ def test_cross_clinic_reception_appointment_rejected(client, db_session, admin_u
     with provisioning_channel("test_fixture"):
         doc_user_b = models.User(
             email=f"doc.b.{suffix}@test.com",
-            hashed_password=hash_password("DoctorPass1"),
+            hashed_password=hash_password("DoctorPass12!"),
             role="doctor",
             clinic_id=clinic_b_id,
         )
@@ -266,7 +266,7 @@ def test_same_user_different_clinic_patients_allowed(db_session):
         c2 = models.Clinic(name="C2", city="Conakry", is_active=True)
         user = models.User(
             email=f"multi.{uuid.uuid4().hex[:8]}@test.com",
-            hashed_password=hash_password("Secret12"),
+            hashed_password=hash_password("Secret12Pass!"),
             role="patient",
         )
         db_session.add_all([c1, c2, user])

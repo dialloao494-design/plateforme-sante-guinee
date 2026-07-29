@@ -21,7 +21,7 @@ def _auth_header(user) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-def _staff(db, email, role, clinic_id, password="StaffPass1"):
+def _staff(db, email, role, clinic_id, password="StaffPass12!"):
     with provisioning_channel("test_fixture"):
         user = models.User(
             email=email,
@@ -54,7 +54,7 @@ def test_full_clinical_workflow(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         doc_user = models.User(
             email="doctor.cis@test.com",
-            hashed_password=hash_password("DoctorPass1"),
+            hashed_password=hash_password("DoctorPass12!"),
             role="doctor",
             clinic_id=clinic_id,
         )
@@ -198,7 +198,7 @@ def test_resume_active_consultation(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         doc_user = models.User(
             email="doctor.resume@test.com",
-            hashed_password=hash_password("DoctorPass1"),
+            hashed_password=hash_password("DoctorPass12!"),
             role="doctor",
             clinic_id=clinic_id,
         )
@@ -272,7 +272,7 @@ def test_admin_create_doctor_profile(client, db_session, admin_user):
         "/clinical/staff",
         json={
             "email": "new.doctor@test.com",
-            "password": "DoctorNew1!",
+            "password": "DoctorNew12!",
             "role": "doctor",
             "clinic_id": clinic_id,
         },
@@ -290,7 +290,7 @@ def test_admin_create_doctor_profile(client, db_session, admin_user):
 
     login = client.post(
         "/auth/login-json",
-        json={"email": "new.doctor@test.com", "password": "DoctorNew1!"},
+        json={"email": "new.doctor@test.com", "password": "DoctorNew12!"},
     )
     assert login.status_code == 200
 
@@ -312,7 +312,7 @@ def test_assign_doctor_syncs_user_clinic(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         doc_user = models.User(
             email="doctor.assign@test.com",
-            hashed_password=hash_password("DoctorPass1"),
+            hashed_password=hash_password("DoctorPass12!"),
             role="doctor",
             clinic_id=clinic_a,
         )
@@ -356,7 +356,7 @@ def test_doctor_dashboard_module(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         doc_user = models.User(
             email="doctor.dash@test.com",
-            hashed_password=hash_password("DoctorPass1"),
+            hashed_password=hash_password("DoctorPass12!"),
             role="doctor",
             clinic_id=clinic_id,
         )
@@ -504,7 +504,7 @@ def test_lab_staff_login_after_admin_create(client, admin_user):
         "/clinical/staff",
         json={
             "email": "lab.outbox@test.com",
-            "password": "LabOutBox1!",
+            "password": "LabOutBox12!",
             "role": "lab_technician",
             "clinic_id": clinic_id,
         },
@@ -514,7 +514,7 @@ def test_lab_staff_login_after_admin_create(client, admin_user):
 
     login = client.post(
         "/auth/login-json",
-        json={"email": "lab.outbox@test.com", "password": "LabOutBox1!"},
+        json={"email": "lab.outbox@test.com", "password": "LabOutBox12!"},
     )
     assert login.status_code == 200
     assert login.json()["role"] == "lab_technician"

@@ -643,22 +643,40 @@ def run_all() -> dict[str, Any]:
 
     # -------- NODE-01 / LAN-01 --------
     node_pkg = ROOT / "deploy" / "clinic-node"
-    node_present = node_pkg.is_dir()
+    node_present = node_pkg.is_dir() and (node_pkg / "compose.yml").is_file()
+    nginx_ok = False
+    if node_present and (node_pkg / "proxy" / "app.https.conf").is_file():
+        nginx_txt = (node_pkg / "proxy" / "app.https.conf").read_text(encoding="utf-8", errors="ignore")
+        try:
+            nginx_ok = clinic_nginx_enforces_tls12_plus(nginx_txt)
+        except Exception:
+            nginx_ok = "TLSv1.2" in nginx_txt or "ssl_protocols" in nginx_txt
     findings.append(
         _result(
             "NODE-01",
-            result="N/A_LAB" if not node_present else "PARTIAL",
+            result="BLOCKED" if node_present and nginx_ok else ("PARTIAL" if node_present else "N/A_LAB"),
             severity="Critical",
-            evidence={"clinic_node_package_present": node_present},
-            notes="Clinic Node package not on main; Wave4 controls required before lab live test",
+            evidence={
+                "clinic_node_package_present": node_present,
+                "https_proxy_tls12": nginx_ok,
+                "validate_script": (node_pkg / "scripts" / "validate-clinic-node-security.sh").is_file()
+                if node_present
+                else False,
+            },
+            notes="Clinic Node package present with HTTPS TLS1.2+; physical lab theft still N/A_LAB under PHYS-01",
         )
     )
+    host_compose = node_pkg / "compose.host.yml" if node_present else None
+    host_ok = False
+    if host_compose and host_compose.is_file():
+        host_txt = host_compose.read_text(encoding="utf-8", errors="ignore")
+        host_ok = "127.0.0.1" in host_txt and "listen_addresses" in host_txt
     findings.append(
         _result(
             "LAN-01",
-            result="N/A_LAB" if not node_present else "PARTIAL",
+            result="BLOCKED" if host_ok else ("PARTIAL" if node_present else "N/A_LAB"),
             severity="Critical",
-            evidence={"host_network_guard_module": (ROOT / "core" / "clinic_node_security.py").is_file()},
+            evidence={"host_compose_localhost_postgres": host_ok},
             notes="Host-network Postgres bind must remain 127.0.0.1 when used",
         )
     )
