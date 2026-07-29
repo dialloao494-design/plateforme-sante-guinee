@@ -38,7 +38,7 @@
     {
       "label": "SECURITY_SUITE",
       "exit_code": 0,
-      "summary": "125 passed, 752 warnings in 2.32s",
+      "summary": "132 passed, 777 warnings in 2.55s",
       "artifact": "evidence/security/wave7/WAVE7_SECURITY_SUITE.txt"
     },
     {

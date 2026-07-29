@@ -1,5 +1,5 @@
-........................................................................ [ 57%]
-.....................................................                    [100%]
+........................................................................ [ 54%]
+............................................................             [100%]
 =============================== warnings summary ===============================
 ../home/ubuntu/.local/lib/python3.12/site-packages/pydantic/_internal/_config.py:272: 46 warnings
   /home/ubuntu/.local/lib/python3.12/site-packages/pydantic/_internal/_config.py:272: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.6/migration/
@@ -57,6 +57,7 @@ tests/test_attachment_security.py: 14 warnings
 tests/test_clinic_isolation_security.py: 4 warnings
 tests/test_registration_security.py: 14 warnings
 tests/test_auth_session.py: 3 warnings
+tests/test_platform_owner_setup.py: 7 warnings
   /home/ubuntu/.local/lib/python3.12/site-packages/httpx/_client.py:690: DeprecationWarning: The 'app' shortcut is now deprecated. Use the explicit style 'transport=WSGITransport(app=...)' instead.
     warnings.warn(message, DeprecationWarning)
 
@@ -73,6 +74,7 @@ tests/test_attachment_security.py: 44 warnings
 tests/test_clinic_isolation_security.py: 18 warnings
 tests/test_registration_security.py: 8 warnings
 tests/test_auth_session.py: 4 warnings
+tests/test_platform_owner_setup.py: 4 warnings
   /workspace/security.py:74: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     now = datetime.utcnow()
 
@@ -80,6 +82,7 @@ tests/test_security_wave0_identity.py: 9 warnings
 tests/test_security_wave6_pentest.py: 3 warnings
 tests/test_registration_security.py: 7 warnings
 tests/test_auth_session.py: 1 warning
+tests/test_platform_owner_setup.py: 4 warnings
   /workspace/services/auth_session_service.py:49: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     expires_at=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
 
@@ -90,6 +93,7 @@ tests/test_attachment_security.py: 124 warnings
 tests/test_clinic_isolation_security.py: 60 warnings
 tests/test_registration_security.py: 17 warnings
 tests/test_auth_session.py: 4 warnings
+tests/test_platform_owner_setup.py: 4 warnings
   /home/ubuntu/.local/lib/python3.12/site-packages/sqlalchemy/sql/schema.py:3592: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
 
@@ -100,6 +104,7 @@ tests/test_attachment_security.py: 15 warnings
 tests/test_clinic_isolation_security.py: 18 warnings
 tests/test_registration_security.py: 4 warnings
 tests/test_auth_session.py: 4 warnings
+tests/test_platform_owner_setup.py: 1 warning
   /home/ubuntu/.local/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     now = timegm(datetime.utcnow().utctimetuple())
 
@@ -125,6 +130,7 @@ tests/test_attachment_security.py: 15 warnings
 tests/test_clinic_isolation_security.py: 18 warnings
 tests/test_registration_security.py: 4 warnings
 tests/test_auth_session.py: 3 warnings
+tests/test_platform_owner_setup.py: 1 warning
   /workspace/services/auth_session_service.py:190: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     AccessTokenDenylist.expires_at > datetime.utcnow(),
 
@@ -173,13 +179,10 @@ tests/test_security_wave6_pentest.py::test_all_attack_ids_executed
   /workspace/services/auth_session_service.py:200: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     retry_after = int((locked_until - datetime.utcnow()).total_seconds())
 
-tests/test_security_wave0_identity.py::test_staff_provisioning_sets_must_change_password
-tests/test_security_wave1_api.py::test_assign_doctor_cross_clinic_denied
-tests/test_security_wave1_api.py::test_assign_doctor_cross_clinic_denied
-tests/test_security_wave1_api.py::test_patient_delete_cross_clinic_denied
-tests/test_security_wave1_api.py::test_search_sql_probe_blocked
-tests/test_security_wave1_api.py::test_audit_requires_admin_audit_permission
-tests/test_registration_security.py::TestAdminProvisioningEndpoint::test_admin_can_create_admin
+tests/test_security_wave0_identity.py: 1 warning
+tests/test_security_wave1_api.py: 5 warnings
+tests/test_registration_security.py: 1 warning
+tests/test_platform_owner_setup.py: 4 warnings
   /workspace/services/user_provisioning.py:180: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
     email_verified_at=datetime.utcnow() if auto_verify else None,
 
@@ -206,5 +209,4 @@ tests/test_attachment_security.py: 11 warnings
     date=datetime.utcnow() + timedelta(days=1),
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-125 passed, 752 warnings in 2.32s
-
+132 passed, 777 warnings in 2.55s
