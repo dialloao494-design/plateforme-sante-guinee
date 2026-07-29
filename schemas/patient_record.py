@@ -75,9 +75,11 @@ class PatientDocumentResponse(BaseModel):
     patient_id: int
     uploaded_by: int
     type_document: str
-    file_path: str
+    original_filename: Optional[str] = None
+    mime_type: Optional[str] = None
     created_at: datetime
     download_url: Optional[str] = None
+    # file_path / storage keys are intentionally omitted (PHI storage hygiene).
 
 
 class TimelineEvent(BaseModel):

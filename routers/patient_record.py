@@ -9,6 +9,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 import schemas.patient_record as record_schemas
+from core.attachment_policy import phi_download_headers
 from core.http_utils import client_ip
 from database import get_db
 from models.user import User
@@ -122,13 +123,13 @@ def download_patient_document(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles(DOSSIER_READ_ROLES)),
 ):
-    content, mime, filename = PatientRecordService.download_document(
+    content, mime, filename, content_sha256 = PatientRecordService.download_document(
         db, patient_id, document_id, current_user, client_ip=client_ip(request)
     )
     return Response(
         content=content,
         media_type=mime,
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers=phi_download_headers(filename=filename, content_sha256=content_sha256),
     )
 
 

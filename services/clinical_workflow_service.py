@@ -1176,6 +1176,9 @@ class ClinicalWorkflowService:
             uploaded_by=user.id,
             type_document="lab_result",
             file_path=stored.storage_key,
+            original_filename=stored.original_filename,
+            mime_type=stored.mime_type,
+            content_sha256=stored.content_sha256,
         )
         db.add(doc)
         db.commit()

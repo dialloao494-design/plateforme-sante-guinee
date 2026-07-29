@@ -5,13 +5,24 @@ from __future__ import annotations
 import os
 
 # MUST be set before database/main are imported.
-os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-only-32chars-min")
-os.environ.setdefault("ENVIRONMENT", "development")
+# Force test-safe settings even when the shell inherits clinic-node env.
+os.environ["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY", "test-secret-key-for-pytest-only-32chars-min"
+)
+if len(os.environ.get("SECRET_KEY", "")) < 32:
+    os.environ["SECRET_KEY"] = "test-secret-key-for-pytest-only-32chars-min"
+os.environ["ENVIRONMENT"] = "development"
 os.environ["DATABASE_URL"] = "sqlite://"
+os.environ["ALLOWED_HOSTS"] = "testserver,localhost,127.0.0.1,*"
 os.environ.pop("ENABLE_ADMIN_BOOTSTRAP", None)
 os.environ["ENABLE_PILOT_SEED"] = "false"
 os.environ["ENABLE_STARTUP_TEST_USER"] = "false"
-os.environ.setdefault("RATE_LIMIT_PLATFORM_SETUP", "10000/minute")
+os.environ["RATE_LIMIT_PLATFORM_SETUP"] = "10000/minute"
+os.environ["RATE_LIMIT_DEFAULT"] = "10000/minute"
+os.environ.pop("TRUSTED_PROXY_HOSTS", None)
+os.environ.pop("REMINDER_RESPOND_TOKEN", None)
+# Wave 2 — virus scan off by default in tests unless a test enables stub mode.
+os.environ.setdefault("ATTACHMENT_VIRUS_SCAN", "off")
 
 import pytest
 from fastapi.testclient import TestClient

@@ -464,6 +464,7 @@ async def startup_event():
             ensure_patient_user_id_unique,
             ensure_message_attachment_columns,
             ensure_patient_dossier_schema,
+            ensure_patient_document_security_columns,
             ensure_user_roles_check_constraint,
             normalize_legacy_user_roles,
             ensure_email_verification_schema,
@@ -484,6 +485,7 @@ async def startup_event():
         ensure_message_attachment_columns(engine)
         ensure_attachment_access_log_table(engine)
         ensure_patient_dossier_schema(engine)
+        ensure_patient_document_security_columns(engine)
         ensure_clinic_charges_table(engine)
         ensure_clinical_audit_clinic_id(engine)
         ensure_clinical_audit_patient_nullable(engine)

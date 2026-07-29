@@ -235,7 +235,8 @@ class PatientRecordService:
                 patient_id=doc.patient_id,
                 uploaded_by=doc.uploaded_by,
                 type_document=doc.type_document,
-                file_path=doc.file_path,
+                original_filename=getattr(doc, "original_filename", None),
+                mime_type=getattr(doc, "mime_type", None),
                 created_at=doc.created_at,
                 download_url=f"/patients/{patient_id}/documents/{doc.id}/download",
             )
@@ -274,6 +275,9 @@ class PatientRecordService:
             uploaded_by=current_user.id,
             type_document=type_document.strip() or "autre",
             file_path=stored.storage_key,
+            original_filename=stored.original_filename,
+            mime_type=stored.mime_type,
+            content_sha256=stored.content_sha256,
         )
         db.add(doc)
         db.commit()
@@ -293,7 +297,8 @@ class PatientRecordService:
             patient_id=doc.patient_id,
             uploaded_by=doc.uploaded_by,
             type_document=doc.type_document,
-            file_path=doc.file_path,
+            original_filename=doc.original_filename,
+            mime_type=doc.mime_type,
             created_at=doc.created_at,
             download_url=f"/patients/{patient_id}/documents/{doc.id}/download",
         )
@@ -306,7 +311,7 @@ class PatientRecordService:
         current_user: User,
         *,
         client_ip: Optional[str] = None,
-    ) -> tuple[bytes, str, str]:
+    ) -> tuple[bytes, str, str, str | None]:
         PatientRecordAccessPolicy.assert_can_read_dossier(db, current_user, patient_id)
         doc = (
             db.query(models.PatientDocument)
@@ -319,21 +324,37 @@ class PatientRecordService:
         if not doc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
-        content, path = SecureAttachmentStorage.read(doc.file_path)
-        ext = path.suffix.lower().lstrip(".")
-        mime = SecureAttachmentStorage.sniff_mime(content, ext)
-        filename = f"{doc.type_document}_{doc.id}.{ext or 'bin'}"
+        content, _path = SecureAttachmentStorage.read(
+            doc.file_path,
+            expected_sha256=getattr(doc, "content_sha256", None),
+        )
+        mime = (
+            getattr(doc, "mime_type", None)
+            or SecureAttachmentStorage.sniff_mime(content, "")
+        )
+        original = getattr(doc, "original_filename", None)
+        if original:
+            filename = original
+        else:
+            ext = {
+                "application/pdf": "pdf",
+                "image/png": "png",
+                "image/jpeg": "jpg",
+                "image/webp": "webp",
+                "text/plain": "txt",
+            }.get(mime, "bin")
+            filename = f"{doc.type_document}_{doc.id}.{ext}"
 
         ClinicalAuditService.log(
             db,
             actor=current_user,
             patient_id=patient_id,
-            action="read",
+            action="download",
             resource_type="patient_document",
             resource_id=doc.id,
             client_ip=client_ip,
         )
-        return content, mime, filename
+        return content, mime, filename, getattr(doc, "content_sha256", None)
 
     @staticmethod
     def build_timeline(

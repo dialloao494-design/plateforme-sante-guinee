@@ -15,6 +15,7 @@ from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Tabl
 from data.clinic_branding import CLINIC_FOOTER_LINE, CLINIC_PRINT_NAME
 from services.clinic_print_header import append_official_clinic_header
 from services.pdf_fonts import ensure_clinic_fonts
+from core.output_encoding import escape_pdf_paragraph
 
 METHOD_LABELS = {
     "cash": "Espèces",
@@ -140,14 +141,14 @@ def build_hospital_invoice_pdf(
 
     # Meta block
     meta_left = [
-        f"<b>N° facture :</b> {invoice_number or '—'}",
-        f"<b>Patient :</b> {patient_name or '—'}",
-        f"<b>N° dossier :</b> {patient_file_number or '—'}",
+        f"<b>N° facture :</b> {escape_pdf_paragraph(invoice_number or '—')}",
+        f"<b>Patient :</b> {escape_pdf_paragraph(patient_name or '—')}",
+        f"<b>N° dossier :</b> {escape_pdf_paragraph(patient_file_number or '—')}",
     ]
     meta_right = [
-        f"<b>Date :</b> {printed_date or '—'}",
-        f"<b>Heure :</b> {printed_time or '—'}",
-        f"<b>Caissier :</b> {printed_by or '—'}",
+        f"<b>Date :</b> {escape_pdf_paragraph(printed_date or '—')}",
+        f"<b>Heure :</b> {escape_pdf_paragraph(printed_time or '—')}",
+        f"<b>Caissier :</b> {escape_pdf_paragraph(printed_by or '—')}",
     ]
     meta_table = Table(
         [
@@ -186,7 +187,7 @@ def build_hospital_invoice_pdf(
         amt = int(item.get("amount_gnf") or item.get("total_gnf") or qty * unit)
         item_rows.append(
             [
-                Paragraph(desc, styles["cell"]),
+                Paragraph(escape_pdf_paragraph(desc), styles["cell"]),
                 Paragraph(str(qty), styles["cell_right"]),
                 Paragraph(_gnf(unit), styles["cell_right"]),
                 Paragraph(_gnf(amt), styles["cell_right"]),

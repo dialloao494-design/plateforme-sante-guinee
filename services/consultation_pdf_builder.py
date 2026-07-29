@@ -20,6 +20,7 @@ from reportlab.platypus import (
 
 from data.clinic_branding import CLINIC_FOOTER_LINE
 from services.clinic_print_header import append_official_clinic_header
+from core.output_encoding import escape_pdf_paragraph
 
 TITLE_COLOR = colors.HexColor("#C9A227")
 TEAL = colors.HexColor("#134e4a")
@@ -46,12 +47,18 @@ def _footer_factory(printed_by: str, department: str):
     return _footer
 
 
+def _safe_para(text: object, style) -> Paragraph:
+    raw = "" if text is None else str(text)
+    escaped = escape_pdf_paragraph(raw).replace("\n", "<br/>")
+    return Paragraph(escaped, style)
+
+
 def _section(story, heading_style, body_style, title: str, value):
     text = (value or "").strip() if isinstance(value, str) else value
     if not text:
         return
     story.append(Paragraph(title, heading_style))
-    story.append(Paragraph(str(text).replace("\n", "<br/>"), body_style))
+    story.append(_safe_para(text, body_style))
     story.append(Spacer(1, 4))
 
 
@@ -99,12 +106,12 @@ def build_consultation_pdf(data: dict) -> bytes:
 
     # Patient identity block
     ident_rows = [
-        [Paragraph("N° dossier", label), Paragraph(str(patient.get("patient_number") or "—"), val),
-         Paragraph("Date", label), Paragraph(str(data.get("date") or datetime.now().strftime("%d/%m/%Y %H:%M")), val)],
-        [Paragraph("Nom complet", label), Paragraph(str(patient.get("full_name") or "—"), val),
-         Paragraph("Âge / Sexe", label), Paragraph(f"{patient.get('age') or '—'} / {patient.get('sex') or '—'}", val)],
-        [Paragraph("Téléphone", label), Paragraph(str(patient.get("phone") or "—"), val),
-         Paragraph("Prise en charge", label), Paragraph(str(patient.get("payer") or "—"), val)],
+        [Paragraph("N° dossier", label), _safe_para(patient.get("patient_number") or "—", val),
+         Paragraph("Date", label), _safe_para(data.get("date") or datetime.now().strftime("%d/%m/%Y %H:%M"), val)],
+        [Paragraph("Nom complet", label), _safe_para(patient.get("full_name") or "—", val),
+         Paragraph("Âge / Sexe", label), _safe_para(f"{patient.get('age') or '—'} / {patient.get('sex') or '—'}", val)],
+        [Paragraph("Téléphone", label), _safe_para(patient.get("phone") or "—", val),
+         Paragraph("Prise en charge", label), _safe_para(patient.get("payer") or "—", val)],
     ]
     ident = Table(ident_rows, colWidths=[page_width * 0.16, page_width * 0.34, page_width * 0.18, page_width * 0.32])
     ident.setStyle(
@@ -174,17 +181,17 @@ def build_consultation_pdf(data: dict) -> bytes:
         story.append(Paragraph("Examens & prescriptions demandés", heading))
         lines = []
         for o in labs:
-            lines.append(f"• Laboratoire : {o}")
+            lines.append(f"• Laboratoire : {escape_pdf_paragraph(o)}")
         for o in imaging:
-            lines.append(f"• Imagerie : {o}")
+            lines.append(f"• Imagerie : {escape_pdf_paragraph(o)}")
         for o in rx:
-            lines.append(f"• Ordonnance : {o}")
+            lines.append(f"• Ordonnance : {escape_pdf_paragraph(o)}")
         story.append(Paragraph("<br/>".join(lines), body))
         story.append(Spacer(1, 6))
 
     story.append(Spacer(1, 14))
     sign = Table(
-        [[Paragraph(f"Médecin : <b>{data.get('doctor_name') or '—'}</b>", body),
+        [[Paragraph(f"Médecin : <b>{escape_pdf_paragraph(data.get('doctor_name') or '—')}</b>", body),
           Paragraph("Signature / Cachet", label)]],
         colWidths=[page_width * 0.55, page_width * 0.45],
     )
