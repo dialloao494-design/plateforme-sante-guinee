@@ -1,0 +1,13 @@
+{
+  "id": "DOS-01",
+  "timestamp": "2026-07-29T14:14:56.462930+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "BLOCKED",
+  "severity": "High",
+  "notes": "SlowAPI + login lockout mitigate auth floods; PDF/upload quotas residual",
+  "evidence": {
+    "slowapi_limiter": true,
+    "login_lockout": true
+  }
+}

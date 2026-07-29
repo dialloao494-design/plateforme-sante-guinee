@@ -1,0 +1,13 @@
+{
+  "id": "MITM-01",
+  "timestamp": "2026-07-29T14:14:56.407577+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "N/A_LAB",
+  "severity": "Critical",
+  "notes": "LAN MITM requires clinic lab with rogue AP; HSTS/CSP headers shipped",
+  "evidence": {
+    "security_headers_middleware": true,
+    "hsts_helper": true
+  }
+}

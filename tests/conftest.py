@@ -12,6 +12,16 @@ os.environ.pop("ENABLE_ADMIN_BOOTSTRAP", None)
 os.environ["ENABLE_PILOT_SEED"] = "false"
 os.environ["ENABLE_STARTUP_TEST_USER"] = "false"
 os.environ.setdefault("RATE_LIMIT_PLATFORM_SETUP", "10000/minute")
+os.environ.setdefault("RATE_LIMIT_LOGIN", "10000/minute")
+os.environ.setdefault("RATE_LIMIT_DEFAULT", "10000/minute")
+os.environ.setdefault("PASSWORD_MIN_LENGTH", "12")
+os.environ.setdefault("LOGIN_MAX_FAILURES", "5")
+os.environ.setdefault("LOGIN_LOCKOUT_MINUTES", "15")
+os.environ.setdefault("BCRYPT_ROUNDS", "4")
+os.environ.setdefault("MFA_REQUIRED_FOR_STAFF", "false")
+os.environ.setdefault("ACCESS_TOKEN_EXPIRE_MINUTES", "15")
+os.environ.setdefault("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
+
 
 import pytest
 from fastapi.testclient import TestClient
@@ -64,6 +74,7 @@ import models.pharmacy_inventory  # noqa: F401
 import models.nutrition  # noqa: F401
 import models.immunization  # noqa: F401
 import models.password_reset_token  # noqa: F401
+import models.refresh_token  # noqa: F401 — Wave 0 denylist/refresh
 import models.email_verification_token  # noqa: F401
 import models.nursing_care  # noqa: F401
 import models.nurse_assessment  # noqa: F401

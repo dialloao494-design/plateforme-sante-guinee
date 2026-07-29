@@ -68,6 +68,28 @@ UserCreate = PublicRegistration
 class UserLogin(BaseModel):
     email: str
     password: str
+    mfa_code: Optional[str] = None
+
+
+class MfaSetupConfirmRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: str
+
+
+class MfaVerifyLoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str
+    password: str
+    mfa_code: str
+
+
+class MfaDisableRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    password: str
+    code: str
 
 
 class ChangePasswordRequest(BaseModel):
@@ -147,6 +169,20 @@ class Token(BaseModel):
     role: str
     email: str
     must_change_password: bool = False
+    refresh_token: Optional[str] = None
+    expires_in: Optional[int] = None
+
+
+class RefreshTokenRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    refresh_token: Optional[str] = None
 
 
 class RegisterResponse(BaseModel):
@@ -162,6 +198,9 @@ class RegisterResponse(BaseModel):
     token_type: str
     user_id: int
     user_role: str
+    refresh_token: Optional[str] = None
+    must_change_password: bool = False
+    expires_in: Optional[int] = None
 
 
 class VerifyEmailRequest(BaseModel):
@@ -196,3 +235,4 @@ class UserResponse(BaseModel):
     clinic_name: Optional[str] = None
     email_verified: bool = False
     must_change_password: bool = False
+    mfa_enabled: bool = False

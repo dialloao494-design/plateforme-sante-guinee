@@ -1,0 +1,15 @@
+{
+  "id": "AUTH-02",
+  "timestamp": "2026-07-29T14:14:56.263223+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "BLOCKED",
+  "severity": "High",
+  "notes": "",
+  "evidence": {
+    "me_before": 200,
+    "logout": 200,
+    "me_after": 401,
+    "has_refresh": true
+  }
+}

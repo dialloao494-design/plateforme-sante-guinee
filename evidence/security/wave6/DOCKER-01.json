@@ -1,0 +1,15 @@
+{
+  "id": "DOCKER-01",
+  "timestamp": "2026-07-29T14:14:56.390312+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "BLOCKED",
+  "severity": "Critical",
+  "notes": "Non-root via gosu\u2192appuser; compose must not mount docker.sock",
+  "evidence": {
+    "non_root": true,
+    "no_docker_sock": true,
+    "cap_drop_or_no_new_privs": true,
+    "has_appuser": true
+  }
+}

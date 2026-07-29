@@ -1,0 +1,12 @@
+{
+  "id": "PG-01",
+  "timestamp": "2026-07-29T14:14:56.398785+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "BLOCKED",
+  "severity": "Critical",
+  "notes": "Railway private DB assumed; clinic-node host-network remains residual (Wave4 controls)",
+  "evidence": {
+    "compose_postgres_publish_candidates": []
+  }
+}

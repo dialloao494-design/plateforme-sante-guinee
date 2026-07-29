@@ -281,7 +281,7 @@ def create_admin_user(
 
     if clinic_id is not None:
         user.clinic_id = clinic_id
-        user.must_change_password = False
+        user.must_change_password = True
         db.add(
             models.ClinicStaff(clinic_id=clinic_id, user_id=user.id, is_active=True)
         )
@@ -344,7 +344,7 @@ def create_staff_user(
         raise UserProvisioningError("Error creating staff user.") from exc
 
     user.clinic_id = clinic_id
-    user.must_change_password = False
+    user.must_change_password = True
     db.add(
         models.ClinicStaff(clinic_id=clinic_id, user_id=user.id, is_active=True)
     )
@@ -396,6 +396,7 @@ def create_clinic_admin_user(
         raise UserProvisioningError("Error creating clinic administrator.") from exc
 
     user.clinic_id = clinic_id
+    user.must_change_password = True
     db.add(models.ClinicStaff(clinic_id=clinic_id, user_id=user.id, is_active=True))
     db.commit()
     db.refresh(user)

@@ -1,0 +1,12 @@
+{
+  "id": "XSS-02",
+  "timestamp": "2026-07-29T14:14:56.349008+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "BLOCKED",
+  "severity": "High",
+  "notes": "Server-side encoding verified; React client-side sinks still require CSP",
+  "evidence": {
+    "escaped": "&lt;img src=x onerror=alert(1)&gt;"
+  }
+}

@@ -1,8 +1,22 @@
 #!/bin/sh
 set -e
 
+# Security Wave 3: ensure writable mounts then drop to non-root appuser.
+mkdir -p /app/uploads /app/logs
+if [ "$(id -u)" = "0" ]; then
+  chown -R appuser:appuser /app/uploads /app/logs 2>/dev/null || true
+fi
+
+run_as_app() {
+  if [ "$(id -u)" = "0" ]; then
+    gosu appuser "$@"
+  else
+    "$@"
+  fi
+}
+
 echo "[entrypoint] Waiting for PostgreSQL..."
-python <<'PY'
+run_as_app python <<'PY'
 import os, sys, time
 from sqlalchemy import create_engine, text
 
@@ -26,7 +40,7 @@ sys.exit(1)
 PY
 
 echo "[entrypoint] Applying schema (create_all + Alembic)..."
-python <<'PY'
+run_as_app python <<'PY'
 import models.user  # noqa: F401
 import models.patient  # noqa: F401
 import models.doctor  # noqa: F401
@@ -92,14 +106,18 @@ PY
 
 if [ "${ENABLE_PILOT_SEED:-false}" = "true" ]; then
   echo "[entrypoint] Seeding pilot accounts..."
-  python -c "from services.pilot_seed import seed_pilot_accounts; seed_pilot_accounts()" \
+  run_as_app python -c "from services.pilot_seed import seed_pilot_accounts; seed_pilot_accounts()" \
     || echo "[entrypoint] WARNING: pilot seed skipped (non-fatal)"
 fi
 
 if [ "${ENABLE_STAGING_E2E_SEED:-false}" = "true" ]; then
   echo "[entrypoint] Seeding staging E2E multi-tenant accounts..."
-  python scripts/deploy/staging_e2e_seed.py \
+  run_as_app python scripts/deploy/staging_e2e_seed.py \
     || echo "[entrypoint] WARNING: staging E2E seed skipped (non-fatal)"
 fi
 
+if [ "$(id -u)" = "0" ]; then
+  echo "[entrypoint] Dropping privileges to appuser (uid 10001)"
+  exec gosu appuser "$@"
+fi
 exec "$@"

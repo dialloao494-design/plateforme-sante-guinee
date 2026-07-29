@@ -114,6 +114,31 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.RECEPTION_INTAKE,
         }
     ),
+    "nurse": frozenset(
+        {
+            Permission.PATIENT_JOURNEY,
+            Permission.CLINIC_OPERATIONS,
+            Permission.RECEPTION_INTAKE,
+            Permission.NUTRITION_READ,
+            Permission.IMMUNIZATION_READ,
+            Permission.ADMISSION_MANAGE,
+            Permission.ADMISSION_BEDS,
+        }
+    ),
+    "pev_agent": frozenset(
+        {
+            Permission.IMMUNIZATION_ADMINISTER,
+            Permission.IMMUNIZATION_READ,
+            Permission.PATIENT_JOURNEY,
+            Permission.CLINIC_OPERATIONS,
+            Permission.RECEPTION_INTAKE,
+        }
+    ),
+    "patient": frozenset(
+        {
+            Permission.PATIENT_JOURNEY,
+        }
+    ),
     "admin": frozenset(
         {
             Permission.ADMIN_CLINIC,
@@ -210,6 +235,8 @@ CLINIC_OPS_ROLES = (
     "pharmacist",
     "nutritionist",
     "midwife",
+    "nurse",
+    "pev_agent",
 )
 
 BILLING_READ_ROLES = ("receptionist", "cashier", "clinic_admin", "admin", "platform_admin", "platform_owner")

@@ -1,0 +1,14 @@
+{
+  "id": "VERC-01",
+  "timestamp": "2026-07-29T14:14:56.399678+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "PARTIAL",
+  "severity": "High",
+  "notes": "Preview\u2192prod API binding must be enforced in Vercel project settings",
+  "evidence": {
+    "vercel_configs": [
+      "frontend-sante/frontend/vercel.json"
+    ]
+  }
+}

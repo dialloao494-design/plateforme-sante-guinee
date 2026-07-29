@@ -1,0 +1,19 @@
+{
+  "id": "AUTH-01",
+  "timestamp": "2026-07-29T14:14:56.153785+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "BLOCKED",
+  "severity": "High",
+  "notes": "Credential spray against login-json; progressive/hard lockout expected",
+  "evidence": {
+    "status_sequence": [
+      401,
+      401,
+      429,
+      429,
+      429,
+      429
+    ]
+  }
+}

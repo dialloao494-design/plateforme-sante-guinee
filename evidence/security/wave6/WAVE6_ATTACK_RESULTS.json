@@ -1,0 +1,567 @@
+{
+  "generated_at": "2026-07-29T14:14:56.470106+00:00",
+  "plan": "docs/PENETRATION_TESTING_PLAN.md",
+  "attack_count_expected": 38,
+  "attack_count_executed": 38,
+  "results": {
+    "EXPLOITED": 0,
+    "PARTIAL": 7,
+    "BLOCKED": 26,
+    "N/A_LAB": 4,
+    "N/A_TABLETOP": 1
+  },
+  "critical_exploited": [],
+  "high_exploited": [],
+  "password_policy_enforced": true,
+  "findings": [
+    {
+      "id": "W0-RECON",
+      "timestamp": "2026-07-29T14:14:56.119373+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "Info",
+      "notes": "Surface inventory captured; OpenAPI gated by docs_enabled setting",
+      "evidence": {
+        "route_count": 270,
+        "openapi_status": 404,
+        "docs_status": 404,
+        "root_or_health": 200,
+        "roles_in_rbac": [
+          "admin",
+          "cashier",
+          "clinic_admin",
+          "doctor",
+          "lab_technician",
+          "midwife",
+          "nurse",
+          "nutritionist",
+          "patient",
+          "pev_agent",
+          "pharmacist",
+          "platform_admin",
+          "platform_owner",
+          "receptionist"
+        ]
+      }
+    },
+    {
+      "id": "AUTH-01",
+      "timestamp": "2026-07-29T14:14:56.153785+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "High",
+      "notes": "Credential spray against login-json; progressive/hard lockout expected",
+      "evidence": {
+        "status_sequence": [
+          401,
+          401,
+          429,
+          429,
+          429,
+          429
+        ]
+      }
+    },
+    {
+      "id": "AUTH-02",
+      "timestamp": "2026-07-29T14:14:56.263223+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "High",
+      "notes": "",
+      "evidence": {
+        "me_before": 200,
+        "logout": 200,
+        "me_after": 401,
+        "has_refresh": true
+      }
+    },
+    {
+      "id": "AUTH-03",
+      "timestamp": "2026-07-29T14:14:56.276143+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "High",
+      "notes": "",
+      "evidence": {
+        "clinical": 403,
+        "auth_me": 200,
+        "body": "{\"detail\":\"Password change required before continuing\"}"
+      }
+    },
+    {
+      "id": "AUTHZ-01",
+      "timestamp": "2026-07-29T14:14:56.283266+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "Critical",
+      "notes": "",
+      "evidence": {
+        "status": 403,
+        "patient_b_id": 2,
+        "clinic_a_admin": 1
+      }
+    },
+    {
+      "id": "AUTHZ-02",
+      "timestamp": "2026-07-29T14:14:56.295162+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "Critical",
+      "notes": "",
+      "evidence": {
+        "receptionist_create_admin": 403,
+        "patient_platform": 403
+      }
+    },
+    {
+      "id": "JWT-01",
+      "timestamp": "2026-07-29T14:14:56.295211+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "PARTIAL",
+      "severity": "Critical",
+      "notes": "Encoding helper blocks HTML injection; residual SPA token-theft risk documented",
+      "evidence": {
+        "output_encoding": "&lt;script&gt;alert(1)&lt;/script&gt;",
+        "frontend_present": true,
+        "note": "sessionStorage JWT residual risk; CSP/encoding mitigations required"
+      }
+    },
+    {
+      "id": "JWT-02",
+      "timestamp": "2026-07-29T14:14:56.302870+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "Critical",
+      "notes": "",
+      "evidence": {
+        "alg_none": 401,
+        "wrong_key": 401,
+        "alg_allowlist": "HS256"
+      }
+    },
+    {
+      "id": "SESS-01",
+      "timestamp": "2026-07-29T14:14:56.330664+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "High",
+      "notes": "",
+      "evidence": {
+        "change_password": 200,
+        "old_token_after": 401
+      }
+    },
+    {
+      "id": "SQL-01",
+      "timestamp": "2026-07-29T14:14:56.348993+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "Critical",
+      "notes": "",
+      "evidence": {
+        "probe_results": [
+          {
+            "probe": "' OR 1=1--",
+            "status": 422
+          },
+          {
+            "probe": "1; DROP TABLE users;--",
+            "status": 422
+          },
+          {
+            "probe": "\" OR \"\"=\"",
+            "status": 422
+          }
+        ],
+        "raw_sql_fstring_hits": []
+      }
+    },
+    {
+      "id": "XSS-02",
+      "timestamp": "2026-07-29T14:14:56.349008+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "High",
+      "notes": "Server-side encoding verified; React client-side sinks still require CSP",
+      "evidence": {
+        "escaped": "&lt;img src=x onerror=alert(1)&gt;"
+      }
+    },
+    {
+      "id": "CSRF-01",
+      "timestamp": "2026-07-29T14:14:56.352106+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "Medium",
+      "notes": "Classic CSRF mitigated by Bearer-token auth model",
+      "evidence": {
+        "no_auth_status": 401
+      }
+    },
+    {
+      "id": "SSRF-01",
+      "timestamp": "2026-07-29T14:14:56.352133+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "PARTIAL",
+      "severity": "High",
+      "notes": "No public webhook fetch endpoint found on main surface; residual risk on reminder/teleconsult URL fields",
+      "evidence": {
+        "probe_urls": [
+          "http://169.254.169.254/latest/meta-data/",
+          "http://127.0.0.1:5432/"
+        ],
+        "url_env_keys": [
+          "FRONTEND_URL"
+        ]
+      }
+    },
+    {
+      "id": "CMD-01",
+      "timestamp": "2026-07-29T14:14:56.367632+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "PARTIAL",
+      "severity": "Critical",
+      "notes": "",
+      "evidence": {
+        "shell_true_files": [
+          "scripts/security/run_penetration_tests.py"
+        ]
+      }
+    },
+    {
+      "id": "UPLOAD-01",
+      "timestamp": "2026-07-29T14:14:56.373605+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "High",
+      "notes": "",
+      "evidence": {
+        "unauth_upload": 401
+      }
+    },
+    {
+      "id": "PDF-01",
+      "timestamp": "2026-07-29T14:14:56.389942+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "High",
+      "notes": "",
+      "evidence": {
+        "guessed_pdf": 404
+      }
+    },
+    {
+      "id": "DOCKER-01",
+      "timestamp": "2026-07-29T14:14:56.390312+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "Critical",
+      "notes": "Non-root via gosu\u2192appuser; compose must not mount docker.sock",
+      "evidence": {
+        "non_root": true,
+        "no_docker_sock": true,
+        "cap_drop_or_no_new_privs": true,
+        "has_appuser": true
+      }
+    },
+    {
+      "id": "PG-01",
+      "timestamp": "2026-07-29T14:14:56.398785+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "Critical",
+      "notes": "Railway private DB assumed; clinic-node host-network remains residual (Wave4 controls)",
+      "evidence": {
+        "compose_postgres_publish_candidates": []
+      }
+    },
+    {
+      "id": "FAST-01",
+      "timestamp": "2026-07-29T14:14:56.398819+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "High",
+      "notes": "Docs gated by settings.docs_enabled; must stay off in production",
+      "evidence": {
+        "docs_enabled": false,
+        "docs_status": 404,
+        "openapi_status": 404
+      }
+    },
+    {
+      "id": "RWY-01",
+      "timestamp": "2026-07-29T14:14:56.399627+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "PARTIAL",
+      "severity": "Critical",
+      "notes": "Config review only in lab; private networking must be verified in Railway dashboard",
+      "evidence": {
+        "railway_toml_present": true,
+        "has_ssl_hints": false
+      }
+    },
+    {
+      "id": "VERC-01",
+      "timestamp": "2026-07-29T14:14:56.399678+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "PARTIAL",
+      "severity": "High",
+      "notes": "Preview\u2192prod API binding must be enforced in Vercel project settings",
+      "evidence": {
+        "vercel_configs": [
+          "frontend-sante/frontend/vercel.json"
+        ]
+      }
+    },
+    {
+      "id": "NODE-01",
+      "timestamp": "2026-07-29T14:14:56.399700+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "N/A_LAB",
+      "severity": "Critical",
+      "notes": "Clinic Node package not on main; Wave4 controls required before lab live test",
+      "evidence": {
+        "clinic_node_package_present": false
+      }
+    },
+    {
+      "id": "LAN-01",
+      "timestamp": "2026-07-29T14:14:56.399714+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "N/A_LAB",
+      "severity": "Critical",
+      "notes": "Host-network Postgres bind must remain 127.0.0.1 when used",
+      "evidence": {
+        "host_network_guard_module": true
+      }
+    },
+    {
+      "id": "INS-01",
+      "timestamp": "2026-07-29T14:14:56.402964+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "Critical",
+      "notes": "Least privilege blocks platform actions; bulk export anomaly detection residual",
+      "evidence": {
+        "receptionist_platform_create": 405
+      }
+    },
+    {
+      "id": "PHYS-01",
+      "timestamp": "2026-07-29T14:14:56.405136+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "N/A_LAB",
+      "severity": "Critical",
+      "notes": "Physical FDE validation requires dedicated lab hardware (LUKS)",
+      "evidence": {
+        "luks_checklist_module": true
+      }
+    },
+    {
+      "id": "BAK-01",
+      "timestamp": "2026-07-29T14:14:56.405145+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "Critical",
+      "notes": "",
+      "evidence": {
+        "encrypted": true,
+        "pre_restore_ok": true,
+        "sha256": "e94dcbc37e1f2f75d248ef6b6c62f24fce594d7491c51c687857656fa77a6eef"
+      }
+    },
+    {
+      "id": "RAN-01",
+      "timestamp": "2026-07-29T14:14:56.405162+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "N/A_TABLETOP",
+      "severity": "Critical",
+      "notes": "Ransomware detonation forbidden on live clinics; offline immutable copies required",
+      "evidence": {
+        "offline_encrypted_backup_control": true,
+        "dr_doc": true
+      }
+    },
+    {
+      "id": "SYNC-01",
+      "timestamp": "2026-07-29T14:14:56.406075+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "Critical",
+      "notes": "",
+      "evidence": {
+        "verify_ok": true,
+        "cross_clinic_tamper": "content_sha256_mismatch",
+        "replay": [
+          false,
+          "replay_nonce"
+        ],
+        "token_ok": true,
+        "token_bad": false
+      }
+    },
+    {
+      "id": "REPLAY-01",
+      "timestamp": "2026-07-29T14:14:56.406082+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "High",
+      "notes": "Sync replay blocked; clinical payment idempotency remains residual product control",
+      "evidence": {
+        "first": [
+          true,
+          "ok"
+        ],
+        "second": [
+          false,
+          "replay_nonce"
+        ]
+      }
+    },
+    {
+      "id": "LIC-01",
+      "timestamp": "2026-07-29T14:14:56.406094+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "Critical",
+      "notes": "Forged licenses fail when CLINIC_NODE_LICENSE_SECRET is unique; product license API frozen",
+      "evidence": {
+        "license_distinct_from_jwt": true
+      }
+    },
+    {
+      "id": "UPD-01",
+      "timestamp": "2026-07-29T14:14:56.407548+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "Critical",
+      "notes": "",
+      "evidence": {
+        "bad_signature_rejected": true
+      }
+    },
+    {
+      "id": "MITM-01",
+      "timestamp": "2026-07-29T14:14:56.407577+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "N/A_LAB",
+      "severity": "Critical",
+      "notes": "LAN MITM requires clinic lab with rogue AP; HSTS/CSP headers shipped",
+      "evidence": {
+        "security_headers_middleware": true,
+        "hsts_helper": true
+      }
+    },
+    {
+      "id": "DEP-01",
+      "timestamp": "2026-07-29T14:14:56.407742+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "PARTIAL",
+      "severity": "Critical",
+      "notes": "SCA gates (pip-audit) recommended in CI; lockfile present",
+      "evidence": {
+        "requirements_pinned_file": true,
+        "requirements_lines": 16
+      }
+    },
+    {
+      "id": "CI-01",
+      "timestamp": "2026-07-29T14:14:56.407747+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "PARTIAL",
+      "severity": "Critical",
+      "notes": "Branch protection and OIDC must be verified in GitHub settings",
+      "evidence": {
+        "workflows": [
+          "ci.yml",
+          "deploy-railway-vercel.yml"
+        ]
+      }
+    },
+    {
+      "id": "SEC-01",
+      "timestamp": "2026-07-29T14:14:56.462919+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "Critical",
+      "notes": "",
+      "evidence": {
+        "dotenv_present_in_workdir": false,
+        "suspicious_hits": []
+      }
+    },
+    {
+      "id": "DOS-01",
+      "timestamp": "2026-07-29T14:14:56.462930+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "High",
+      "notes": "SlowAPI + login lockout mitigate auth floods; PDF/upload quotas residual",
+      "evidence": {
+        "slowapi_limiter": true,
+        "login_lockout": true
+      }
+    },
+    {
+      "id": "MED-01",
+      "timestamp": "2026-07-29T14:14:56.466574+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "Critical",
+      "notes": "RBAC blocks receptionist lab patch; amend-with-reason residual for doctor path",
+      "evidence": {
+        "receptionist_lab_patch": 404
+      }
+    },
+    {
+      "id": "AUD-01",
+      "timestamp": "2026-07-29T14:14:56.470090+00:00",
+      "operator": "wave6-automated-harness",
+      "environment": "lab-sqlite-testclient",
+      "result": "BLOCKED",
+      "severity": "High",
+      "notes": "No public audit truncate API; DB role hardening residual for direct SQL",
+      "evidence": {
+        "delete_audit_api": 405
+      }
+    }
+  ]
+}

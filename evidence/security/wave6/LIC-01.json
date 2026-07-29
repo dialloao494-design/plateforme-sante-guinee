@@ -1,0 +1,12 @@
+{
+  "id": "LIC-01",
+  "timestamp": "2026-07-29T14:14:56.406094+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "BLOCKED",
+  "severity": "Critical",
+  "notes": "Forged licenses fail when CLINIC_NODE_LICENSE_SECRET is unique; product license API frozen",
+  "evidence": {
+    "license_distinct_from_jwt": true
+  }
+}

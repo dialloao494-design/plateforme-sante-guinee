@@ -1,0 +1,12 @@
+{
+  "id": "NODE-01",
+  "timestamp": "2026-07-29T14:14:56.399700+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "N/A_LAB",
+  "severity": "Critical",
+  "notes": "Clinic Node package not on main; Wave4 controls required before lab live test",
+  "evidence": {
+    "clinic_node_package_present": false
+  }
+}

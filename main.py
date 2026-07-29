@@ -109,6 +109,18 @@ if cors_origin_regex:
     _cors_kwargs["allow_origin_regex"] = cors_origin_regex
 app.add_middleware(CORSMiddleware, **_cors_kwargs)
 
+# Security Wave 6 / Wave 1 — rate-limit + security headers middleware
+try:
+    from slowapi.middleware import SlowAPIMiddleware
+    from core.security_headers import SecurityHeadersMiddleware
+
+    app.add_middleware(SlowAPIMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
+except Exception as _mw_exc:  # pragma: no cover — soft-fail if optional deps missing at import time
+    import logging as _logging
+    _logging.getLogger(__name__).warning("Security middleware not fully attached: %s", _mw_exc)
+
+
 
 @app.middleware("http")
 async def low_bandwidth_cache_headers(request, call_next):

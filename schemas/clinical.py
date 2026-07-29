@@ -5,13 +5,15 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # --- Clinic ---
 
 
 class ClinicCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(..., min_length=2, max_length=255)
     address: Optional[str] = None
     city: Optional[str] = None
@@ -33,6 +35,8 @@ class ClinicResponse(BaseModel):
 
 
 class StaffCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     email: str
     password: str = Field(..., min_length=8)
     role: str
@@ -51,11 +55,15 @@ class StaffResponse(BaseModel):
 
 
 class StaffRoleUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     role: str
     clinic_id: int
 
 
 class StaffPasswordReset(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     clinic_id: int
     new_password: str = Field(..., min_length=8)
 
@@ -64,6 +72,8 @@ class StaffPasswordReset(BaseModel):
 
 
 class PatientIntakeCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     first_name: str
     last_name: str
     age: int = Field(..., ge=0, le=130)
@@ -117,6 +127,8 @@ class PatientSearchResponse(BaseModel):
 
 
 class ClinicalAppointmentCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     patient_id: int
     doctor_id: int
     date: datetime
@@ -145,11 +157,15 @@ class ClinicalAppointmentResponse(BaseModel):
 
 
 class ConsultationStart(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     appointment_id: int
     chief_complaint: Optional[str] = None
 
 
 class ConsultationUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     chief_complaint: Optional[str] = None
     history: Optional[str] = None
     examination: Optional[str] = None
@@ -174,6 +190,8 @@ class ConsultationUpdate(BaseModel):
 
 
 class DoctorConsultationOpen(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     patient_id: int
     chief_complaint: Optional[str] = None
 
@@ -218,6 +236,8 @@ class ConsultationResponse(BaseModel):
 
 
 class LabOrderCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     test_code: str
     test_name: str
     priority: str = "routine"
@@ -257,26 +277,36 @@ class LabOrderResponse(BaseModel):
 
 
 class LabOrderStatusUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     status: Optional[str] = None
     clinical_notes: Optional[str] = None
 
 
 class WalkInLabTestItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     test_code: str
     test_name: str
     price_gnf: Optional[int] = None
 
 
 class LabCatalogPriceItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     code: str
     price_gnf: Optional[int] = None
 
 
 class LabCatalogPricesUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     items: list[LabCatalogPriceItem] = Field(..., min_length=1)
 
 
 class WalkInLabRequestCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     patient_id: int
     tests: list[WalkInLabTestItem] = Field(..., min_length=1)
     priority: str = "routine"
@@ -285,6 +315,8 @@ class WalkInLabRequestCreate(BaseModel):
 
 
 class DoctorMedicineDeliveryCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     patient_name: str = Field(..., min_length=1, max_length=255)
     patient_id: Optional[int] = None
     medicine_name: str = Field(..., min_length=1, max_length=255)
@@ -311,6 +343,8 @@ class DoctorMedicineDeliveryResponse(BaseModel):
 
 
 class LabResultCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     result_summary: str
     result_data: Optional[str] = None
     reference_range: Optional[str] = None
@@ -333,6 +367,8 @@ class LabResultResponse(BaseModel):
 
 
 class PrescriptionItemCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     medication_name: str
     dosage: str
     route: str = "oral"
@@ -343,6 +379,8 @@ class PrescriptionItemCreate(BaseModel):
 
 
 class PrescriptionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     items: list[PrescriptionItemCreate]
     notes: Optional[str] = None
 
@@ -392,6 +430,8 @@ class PharmacyOrderResponse(BaseModel):
 
 
 class PharmacyStatusUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     status: str
     notes: Optional[str] = None
 
@@ -438,6 +478,8 @@ class ClinicChargeResponse(BaseModel):
 
 
 class ChargePaymentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     payment_method: str = Field(..., pattern="^(cash|orange_money|mtn|card)$")
 
 

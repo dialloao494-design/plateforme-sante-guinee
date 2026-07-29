@@ -38,3 +38,22 @@ LEGACY_PUBLIC_UPLOAD_PREFIX = "/uploads/"
 
 # Only this subtree under uploads/ may be resolved for legacy DB rows.
 LEGACY_MESSAGES_SUBDIR = "messages"
+
+# PHI download response headers (no cache, no MIME sniffing).
+PHI_DOWNLOAD_HEADERS = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, private",
+    "Pragma": "no-cache",
+    "X-Content-Type-Options": "nosniff",
+}
+
+
+def phi_download_headers(*, filename: str, content_sha256: str | None = None) -> dict[str, str]:
+    """Safe Content-Disposition + anti-caching headers for medical downloads."""
+    safe = "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in (filename or "document"))[:120]
+    headers = {
+        **PHI_DOWNLOAD_HEADERS,
+        "Content-Disposition": f'attachment; filename="{safe or "document"}"',
+    }
+    if content_sha256:
+        headers["X-Content-SHA256"] = content_sha256
+    return headers

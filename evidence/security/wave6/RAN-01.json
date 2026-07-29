@@ -1,0 +1,13 @@
+{
+  "id": "RAN-01",
+  "timestamp": "2026-07-29T14:14:56.405162+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "N/A_TABLETOP",
+  "severity": "Critical",
+  "notes": "Ransomware detonation forbidden on live clinics; offline immutable copies required",
+  "evidence": {
+    "offline_encrypted_backup_control": true,
+    "dr_doc": true
+  }
+}

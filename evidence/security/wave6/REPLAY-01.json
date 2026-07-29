@@ -1,0 +1,19 @@
+{
+  "id": "REPLAY-01",
+  "timestamp": "2026-07-29T14:14:56.406082+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "BLOCKED",
+  "severity": "High",
+  "notes": "Sync replay blocked; clinical payment idempotency remains residual product control",
+  "evidence": {
+    "first": [
+      true,
+      "ok"
+    ],
+    "second": [
+      false,
+      "replay_nonce"
+    ]
+  }
+}

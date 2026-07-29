@@ -1,0 +1,31 @@
+{
+  "id": "W0-RECON",
+  "timestamp": "2026-07-29T14:14:56.119373+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "BLOCKED",
+  "severity": "Info",
+  "notes": "Surface inventory captured; OpenAPI gated by docs_enabled setting",
+  "evidence": {
+    "route_count": 270,
+    "openapi_status": 404,
+    "docs_status": 404,
+    "root_or_health": 200,
+    "roles_in_rbac": [
+      "admin",
+      "cashier",
+      "clinic_admin",
+      "doctor",
+      "lab_technician",
+      "midwife",
+      "nurse",
+      "nutritionist",
+      "patient",
+      "pev_agent",
+      "pharmacist",
+      "platform_admin",
+      "platform_owner",
+      "receptionist"
+    ]
+  }
+}

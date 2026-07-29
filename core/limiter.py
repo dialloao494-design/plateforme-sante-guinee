@@ -38,3 +38,12 @@ def setup_rate_limit() -> str:
     if env == "production":
         return "3/hour"
     return "20/hour"
+
+
+def heavy_mutation_rate_limit() -> str:
+    """Pay / PDF — protect DB without blocking clinic LAN workflows."""
+    return os.getenv("RATE_LIMIT_HEAVY", "60/minute")
+
+
+def search_rate_limit() -> str:
+    return os.getenv("RATE_LIMIT_SEARCH", "90/minute")

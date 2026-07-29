@@ -1,0 +1,14 @@
+{
+  "id": "JWT-02",
+  "timestamp": "2026-07-29T14:14:56.302870+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "BLOCKED",
+  "severity": "Critical",
+  "notes": "",
+  "evidence": {
+    "alg_none": 401,
+    "wrong_key": 401,
+    "alg_allowlist": "HS256"
+  }
+}
