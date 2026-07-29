@@ -40,6 +40,7 @@ from .nurse_assessment import NurseAssessment
 from .clinic_charge_payment import ClinicChargePayment
 from .password_reset_token import PasswordResetToken
 from .email_verification_token import EmailVerificationToken
+from .refresh_token import RefreshToken, AccessTokenDenylist
 from .visit_workflow import PatientVisitWorkflow, PatientVisitWorkflowStep
 from .doctor_medicine_delivery import DoctorMedicineDelivery
 from .clinic_lab_test import ClinicLabTest

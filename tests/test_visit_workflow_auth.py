@@ -19,7 +19,7 @@ def _auth(user) -> dict[str, str]:
 
 def test_register_returns_token_and_login_works(client, db_session):
     email = f"reg.flow.{uuid.uuid4().hex[:10]}@example.com"
-    password = "SecurePass1"
+    password = "SecurePass12!"
     r = client.post("/auth/register", json={"email": email, "password": password, "role": "doctor"})
     assert r.status_code == 201, r.text
     body = r.json()
@@ -48,13 +48,13 @@ def test_child_visit_workflow_advances(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         reception = models.User(
             email=f"recv.wf.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1!"),
+            hashed_password=hash_password("StaffPass12!"),
             role="receptionist",
             clinic_id=clinic_id,
         )
         nutritionist = models.User(
             email=f"nutri.wf.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1!"),
+            hashed_password=hash_password("StaffPass12!"),
             role="nutritionist",
             clinic_id=clinic_id,
         )

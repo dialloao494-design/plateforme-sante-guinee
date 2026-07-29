@@ -1496,3 +1496,121 @@ def ensure_lab_result_reference_range_text(engine: Engine) -> None:
     except Exception as exc:
         logger.warning("lab_results.reference_range migration skipped: %s", exc)
 
+
+
+def ensure_security_wave0_identity_schema(engine: Engine) -> None:
+    """Identity hardening columns + refresh/denylist tables (Security Wave 0)."""
+    insp = inspect(engine)
+    dialect = engine.dialect.name
+    bool_type = "BOOLEAN" if dialect == "postgresql" else "INTEGER"
+    int_type = "INTEGER"
+    dt_type = "TIMESTAMP" if dialect == "postgresql" else "DATETIME"
+    true_default = "FALSE" if dialect == "postgresql" else "0"
+    zero_default = "0"
+
+    if "users" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("users")}
+        additions = [
+            ("failed_login_attempts", f"{int_type} NOT NULL DEFAULT {zero_default}"),
+            ("locked_until", f"{dt_type}"),
+            ("token_version", f"{int_type} NOT NULL DEFAULT {zero_default}"),
+            ("password_changed_at", f"{dt_type}"),
+            ("last_login_at", f"{dt_type}"),
+            ("mfa_secret", "TEXT" if dialect == "postgresql" else "VARCHAR"),
+            ("mfa_enabled", f"{bool_type} NOT NULL DEFAULT {true_default}"),
+        ]
+        for col, col_def in additions:
+            if col in cols:
+                continue
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {col_def}"))
+                logger.info("Added users.%s", col)
+            except Exception as exc:
+                logger.warning("users.%s migration skipped: %s", col, exc)
+
+    insp = inspect(engine)
+    if "refresh_tokens" not in insp.get_table_names():
+        try:
+            with engine.begin() as conn:
+                if dialect == "postgresql":
+                    conn.execute(
+                        text(
+                            """
+                            CREATE TABLE refresh_tokens (
+                                id SERIAL PRIMARY KEY,
+                                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                token_hash VARCHAR(64) NOT NULL UNIQUE,
+                                jti VARCHAR(64) NOT NULL UNIQUE,
+                                family_id VARCHAR(64) NOT NULL,
+                                expires_at TIMESTAMP NOT NULL,
+                                revoked_at TIMESTAMP,
+                                replaced_by_jti VARCHAR(64),
+                                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                                user_agent VARCHAR(512),
+                                ip_address VARCHAR(64)
+                            )
+                            """
+                        )
+                    )
+                else:
+                    conn.execute(
+                        text(
+                            """
+                            CREATE TABLE refresh_tokens (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                token_hash VARCHAR(64) NOT NULL UNIQUE,
+                                jti VARCHAR(64) NOT NULL UNIQUE,
+                                family_id VARCHAR(64) NOT NULL,
+                                expires_at DATETIME NOT NULL,
+                                revoked_at DATETIME,
+                                replaced_by_jti VARCHAR(64),
+                                created_at DATETIME NOT NULL,
+                                user_agent VARCHAR(512),
+                                ip_address VARCHAR(64)
+                            )
+                            """
+                        )
+                    )
+            logger.info("Created refresh_tokens table")
+        except Exception as exc:
+            logger.warning("refresh_tokens create skipped: %s", exc)
+
+    insp = inspect(engine)
+    if "access_token_denylist" not in insp.get_table_names():
+        try:
+            with engine.begin() as conn:
+                if dialect == "postgresql":
+                    conn.execute(
+                        text(
+                            """
+                            CREATE TABLE access_token_denylist (
+                                id SERIAL PRIMARY KEY,
+                                jti VARCHAR(64) NOT NULL UNIQUE,
+                                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                                expires_at TIMESTAMP NOT NULL,
+                                reason VARCHAR(64),
+                                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                            )
+                            """
+                        )
+                    )
+                else:
+                    conn.execute(
+                        text(
+                            """
+                            CREATE TABLE access_token_denylist (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                jti VARCHAR(64) NOT NULL UNIQUE,
+                                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                                expires_at DATETIME NOT NULL,
+                                reason VARCHAR(64),
+                                created_at DATETIME NOT NULL
+                            )
+                            """
+                        )
+                    )
+            logger.info("Created access_token_denylist table")
+        except Exception as exc:
+            logger.warning("access_token_denylist create skipped: %s", exc)

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api.js';
 import { clearClientAuth, setAuthSessionReady } from '../services/httpClient.js';
 import { invalidateCache } from '../utils/apiCache.js';
-import { touchSessionActivity, getAuthItem, setAuthItem, removeAuthItem, setAuthToken, getAuthToken, clearLegacySharedAuth } from '../utils/authStorage.js';
+import { touchSessionActivity, getAuthItem, setAuthItem, removeAuthItem, setAuthToken, getAuthToken, clearLegacySharedAuth, setRefreshToken, getRefreshToken } from '../utils/authStorage.js';
 import { CACHE_TTL, getCached, setCached, buildCacheKey } from '../utils/apiCache.js';
 import {
   AUTH_BOOTSTRAP_TIMEOUT_MS,
@@ -134,7 +134,10 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const logout = useCallback(() => {
+    const refresh = getRefreshToken();
     clearPasswordResetFlags();
+    // Fire-and-forget server revoke; always clear client state.
+    authAPI.logout(refresh).catch(() => {});
     clearClientAuth();
     setUser(null);
     setError(null);
@@ -235,6 +238,12 @@ export const AuthProvider = ({ children }) => {
       invalidateCache();
       invalidateCache('/auth/me');
       setAuthToken(access_token);
+      if (loginPayload?.refresh_token) {
+        setRefreshToken(loginPayload.refresh_token);
+      }
+      if (loginPayload?.must_change_password != null) {
+        setAuthItem('must_change_password', loginPayload.must_change_password ? '1' : '0');
+      }
       clearLegacySharedAuth();
       authDebug('applyLoginToken: token stored', Boolean(access_token));
 
@@ -272,27 +281,33 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password) => {
+  const login = async (email, password, mfaCode) => {
     setActionLoading(true);
     setError(null);
 
     try {
       const trimmedEmail = String(email || '').trim().toLowerCase();
       authDebug('login: request start', trimmedEmail);
-      const loginPayload = await authAPI.login(trimmedEmail, password);
+      const loginPayload = await authAPI.login(trimmedEmail, password, mfaCode);
       authDebug('login: response ok', Boolean(loginPayload?.access_token), loginPayload?.role);
       const normalizedUser = await applyLoginToken(loginPayload);
-      const home = normalizedUser?.role;
       authDebug('login: complete', { role: normalizedUser?.role, clinic_id: normalizedUser?.clinic_id });
       return {
         success: true,
         role: normalizedUser?.role,
         clinic_id: normalizedUser?.clinic_id,
         home: normalizedUser?.role,
-        must_change_password: Boolean(normalizedUser?.must_change_password),
+        must_change_password: Boolean(
+          normalizedUser?.must_change_password || loginPayload?.must_change_password
+        ),
       };
     } catch (err) {
       authDebug('login: failed', err?.response?.status, err?.message);
+      const detail = String(err?.response?.data?.detail || err?.message || '');
+      if (/mfa code required/i.test(detail)) {
+        setError('Code MFA requis');
+        return { success: false, error: 'Code MFA requis', mfaRequired: true };
+      }
       clearClientAuth();
       setUser(null);
       const message = toUserFriendlyLoginMessage(err);
@@ -307,7 +322,15 @@ export const AuthProvider = ({ children }) => {
     setActionLoading(true);
     setError(null);
     try {
-      await authAPI.changePassword(currentPassword, newPassword);
+      const response = await authAPI.changePassword(currentPassword, newPassword);
+      const data = response?.data || response;
+      if (data?.access_token) {
+        setAuthToken(data.access_token);
+        if (data.refresh_token) {
+          setRefreshToken(data.refresh_token);
+        }
+      }
+      removeAuthItem('must_change_password');
       invalidateCache('/auth/me');
       const updated = await refreshUser();
       return { success: true, user: updated };

@@ -27,10 +27,10 @@ def _auth_headers(user) -> dict[str, str]:
 def two_doctors_context(db_session):
     suffix = uuid.uuid4().hex[:8]
     doctor_a_user = register_public_user(
-        db_session, email=f"dr.a.{suffix}@test.gn", password="Secret12", role="doctor"
+        db_session, email=f"dr.a.{suffix}@test.gn", password="Secret12Pass!", role="doctor"
     ).user
     doctor_b_user = register_public_user(
-        db_session, email=f"dr.b.{suffix}@test.gn", password="Secret12", role="doctor"
+        db_session, email=f"dr.b.{suffix}@test.gn", password="Secret12Pass!", role="doctor"
     ).user
     doctor_a = db_session.query(Doctor).filter(Doctor.user_id == doctor_a_user.id).first()
     doctor_b = db_session.query(Doctor).filter(Doctor.user_id == doctor_b_user.id).first()
@@ -49,7 +49,7 @@ def two_doctors_context(db_session):
     admin = create_admin_user(
         db_session,
         email=f"admin.avail.{suffix}@test.gn",
-        password="AdminPass1",
+        password="AdminPass12!",
         channel="test_fixture",
     ).user
 
@@ -105,7 +105,7 @@ class TestCrossDoctorAvailabilityBlocked:
     def test_patient_cannot_create_slot(self, client, db_session, two_doctors_context):
         ctx = two_doctors_context
         patient = register_public_user(
-            db_session, email=f"pat.avail.{uuid.uuid4().hex[:6]}@test.gn", password="Secret12", role="patient"
+            db_session, email=f"pat.avail.{uuid.uuid4().hex[:6]}@test.gn", password="Secret12Pass!", role="patient"
         ).user
         response = client.post(
             f"/doctors/{ctx['doctor_b'].id}/availability",
@@ -211,7 +211,7 @@ class TestReadAccessUnchanged:
     def test_patient_can_read_doctor_availability(self, client, db_session, two_doctors_context):
         ctx = two_doctors_context
         patient = register_public_user(
-            db_session, email=f"read.pat.{uuid.uuid4().hex[:6]}@test.gn", password="Secret12", role="patient"
+            db_session, email=f"read.pat.{uuid.uuid4().hex[:6]}@test.gn", password="Secret12Pass!", role="patient"
         ).user
         response = client.get(
             f"/doctors/{ctx['doctor_b'].id}/availability",

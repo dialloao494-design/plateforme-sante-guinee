@@ -5,13 +5,28 @@ from __future__ import annotations
 import os
 
 # MUST be set before database/main are imported.
-os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-only-32chars-min")
-os.environ.setdefault("ENVIRONMENT", "development")
+# Force test-safe identity settings even when the shell inherits clinic-node env.
+os.environ["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY", "test-secret-key-for-pytest-only-32chars-min"
+)
+if len(os.environ.get("SECRET_KEY", "")) < 32:
+    os.environ["SECRET_KEY"] = "test-secret-key-for-pytest-only-32chars-min"
+os.environ["ENVIRONMENT"] = "development"
 os.environ["DATABASE_URL"] = "sqlite://"
+os.environ["ALLOWED_HOSTS"] = "testserver,localhost,127.0.0.1,*"
 os.environ.pop("ENABLE_ADMIN_BOOTSTRAP", None)
 os.environ["ENABLE_PILOT_SEED"] = "false"
 os.environ["ENABLE_STARTUP_TEST_USER"] = "false"
-os.environ.setdefault("RATE_LIMIT_PLATFORM_SETUP", "10000/minute")
+os.environ["RATE_LIMIT_PLATFORM_SETUP"] = "10000/minute"
+os.environ["PASSWORD_MIN_LENGTH"] = "12"
+os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = "30"
+os.environ["LOGIN_MAX_FAILURES"] = "5"
+os.environ["MFA_REQUIRED_ROLES"] = ""
+os.environ["BCRYPT_ROUNDS"] = "4"  # faster tests; production default remains 12
+os.environ.pop("TRUSTED_PROXY_HOSTS", None)
+os.environ.pop("REMINDER_RESPOND_TOKEN", None)
+os.environ.pop("CLINIC_NODE_LICENSE_SECRET", None)
+os.environ.pop("CLINIC_NODE_UPDATE_SECRET", None)
 
 import pytest
 from fastapi.testclient import TestClient
@@ -65,6 +80,7 @@ import models.nutrition  # noqa: F401
 import models.immunization  # noqa: F401
 import models.password_reset_token  # noqa: F401
 import models.email_verification_token  # noqa: F401
+import models.refresh_token  # noqa: F401
 import models.nursing_care  # noqa: F401
 import models.nurse_assessment  # noqa: F401
 import models.clinic_charge_payment  # noqa: F401
@@ -123,7 +139,12 @@ def admin_user(db_session: Session) -> User:
 
 
 @pytest.fixture()
-def admin_headers(client: TestClient, admin_user: User) -> dict[str, str]:
+def admin_headers(client: TestClient, admin_user: User, db_session: Session) -> dict[str, str]:
+    admin_user.failed_login_attempts = 0
+    admin_user.locked_until = None
+    admin_user.must_change_password = False
+    db_session.add(admin_user)
+    db_session.commit()
     response = client.post(
         "/auth/login-json",
         json={"email": admin_user.email, "password": "AdminPass1"},

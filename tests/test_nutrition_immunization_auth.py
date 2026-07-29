@@ -212,8 +212,8 @@ def test_password_reset_flow(client, db_session):
     raw = create_reset_token(db_session, email=user.email)
     assert raw
 
-    r = client.post("/auth/reset-password", json={"token": raw, "new_password": "NewSecure1!"})
+    r = client.post("/auth/reset-password", json={"token": raw, "new_password": "NewSecure12!"})
     assert r.status_code == 200
 
     db_session.refresh(user)
-    assert verify_password("NewSecure1!", user.hashed_password)
+    assert verify_password("NewSecure12!", user.hashed_password)
