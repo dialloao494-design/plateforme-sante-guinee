@@ -98,16 +98,44 @@ def load_and_verify_package(package_dir: Path, *, secret: str | None = None) -> 
     if not verify_manifest(claims, signature, secret=secret):
         raise UpdateSecurityError("SIGNATURE_INVALID")
 
-    # Optional file digests listed in manifest["files"] = {"rel/path": "sha256"}
-    files = claims.get("files") or {}
-    if isinstance(files, dict):
-        for rel, expected in files.items():
-            path = root / str(rel)
+    # File digests listed in manifest["files"] = {"rel/path": "sha256"}
+    # Any file under the package that will be applied (especially images/*.tar)
+    # MUST be listed and match — empty files:{} must not allow unsigned payloads.
+    files = claims.get("files")
+    if files is None:
+        files = {}
+    if not isinstance(files, dict):
+        raise UpdateSecurityError("manifest_files_must_be_object")
+
+    images_dir = root / "images"
+    if images_dir.is_dir():
+        image_files = [p for p in images_dir.rglob("*") if p.is_file()]
+        if image_files and not files:
+            raise UpdateSecurityError("unsigned_image_payloads:manifest_files_empty")
+
+    for rel, expected in files.items():
+        rel_s = str(rel).replace("\\", "/").lstrip("/")
+        if not rel_s or ".." in rel_s.split("/") or rel_s.startswith("/"):
+            raise UpdateSecurityError(f"unsafe_path:{rel}")
+        path = (root / rel_s).resolve()
+        try:
+            path.relative_to(root.resolve())
+        except ValueError as exc:
+            raise UpdateSecurityError(f"path_escape:{rel}") from exc
+        if not path.is_file():
+            raise UpdateSecurityError(f"missing_file:{rel}")
+        actual = sha256_file(path)
+        if not hmac.compare_digest(actual, str(expected).strip()):
+            raise UpdateSecurityError(f"file_digest_mismatch:{rel}")
+
+    # Refuse stray image tars not covered by the signed digest map
+    if images_dir.is_dir():
+        for path in images_dir.rglob("*"):
             if not path.is_file():
-                raise UpdateSecurityError(f"missing_file:{rel}")
-            actual = sha256_file(path)
-            if not hmac.compare_digest(actual, str(expected).strip()):
-                raise UpdateSecurityError(f"file_digest_mismatch:{rel}")
+                continue
+            rel = str(path.relative_to(root)).replace("\\", "/")
+            if rel not in files:
+                raise UpdateSecurityError(f"unlisted_image_file:{rel}")
 
     return UpdatePackage(root=root, claims=claims, signature=signature)
 

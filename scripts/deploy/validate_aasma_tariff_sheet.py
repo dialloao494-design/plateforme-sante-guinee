@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate production catalog against the 4 AASMA tariff sheet photos."""
 from __future__ import annotations
+import os
 
 import json
 import sys
@@ -21,7 +22,7 @@ OUT = ROOT / "docs" / "AASMA_TARIFF_SHEET_PROOF.json"
 def main() -> int:
     login = requests.post(
         f"{API}/auth/login-json",
-        json={"email": "mamadoudianbarry06@gmail.com", "password": "AasmaLab1!"},
+        json={"email": "mamadoudianbarry06@gmail.com", "password": os.environ["AASMA_LAB_PASSWORD"]},
         timeout=60,
     )
     login.raise_for_status()

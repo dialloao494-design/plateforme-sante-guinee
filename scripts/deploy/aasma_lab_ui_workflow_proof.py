@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Capture full AASMA laboratory UI workflow screenshots on production."""
-
 from __future__ import annotations
+
+import os
 
 import sys
 from pathlib import Path
@@ -12,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "docs" / "ui_e2e_screenshots" / "aasma-lab-workflow"
 FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 LAB_EMAIL = "mamadoudianbarry06@gmail.com"
-LAB_PASSWORD = "AasmaLab1!"
+LAB_PASSWORD = os.environ["AASMA_LAB_PASSWORD"]
 
 EXPECTED_CATEGORIES = [
     "Hématologie",

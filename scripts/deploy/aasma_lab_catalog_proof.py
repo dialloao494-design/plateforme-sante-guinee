@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Validate AASMA laboratory catalog structure and capture UI proof."""
-
 from __future__ import annotations
+
+import os
 
 import json
 import sys
@@ -17,7 +18,7 @@ OUT = ROOT / "docs" / "ui_e2e_screenshots" / "aasma-lab-catalog"
 REPORT = ROOT / "docs" / "AASMA_LAB_CATALOG_PROOF.json"
 
 LAB_EMAIL = "mamadoudianbarry06@gmail.com"
-LAB_PASSWORD = "AasmaLab1!"
+LAB_PASSWORD = os.environ["AASMA_LAB_PASSWORD"]
 EXPECTED_CATEGORIES = 10
 EXPECTED_EXAMS = 117
 

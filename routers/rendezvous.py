@@ -51,7 +51,7 @@ def _assert_can_access_appointment(db: Session, appointment: models.RendezVous, 
 
     if current_user.role in ("clinic_admin", "admin"):
         cid = current_user.clinic_id
-        if cid is not None and appointment.clinic_id != cid:
+        if cid is None or appointment.clinic_id != cid:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         return
 
@@ -142,6 +142,9 @@ def update_appointment_status(
     appointment = db.query(models.RendezVous).filter(models.RendezVous.id == rdv_id).first()
     if not appointment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
+
+    # Tenancy + ownership (clinic_admin cannot mutate other clinics)
+    _assert_can_access_appointment(db, appointment, current_user)
 
     # Doctors can only modify appointments assigned to them.
     if current_user.role == "doctor":

@@ -29,8 +29,9 @@ def expected_reminder_respond_token(appointment_id: int) -> str:
 
 def verify_reminder_respond_token(appointment_id: int, token: str | None) -> bool:
     secret = _respond_secret()
+    # Fail closed — never accept unsigned reminder responses when secret unset.
     if not secret:
-        return True
+        return False
     if not token:
         return False
     expected = expected_reminder_respond_token(appointment_id)

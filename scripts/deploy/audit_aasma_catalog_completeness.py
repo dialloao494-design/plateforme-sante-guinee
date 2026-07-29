@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Audit AASMA lab catalog completeness against paper forms (no pricing)."""
 from __future__ import annotations
+import os
 
 import json
 import subprocess
@@ -59,7 +60,7 @@ def match_form_name(form_name: str, catalog_names: set[str]) -> bool:
 def main() -> int:
     login = requests.post(
         f"{API}/auth/login-json",
-        json={"email": "mamadoudianbarry06@gmail.com", "password": "AasmaLab1!"},
+        json={"email": "mamadoudianbarry06@gmail.com", "password": os.environ["AASMA_LAB_PASSWORD"]},
         timeout=60,
     )
     login.raise_for_status()

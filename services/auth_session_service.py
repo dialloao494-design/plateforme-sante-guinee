@@ -66,6 +66,9 @@ def rotate_refresh_token(
     """
     Validate and rotate a refresh token.
     Reuse of a revoked family token revokes the entire family (theft detection).
+
+    Uses compare-and-set revoke so concurrent refresh of the same token cannot
+    mint two live chains (second writer is treated as reuse).
     """
     token_hash = _hash_token(raw_token)
     row = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
@@ -104,17 +107,51 @@ def rotate_refresh_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    row.revoked_at = datetime.utcnow()
-    raw_new, new_row = issue_refresh_token(
-        db,
-        user=user,
-        family_id=row.family_id,
-        user_agent=user_agent,
-        ip_address=ip_address,
+    now = datetime.utcnow()
+    claimed = (
+        db.query(RefreshToken)
+        .filter(
+            RefreshToken.id == row.id,
+            RefreshToken.revoked_at.is_(None),
+        )
+        .update(
+            {RefreshToken.revoked_at: now},
+            synchronize_session=False,
+        )
     )
-    row.replaced_by_jti = new_row.jti
-    db.add(row)
+    if claimed != 1:
+        db.rollback()
+        reuse = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
+        if reuse is not None:
+            _revoke_family(db, family_id=reuse.family_id, reason="reuse")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token reuse detected; session revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Issue replacement in the same transaction (do not call issue_refresh_token —
+    # that commits early and re-opens a race window).
+    raw_new = secrets.token_urlsafe(48)
+    new_jti = str(uuid.uuid4())
+    new_row = RefreshToken(
+        user_id=user.id,
+        token_hash=_hash_token(raw_new),
+        jti=new_jti,
+        family_id=row.family_id,
+        expires_at=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+        user_agent=(user_agent or row.user_agent or "")[:512] or None,
+        ip_address=(ip_address or row.ip_address or "")[:64] or None,
+    )
+    db.add(new_row)
+    db.flush()
+    # Persist replaced_by on the revoked row
+    db.query(RefreshToken).filter(RefreshToken.id == row.id).update(
+        {RefreshToken.replaced_by_jti: new_jti},
+        synchronize_session=False,
+    )
     db.commit()
+    db.refresh(new_row)
     return user, raw_new, new_row
 
 

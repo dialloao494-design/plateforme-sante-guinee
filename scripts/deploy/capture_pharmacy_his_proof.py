@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Production proof — Pharmacy HIS dashboard (5 screenshots)."""
-
 from __future__ import annotations
+
+import os
 
 import json
 from pathlib import Path
@@ -10,7 +11,7 @@ from playwright.sync_api import sync_playwright
 
 OUT = Path(__file__).resolve().parents[2] / "docs/ui_e2e_screenshots/pharmacy-his-proof"
 FRONTEND = "https://plateforme-sante-guinee.vercel.app"
-EMAIL, PWD = "ben752231@gmail.com", "AasmaPharm1!"
+EMAIL, PWD = "ben752231@gmail.com", os.environ["AASMA_PHARMACY_PASSWORD"]
 PATIENT_QUERY = "620231409"
 
 MOCKUP_LINES = [

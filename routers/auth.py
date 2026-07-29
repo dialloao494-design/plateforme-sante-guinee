@@ -87,9 +87,12 @@ def _enforce_mfa_on_login(user: User, mfa_code: str | None) -> None:
                 headers={"WWW-Authenticate": "Bearer", "X-MFA-Required": "1"},
             )
     elif mfa_required_for_user(user) and not bool(getattr(user, "mfa_enabled", False)):
-        # Privileged role enrollment is encouraged via MFA_REQUIRED_ROLES; login still allowed
-        # until ops enables hard-gate in a later wave to avoid clinic lockouts.
-        pass
+        # Hard gate: privileged roles listed in MFA_REQUIRED_ROLES must enroll MFA.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="MFA enrollment required before login for this role",
+            headers={"X-MFA-Enrollment-Required": "1"},
+        )
 
 
 @router.post("/register", response_model=RegisterResponse, status_code=201)

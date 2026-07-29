@@ -195,8 +195,20 @@ class TestAttachmentEncryptionBoot:
         with pytest.raises(RuntimeError, match="ATTACHMENT_ENCRYPTION_KEY"):
             AppSettings().enforce_production_boot()
 
-    def test_attachment_encryption_emergency_bypass(self, monkeypatch):
+    def test_attachment_encryption_emergency_bypass_requires_attestation(self, monkeypatch):
         _apply_valid_production_env(monkeypatch)
         monkeypatch.delenv("ATTACHMENT_ENCRYPTION_KEY", raising=False)
         monkeypatch.setenv("REQUIRE_ATTACHMENT_ENCRYPTION", "false")
+        monkeypatch.delenv("EMERGENCY_SECURITY_BYPASS_ATTESTATION", raising=False)
+        with pytest.raises(RuntimeError, match="ATTACHMENT_ENCRYPTION_KEY"):
+            AppSettings().enforce_production_boot()
+
+    def test_attachment_encryption_emergency_bypass_with_attestation(self, monkeypatch):
+        _apply_valid_production_env(monkeypatch)
+        monkeypatch.delenv("ATTACHMENT_ENCRYPTION_KEY", raising=False)
+        monkeypatch.setenv("REQUIRE_ATTACHMENT_ENCRYPTION", "false")
+        monkeypatch.setenv(
+            "EMERGENCY_SECURITY_BYPASS_ATTESTATION",
+            "I_ACCEPT_PRODUCTION_PHI_RISK",
+        )
         AppSettings().enforce_production_boot()

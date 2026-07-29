@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Seed AASMA production data and capture dashboard screenshots with API-loaded content."""
-
 from __future__ import annotations
+
+import os
 
 import json
 import sys
@@ -17,9 +18,9 @@ OUT = Path(__file__).resolve().parents[2] / "docs" / "ui_e2e_screenshots" / "aas
 REPORT = Path(__file__).resolve().parents[2] / "docs" / "AASMA_DASHBOARD_PROOF.json"
 
 ACCOUNTS = {
-    "reception": ("baldoumar14@gmail.com", "AasmaRecep1!", "/clinical/reception"),
-    "lab": ("mamadoudianbarry06@gmail.com", "AasmaLab1!", "/clinical/lab"),
-    "pharmacy": ("ben752231@gmail.com", "AasmaPharm1!", "/clinical/pharmacy"),
+    "reception": ("baldoumar14@gmail.com", os.environ["AASMA_RECEPTION_PASSWORD"], "/clinical/reception"),
+    "lab": ("mamadoudianbarry06@gmail.com", os.environ["AASMA_LAB_PASSWORD"], "/clinical/lab"),
+    "pharmacy": ("ben752231@gmail.com", os.environ["AASMA_PHARMACY_PASSWORD"], "/clinical/pharmacy"),
 }
 
 

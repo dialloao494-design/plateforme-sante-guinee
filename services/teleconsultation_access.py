@@ -124,9 +124,25 @@ def _provider_config() -> dict[str, Any]:
 
 
 def _user_may_access(appointment: models.RendezVous, user: User, db: Session) -> str:
+    from core.roles import (
+        CLINIC_ADMIN_ROLES,
+        PLATFORM_SCOPE_ROLES,
+        effective_role,
+        user_has_any_role,
+    )
 
-    if user.role == "admin":
+    role = effective_role(user.role)
 
+    if user_has_any_role(role, PLATFORM_SCOPE_ROLES):
+        return "admin"
+
+    if role in CLINIC_ADMIN_ROLES or role == "admin":
+        cid = getattr(user, "clinic_id", None)
+        if cid is None or appointment.clinic_id != cid:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Accès refusé à cette téléconsultation.",
+            )
         return "admin"
 
     if user.role == "doctor":

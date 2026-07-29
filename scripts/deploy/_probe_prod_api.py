@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import httpx
 
 BASE = "https://web-production-ad6a36.up.railway.app"
@@ -15,8 +16,8 @@ def login(email, password):
 
 
 def main():
-    recep_token = login("baldoumar14@gmail.com", "AasmaRecep1!")
-    lab_token = login("mamadoudianbarry06@gmail.com", "AasmaLab1!")
+    recep_token = login("baldoumar14@gmail.com", os.environ["AASMA_RECEPTION_PASSWORD"])
+    lab_token = login("mamadoudianbarry06@gmail.com", os.environ["AASMA_LAB_PASSWORD"])
     h_recep = {"Authorization": f"Bearer {recep_token}"}
     h_lab = {"Authorization": f"Bearer {lab_token}"}
 

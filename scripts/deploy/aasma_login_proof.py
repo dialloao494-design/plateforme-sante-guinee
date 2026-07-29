@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Reset and verify all real AASMA staff logins on production."""
-
 from __future__ import annotations
+
+import os
 
 import sys
 from pathlib import Path
@@ -21,28 +22,28 @@ REAL_STAFF = [
     {
         "role": "Admin clinique",
         "email": "contactpolycliniqueaasma@gmail.com",
-        "password": "AasmaAdmin1!",
+        "password": os.environ["AASMA_ADMIN_PASSWORD"],
         "dashboard": "/clinical/admin",
         "staff_id": None,
     },
     {
         "role": "Réception",
         "email": "baldoumar14@gmail.com",
-        "password": "AasmaRecep1!",
+        "password": os.environ["AASMA_RECEPTION_PASSWORD"],
         "dashboard": "/clinical/reception",
         "staff_id": None,
     },
     {
         "role": "Laboratoire",
         "email": "mamadoudianbarry06@gmail.com",
-        "password": "AasmaLab1!",
+        "password": os.environ["AASMA_LAB_PASSWORD"],
         "dashboard": "/clinical/lab",
         "staff_id": None,
     },
     {
         "role": "Pharmacie",
         "email": "ben752231@gmail.com",
-        "password": "AasmaPharm1!",
+        "password": os.environ["AASMA_PHARMACY_PASSWORD"],
         "dashboard": "/clinical/pharmacy",
         "staff_id": None,
     },

@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """Debug lab save network on production."""
+import os
 import re, time, uuid, httpx
 from playwright.sync_api import sync_playwright
 
 FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 BACKEND = "https://web-production-ad6a36.up.railway.app"
-LAB = ("mamadoudianbarry06@gmail.com", "AasmaLab1!")
+LAB = ("mamadoudianbarry06@gmail.com", os.environ["AASMA_LAB_PASSWORD"])
 RUN = uuid.uuid4().hex[:6]
 
 # Create patient via API first
-rt = httpx.post(f"{BACKEND}/auth/login-json", json={"email": "baldoumar14@gmail.com", "password": "AasmaRecep1!"}).json()["access_token"]
+rt = httpx.post(f"{BACKEND}/auth/login-json", json={"email": "baldoumar14@gmail.com", "password": os.environ["AASMA_RECEPTION_PASSWORD"]}).json()["access_token"]
 h = {"Authorization": f"Bearer {rt}"}
 reg = httpx.post(
     f"{BACKEND}/clinical/reception/his/patients",

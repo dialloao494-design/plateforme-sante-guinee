@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Poll production until nurse module is live."""
-
 from __future__ import annotations
+import os
+
 
 import re
 import sys
@@ -11,7 +12,7 @@ import httpx
 
 BACKEND = "https://web-production-ad6a36.up.railway.app"
 FRONTEND = "https://plateforme-sante-guinee.vercel.app"
-ADMIN = ("contactpolycliniqueaasma@gmail.com", "AasmaAdmin1!")
+ADMIN = ("contactpolycliniqueaasma@gmail.com", os.environ["AASMA_ADMIN_PASSWORD"])
 
 
 def nurse_api_live() -> bool:

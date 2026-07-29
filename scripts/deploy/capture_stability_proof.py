@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Production stability proof — 4 roles + lab patient panel."""
 from __future__ import annotations
+import os
 
 import json
 import sys
@@ -14,10 +15,10 @@ OUT = Path(__file__).resolve().parents[2] / "docs/ui_e2e_screenshots/stability-p
 OUT.mkdir(parents=True, exist_ok=True)
 
 ACCOUNTS = [
-    ("01-admin.png", "contactpolycliniqueaasma@gmail.com", "AasmaAdmin1!", "/clinical/admin"),
-    ("02-reception.png", "baldoumar14@gmail.com", "AasmaRecep1!", "/clinical/reception"),
-    ("03-laboratory.png", "mamadoudianbarry06@gmail.com", "AasmaLab1!", "/clinical/lab"),
-    ("04-pharmacy.png", "ben752231@gmail.com", "AasmaPharm1!", "/clinical/pharmacy"),
+    ("01-admin.png", "contactpolycliniqueaasma@gmail.com", os.environ["AASMA_ADMIN_PASSWORD"], "/clinical/admin"),
+    ("02-reception.png", "baldoumar14@gmail.com", os.environ["AASMA_RECEPTION_PASSWORD"], "/clinical/reception"),
+    ("03-laboratory.png", "mamadoudianbarry06@gmail.com", os.environ["AASMA_LAB_PASSWORD"], "/clinical/lab"),
+    ("04-pharmacy.png", "ben752231@gmail.com", os.environ["AASMA_PHARMACY_PASSWORD"], "/clinical/pharmacy"),
 ]
 
 

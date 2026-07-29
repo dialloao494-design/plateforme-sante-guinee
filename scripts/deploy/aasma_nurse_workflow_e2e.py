@@ -19,8 +19,8 @@ FRONTEND = os.getenv("NURSE_E2E_FRONTEND", "https://plateforme-sante-guinee.verc
 BACKEND = os.getenv("NURSE_E2E_BACKEND", "https://web-production-ad6a36.up.railway.app")
 
 CREDS = {
-    "reception": ("baldoumar14@gmail.com", "AasmaRecep1!"),
-    "nurse": ("contactpolycliniqueaasma@gmail.com", "AasmaAdmin1!"),
+    "reception": ("baldoumar14@gmail.com", os.environ["AASMA_RECEPTION_PASSWORD"]),
+    "nurse": ("contactpolycliniqueaasma@gmail.com", os.environ["AASMA_ADMIN_PASSWORD"]),
 }
 
 RUN = uuid.uuid4().hex[:6]

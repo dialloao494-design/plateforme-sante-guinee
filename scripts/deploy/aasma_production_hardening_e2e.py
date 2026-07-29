@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """AASMA production hardening E2E — roles, full patient journey, PDFs, CORS, migration."""
-
 from __future__ import annotations
+
+import os
 
 import json
 import re
@@ -21,10 +22,10 @@ ARTIFACTS.mkdir(parents=True, exist_ok=True)
 
 # Real AASMA staff + dedicated field/test accounts (passwords reset for E2E only).
 STAFF = {
-    "admin": ("contactpolycliniqueaasma@gmail.com", "AasmaAdmin1!"),
-    "reception": ("baldoumar14@gmail.com", "AasmaRecep1!"),
-    "lab": ("mamadoudianbarry06@gmail.com", "AasmaLab1!"),
-    "pharmacy": ("ben752231@gmail.com", "AasmaPharm1!"),
+    "admin": ("contactpolycliniqueaasma@gmail.com", os.environ["AASMA_ADMIN_PASSWORD"]),
+    "reception": ("baldoumar14@gmail.com", os.environ["AASMA_RECEPTION_PASSWORD"]),
+    "lab": ("mamadoudianbarry06@gmail.com", os.environ["AASMA_LAB_PASSWORD"]),
+    "pharmacy": ("ben752231@gmail.com", os.environ["AASMA_PHARMACY_PASSWORD"]),
     "nurse": ("aasma.nurse.test@sante-gn.test", "AasmaNurseE2E1!"),
     "doctor": ("field.verify.doctor.00c7@aasma-clinic.gn", "AasmaDocE2E1!"),
     "cashier": ("field.verify.cashier.8aac@aasma-clinic.gn", "AasmaCashE2E1!"),

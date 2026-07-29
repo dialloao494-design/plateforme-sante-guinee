@@ -73,8 +73,9 @@ def create_access_token(data: dict, *, expires_minutes: int | None = None):
     minutes = ACCESS_TOKEN_EXPIRE_MINUTES if expires_minutes is None else expires_minutes
     now = datetime.utcnow()
     expire = now + timedelta(minutes=minutes)
-    if "jti" not in to_encode:
-        to_encode["jti"] = str(uuid.uuid4())
+    # Always issue a non-empty jti (reject attacker-supplied empty string).
+    existing_jti = str(to_encode.get("jti") or "").strip()
+    to_encode["jti"] = existing_jti or str(uuid.uuid4())
     if "iat" not in to_encode:
         to_encode["iat"] = now
     if "tv" not in to_encode and "token_version" in to_encode:
@@ -116,6 +117,9 @@ def get_current_user(
         token_version = payload.get("tv", payload.get("token_version"))
 
         if user_id is None and email is None:
+            raise credentials_exception
+        # Deny missing/blank jti so denylist and logout cannot be bypassed.
+        if not isinstance(jti, str) or not str(jti).strip():
             raise credentials_exception
 
     except HTTPException:
@@ -304,6 +308,8 @@ def get_current_user_or_none(
         token_version = payload.get("tv", payload.get("token_version"))
 
         if user_id is None and email is None:
+            return None
+        if not isinstance(jti, str) or not str(jti).strip():
             return None
 
     except Exception:

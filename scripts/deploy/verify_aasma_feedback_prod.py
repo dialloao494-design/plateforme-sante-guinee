@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Verify AASMA reception + pharmacy production feedback fixes."""
+import os
 import json
 import re
 import sys
@@ -12,8 +13,8 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 BACKEND = "https://web-production-ad6a36.up.railway.app"
-PHARM_EMAIL, PHARM_PWD = "ben752231@gmail.com", "AasmaPharm1!"
-RECEP_EMAIL, RECEP_PWD = "baldoumar14@gmail.com", "AasmaRecep1!"
+PHARM_EMAIL, PHARM_PWD = "ben752231@gmail.com", os.environ["AASMA_PHARMACY_PASSWORD"]
+RECEP_EMAIL, RECEP_PWD = "baldoumar14@gmail.com", os.environ["AASMA_RECEPTION_PASSWORD"]
 OUT = Path(__file__).resolve().parents[2] / "docs/ui_e2e_screenshots/aasma-feedback-proof"
 OUT.mkdir(parents=True, exist_ok=True)
 

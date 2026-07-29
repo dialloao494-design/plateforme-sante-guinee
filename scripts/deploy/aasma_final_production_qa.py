@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Final production QA — browser UI workflows, stress cases, screenshots, PDFs."""
-
 from __future__ import annotations
+
+import os
 
 import json
 import re
@@ -24,13 +25,13 @@ for d in (ART, SHOTS, PDFS):
     d.mkdir(parents=True, exist_ok=True)
 
 CREDS = {
-    "reception": ("baldoumar14@gmail.com", "AasmaRecep1!"),
+    "reception": ("baldoumar14@gmail.com", os.environ["AASMA_RECEPTION_PASSWORD"]),
     "nurse": ("aasma.nurse.test@sante-gn.test", "AasmaNurseE2E1!"),
     "doctor": ("field.verify.doctor.00c7@aasma-clinic.gn", "AasmaDocE2E1!"),
-    "lab": ("mamadoudianbarry06@gmail.com", "AasmaLab1!"),
-    "pharmacy": ("ben752231@gmail.com", "AasmaPharm1!"),
+    "lab": ("mamadoudianbarry06@gmail.com", os.environ["AASMA_LAB_PASSWORD"]),
+    "pharmacy": ("ben752231@gmail.com", os.environ["AASMA_PHARMACY_PASSWORD"]),
     "cashier": ("field.verify.cashier.8aac@aasma-clinic.gn", "AasmaCashE2E1!"),
-    "admin": ("contactpolycliniqueaasma@gmail.com", "AasmaAdmin1!"),
+    "admin": ("contactpolycliniqueaasma@gmail.com", os.environ["AASMA_ADMIN_PASSWORD"]),
 }
 
 RUN = uuid.uuid4().hex[:6].upper()

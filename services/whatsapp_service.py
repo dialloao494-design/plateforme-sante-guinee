@@ -22,7 +22,7 @@ class WhatsAppService:
         self.token = (os.getenv("WHATSAPP_ACCESS_TOKEN") or "").strip()
         self.phone_number_id = (os.getenv("WHATSAPP_PHONE_NUMBER_ID") or "").strip()
         self.api_version = (os.getenv("WHATSAPP_API_VERSION") or "v21.0").strip()
-        self.verify_token = (os.getenv("WHATSAPP_VERIFY_TOKEN") or "plateforme-sante-guinee").strip()
+        self.verify_token = (os.getenv("WHATSAPP_VERIFY_TOKEN") or "").strip()
 
     @property
     def configured(self) -> bool:

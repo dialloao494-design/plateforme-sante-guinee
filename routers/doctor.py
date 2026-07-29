@@ -142,10 +142,17 @@ def update_doctor(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_admin),
 ):
-    """Update doctor profile (Admin only)."""
+    """Update doctor profile (Admin only — scoped to clinic for clinic_admin)."""
     doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
+
+    from core.roles import PLATFORM_SCOPE_ROLES, user_has_any_role
+
+    if not user_has_any_role(current_user.role, PLATFORM_SCOPE_ROLES):
+        cid = getattr(current_user, "clinic_id", None)
+        if cid is None or doctor.clinic_id != cid:
+            raise HTTPException(status_code=403, detail="Access denied")
     
     # Update only provided fields
     if doctor_update.first_name is not None:
@@ -181,6 +188,14 @@ def delete_doctor(
     doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
+
+    from core.roles import PLATFORM_SCOPE_ROLES, user_has_any_role
+
+    if not user_has_any_role(current_user.role, PLATFORM_SCOPE_ROLES):
+        cid = getattr(current_user, "clinic_id", None)
+        if cid is None or doctor.clinic_id != cid:
+            raise HTTPException(status_code=403, detail="Access denied")
+
     db.delete(doctor)
     db.commit()
     return {"detail": "Doctor deleted successfully"}

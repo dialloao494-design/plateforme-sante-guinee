@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Verify independent auth sessions across four browser tabs in production."""
-
 from __future__ import annotations
+import os
+
 
 import json
 import sys
@@ -12,10 +13,10 @@ from playwright.sync_api import sync_playwright
 FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 
 TABS = [
-    ("reception", "baldoumar14@gmail.com", "AasmaRecep1!", "/clinical/reception", "receptionist"),
-    ("lab", "mamadoudianbarry06@gmail.com", "AasmaLab1!", "/clinical/lab", "lab_technician"),
-    ("pharmacy", "ben752231@gmail.com", "AasmaPharm1!", "/clinical/pharmacy", "pharmacist"),
-    ("admin", "contactpolycliniqueaasma@gmail.com", "AasmaAdmin1!", "/clinical/admin", "clinic_admin"),
+    ("reception", "baldoumar14@gmail.com", os.environ["AASMA_RECEPTION_PASSWORD"], "/clinical/reception", "receptionist"),
+    ("lab", "mamadoudianbarry06@gmail.com", os.environ["AASMA_LAB_PASSWORD"], "/clinical/lab", "lab_technician"),
+    ("pharmacy", "ben752231@gmail.com", os.environ["AASMA_PHARMACY_PASSWORD"], "/clinical/pharmacy", "pharmacist"),
+    ("admin", "contactpolycliniqueaasma@gmail.com", os.environ["AASMA_ADMIN_PASSWORD"], "/clinical/admin", "clinic_admin"),
 ]
 
 

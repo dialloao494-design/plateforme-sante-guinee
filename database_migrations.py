@@ -801,6 +801,36 @@ def ensure_alembic_version_column(engine: Engine) -> None:
         logger.warning("alembic_version column widen skipped: %s", exc)
 
 
+def ensure_single_platform_owner_index(engine: Engine) -> None:
+    """Enforce at most one platform_owner account (partial unique index)."""
+    insp = inspect(engine)
+    if "users" not in insp.get_table_names():
+        return
+    dialect = engine.dialect.name
+    indexes = {idx["name"] for idx in insp.get_indexes("users")}
+    if "uq_users_single_platform_owner" in indexes:
+        return
+    try:
+        with engine.begin() as conn:
+            if dialect == "sqlite":
+                conn.execute(
+                    text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_single_platform_owner "
+                        "ON users (role) WHERE role = 'platform_owner'"
+                    )
+                )
+            else:
+                conn.execute(
+                    text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_single_platform_owner "
+                        "ON users (role) WHERE role = 'platform_owner'"
+                    )
+                )
+        logger.info("Applied unique partial index uq_users_single_platform_owner")
+    except Exception as exc:
+        logger.warning("uq_users_single_platform_owner migration skipped: %s", exc)
+
+
 def ensure_patient_user_id_unique(engine: Engine) -> None:
     """Multi-tenant patients: clinic_id + composite (clinic_id, user_id) uniqueness."""
     insp = inspect(engine)

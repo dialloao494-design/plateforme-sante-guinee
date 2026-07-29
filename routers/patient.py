@@ -53,7 +53,8 @@ def _assert_admin_patient_clinic_scope(db: Session, current_user, patient: model
     cid = user_clinic_id(current_user, db)
     if cid is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
-    if patient.clinic_id is not None and patient.clinic_id != cid:
+    # Fail closed: unscoped/legacy patients (clinic_id NULL) are not mutable by clinic admins.
+    if patient.clinic_id is None or patient.clinic_id != cid:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
 
 

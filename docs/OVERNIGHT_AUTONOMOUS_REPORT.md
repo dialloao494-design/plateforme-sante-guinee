@@ -97,10 +97,10 @@
 
 - Frontend: https://plateforme-sante-guinee.vercel.app  
 - Backend: https://web-production-ad6a36.up.railway.app  
-- Reception: `baldoumar14@gmail.com` / `AasmaRecep1!`  
-- Lab: `mamadoudianbarry06@gmail.com` / `AasmaLab1!`  
-- Pharmacy: `ben752231@gmail.com` / `AasmaPharm1!`  
-- Nurse (admin): `contactpolycliniqueaasma@gmail.com` / `AasmaAdmin1!`
+- Reception: `baldoumar14@gmail.com` / `[REDACTED — ROTATE IMMEDIATELY]`  
+- Lab: `mamadoudianbarry06@gmail.com` / `[REDACTED — ROTATE IMMEDIATELY]`  
+- Pharmacy: `ben752231@gmail.com` / `[REDACTED — ROTATE IMMEDIATELY]`  
+- Nurse (admin): `contactpolycliniqueaasma@gmail.com` / `[REDACTED — ROTATE IMMEDIATELY]`
 
 ---
 

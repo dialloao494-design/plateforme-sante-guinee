@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Production proof — Reception HIS workflow: Register → Admission → Billing → Refund → Dashboard."""
 from __future__ import annotations
+import os
 
 import json
 import sys
@@ -13,7 +14,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 EMAIL = "baldoumar14@gmail.com"
-PASSWORD = "AasmaRecep1!"
+PASSWORD = os.environ["AASMA_RECEPTION_PASSWORD"]
 RUN_ID = str(int(time.time()))[-6:]
 OUT = Path(__file__).resolve().parents[2] / "docs/ui_e2e_screenshots/reception-his-proof"
 OUT.mkdir(parents=True, exist_ok=True)
