@@ -93,7 +93,10 @@ class AppSettings:
         self.debug = _env_flag("DEBUG", default=False)
         self.is_production = self.environment == "production"
         self.is_staging = self.environment == "staging"
-        self.is_deployed = self.is_production or self.is_staging
+        # Local Clinic Node appliance (offline-first mini-PC). Isolated from Railway/Vercel.
+        self.is_clinic_node = self.environment in {"clinic-node", "clinic_node"}
+        # Deployed = hardened secrets/proxy rules (cloud staging/prod OR local node).
+        self.is_deployed = self.is_production or self.is_staging or self.is_clinic_node
         self.domain = (os.getenv("DOMAIN") or "").strip()
         self.log_level = (os.getenv("LOG_LEVEL") or ("INFO" if self.is_deployed else "DEBUG")).upper()
         self.log_format = (os.getenv("LOG_FORMAT") or ("json" if self.is_deployed else "text")).lower()
@@ -101,6 +104,8 @@ class AppSettings:
         self.disable_api_docs = _env_flag("DISABLE_API_DOCS", default=False)
         self.docs_enabled = not self.is_production and not self.disable_api_docs
         if self.is_staging and _env_flag("ENABLE_STAGING_API_DOCS", default=False):
+            self.docs_enabled = True
+        if self.is_clinic_node and _env_flag("ENABLE_CLINIC_NODE_API_DOCS", default=False):
             self.docs_enabled = True
 
     def resolve_allowed_hosts(self) -> list[str]:
@@ -127,6 +132,11 @@ class AppSettings:
             if internal not in hosts:
                 hosts.append(internal)
 
+        if self.is_clinic_node:
+            for local_host in ("sante-locale", "proxy", "*.local"):
+                if local_host not in hosts:
+                    hosts.append(local_host)
+
         # Railway edge + health probe hosts (required for deploy healthchecks).
         if os.getenv("RAILWAY_ENVIRONMENT"):
             for railway_host in (
@@ -141,7 +151,7 @@ class AppSettings:
 
         if not hosts or (len(hosts) <= 3 and not self.domain and not raw.replace("*", "").strip()):
             raise RuntimeError(
-                "ALLOWED_HOSTS or DOMAIN must be set for staging/production "
+                "ALLOWED_HOSTS or DOMAIN must be set for staging/production/clinic-node "
                 "(e.g. ALLOWED_HOSTS=staging.example.com,backend)"
             )
         return hosts
@@ -175,7 +185,7 @@ class AppSettings:
         return hosts
 
     def validate_production_secrets(self) -> None:
-        """Validate required secrets for staging/production deployments."""
+        """Validate required secrets for staging/production/clinic-node deployments."""
         if not self.is_deployed:
             return
 
@@ -191,21 +201,70 @@ class AppSettings:
         if is_insecure_secret(db_password, min_length=12, extra_weak_tokens=("sante_dev", "postgres")):
             failures.append("DB_PASSWORD/POSTGRES_PASSWORD must be a strong database password")
 
-        jitsi_min = 16 if _is_jaas_jitsi_mode() else 12
-        if is_insecure_secret(jitsi_secret, min_length=jitsi_min):
-            failures.append("JITSI_SECRET/JITSI_APP_SECRET (or JaaS private key) must be configured securely")
+        # Teleconsult/Jitsi is optional on Clinic Node (LAN offline).
+        if not self.is_clinic_node:
+            jitsi_min = 16 if _is_jaas_jitsi_mode() else 12
+            if is_insecure_secret(jitsi_secret, min_length=jitsi_min):
+                failures.append(
+                    "JITSI_SECRET/JITSI_APP_SECRET (or JaaS private key) must be configured securely"
+                )
 
         reminder_token = (os.getenv("REMINDER_RESPOND_TOKEN") or "").strip()
         if self.is_production and is_insecure_secret(reminder_token, min_length=32):
             failures.append(
                 "REMINDER_RESPOND_TOKEN must be a strong random value (32+ chars) in production"
             )
+        if self.is_clinic_node and reminder_token and is_insecure_secret(reminder_token, min_length=32):
+            failures.append(
+                "REMINDER_RESPOND_TOKEN must be a strong random value (32+ chars) when set on clinic-node"
+            )
+
+        # PHI attachments — required on production and clinic-node (Wave 2/4).
+        if self.is_production or self.is_clinic_node:
+            enc_key = (os.getenv("ATTACHMENT_ENCRYPTION_KEY") or "").strip()
+            require_enc = _env_flag(
+                "REQUIRE_ATTACHMENT_ENCRYPTION",
+                default=True,
+            )
+            if not enc_key and require_enc:
+                failures.append(
+                    "ATTACHMENT_ENCRYPTION_KEY must be set "
+                    f"(Fernet key for PHI at rest on {'clinic-node' if self.is_clinic_node else 'production'})"
+                )
+            elif enc_key:
+                try:
+                    from cryptography.fernet import Fernet
+
+                    Fernet(enc_key.encode("utf-8"))
+                except Exception:
+                    failures.append("ATTACHMENT_ENCRYPTION_KEY must be a valid Fernet key")
+
+        if self.is_clinic_node:
+            try:
+                from core.clinic_node_security import assert_clinic_node_secret_separation
+
+                assert_clinic_node_secret_separation(
+                    jwt_secret=jwt_secret,
+                    license_secret=os.getenv("CLINIC_NODE_LICENSE_SECRET") or "",
+                    update_secret=os.getenv("CLINIC_NODE_UPDATE_SECRET") or "",
+                    attachment_key=os.getenv("ATTACHMENT_ENCRYPTION_KEY") or "",
+                )
+            except RuntimeError as exc:
+                failures.append(str(exc))
+
+            # Host-network is lab-only for pilots unless explicitly acknowledged.
+            network = (os.getenv("CLINIC_NODE_NETWORK") or "bridge").strip().lower()
+            if network == "host" and not _env_flag("CLINIC_NODE_ALLOW_HOST_NETWORK", default=False):
+                failures.append(
+                    "CLINIC_NODE_NETWORK=host is lab-only — set CLINIC_NODE_ALLOW_HOST_NETWORK=true "
+                    "to acknowledge LAN exposure risk, or use bridge networking"
+                )
 
         if failures:
             raise RuntimeError("Insecure deployment secrets: " + "; ".join(failures))
 
     def enforce_production_boot(self) -> None:
-        """Run all boot guards: production ops flags + deployed secret validation."""
+        """Run all boot guards: production/clinic-node ops flags + deployed secret validation."""
         if self.is_production:
             if _env_flag("ENABLE_PILOT_SEED", default=False):
                 raise RuntimeError(
@@ -237,6 +296,19 @@ class AppSettings:
                     "BYPASS_AVAILABILITY_VALIDATION=true is forbidden in production — "
                     "doctor availability checks must remain enforced"
                 )
+
+        if self.is_clinic_node:
+            for flag in (
+                "ENABLE_PILOT_SEED",
+                "ENABLE_STARTUP_TEST_USER",
+                "ENABLE_STARTUP_SEED",
+                "ENABLE_DEMO_CLINIC_SEED",
+            ):
+                if _env_flag(flag, default=False):
+                    raise RuntimeError(
+                        f"{flag}=true is forbidden on clinic-node — "
+                        "use the Clinic Node installer bootstrap instead"
+                    )
 
         if self.is_deployed:
             self.validate_production_secrets()

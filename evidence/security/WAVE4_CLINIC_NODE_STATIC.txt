@@ -1,0 +1,17 @@
+===== Wave 4 Clinic Node static checks =====
+PASS: bridge network in compose.yml
+PASS: compose.yml does not publish Postgres
+PASS: host compose binds Postgres to localhost
+PASS: host compose marked lab-only
+PASS: nginx TLS 1.2+
+PASS: nginx blocks /uploads/
+PASS: nginx HTTP→HTTPS redirect
+PASS: nginx HSTS
+PASS: generate-pki.sh executable
+PASS: harden-host-firewall.sh present
+PASS: verify-luks.sh present
+PASS: encrypt-backup.sh present
+PASS: installer sets ATTACHMENT_ENCRYPTION_KEY
+PASS: installer sets license secret
+PASS: core.clinic_node_security helpers
+===========================================
