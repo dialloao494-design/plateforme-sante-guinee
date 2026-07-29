@@ -62,8 +62,12 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         plain = tmp_path / "dump.sql.gz"
-        with gzip.open(plain, "wb") as gz:
-            gz.write(b"--\n-- PostgreSQL database dump\nCREATE TABLE t(id int);\n" + b"x" * 200)
+        with gzip.open(plain, "wb", compresslevel=1) as gz:
+            gz.write(
+                b"--\n-- PostgreSQL database dump\nCREATE TABLE t(id int);\n"
+                + (b"-- pad for min size\n" * 400)
+                + os.urandom(256)
+            )
         enc = encrypt_backup_file(plain, tmp_path / "dump.sql.gz.enc", key=key)
         report = validate_recovery_scenarios(
             plain_backup=plain,

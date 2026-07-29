@@ -1,0 +1,18 @@
+WAVE5_STATIC_INVENTORY
+OK core/sync_security.py bytes=7285
+OK core/backup_security.py bytes=9527
+OK core/update_security.py bytes=5096
+OK services/recovery_security_service.py bytes=2937
+OK docs/DISASTER_RECOVERY_SECURITY.md bytes=4006
+OK scripts/security/encrypt_backup.py bytes=1016
+OK scripts/security/decrypt_backup.py bytes=1018
+OK scripts/security/restore_validate.py bytes=1580
+OK scripts/security/sign_update_package.py bytes=1406
+OK scripts/security/apply_update.sh bytes=4003
+OK scripts/deploy/validate_security_wave5.py bytes=4316
+OK tests/test_security_wave5_sync_dr.py bytes=12188
+OK evidence/security/WAVE5_SYNC_DR_HARDENING_REPORT.md bytes=3053
+SYMBOLS core/sync_security.py: ReplayGuard, SignedSyncEnvelope, build_signed_envelope, canonical_json, delta_batch_integrity, hmac_sha256_hex, require_sync_token, sha256_hex, verify_hmac_sha256, verify_signed_envelope
+SYMBOLS core/backup_security.py: BackupArtifact, _fernet_from_env, decrypt_backup_file, disaster_recovery_checklist, encrypt_backup_file, pre_restore_validation, sha256_file, verify_gzip_sql_backup, verify_sha256_sidecar, write_sha256_sidecar
+SYMBOLS core/update_security.py: UpdatePackage, UpdateSecurityError, _canonical_manifest, load_and_verify_package, read_rollback_image, record_rollback_image, resolve_update_secret, sha256_file, sign_manifest, verify_manifest, write_signed_package
+WAVE5_STATIC_OK
