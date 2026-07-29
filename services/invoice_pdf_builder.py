@@ -13,6 +13,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from data.clinic_branding import CLINIC_FOOTER_LINE, CLINIC_PRINT_NAME
+from core.output_encoding import escape_pdf_paragraph
 from services.clinic_print_header import append_official_clinic_header
 from services.pdf_fonts import ensure_clinic_fonts
 
@@ -186,7 +187,7 @@ def build_hospital_invoice_pdf(
         amt = int(item.get("amount_gnf") or item.get("total_gnf") or qty * unit)
         item_rows.append(
             [
-                Paragraph(desc, styles["cell"]),
+                Paragraph(escape_pdf_paragraph(desc), styles["cell"]),
                 Paragraph(str(qty), styles["cell_right"]),
                 Paragraph(_gnf(unit), styles["cell_right"]),
                 Paragraph(_gnf(amt), styles["cell_right"]),

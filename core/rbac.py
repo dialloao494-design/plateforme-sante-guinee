@@ -120,6 +120,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.ADMIN_STAFF,
             Permission.ADMIN_AUDIT,
             Permission.ADMIN_BACKUP,
+            Permission.BILLING_READ,
             Permission.BILLING_REVENUE,
             Permission.CLINIC_OPERATIONS,
             Permission.ADMISSION_MANAGE,
@@ -136,6 +137,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.ADMIN_STAFF,
             Permission.ADMIN_AUDIT,
             Permission.ADMIN_BACKUP,
+            Permission.BILLING_READ,
             Permission.BILLING_REVENUE,
             Permission.CLINIC_OPERATIONS,
             Permission.ADMISSION_MANAGE,
@@ -177,10 +179,36 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.ADMIN_STAFF,
             Permission.ADMIN_AUDIT,
             Permission.ADMIN_BACKUP,
+            Permission.BILLING_READ,
             Permission.BILLING_REVENUE,
             Permission.CLINIC_OPERATIONS,
             Permission.ADMISSION_MANAGE,
             Permission.ADMISSION_BEDS,
+        }
+    ),
+    "nurse": frozenset(
+        {
+            Permission.PATIENT_JOURNEY,
+            Permission.CLINIC_OPERATIONS,
+            Permission.RECEPTION_INTAKE,
+            Permission.NUTRITION_READ,
+            Permission.IMMUNIZATION_READ,
+            Permission.ADMISSION_MANAGE,
+            Permission.ADMISSION_BEDS,
+        }
+    ),
+    "pev_agent": frozenset(
+        {
+            Permission.IMMUNIZATION_ADMINISTER,
+            Permission.IMMUNIZATION_READ,
+            Permission.PATIENT_JOURNEY,
+            Permission.CLINIC_OPERATIONS,
+            Permission.RECEPTION_INTAKE,
+        }
+    ),
+    "patient": frozenset(
+        {
+            Permission.PATIENT_JOURNEY,
         }
     ),
 }
@@ -231,15 +259,14 @@ def assert_permission(user: User, permission: Permission) -> None:
     if not has_permission(user, permission):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Permission denied: {permission.value}",
+            detail="Permission denied",
         )
 
 
 def assert_any_permission(user: User, *permissions: Permission) -> None:
     role_perms = permissions_for_role(user.role)
     if not any(p in role_perms for p in permissions):
-        names = [p.value for p in permissions]
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Requires one of permissions: {names}",
+            detail="Permission denied",
         )

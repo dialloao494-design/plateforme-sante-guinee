@@ -126,10 +126,14 @@ async def low_bandwidth_cache_headers(request, call_next):
 # Rate limiting
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from core.limiter import limiter
+from core.security_headers import SecurityHeadersMiddleware
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Trust Railway's HTTPS proxy so that request.url.scheme is 'https'
 # when Railway terminates TLS and forwards requests to the app over HTTP internally.
