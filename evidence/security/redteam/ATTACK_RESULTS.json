@@ -1,0 +1,34 @@
+{
+  "phase": "red_team_final",
+  "critical_exploited_pre_fix": [
+    "RT-C1 WhatsApp webhook unauthenticated appointment mutation",
+    "RT-C2 Platform owner setup race / multi-owner",
+    "RT-C3 Committed production credentials in docs/scripts"
+  ],
+  "high_exploited_pre_fix": [
+    "RT-H1 clinic_admin/admin IDOR fail-open when clinic_id NULL",
+    "RT-H2 doctor PUT/DELETE cross-clinic",
+    "RT-H3 message attachment clinic_admin IDOR",
+    "RT-H4 teleconsult admin global access",
+    "RT-H5 doctor dashboard global admin listing",
+    "RT-H6 reminder staff notifications / process-due global admin",
+    "RT-H7 unassigned patient mutation by clinic admin",
+    "RT-H8 refresh token rotation race",
+    "RT-H9 MFA soft gate for required roles",
+    "RT-H10 reminder respond token fail-open",
+    "RT-H11 attachment encryption kill-switch",
+    "RT-H12 update package empty digests / path traversal",
+    "RT-H13 blank JWT jti denylist bypass"
+  ],
+  "post_fix": {
+    "critical_open": 0,
+    "high_open": 0,
+    "exploited": 0
+  },
+  "pytest_summary": "275 passed, 1 skipped, 3967 warnings in 10.12s",
+  "pentest_harness": {
+    "EXPLOITED": 0,
+    "BLOCKED": 28,
+    "PARTIAL": 7
+  }
+}

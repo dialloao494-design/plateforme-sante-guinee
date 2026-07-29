@@ -6,8 +6,9 @@ import uuid
 from datetime import datetime, timedelta
 
 import models
-from security import create_access_token, hash_password
 from core.provisioning_context import provisioning_channel
+from core.reminder_security import expected_reminder_respond_token
+from security import create_access_token, hash_password
 
 
 def _auth(user) -> dict[str, str]:
@@ -191,7 +192,11 @@ def test_full_clinic_workflow(client, db_session, admin_user):
     # WhatsApp patient response
     r = client.post(
         f"/clinical/reminders/appointments/{appt_id}/respond",
-        json={"action": "reschedule_requested", "payload": "REPORTER"},
+        json={
+            "action": "reschedule_requested",
+            "payload": "REPORTER",
+            "token": expected_reminder_respond_token(appt_id),
+        },
     )
     assert r.status_code == 200
     appt = db_session.query(models.RendezVous).filter(models.RendezVous.id == appt_id).first()

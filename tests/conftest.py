@@ -21,6 +21,9 @@ os.environ.setdefault("BCRYPT_ROUNDS", "4")
 os.environ.setdefault("MFA_REQUIRED_FOR_STAFF", "false")
 os.environ.setdefault("ACCESS_TOKEN_EXPIRE_MINUTES", "15")
 os.environ.setdefault("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
+os.environ.setdefault("REMINDER_RESPOND_TOKEN", "test-reminder-respond-token-32chars-min")
+os.environ.setdefault("WHATSAPP_APP_SECRET", "test-whatsapp-app-secret-for-pytest")
+os.environ.setdefault("WHATSAPP_VERIFY_TOKEN", "test-whatsapp-verify-token")
 
 
 import pytest
@@ -119,7 +122,29 @@ def admin_user(db_session: Session) -> User:
     email = "admin@clinic.test"
     existing = db_session.query(User).filter(User.email == email).first()
     if existing:
+        existing.hashed_password = hash_password("AdminPass12!")
+        existing.must_change_password = False
+        existing.is_active = True
+        if existing.role != "platform_owner":
+            # Prefer the canonical fixture identity when possible.
+            pass
+        db_session.add(existing)
+        db_session.commit()
+        db_session.refresh(existing)
         return existing
+
+    # Partial unique index allows only one platform_owner in the shared test DB.
+    existing_owner = (
+        db_session.query(User).filter(User.role == "platform_owner").first()
+    )
+    if existing_owner:
+        existing_owner.hashed_password = hash_password("AdminPass12!")
+        existing_owner.must_change_password = False
+        existing_owner.is_active = True
+        db_session.add(existing_owner)
+        db_session.commit()
+        db_session.refresh(existing_owner)
+        return existing_owner
 
     with provisioning_channel("test_fixture"):
         user = User(
