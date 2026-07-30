@@ -1,4 +1,4 @@
-# Backend API — production image (Security Wave 3: non-root when started as root)
+# Backend API — production image (Railway-compatible, non-root runtime)
 FROM python:3.12-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -7,13 +7,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Keep the build self-contained (no external PostgreSQL apt mirror).
-# gosu is used only when the container starts as root.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
     libpq5 \
-    gosu \
+    curl \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 10001 appuser \
     && useradd --uid 10001 --gid appuser --shell /usr/sbin/nologin --create-home appuser
@@ -32,6 +28,8 @@ EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
     CMD sh -c 'curl -fsS "http://127.0.0.1:${PORT:-8000}/health/ready" || exit 1'
+
+USER appuser
 
 ENTRYPOINT ["/app/scripts/docker/entrypoint-backend.sh"]
 CMD ["/app/scripts/docker/start-uvicorn.sh"]

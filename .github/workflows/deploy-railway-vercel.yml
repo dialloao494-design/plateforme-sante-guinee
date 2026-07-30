@@ -64,9 +64,12 @@ jobs:
         if: env.RAILWAY_TOKEN == '' || env.SVC_ID == ''
         shell: bash
         run: |
-          echo "::warning title=Railway CLI deploy skipped::RAILWAY_TOKEN and/or RAILWAY_SERVICE_ID not set. Waiting for Railway GitHub auto-deploy instead."
-          echo "Add secrets per docs/GITHUB_DEPLOY_SECRETS.md to enable CLI deploy + FRONTEND_URL enforcement from Actions."
-          echo "Until then, runtime remaps legacy seven-rust FRONTEND_URL to ${DEFAULT_FRONTEND_URL}."
+          echo "::error title=Railway CLI deploy blocked::RAILWAY_TOKEN and/or RAILWAY_SERVICE_ID not set. Cannot force Railway deploy or read Railway logs from Actions."
+          echo "Waiting for Railway GitHub auto-deploy only (may be disconnected)."
+          echo "Exact recovery steps: docs/RAILWAY_502_MANUAL_RECOVERY.md"
+          echo "Required secrets: RAILWAY_TOKEN (project token) + RAILWAY_SERVICE_ID (service UUID)."
+          echo "Project hint: sunny-illumination / public URL web-production-ad6a36.up.railway.app"
+          echo "Until secrets exist, runtime remaps legacy seven-rust FRONTEND_URL to ${DEFAULT_FRONTEND_URL}."
 
       - uses: actions/setup-python@v5
         with:

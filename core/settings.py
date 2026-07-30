@@ -167,6 +167,12 @@ class AppSettings:
                 return ["127.0.0.1", "localhost", "::1"]
             return [h.strip() for h in raw.split(",") if h.strip()]
 
+        # Railway edge terminates TLS; private CIDRs + loopback are safe defaults
+        # when the operator has not yet set TRUSTED_PROXY_HOSTS explicitly.
+        if (not raw or raw == "*") and (os.getenv("RAILWAY_ENVIRONMENT") or "").strip():
+            raw = "127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,::1,backend"
+            os.environ["TRUSTED_PROXY_HOSTS"] = raw
+
         hosts: list[str] = []
         for part in raw.split(","):
             part = part.strip()
@@ -190,7 +196,14 @@ class AppSettings:
             return
 
         jwt_secret = _first_env("JWT_SECRET", "SECRET_KEY")
-        db_password = _first_env("DB_PASSWORD", "POSTGRES_PASSWORD") or _password_from_database_url()
+        # Prefer the password embedded in DATABASE_URL (Railway Postgres plugin).
+        # A leftover weak POSTGRES_PASSWORD env must not override a strong URL password.
+        url_password = _password_from_database_url()
+        explicit_password = _first_env("DB_PASSWORD", "POSTGRES_PASSWORD")
+        if url_password:
+            db_password = url_password
+        else:
+            db_password = explicit_password
         jitsi_secret = _resolve_jitsi_secret()
 
         failures: list[str] = []

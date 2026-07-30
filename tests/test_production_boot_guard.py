@@ -112,10 +112,19 @@ class TestProductionBootGuardSeedFlags:
 class TestTrustedProxyHosts:
     def test_wildcard_proxy_hosts_rejected_in_production(self, monkeypatch):
         _apply_valid_production_env(monkeypatch)
+        monkeypatch.delenv("RAILWAY_ENVIRONMENT", raising=False)
         monkeypatch.setenv("TRUSTED_PROXY_HOSTS", "*")
         settings = AppSettings()
         with pytest.raises(RuntimeError, match="TRUSTED_PROXY_HOSTS"):
             settings.enforce_production_boot()
+
+    def test_railway_defaults_trusted_proxy_when_unset(self, monkeypatch):
+        _apply_valid_production_env(monkeypatch)
+        monkeypatch.setenv("RAILWAY_ENVIRONMENT", "production")
+        monkeypatch.delenv("TRUSTED_PROXY_HOSTS", raising=False)
+        hosts = AppSettings().resolve_trusted_proxy_hosts()
+        assert "127.0.0.1" in hosts
+        assert "backend" in hosts
 
     def test_explicit_proxy_hosts_allowed_in_production(self, monkeypatch):
         _apply_valid_production_env(monkeypatch)
