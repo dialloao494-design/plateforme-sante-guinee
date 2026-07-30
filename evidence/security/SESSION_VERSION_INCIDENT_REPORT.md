@@ -53,8 +53,26 @@ Why the column was missing even though migration `20260730_0023` adds it:
 
 ## 6–8. Production deployment / health / data
 
-Filled after Railway redeploy of this commit (see SHA below). No `drop_all`, reset, or destructive purge is used.
+| Check | Status (as of agent last probe) |
+|---|---|
+| Code on `main` | Yes — migration + fail-closed entrypoint + startCommand |
+| GitHub Actions deploy wait | Still fails (no `RAILWAY_TOKEN`; waits for auto-deploy) |
+| Live `/health` | Still **502** until Railway actually runs the new revision |
+| Data preservation | Migrations are additive only (DEFAULT 0); no reset/drop_all |
 
-## 9. Deployed commit SHA
+**Required operator action:** Railway dashboard → backend service → **Redeploy** commit `40b4aa6` (or later `main` tip). Confirm deploy logs show:
+- `Alembic upgrade head OK` / running `20260730_0025_ensure_session_version`
+- `users.session_version / token_version verified`
+- then Uvicorn start
 
-`1d73a65a8da2641b4db2c8dbd238a0739f267e6d`
+Then verify:
+```bash
+curl -sS https://web-production-ad6a36.up.railway.app/health
+curl -sS https://web-production-ad6a36.up.railway.app/health/ready
+```
+
+## 9. Deployed commit SHA (code on main)
+
+`40b4aa67d5ac307904120fbde2b58639f29d0650`
+
+(Includes session_version migration fix + Railway `startCommand` through entrypoint.)
