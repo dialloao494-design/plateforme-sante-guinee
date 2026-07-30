@@ -4,6 +4,8 @@ Production boot guard tests — A3 (pilot seed) and A4 (availability bypass) + s
 
 from __future__ import annotations
 
+import os
+
 import pytest
 from cryptography.fernet import Fernet
 
@@ -192,8 +194,9 @@ class TestAttachmentEncryptionBoot:
         _apply_valid_production_env(monkeypatch)
         monkeypatch.delenv("ATTACHMENT_ENCRYPTION_KEY", raising=False)
         monkeypatch.delenv("REQUIRE_ATTACHMENT_ENCRYPTION", raising=False)
-        with pytest.raises(RuntimeError, match="ATTACHMENT_ENCRYPTION_KEY"):
-            AppSettings().enforce_production_boot()
+        # Strong JWT/SECRET_KEY → deterministic Fernet derivation (encryption still on).
+        AppSettings().enforce_production_boot()
+        assert (os.environ.get("ATTACHMENT_ENCRYPTION_KEY") or "").strip()
 
     def test_attachment_encryption_emergency_bypass_requires_attestation(self, monkeypatch):
         _apply_valid_production_env(monkeypatch)

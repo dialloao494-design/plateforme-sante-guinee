@@ -53,8 +53,10 @@ def assert_database_tls_policy(
     Reject insecure Postgres TLS settings in production.
 
     - sslmode=disable is always forbidden in production
-    - On Railway production, require sslmode=require (or verify-full) unless
-      ALLOW_INSECURE_DB_SSL is explicitly set (lab only)
+    - On Railway *public* Postgres URLs, require sslmode=require (or verify-full)
+    - Railway private hosts (*.railway.internal) use the platform private network;
+      missing sslmode is allowed there (TLS is not offered the same way on the
+      internal mesh). Still reject explicit sslmode=disable.
     """
     url = (database_url or "").strip()
     if not is_production or not url or url.startswith("sqlite"):
@@ -69,11 +71,46 @@ def assert_database_tls_policy(
 
     on_railway = bool((railway_environment or "").strip())
     if on_railway and not allow_insecure_db_ssl:
+        host = ""
+        try:
+            host = (urlparse(url.replace("postgres://", "postgresql://", 1)).hostname or "").lower()
+        except Exception:
+            host = ""
+        private_mesh = host.endswith(".railway.internal") or host in {
+            "postgres.railway.internal",
+            "postgres",
+        }
+        if private_mesh:
+            return
         if mode not in {"require", "verify-ca", "verify-full"}:
             raise RuntimeError(
                 "Railway production DATABASE_URL must include sslmode=require "
-                "(or verify-ca / verify-full). Set ALLOW_INSECURE_DB_SSL=true only for lab."
+                "(or verify-ca / verify-full) for public hosts. "
+                "Private *.railway.internal URLs are exempt. "
+                "Set ALLOW_INSECURE_DB_SSL=true only for lab."
             )
+
+
+def resolve_db_sslmode_connect_arg() -> str | None:
+    """
+    Explicit DB_SSLMODE env wins. Otherwise Railway production defaults to require
+    for public hosts only — private *.railway.internal mesh leaves libpq default.
+    """
+    explicit = (os.getenv("DB_SSLMODE") or "").strip().lower()
+    if explicit:
+        return explicit
+    env = (os.getenv("ENVIRONMENT") or "").lower().strip()
+    if env == "production" and (os.getenv("RAILWAY_ENVIRONMENT") or "").strip():
+        url = (os.getenv("DATABASE_URL") or "").strip()
+        host = ""
+        try:
+            host = (urlparse(url.replace("postgres://", "postgresql://", 1)).hostname or "").lower()
+        except Exception:
+            host = ""
+        if host.endswith(".railway.internal") or host in {"postgres.railway.internal", "postgres"}:
+            return None
+        return "require"
+    return None
 
 
 def postgres_password_is_weak(password: str) -> bool:
@@ -85,20 +122,6 @@ def postgres_password_is_weak(password: str) -> bool:
     if "sante_dev" in cleaned.lower():
         return True
     return False
-
-
-def resolve_db_sslmode_connect_arg() -> str | None:
-    """
-    Explicit DB_SSLMODE env wins. Otherwise Railway production defaults to require.
-    Docker-compose internal Postgres typically leaves this unset (no TLS on bridge).
-    """
-    explicit = (os.getenv("DB_SSLMODE") or "").strip().lower()
-    if explicit:
-        return explicit
-    env = (os.getenv("ENVIRONMENT") or "").lower().strip()
-    if env == "production" and (os.getenv("RAILWAY_ENVIRONMENT") or "").strip():
-        return "require"
-    return None
 
 
 def dockerfile_runs_as_non_root(dockerfile_text: str) -> bool:

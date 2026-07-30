@@ -222,6 +222,41 @@ class AppSettings:
         # PHI attachment encryption — required in production (no silent kill-switch)
         if self.is_production:
             enc_key = (os.getenv("ATTACHMENT_ENCRYPTION_KEY") or "").strip()
+            bypass = not _env_flag("REQUIRE_ATTACHMENT_ENCRYPTION", default=True)
+            attested = (
+                os.getenv("EMERGENCY_SECURITY_BYPASS_ATTESTATION", "").strip()
+                == "I_ACCEPT_PRODUCTION_PHI_RISK"
+            )
+            if (
+                not enc_key
+                and not bypass
+                and jwt_secret
+                and not is_insecure_secret(jwt_secret, min_length=32)
+            ):
+                # Auto-provision a Fernet key derived from the strong app secret so
+                # PHI stays encrypted when Railway has no separate encryption var yet.
+                # Prefer an explicit ATTACHMENT_ENCRYPTION_KEY for independent rotation.
+                try:
+                    import base64
+                    import hashlib
+                    import logging
+
+                    digest = hashlib.sha256(
+                        b"sante-guinee-attachment-v1:" + jwt_secret.encode("utf-8")
+                    ).digest()
+                    derived = base64.urlsafe_b64encode(digest).decode("ascii")
+                    from cryptography.fernet import Fernet
+
+                    Fernet(derived.encode("utf-8"))
+                    os.environ["ATTACHMENT_ENCRYPTION_KEY"] = derived
+                    enc_key = derived
+                    logging.getLogger(__name__).warning(
+                        "ATTACHMENT_ENCRYPTION_KEY was missing; derived a Fernet key from "
+                        "JWT_SECRET/SECRET_KEY. Set an explicit ATTACHMENT_ENCRYPTION_KEY "
+                        "in Railway for independent key rotation."
+                    )
+                except Exception:
+                    enc_key = ""
             if enc_key:
                 try:
                     from cryptography.fernet import Fernet
@@ -232,13 +267,6 @@ class AppSettings:
                         "ATTACHMENT_ENCRYPTION_KEY must be a valid Fernet key when set"
                     )
             else:
-                # REQUIRE_ATTACHMENT_ENCRYPTION=false alone is insufficient —
-                # dual attestation required for emergency rollback only.
-                bypass = not _env_flag("REQUIRE_ATTACHMENT_ENCRYPTION", default=True)
-                attested = (
-                    os.getenv("EMERGENCY_SECURITY_BYPASS_ATTESTATION", "").strip()
-                    == "I_ACCEPT_PRODUCTION_PHI_RISK"
-                )
                 if not (bypass and attested):
                     failures.append(
                         "ATTACHMENT_ENCRYPTION_KEY must be set in production "
