@@ -1,4 +1,4 @@
-marker_id=20260730T214800Z-clear-startcommand-null-ssl-mesh
-purpose=Clear stale Railway startCommand override and fix private-mesh SSL URL
+marker_id=20260730T220100Z-boot-guard-railway-recovery
+purpose=Unblock Railway boot when REMINDER/JITSI secrets unset; keep migrate-then-serve
 expected_migration=20260730_0025_ensure_session_version
-notes=startCommand=null restores Dockerfile ENTRYPOINT migrate-then-serve path
+notes=Derives REMINDER_RESPOND_TOKEN from JWT; soft-allows missing JITSI on Railway only

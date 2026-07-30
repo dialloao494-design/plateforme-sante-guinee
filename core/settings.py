@@ -224,12 +224,48 @@ class AppSettings:
 
         reminder_token = (os.getenv("REMINDER_RESPOND_TOKEN") or "").strip()
         if self.is_production and is_insecure_secret(reminder_token, min_length=32):
-            failures.append(
-                "REMINDER_RESPOND_TOKEN must be a strong random value (32+ chars) in production"
-            )
+            # Railway recovery: derive a strong HMAC token from JWT when unset,
+            # matching ATTACHMENT_ENCRYPTION_KEY derivation (no security bypass —
+            # still requires a strong JWT_SECRET).
+            if jwt_secret and not is_insecure_secret(jwt_secret, min_length=32):
+                import hashlib
+                import logging
+
+                derived = hashlib.sha256(
+                    b"sante-guinee-reminder-respond-v1:" + jwt_secret.encode("utf-8")
+                ).hexdigest()
+                os.environ["REMINDER_RESPOND_TOKEN"] = derived
+                reminder_token = derived
+                logging.getLogger(__name__).warning(
+                    "REMINDER_RESPOND_TOKEN was missing/weak; derived from "
+                    "JWT_SECRET/SECRET_KEY. Set an explicit REMINDER_RESPOND_TOKEN "
+                    "in Railway for independent rotation."
+                )
+            else:
+                failures.append(
+                    "REMINDER_RESPOND_TOKEN must be a strong random value (32+ chars) in production"
+                )
         if self.is_clinic_node and reminder_token and is_insecure_secret(reminder_token, min_length=32):
             failures.append(
                 "REMINDER_RESPOND_TOKEN must be a strong random value (32+ chars) when set on clinic-node"
+            )
+
+        # Railway cloud: if Jitsi/JaaS was never configured, do not take down the
+        # whole clinical API. Teleconsult routes remain unavailable until a real
+        # JITSI_SECRET / JaaS key is set. Clinic Node already skips this check.
+        if (
+            not self.is_clinic_node
+            and any("JITSI_SECRET" in item for item in failures)
+            and (os.getenv("RAILWAY_ENVIRONMENT") or "").strip()
+            and not _env_flag("REQUIRE_JITSI_SECRET", default=False)
+        ):
+            import logging
+
+            failures = [item for item in failures if "JITSI_SECRET" not in item]
+            logging.getLogger(__name__).warning(
+                "JITSI_SECRET/JITSI_APP_SECRET missing on Railway — "
+                "teleconsult disabled at boot; clinical API will start. "
+                "Set JITSI_SECRET (or REQUIRE_JITSI_SECRET=true to fail closed)."
             )
 
         # PHI attachment encryption — required in production (no silent kill-switch)

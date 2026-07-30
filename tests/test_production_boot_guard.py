@@ -149,18 +149,34 @@ class TestProductionBootSecrets:
         monkeypatch.setenv("DATABASE_URL", "postgresql://sante:sante_dev_password@db:5432/sante")
         with pytest.raises(RuntimeError, match="DB_PASSWORD"):
             AppSettings().enforce_production_boot()
-    def test_missing_jitsi_secret_rejected(self, monkeypatch):
+    def test_missing_jitsi_secret_rejected_off_railway(self, monkeypatch):
         _apply_valid_production_env(monkeypatch)
         monkeypatch.delenv("JITSI_APP_SECRET", raising=False)
         monkeypatch.delenv("JITSI_SECRET", raising=False)
+        monkeypatch.delenv("RAILWAY_ENVIRONMENT", raising=False)
         with pytest.raises(RuntimeError, match="JITSI_SECRET"):
             AppSettings().enforce_production_boot()
 
-    def test_missing_reminder_token_rejected_in_production(self, monkeypatch):
+    def test_missing_jitsi_secret_allowed_on_railway_without_require_flag(self, monkeypatch):
+        _apply_valid_production_env(monkeypatch)
+        monkeypatch.delenv("JITSI_APP_SECRET", raising=False)
+        monkeypatch.delenv("JITSI_SECRET", raising=False)
+        monkeypatch.setenv("RAILWAY_ENVIRONMENT", "production")
+        monkeypatch.setenv(
+            "DATABASE_URL",
+            "postgresql://sante:StrongProductionDb!"
+            + "Z" * 8
+            + "@postgres.railway.internal:5432/railway",
+        )
+        monkeypatch.delenv("REQUIRE_JITSI_SECRET", raising=False)
+        AppSettings().enforce_production_boot()
+
+    def test_missing_reminder_token_derived_from_jwt_in_production(self, monkeypatch):
         _apply_valid_production_env(monkeypatch)
         monkeypatch.delenv("REMINDER_RESPOND_TOKEN", raising=False)
-        with pytest.raises(RuntimeError, match="REMINDER_RESPOND_TOKEN"):
-            AppSettings().enforce_production_boot()
+        AppSettings().enforce_production_boot()
+        token = __import__("os").environ.get("REMINDER_RESPOND_TOKEN") or ""
+        assert len(token) >= 32
 
 
     def test_staging_bootstrap_env_passes_boot_guard(self, monkeypatch):
