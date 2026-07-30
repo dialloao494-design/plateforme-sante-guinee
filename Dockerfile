@@ -1,4 +1,4 @@
-# Backend API — production image (Security Wave 3: non-root runtime)
+# Backend API — production image (Security Wave 3: non-root when started as root)
 FROM python:3.12-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -7,17 +7,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Keep the build self-contained (no external PostgreSQL apt mirror).
+# gosu is used only when the container starts as root.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
-    gnupg \
     libpq5 \
-    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
-      | gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
-      > /etc/apt/sources.list.d/pgdg.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends gosu postgresql-client-16 \
+    gosu \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 10001 appuser \
     && useradd --uid 10001 --gid appuser --shell /usr/sbin/nologin --create-home appuser
@@ -32,7 +28,6 @@ RUN sed -i 's/\r$//' scripts/docker/entrypoint-backend.sh scripts/docker/start-u
     && chmod +x scripts/docker/entrypoint-backend.sh scripts/docker/start-uvicorn.sh \
     && chown -R appuser:appuser /app
 
-# Entrypoint starts as root to fix volume ownership, then gosu → appuser.
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \

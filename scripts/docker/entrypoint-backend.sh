@@ -8,7 +8,7 @@ if [ "$(id -u)" = "0" ]; then
 fi
 
 run_as_app() {
-  if [ "$(id -u)" = "0" ]; then
+  if [ "$(id -u)" = "0" ] && command -v gosu >/dev/null 2>&1; then
     gosu appuser "$@"
   else
     "$@"
@@ -122,7 +122,7 @@ if [ "${ENABLE_STAGING_E2E_SEED:-false}" = "true" ]; then
     || echo "[entrypoint] WARNING: staging E2E seed skipped (non-fatal)"
 fi
 
-if [ "$(id -u)" = "0" ]; then
+if [ "$(id -u)" = "0" ] && command -v gosu >/dev/null 2>&1; then
   echo "[entrypoint] Dropping privileges to appuser (uid 10001)"
   exec gosu appuser "$@"
 fi
