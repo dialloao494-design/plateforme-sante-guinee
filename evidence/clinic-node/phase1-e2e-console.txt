@@ -1,0 +1,139 @@
+[p1] Rebuilding backend/frontend with Phase 1 changes…
+ Image clinic-node-backend Building 
+ Image clinic-node-frontend Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.11kB done
+#1 DONE 0.0s
+
+#2 [backend internal] load build definition from Dockerfile
+#2 transferring dockerfile: 936B done
+#2 DONE 0.0s
+
+#3 [frontend internal] load build definition from Dockerfile
+#3 transferring dockerfile: 793B done
+#3 DONE 0.0s
+
+#4 [frontend internal] load metadata for docker.io/library/nginx:1.27-alpine
+#4 DONE 0.0s
+
+#5 [frontend internal] load metadata for docker.io/library/node:20-alpine
+#5 DONE 0.1s
+
+#6 [backend internal] load metadata for docker.io/library/python:3.12-slim-bookworm
+#6 DONE 0.2s
+
+#7 [frontend internal] load .dockerignore
+#7 transferring context: 94B done
+#7 DONE 0.0s
+
+#8 [frontend build 1/6] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#8 DONE 0.0s
+
+#9 [frontend stage-1 1/3] FROM docker.io/library/nginx:1.27-alpine
+#9 DONE 0.0s
+
+#10 [frontend internal] load build context
+#10 transferring context: 9.53kB done
+#10 DONE 0.0s
+
+#11 [frontend build 3/6] COPY package.json package-lock.json ./
+#11 CACHED
+
+#12 [frontend build 5/6] COPY . .
+#12 CACHED
+
+#13 [frontend build 4/6] RUN npm ci
+#13 CACHED
+
+#14 [frontend build 6/6] RUN npm run build
+#14 CACHED
+
+#15 [frontend stage-1 2/3] COPY deploy/nginx/frontend-spa.conf /etc/nginx/conf.d/default.conf
+#15 CACHED
+
+#16 [frontend build 2/6] WORKDIR /app
+#16 CACHED
+
+#17 [frontend stage-1 3/3] COPY --from=build /app/dist /usr/share/nginx/html
+#17 CACHED
+
+#18 [frontend] exporting to image
+#18 exporting layers done
+#18 writing image sha256:72cecd79464eb54d7729ad0dfe73fe0fbd286d55228b0870950c40432ad91a55 done
+#18 naming to docker.io/library/clinic-node-frontend done
+#18 DONE 0.0s
+
+#19 [backend internal] load .dockerignore
+#19 transferring context: 361B done
+#19 DONE 0.0s
+
+#20 [backend 1/7] FROM docker.io/library/python:3.12-slim-bookworm@sha256:d50fb7611f86d04a3b0471b46d7557818d88983fc3136726336b2a4c657aa30b
+#20 DONE 0.0s
+
+#21 [frontend] resolving provenance for metadata file
+#21 DONE 0.0s
+
+#22 [backend internal] load build context
+#22 transferring context: 53.00MB 0.2s done
+#22 DONE 0.2s
+
+#23 [backend 3/7] RUN apt-get update && apt-get install -y --no-install-recommends     libpq5     curl     && rm -rf /var/lib/apt/lists/*
+#23 CACHED
+
+#24 [backend 2/7] WORKDIR /app
+#24 CACHED
+
+#25 [backend 4/7] COPY requirements.txt requirements-prod.txt ./
+#25 CACHED
+
+#26 [backend 5/7] RUN pip install --upgrade pip && pip install -r requirements-prod.txt
+#26 CACHED
+
+#27 [backend 6/7] COPY . .
+#27 DONE 0.8s
+
+#28 [backend 7/7] RUN sed -i 's/\r$//' scripts/docker/entrypoint-backend.sh scripts/docker/start-uvicorn.sh     && mkdir -p uploads logs     && chmod +x scripts/docker/entrypoint-backend.sh scripts/docker/start-uvicorn.sh
+#28 DONE 1.0s
+
+#29 [backend] exporting to image
+#29 exporting layers 0.9s done
+#29 writing image sha256:8a23cec78d9dea1e99ea9c5d1acf9550e8ecf1361b80bc2a6856dae246e85d33 done
+#29 naming to docker.io/library/clinic-node-backend done
+#29 DONE 0.9s
+
+#30 [backend] resolving provenance for metadata file
+#30 DONE 0.0s
+ Image clinic-node-backend Built 
+ Image clinic-node-frontend Built 
+ Container clinic-node-proxy-1 Running 
+ Container clinic-node-db-1 Running 
+ Container clinic-node-frontend-1 Running 
+ Container clinic-node-backend-1 Recreate 
+ Container clinic-node-backend-1 Recreated 
+ Container clinic-node-db-1 Waiting 
+ Container clinic-node-db-1 Healthy 
+ Container clinic-node-backend-1 Starting 
+ Container clinic-node-backend-1 Started 
+ Container clinic-node-backend-1 Waiting 
+ Container clinic-node-backend-1 Healthy 
+{"status":"ready","database":"ok"}{"setup_required":false}- [x] PASS: Platform owner wizard disabled on Clinic Node
+{"access_token":"REDACTED_JWT","token_type":"bearer","user_id":1,"user_role":"clinic_admin","role":"clinic_admin","email":"admin@clinic.local","must_change_password":false}
+- [x] PASS: Local admin login succeeds
+{"id":1,"email":"admin@clinic.local","role":"clinic_admin","doctor_id":null,"full_name":"Admin","clinic_id":1,"clinic_name":"Clinique-Pilote-Locale","email_verified":true,"must_change_password":false}
+- [x] PASS: Local session /auth/me returns clinic-scoped profile
+{"id":2,"email":"reception.p1@clinic.local","role":"receptionist","clinic_id":1,"is_active":true}
+{"access_token":"REDACTED_JWT","token_type":"bearer","user_id":2,"user_role":"receptionist","role":"receptionist","email":"reception.p1@clinic.local","must_change_password":false}
+- [x] PASS: Role-based staff account can log in locally
+422
+- [x] PASS: Permissions enforced for staff vs platform setup
+{"id":2,"email":"reception.p1@clinic.local","reset":true,"must_change_password":true}
+401
+{"access_token":"REDACTED_JWT","token_type":"bearer","user_id":2,"user_role":"receptionist","role":"receptionist","email":"reception.p1@clinic.local","must_change_password":true}
+must_change_password= True
+- [x] PASS: Admin password reset works; must_change_password forced
+- [x] PASS: Login/logout validation complete (JWT session local)
+
+## Summary
+**Phase 1 E2E acceptance: ALL CRITERIA PASSED**
+PHASE1_E2E_ACCEPTANCE_PASSED
+REPORT=/workspace/evidence/clinic-node/e2e-phase1/20260728T174249Z/ACCEPTANCE_REPORT.md

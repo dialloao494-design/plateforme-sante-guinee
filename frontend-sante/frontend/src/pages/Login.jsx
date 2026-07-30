@@ -64,6 +64,10 @@ const Login = () => {
     try {
       const result = await login(email, password);
       if (result.success) {
+        if (result.must_change_password) {
+          navigate('/account/password', { replace: true, state: { mustChangePassword: true } });
+          return;
+        }
         const target = getRoleHomePath(result.role, result.clinic_id);
         console.info('[AUTH-DEBUG] Login redirect (submit)', { role: result.role, target });
         navigate(target, { replace: true });

@@ -1,0 +1,2 @@
+probe_rows_after_reboot=1
+DATA_SURVIVED_REBOOT

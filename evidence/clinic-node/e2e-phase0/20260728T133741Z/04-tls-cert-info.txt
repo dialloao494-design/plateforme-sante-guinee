@@ -1,0 +1,4 @@
+subject=O = Sante Guinee, OU = Clinic Node, CN = sante-locale
+issuer=O = Sante Guinee, OU = Clinic Node, CN = Sante Guinee Local CA
+notBefore=Jul 28 13:37:55 2026 GMT
+notAfter=Oct 30 13:37:55 2028 GMT

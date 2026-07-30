@@ -1496,3 +1496,95 @@ def ensure_lab_result_reference_range_text(engine: Engine) -> None:
     except Exception as exc:
         logger.warning("lab_results.reference_range migration skipped: %s", exc)
 
+
+def ensure_clinic_node_ops_schema(engine: Engine) -> None:
+    """Clinic Node ops schema widen + additive columns for production offline V1."""
+    insp = inspect(engine)
+    tables = set(insp.get_table_names())
+    dialect = engine.dialect.name
+
+    if "clinic_node_heartbeats" in tables and dialect == "postgresql":
+        cols = {c["name"]: c for c in insp.get_columns("clinic_node_heartbeats")}
+        for col_name in ("disk_free_bytes", "disk_total_bytes"):
+            col = cols.get(col_name)
+            if not col:
+                continue
+            col_type = str(col.get("type", "")).upper()
+            if "BIGINT" in col_type or "BIGINTEGER" in col_type:
+                continue
+            try:
+                with engine.begin() as conn:
+                    conn.execute(
+                        text(f"ALTER TABLE clinic_node_heartbeats ALTER COLUMN {col_name} TYPE BIGINT")
+                    )
+                logger.info("Widened clinic_node_heartbeats.%s to BIGINT", col_name)
+            except Exception as exc:
+                logger.warning("clinic_node_heartbeats.%s widen skipped: %s", col_name, exc)
+
+    # Additive columns on sync_outbox_events
+    if "sync_outbox_events" in tables:
+        cols = {c["name"] for c in insp.get_columns("sync_outbox_events")}
+        additions = [
+            ("client_request_id", "VARCHAR(64)"),
+            ("record_version", "INTEGER DEFAULT 1"),
+            ("attempt_count", "INTEGER DEFAULT 0"),
+            ("next_retry_at", "TIMESTAMP"),
+            ("last_error", "TEXT"),
+            ("status", "VARCHAR(32) DEFAULT 'pending'"),
+            ("updated_at", "TIMESTAMP"),
+        ]
+        for col, col_type in additions:
+            if col in cols:
+                continue
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(f"ALTER TABLE sync_outbox_events ADD COLUMN {col} {col_type}"))
+                logger.info("Added sync_outbox_events.%s", col)
+            except Exception as exc:
+                logger.warning("sync_outbox_events.%s skipped: %s", col, exc)
+        # Backfill status from acked_at
+        try:
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "UPDATE sync_outbox_events SET status='acked' "
+                        "WHERE acked_at IS NOT NULL AND (status IS NULL OR status='pending')"
+                    )
+                )
+        except Exception as exc:
+            logger.warning("sync_outbox status backfill skipped: %s", exc)
+
+    if "clinic_node_licenses" in tables:
+        cols = {c["name"] for c in insp.get_columns("clinic_node_licenses")}
+        for col, col_type in (
+            ("signature", "VARCHAR(128) DEFAULT ''"),
+            ("activated_at", "TIMESTAMP"),
+            ("last_validated_at", "TIMESTAMP"),
+        ):
+            if col in cols:
+                continue
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(f"ALTER TABLE clinic_node_licenses ADD COLUMN {col} {col_type}"))
+                logger.info("Added clinic_node_licenses.%s", col)
+            except Exception as exc:
+                logger.warning("clinic_node_licenses.%s skipped: %s", col, exc)
+
+    if "sync_conflicts" in tables:
+        cols = {c["name"] for c in insp.get_columns("sync_conflicts")}
+        for col, col_type in (
+            ("local_version", "INTEGER"),
+            ("remote_version", "INTEGER"),
+            ("merged_json", "TEXT"),
+            ("resolution_policy", "VARCHAR(32)"),
+            ("resolved_by_user_id", "INTEGER"),
+        ):
+            if col in cols:
+                continue
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(f"ALTER TABLE sync_conflicts ADD COLUMN {col} {col_type}"))
+                logger.info("Added sync_conflicts.%s", col)
+            except Exception as exc:
+                logger.warning("sync_conflicts.%s skipped: %s", col, exc)
+

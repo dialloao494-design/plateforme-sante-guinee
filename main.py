@@ -12,6 +12,7 @@ from routers import patient, patient_record, rendezvous, doctor, auth, teleconsu
 from routers import users, appointments, doctor_dashboard, ws, clinical, medical_history, hospitalization
 from routers import unified_billing, discharge, radiology, reminders, clinical_reports, platform, platform_setup
 from routers import nutrition, immunization, nursing_care, visit_workflow, clinical_phase2, lab_phase2, pharmacy_phase2, reception_his, nurse_assessment
+from routers import clinic_node_ops
 from security import hash_password, verify_password
 from services.user_provisioning import register_public_user
 import os
@@ -122,6 +123,76 @@ async def low_bandwidth_cache_headers(request, call_next):
     elif path == "/health":
         response.headers.setdefault("Cache-Control", "public, max-age=60")
     return response
+
+
+@app.middleware("http")
+async def clinic_node_license_middleware(request, call_next):
+    """Care-safe license enforcement on Clinic Node only."""
+    if not _settings.is_clinic_node:
+        return await call_next(request)
+    path = request.url.path
+    from services.clinic_node_license_service import enforce_license_for_request, path_is_always_allowed
+
+    if path_is_always_allowed(path):
+        return await call_next(request)
+
+    clinic_id = None
+    raw = os.getenv("CLINIC_ID") or ""
+    if raw.isdigit():
+        clinic_id = int(raw)
+    # Prefer JWT claim when present
+    auth = request.headers.get("authorization") or ""
+    if auth.lower().startswith("bearer "):
+        try:
+            from jose import jwt as jose_jwt
+
+            token = auth.split(" ", 1)[1]
+            payload = jose_jwt.get_unverified_claims(token)
+            # Resolve clinic via user id if needed later; env CLINIC_ID is primary on appliance
+            _ = payload
+        except Exception:
+            pass
+
+    if clinic_id is None:
+        # Fallback: first clinic on node (single-tenant appliance)
+        try:
+            from database import SessionLocal
+            from models.clinic import Clinic
+
+            s = SessionLocal()
+            try:
+                c = s.query(Clinic).order_by(Clinic.id.asc()).first()
+                if c:
+                    clinic_id = int(c.id)
+            finally:
+                s.close()
+        except Exception:
+            clinic_id = None
+
+    if clinic_id is not None:
+        from database import SessionLocal
+        from services.clinic_node_license_service import activate_or_renew_license, get_active_license
+
+        s = SessionLocal()
+        try:
+            row = get_active_license(s, clinic_id)
+            if row is not None and not (row.signature or "").strip():
+                activate_or_renew_license(s, clinic_id=clinic_id, node_id=os.getenv("NODE_ID"), renew=True)
+            elif row is None:
+                # First boot: auto-activate signed offline license (care continuity)
+                activate_or_renew_license(s, clinic_id=clinic_id, node_id=os.getenv("NODE_ID"), renew=False)
+            state = enforce_license_for_request(s, request, clinic_id)
+        except HTTPException as exc:
+            from fastapi.responses import JSONResponse
+
+            return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+        finally:
+            s.close()
+        response = await call_next(request)
+        if state:
+            response.headers["X-Clinic-License-State"] = state
+        return response
+    return await call_next(request)
 
 # Rate limiting
 from slowapi import _rate_limit_exceeded_handler
@@ -286,6 +357,7 @@ app.include_router(visit_workflow.router)
 app.include_router(reminders.router)
 app.include_router(clinical_reports.router)
 app.include_router(reception_his.router)
+app.include_router(clinic_node_ops.router)
 app.include_router(ws.router)
 
 
@@ -442,7 +514,7 @@ async def startup_event():
         from database import engine, Base
         # Import all model modules so their tables are registered on Base
         import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message, models.notification_event, models.attachment_access_log, models.clinical_note, models.consultation_summary, models.patient_document, models.clinical_audit_log
-        import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.clinic_charge_payment, models.medical_history, models.hospitalization, models.clinical_visit, models.invoice, models.discharge, models.imaging, models.appointment_reminder, models.pharmacy_inventory, models.password_reset_token, models.email_verification_token, models.visit_workflow, models.nutrition, models.immunization, models.nursing_care, models.nurse_assessment  # noqa: F401
+        import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.clinic_charge_payment, models.medical_history, models.hospitalization, models.clinical_visit, models.invoice, models.discharge, models.imaging, models.appointment_reminder, models.pharmacy_inventory, models.password_reset_token, models.email_verification_token, models.visit_workflow, models.nutrition, models.immunization, models.nursing_care, models.nurse_assessment, models.clinic_node_ops  # noqa: F401
 
         # Local/test environments may bootstrap an empty disposable database.
         # Deployed environments must be controlled by versioned migrations only.
@@ -477,6 +549,7 @@ async def startup_event():
             ensure_reception_his_schema,
             ensure_nurse_assessment_schema,
             ensure_lab_result_reference_range_text,
+            ensure_clinic_node_ops_schema,
             run_alembic_upgrade_head,
         )
 
@@ -508,6 +581,14 @@ async def startup_event():
         ensure_reception_his_schema(engine)
         ensure_nurse_assessment_schema(engine)
         ensure_lab_result_reference_range_text(engine)
+        ensure_clinic_node_ops_schema(engine)
+
+        try:
+            from services.clinic_node_sync_hooks import register_clinic_node_sync_hooks
+
+            register_clinic_node_sync_hooks()
+        except Exception as hook_exc:
+            logger.warning("Clinic Node sync hooks not registered: %s", hook_exc)
 
         if _settings.is_deployed:
             from sqlalchemy import inspect
@@ -562,8 +643,8 @@ async def startup_event():
     else:
         logger.info("Startup test user seed skipped (ENABLE_STARTUP_TEST_USER not set).")
 
-    # Pilot accounts — off by default in production (use ENABLE_PILOT_SEED or Docker entrypoint)
-    _default_pilot = not _is_production
+    # Pilot accounts — off by default in production AND clinic-node (use ENABLE_PILOT_SEED explicitly)
+    _default_pilot = not _is_production and not _settings.is_clinic_node
     if _env_flag("ENABLE_PILOT_SEED", default=_default_pilot):
         try:
             from services.pilot_seed import seed_pilot_accounts
@@ -576,6 +657,20 @@ async def startup_event():
             logger.error("Failed to seed pilot accounts: %s", exc)
     else:
         logger.info("Pilot seed skipped (ENABLE_PILOT_SEED not set).")
+
+    # Clinic Node local clinic + admin bootstrap (offline appliance)
+    if _settings.is_clinic_node:
+        try:
+            from database import SessionLocal
+            from services.clinic_node_bootstrap import bootstrap_clinic_node
+
+            node_db = SessionLocal()
+            try:
+                bootstrap_clinic_node(node_db)
+            finally:
+                node_db.close()
+        except Exception as exc:
+            logger.error("Clinic Node bootstrap failed: %s", exc)
 
     if _env_flag("ENABLE_DEMO_CLINIC_SEED", default=False):
         try:

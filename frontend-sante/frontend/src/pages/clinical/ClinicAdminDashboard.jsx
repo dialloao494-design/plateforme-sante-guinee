@@ -38,6 +38,7 @@ export default function ClinicAdminDashboard() {
     password: '',
     role: 'receptionist',
   });
+  const [resetBusyId, setResetBusyId] = useState(null);
 
   const loadClinicStaff = async (id) => {
     if (!id) return;
@@ -83,6 +84,30 @@ export default function ClinicAdminDashboard() {
       loadClinicStaff(clinicId);
     }
   }, [clinicId]);
+
+  const resetStaffPassword = async (staffUser) => {
+    if (!clinicId || !staffUser?.id) return;
+    const temporary = window.prompt(
+      `Nouveau mot de passe temporaire pour ${staffUser.email} (min. 8 caractères) :`,
+    );
+    if (!temporary) return;
+    setError('');
+    setMessage('');
+    setResetBusyId(staffUser.id);
+    try {
+      await clinicalApi.resetStaffPassword(staffUser.id, {
+        clinic_id: Number(clinicId),
+        new_password: temporary,
+      });
+      setMessage(
+        `Mot de passe réinitialisé pour ${staffUser.email}. L’utilisateur devra le changer à la prochaine connexion.`,
+      );
+    } catch (err) {
+      setError(formatApiError(err) || 'Réinitialisation impossible.');
+    } finally {
+      setResetBusyId(null);
+    }
+  };
 
   const createStaff = async (e) => {
     e.preventDefault();
@@ -212,6 +237,7 @@ export default function ClinicAdminDashboard() {
                 <th>Email</th>
                 <th>Rôle</th>
                 <th>Actif</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -220,6 +246,20 @@ export default function ClinicAdminDashboard() {
                   <td>{u.email}</td>
                   <td><span className="clinical-badge">{u.role}</span></td>
                   <td>{u.is_active ? 'Oui' : 'Non'}</td>
+                  <td>
+                    {u.id !== user?.id && u.is_active ? (
+                      <button
+                        type="button"
+                        className="clinical-btn clinical-btn--secondary"
+                        disabled={resetBusyId === u.id}
+                        onClick={() => resetStaffPassword(u)}
+                      >
+                        {resetBusyId === u.id ? '…' : 'Réinit. MDP'}
+                      </button>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
