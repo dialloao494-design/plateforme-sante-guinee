@@ -3,6 +3,14 @@
 # 1) wait for Postgres  2) alembic upgrade head  3) verify security columns  4) start uvicorn
 set -e
 
+COMMIT_SHA="${RAILWAY_GIT_COMMIT_SHA:-${RAILWAY_GIT_COMMIT:-${GIT_COMMIT:-unset}}}"
+MARKER_FILE="/app/deploy/RAILWAY_DEPLOY_MARKER.txt"
+MARKER_ID="missing"
+if [ -f "$MARKER_FILE" ]; then
+  MARKER_ID="$(sed -n 's/^marker_id=//p' "$MARKER_FILE" | head -n1)"
+fi
+echo "[entrypoint] commit_sha=${COMMIT_SHA}"
+echo "[entrypoint] deploy_marker=${MARKER_ID}"
 echo "[entrypoint] Waiting for PostgreSQL..."
 python <<'PY'
 import os, sys, time

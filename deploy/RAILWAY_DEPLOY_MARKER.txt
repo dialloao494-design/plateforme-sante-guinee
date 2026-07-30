@@ -1,0 +1,4 @@
+marker_id=20260730T212303Z-session-version-recovery
+purpose=Trigger GitHub-connected Railway auto-deploy for main
+expected_migration=20260730_0025_ensure_session_version
+notes=Non-functional marker only. Do not loop redeploys by editing this repeatedly.

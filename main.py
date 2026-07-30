@@ -393,6 +393,32 @@ class HealthResponse(BaseModel):
     database: str
 
 
+def _deployed_git_sha() -> str | None:
+    """Best-effort commit SHA exposed by Railway / CI runtime env."""
+    for key in (
+        "RAILWAY_GIT_COMMIT_SHA",
+        "RAILWAY_GIT_COMMIT",
+        "GIT_COMMIT",
+        "COMMIT_SHA",
+    ):
+        value = (os.getenv(key) or "").strip()
+        if value:
+            return value
+    return None
+
+
+def _deploy_marker_id() -> str | None:
+    marker_path = Path(__file__).resolve().parent / "deploy" / "RAILWAY_DEPLOY_MARKER.txt"
+    try:
+        for line in marker_path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("marker_id="):
+                value = line.split("=", 1)[1].strip()
+                return value or None
+    except OSError:
+        return None
+    return None
+
+
 @app.get("/health", response_model=HealthResponse, tags=["Monitoring"])
 def health_check():
     """
@@ -415,6 +441,18 @@ def health_check():
         "version": "1.0.0",
         "debug": _settings.debug,
         "database": db_url_masked,
+    }
+
+
+@app.get("/health/build", tags=["Monitoring"])
+def health_build():
+    """Deployment identity probe — proves which Git commit Railway is serving."""
+    return {
+        "status": "ok",
+        "git_sha": _deployed_git_sha(),
+        "deploy_marker": _deploy_marker_id(),
+        "railway_environment": (os.getenv("RAILWAY_ENVIRONMENT") or "").strip() or None,
+        "railway_service_name": (os.getenv("RAILWAY_SERVICE_NAME") or "").strip() or None,
     }
 
 
