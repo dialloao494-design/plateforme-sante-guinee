@@ -16,9 +16,18 @@ python <<'PY'
 import os, sys, time
 from sqlalchemy import create_engine, text
 
-url = os.environ.get("DATABASE_URL", "")
-if url.startswith("postgres://"):
-    url = url.replace("postgres://", "postgresql://", 1)
+from core.deploy_hardening import (
+    database_host,
+    database_url_sslmode,
+    normalize_database_url_for_runtime,
+)
+
+url = normalize_database_url_for_runtime(os.environ.get("DATABASE_URL", ""))
+os.environ["DATABASE_URL"] = url
+host = database_host(url) or "(none)"
+print(
+    f"[entrypoint] db_host={host} sslmode={database_url_sslmode(url) or 'default'}"
+)
 if not url.startswith("postgresql"):
     print("[entrypoint] Non-Postgres DATABASE_URL — skipping DB wait.")
     sys.exit(0)
@@ -133,6 +142,21 @@ if missing:
 with engine.connect() as conn:
     conn.execute(text("SELECT id, session_version, token_version FROM users LIMIT 1"))
 print("[entrypoint] Schema ready — starting application.")
+PY
+
+echo "[entrypoint] Preflight import main (boot guards)..."
+python - <<'PY'
+import sys
+
+try:
+    import main  # noqa: F401
+except SystemExit as exc:
+    print(f"[entrypoint] FATAL: main boot guard exited: {exc}", file=sys.stderr)
+    raise
+except Exception as exc:
+    print(f"[entrypoint] FATAL: main import failed: {exc}", file=sys.stderr)
+    raise
+print("[entrypoint] main import OK")
 PY
 
 if [ "${ENABLE_PILOT_SEED:-false}" = "true" ]; then

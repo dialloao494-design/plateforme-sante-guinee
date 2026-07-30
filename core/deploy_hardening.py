@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 import re
-from urllib.parse import parse_qs, urlparse, unquote
+from urllib.parse import parse_qs, urlparse, unquote, urlencode, urlunparse
 
 
 _WEAK_DB_PASSWORDS = frozenset(
@@ -42,6 +42,61 @@ def database_url_sslmode(database_url: str) -> str | None:
     return None
 
 
+def database_host(database_url: str) -> str:
+    """Return lowercase DB hostname from a SQLAlchemy/libpq URL."""
+    url = (database_url or "").strip()
+    if not url or url.startswith("sqlite"):
+        return ""
+    try:
+        return (
+            urlparse(url.replace("postgres://", "postgresql://", 1)).hostname or ""
+        ).lower()
+    except Exception:
+        return ""
+
+
+def is_railway_private_db_host(host: str) -> bool:
+    """True for Railway private mesh Postgres hostnames."""
+    h = (host or "").lower().strip()
+    return h.endswith(".railway.internal") or h in {
+        "postgres.railway.internal",
+        "postgres",
+    }
+
+
+def normalize_database_url_for_runtime(database_url: str) -> str:
+    """
+    Normalize DATABASE_URL for the runtime engine.
+
+    Railway private mesh Postgres (*.railway.internal) often has no TLS listener.
+    If the URL still carries sslmode=require/verify-*, libpq fails with:
+      "server does not support SSL, but SSL was required"
+    Strip sslmode for private mesh only. Public Railway/proxy hosts keep TLS.
+    """
+    url = (database_url or "").strip()
+    if not url or url.startswith("sqlite"):
+        return url
+
+    normalized = url.replace("postgres://", "postgresql://", 1) if url.startswith("postgres://") else url
+    try:
+        parsed = urlparse(normalized)
+    except Exception:
+        return normalized
+
+    host = (parsed.hostname or "").lower()
+    if not is_railway_private_db_host(host):
+        return normalized
+
+    qs = parse_qs(parsed.query, keep_blank_values=True)
+    if "sslmode" not in qs and "ssl" not in qs:
+        return normalized
+
+    qs.pop("sslmode", None)
+    qs.pop("ssl", None)
+    new_query = urlencode(qs, doseq=True)
+    return urlunparse(parsed._replace(query=new_query))
+
+
 def assert_database_tls_policy(
     database_url: str,
     *,
@@ -71,16 +126,8 @@ def assert_database_tls_policy(
 
     on_railway = bool((railway_environment or "").strip())
     if on_railway and not allow_insecure_db_ssl:
-        host = ""
-        try:
-            host = (urlparse(url.replace("postgres://", "postgresql://", 1)).hostname or "").lower()
-        except Exception:
-            host = ""
-        private_mesh = host.endswith(".railway.internal") or host in {
-            "postgres.railway.internal",
-            "postgres",
-        }
-        if private_mesh:
+        host = database_host(url)
+        if is_railway_private_db_host(host):
             return
         if mode not in {"require", "verify-ca", "verify-full"}:
             raise RuntimeError(
@@ -91,7 +138,7 @@ def assert_database_tls_policy(
             )
 
 
-def resolve_db_sslmode_connect_arg() -> str | None:
+def resolve_db_sslmode_connect_arg(database_url: str | None = None) -> str | None:
     """
     Explicit DB_SSLMODE env wins. Otherwise Railway production defaults to require
     for public hosts only — private *.railway.internal mesh leaves libpq default.
@@ -101,13 +148,10 @@ def resolve_db_sslmode_connect_arg() -> str | None:
         return explicit
     env = (os.getenv("ENVIRONMENT") or "").lower().strip()
     if env == "production" and (os.getenv("RAILWAY_ENVIRONMENT") or "").strip():
-        url = (os.getenv("DATABASE_URL") or "").strip()
-        host = ""
-        try:
-            host = (urlparse(url.replace("postgres://", "postgresql://", 1)).hostname or "").lower()
-        except Exception:
-            host = ""
-        if host.endswith(".railway.internal") or host in {"postgres.railway.internal", "postgres"}:
+        url = normalize_database_url_for_runtime(
+            database_url if database_url is not None else (os.getenv("DATABASE_URL") or "")
+        )
+        if is_railway_private_db_host(database_host(url)):
             return None
         return "require"
     return None

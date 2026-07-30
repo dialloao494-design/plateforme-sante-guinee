@@ -1,4 +1,4 @@
-marker_id=20260730T213500Z-revert-startcommand-regression
-purpose=Restore Dockerfile ENTRYPOINT-only Railway start path (revert 40b4aa6 startCommand)
+marker_id=20260730T214800Z-clear-startcommand-null-ssl-mesh
+purpose=Clear stale Railway startCommand override and fix private-mesh SSL URL
 expected_migration=20260730_0025_ensure_session_version
-notes=GitHub auto-deploy is connected (sunny-illumination/web). Do not re-add startCommand without log proof.
+notes=startCommand=null restores Dockerfile ENTRYPOINT migrate-then-serve path

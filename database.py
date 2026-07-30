@@ -4,23 +4,24 @@ from sqlalchemy.orm import Session
 import os
 import logging
 
-from core.deploy_hardening import resolve_db_sslmode_connect_arg
+from core.deploy_hardening import (
+    normalize_database_url_for_runtime,
+    resolve_db_sslmode_connect_arg,
+)
 
 logger = logging.getLogger(__name__)
 
 _raw_url = os.getenv("DATABASE_URL", "sqlite:///./sante.db")
 
-# Railway provides postgres:// but SQLAlchemy requires postgresql://
-if _raw_url.startswith("postgres://"):
-    _raw_url = _raw_url.replace("postgres://", "postgresql://", 1)
-
-DATABASE_URL = _raw_url
+# Railway provides postgres:// but SQLAlchemy requires postgresql://.
+# Also strip private-mesh sslmode=require which breaks *.railway.internal.
+DATABASE_URL = normalize_database_url_for_runtime(_raw_url)
 
 _is_sqlite = DATABASE_URL.startswith("sqlite")
 _connect_args: dict = {"check_same_thread": False} if _is_sqlite else {}
 
 if not _is_sqlite:
-    sslmode = resolve_db_sslmode_connect_arg()
+    sslmode = resolve_db_sslmode_connect_arg(DATABASE_URL)
     if sslmode:
         # libpq connect arg — applies when URL does not already set sslmode.
         _connect_args["sslmode"] = sslmode
