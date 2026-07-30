@@ -105,7 +105,13 @@ try:
     run_alembic_upgrade_head(fail_closed=deployed)
     print("[entrypoint] Alembic upgrade head OK.")
 except Exception as exc:
+    import traceback
+
+    cause = exc.__cause__ or exc.__context__
     print(f"[entrypoint] FATAL: Alembic upgrade failed: {exc}", file=sys.stderr)
+    if cause is not None:
+        print(f"[entrypoint] Alembic underlying cause: {cause!r}", file=sys.stderr)
+    traceback.print_exc()
     if deployed:
         sys.exit(1)
     print("[entrypoint] Continuing in non-deployed mode after Alembic failure.")

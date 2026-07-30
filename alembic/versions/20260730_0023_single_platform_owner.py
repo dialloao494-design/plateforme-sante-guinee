@@ -36,9 +36,8 @@ def upgrade() -> None:
 
     # Demote duplicate platform_owner rows before unique index (keep lowest id).
     # Racing /platform/setup history otherwise breaks production migrations → 502.
-    op.execute(
-        sa.text(
-            """
+    if "is_active" in columns:
+        demote_sql = """
             UPDATE users
             SET role = 'patient',
                 is_active = false
@@ -49,8 +48,18 @@ def upgrade() -> None:
                 ) keeper
               )
             """
-        )
-    )
+    else:
+        demote_sql = """
+            UPDATE users
+            SET role = 'patient'
+            WHERE role = 'platform_owner'
+              AND id NOT IN (
+                SELECT id FROM (
+                  SELECT MIN(id) AS id FROM users WHERE role = 'platform_owner'
+                ) keeper
+              )
+            """
+    op.execute(sa.text(demote_sql))
 
     existing = {index["name"] for index in inspector.get_indexes("users")}
     if INDEX_NAME in existing:

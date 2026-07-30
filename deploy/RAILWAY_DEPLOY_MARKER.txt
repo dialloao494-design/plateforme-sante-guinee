@@ -1,4 +1,4 @@
-marker_id=20260730T220100Z-boot-guard-railway-recovery
-purpose=Unblock Railway boot when REMINDER/JITSI secrets unset; keep migrate-then-serve
+marker_id=20260730T223000Z-fix-alembic-0017-idempotent
+purpose=Unblock Railway Alembic upgrade 0016->0017 (and 0018-0021) when schema already exists
 expected_migration=20260730_0025_ensure_session_version
-notes=Derives REMINDER_RESPOND_TOKEN from JWT; soft-allows missing JITSI on Railway only
+notes=First fatal log was 0017 failure; migrations made idempotent; no DB reset

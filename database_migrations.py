@@ -1521,10 +1521,11 @@ def run_alembic_upgrade_head(*, fail_closed: bool | None = None) -> None:
         command.upgrade(cfg, "head")
         logger.info("Alembic upgrade head completed on startup")
     except Exception as exc:
-        logger.error("Alembic upgrade on startup failed: %s", exc)
+        logger.exception("Alembic upgrade on startup failed: %s", exc)
         if fail_closed:
             raise RuntimeError(
-                "Alembic upgrade head failed — refusing to start with incompatible schema"
+                "Alembic upgrade head failed — refusing to start with incompatible schema: "
+                f"{exc}"
             ) from exc
         logger.warning("Alembic upgrade failed (non-deployed); fallback ensure_* may apply: %s", exc)
 
