@@ -60,6 +60,8 @@ export const patientsAPI = {
   create: (data) => httpClient.post('/patients/', data),
   update: (id, data) => httpClient.put(`/patients/${id}/`, data),
   delete: (id) => httpClient.delete(`/patients/${id}/`),
+  searchAccountCandidates: (q) =>
+    httpClient.get('/patients/account-candidates', { params: { q: String(q || '').trim() } }),
 };
 
 export const patientRecordAPI = {

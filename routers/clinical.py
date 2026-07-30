@@ -1457,17 +1457,24 @@ def assign_doctor_to_clinic(
 ):
     assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
     assert_clinic_access(current_user, clinic_id, db)
+    from core.doctor_ownership_policy import DoctorOwnershipPolicy
+
+    # Same ownership vocabulary as routers/doctor.py — clinic admins cannot
+    # mutate practitioners belonging to other clinics (or unbound doctors).
+    DoctorOwnershipPolicy.assert_can_mutate_doctor_resource(
+        db,
+        target_doctor_id=doctor_id,
+        current_user=current_user,
+        resource="doctor clinic assignment",
+    )
     doctor = db.query(models.Doctor).filter(models.Doctor.id == doctor_id).first()
     clinic = db.query(models.Clinic).filter(models.Clinic.id == clinic_id).first()
     if not doctor or not clinic:
         raise HTTPException(status_code=404, detail="Doctor or clinic not found")
-    # Clinic admins may only reassign doctors already in their clinic (fail closed).
-    # Claiming unbound (clinic_id NULL) doctors is platform-only.
+    # Target clinic must also match the actor clinic for clinic-scoped admins.
     if current_user.role in ("clinic_admin", "admin"):
         actor_cid = user_clinic_id(current_user, db)
-        if actor_cid is None or doctor.clinic_id is None or doctor.clinic_id != actor_cid:
-            raise HTTPException(status_code=403, detail="Access denied for this clinic")
-        if clinic_id != actor_cid:
+        if actor_cid is None or clinic_id != actor_cid:
             raise HTTPException(status_code=403, detail="Access denied for this clinic")
     doctor.clinic_id = clinic_id
     staff_user = db.query(User).filter(User.id == doctor.user_id).first()
