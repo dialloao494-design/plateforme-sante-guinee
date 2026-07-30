@@ -19,6 +19,7 @@ class Message(Base):
     attachment_storage_key = Column(String, nullable=True, index=True)
     attachment_mime_type = Column(String, nullable=True)
     attachment_size_bytes = Column(Integer, nullable=True)
+    attachment_content_sha256 = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     appointment = relationship("RendezVous", back_populates="messages")

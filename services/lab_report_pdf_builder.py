@@ -21,6 +21,7 @@ from data.lab_report_templates import (
 )
 from data.clinic_branding import CLINIC_FOOTER_LINE
 from services.clinic_print_header import append_official_clinic_header
+from core.output_encoding import escape_pdf_paragraph
 
 LOGO_PATH = Path(__file__).resolve().parent.parent / "assets" / "branding" / "aasma-clinic-logo.png"
 TITLE_COLOR = colors.HexColor("#C9A227")
@@ -34,6 +35,10 @@ def _parse_payload(result_data: str | None) -> dict:
     except (json.JSONDecodeError, TypeError):
         return {}
 
+
+def _p(text: object, style=None) -> Paragraph:
+    style = style or getSampleStyleSheet()["Normal"]
+    return Paragraph(escape_pdf_paragraph(text).replace("\n", "<br/>"), style)
 
 def _footer(canvas, doc):
     canvas.saveState()
@@ -109,19 +114,27 @@ def build_lab_report_pdf(
     append_official_clinic_header(story, page_width=page_w, document_title=tpl["title"] if tpl else (test_name or "Résultat laboratoire"))
     story.append(Spacer(1, 4))
 
-    meta = f"<b>Patient :</b> {patient_name or '—'} &nbsp;&nbsp; <b>N° dossier :</b> {patient_file_number or '—'}"
+    meta = (
+        f"<b>Patient :</b> {escape_pdf_paragraph(patient_name or '—')} &nbsp;&nbsp; "
+        f"<b>N° dossier :</b> {escape_pdf_paragraph(patient_file_number or '—')}"
+    )
     if technician:
-        meta += f" &nbsp;&nbsp; <b>Technicien :</b> {technician}"
+        meta += f" &nbsp;&nbsp; <b>Technicien :</b> {escape_pdf_paragraph(technician)}"
     if validated_date:
-        meta += f" &nbsp;&nbsp; <b>Date :</b> {validated_date}"
+        meta += f" &nbsp;&nbsp; <b>Date :</b> {escape_pdf_paragraph(validated_date)}"
     if validated_time:
-        meta += f" &nbsp;&nbsp; <b>Heure :</b> {validated_time}"
+        meta += f" &nbsp;&nbsp; <b>Heure :</b> {escape_pdf_paragraph(validated_time)}"
     story.append(Paragraph(meta, getSampleStyleSheet()["Normal"]))
     story.append(Spacer(1, 8))
 
     macro_text = (payload.get("macro_appearance") or "").strip()
     if tpl and tpl.get("type") == "ecbu" and macro_text:
-        story.append(Paragraph(f"<b>Aspect macroscopique :</b> {macro_text}", getSampleStyleSheet()["Normal"]))
+        story.append(
+            Paragraph(
+                f"<b>Aspect macroscopique :</b> {escape_pdf_paragraph(macro_text)}",
+                getSampleStyleSheet()["Normal"],
+            )
+        )
         story.append(Spacer(1, 6))
 
     if tpl and tpl.get("type") == "hemogram":
@@ -130,12 +143,12 @@ def build_lab_report_pdf(
         for row in tpl["rows"]:
             p = row["parameter"]
             data.append([
-                p,
-                values.get(p, ""),
-                row.get("unit", ""),
-                row.get("ref_child", ""),
-                row.get("ref_male", ""),
-                row.get("ref_female", ""),
+                escape_pdf_paragraph(p),
+                escape_pdf_paragraph(values.get(p, "")),
+                escape_pdf_paragraph(row.get("unit", "")),
+                escape_pdf_paragraph(row.get("ref_child", "")),
+                escape_pdf_paragraph(row.get("ref_male", "")),
+                escape_pdf_paragraph(row.get("ref_female", "")),
             ])
         col_w = [page_w * 0.16, page_w * 0.14, page_w * 0.12, page_w * 0.19, page_w * 0.19, page_w * 0.19]
     elif tpl and tpl.get("type") == "ecbu":
@@ -143,23 +156,36 @@ def build_lab_report_pdf(
         data = [header]
         for row in tpl["rows"]:
             p = row["parameter"]
-            data.append([p, values.get(p, ""), row.get("unit", ""), row.get("reference", "")])
+            data.append([
+                escape_pdf_paragraph(p),
+                escape_pdf_paragraph(values.get(p, "")),
+                escape_pdf_paragraph(row.get("unit", "")),
+                escape_pdf_paragraph(row.get("reference", "")),
+            ])
         col_w = [page_w * 0.28, page_w * 0.22, page_w * 0.15, page_w * 0.35]
     elif tpl and tpl.get("type") == "bu":
         header = ["Paramètre", "Résultat", "Référence"]
         data = [header]
         for row in tpl["rows"]:
             p = row["parameter"]
-            data.append([p, values.get(p, ""), row.get("reference", "")])
+            data.append([
+                escape_pdf_paragraph(p),
+                escape_pdf_paragraph(values.get(p, "")),
+                escape_pdf_paragraph(row.get("reference", "")),
+            ])
         col_w = [page_w * 0.35, page_w * 0.30, page_w * 0.35]
     else:
         header = ["Paramètre", "Résultat", "Référence"]
         data = [header]
         if values:
             for p, v in values.items():
-                data.append([p, v, ""])
+                data.append([escape_pdf_paragraph(p), escape_pdf_paragraph(v), ""])
         elif result_summary:
-            data.append([test_name or "—", result_summary, ""])
+            data.append([
+                escape_pdf_paragraph(test_name or "—"),
+                escape_pdf_paragraph(result_summary),
+                "",
+            ])
         col_w = [page_w * 0.35, page_w * 0.35, page_w * 0.30]
 
     table = Table(data, colWidths=col_w, repeatRows=1)
@@ -183,7 +209,12 @@ def build_lab_report_pdf(
 
     if tpl and tpl.get("note"):
         story.append(Spacer(1, 10))
-        story.append(Paragraph(f"<b>{tpl['note']}</b>", getSampleStyleSheet()["Normal"]))
+        story.append(
+            Paragraph(
+                f"<b>{escape_pdf_paragraph(tpl['note'])}</b>",
+                getSampleStyleSheet()["Normal"],
+            )
+        )
 
     doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
     return buf.getvalue()

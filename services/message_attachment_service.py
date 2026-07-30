@@ -14,6 +14,7 @@ import models
 from models.attachment_access_log import AttachmentAccessLog
 from models.user import User
 from core.roles import effective_role, user_has_any_role
+from core.tenant import user_clinic_id
 from services.secure_attachment_storage import SecureAttachmentStorage
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,9 @@ def assert_appointment_access(db: Session, appointment: models.RendezVous, curre
         return
 
     if role in ("clinic_admin", "admin"):
+        actor_cid = user_clinic_id(current_user, db)
+        if actor_cid is None or appointment.clinic_id != actor_cid:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         return
 
     if role == "patient":
@@ -76,7 +80,10 @@ class MessageAttachmentService:
         assert_appointment_access(db, appointment, current_user)
 
         if message.attachment_storage_key:
-            content, _path = SecureAttachmentStorage.read(message.attachment_storage_key)
+            content, _path = SecureAttachmentStorage.read(
+                message.attachment_storage_key,
+                expected_sha256=message.attachment_content_sha256,
+            )
             mime = message.attachment_mime_type or "application/octet-stream"
             storage_kind = "secure"
         else:

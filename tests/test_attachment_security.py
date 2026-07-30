@@ -44,9 +44,9 @@ def encrypted_attachment_root(secure_attachment_root, monkeypatch):
     # Reset cached Fernet instance between tests.
     import core.attachment_encryption as enc
 
-    enc._fernet = None
-    enc._initialized = False
-    return secure_attachment_root
+    enc.reset_encryption_cache()
+    yield secure_attachment_root
+    enc.reset_encryption_cache()
 
 
 def _ensure_user(db_session, email: str, role: str):

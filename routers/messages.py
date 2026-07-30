@@ -11,6 +11,7 @@ from core.limiter import limiter
 from database import get_db
 from schemas import message as message_schemas
 from security import get_current_user
+from core.attachment_policy import phi_download_headers
 from services.message_attachment_service import MessageAttachmentService, assert_appointment_access
 from services.secure_attachment_storage import SecureAttachmentStorage
 
@@ -52,12 +53,10 @@ def download_message_attachment(
     return Response(
         content=content,
         media_type=mime,
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
-            "Cache-Control": "no-store, no-cache, must-revalidate, private",
-            "Pragma": "no-cache",
-            "X-Content-Type-Options": "nosniff",
-        },
+        headers=phi_download_headers(
+            filename=filename,
+            content_sha256=message.attachment_content_sha256,
+        ),
     )
 
 
@@ -105,6 +104,7 @@ async def send_message(
     attachment_storage_key = None
     attachment_mime_type = None
     attachment_size_bytes = None
+    attachment_content_sha256 = None
 
     if attachment is not None:
         extension = Path(attachment.filename or "").suffix.lower()
@@ -118,6 +118,7 @@ async def send_message(
         attachment_storage_key = stored.storage_key
         attachment_mime_type = stored.mime_type
         attachment_size_bytes = stored.size_bytes
+        attachment_content_sha256 = stored.content_sha256
 
     message = models.Message(
         appointment_id=appointment_id,
@@ -127,6 +128,7 @@ async def send_message(
         attachment_storage_key=attachment_storage_key,
         attachment_mime_type=attachment_mime_type,
         attachment_size_bytes=attachment_size_bytes,
+        attachment_content_sha256=attachment_content_sha256,
     )
 
     db.add(message)

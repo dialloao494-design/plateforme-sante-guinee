@@ -209,6 +209,9 @@ class ImagingService:
                 uploaded_by=actor.id,
                 type_document="imaging_report",
                 file_path=stored.storage_key,
+                original_filename=stored.original_filename,
+                mime_type=stored.mime_type,
+                content_sha256=stored.content_sha256,
             )
         )
         db.add(

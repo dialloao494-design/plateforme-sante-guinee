@@ -49,6 +49,8 @@ def ensure_message_attachment_columns(engine: Engine) -> None:
         stmts.append(f"ALTER TABLE messages ADD COLUMN attachment_mime_type {varchar}")
     if "attachment_size_bytes" not in cols:
         stmts.append(f"ALTER TABLE messages ADD COLUMN attachment_size_bytes {inttype}")
+    if "attachment_content_sha256" not in cols:
+        stmts.append(f"ALTER TABLE messages ADD COLUMN attachment_content_sha256 {varchar}")
     for stmt in stmts:
         try:
             with engine.begin() as conn:
@@ -56,6 +58,32 @@ def ensure_message_attachment_columns(engine: Engine) -> None:
             logger.info("Applied message attachment schema migration: %s", stmt)
         except Exception as exc:
             logger.warning("Message attachment migration skipped or failed (%s): %s", stmt, exc)
+
+
+def ensure_patient_document_security_columns(engine: Engine) -> None:
+    """Add integrity / MIME metadata columns for patient dossier documents."""
+    insp = inspect(engine)
+    if "patient_documents" not in insp.get_table_names():
+        return
+    cols = {c["name"] for c in insp.get_columns("patient_documents")}
+    dialect = engine.dialect.name
+    varchar = "VARCHAR" if dialect == "sqlite" else "VARCHAR(255)"
+    varchar128 = "VARCHAR" if dialect == "sqlite" else "VARCHAR(128)"
+    varchar64 = "VARCHAR" if dialect == "sqlite" else "VARCHAR(64)"
+    stmts: list[str] = []
+    if "original_filename" not in cols:
+        stmts.append(f"ALTER TABLE patient_documents ADD COLUMN original_filename {varchar}")
+    if "mime_type" not in cols:
+        stmts.append(f"ALTER TABLE patient_documents ADD COLUMN mime_type {varchar128}")
+    if "content_sha256" not in cols:
+        stmts.append(f"ALTER TABLE patient_documents ADD COLUMN content_sha256 {varchar64}")
+    for stmt in stmts:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+            logger.info("Applied patient document security migration: %s", stmt)
+        except Exception as exc:
+            logger.warning("Patient document security migration skipped or failed (%s): %s", stmt, exc)
 
 
 def ensure_patient_dossier_schema(engine: Engine) -> None:

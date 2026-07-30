@@ -7,6 +7,7 @@ authenticated download endpoints with appointment-scoped authorization.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import re
@@ -17,6 +18,7 @@ from typing import Optional
 
 from fastapi import HTTPException, status
 
+from core.attachment_malware import scan_attachment_bytes
 from core.attachment_policy import (
     ALLOWED_EXTENSIONS,
     ALLOWED_MIME_TYPES,
@@ -37,6 +39,7 @@ class StoredAttachment:
     original_filename: str
     mime_type: str
     size_bytes: int
+    content_sha256: str
 
 
 class SecureAttachmentStorage:
@@ -59,6 +62,10 @@ class SecureAttachmentStorage:
     def sanitize_filename(filename: str) -> str:
         cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", filename or "")
         return cleaned[:120] or "attachment"
+
+    @staticmethod
+    def content_sha256(content: bytes) -> str:
+        return hashlib.sha256(content).hexdigest()
 
     @staticmethod
     def sniff_mime(content: bytes, extension: str) -> str:
@@ -108,30 +115,60 @@ class SecureAttachmentStorage:
     @staticmethod
     def store(content: bytes, *, original_filename: str, extension: str) -> StoredAttachment:
         mime = SecureAttachmentStorage.validate_upload(content, extension)
+        safe_name = SecureAttachmentStorage.sanitize_filename(original_filename)
+        scan_attachment_bytes(content, filename=safe_name)
+        digest = SecureAttachmentStorage.content_sha256(content)
         storage_key = secrets.token_urlsafe(32)
         target = SecureAttachmentStorage._absolute_path(storage_key)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(encrypt_blob(content))
-        safe_name = SecureAttachmentStorage.sanitize_filename(original_filename)
         logger.info(
-            "Attachment stored storage_key=%s size=%s mime=%s",
+            "Attachment stored storage_key=%s size=%s mime=%s sha256=%s...",
             storage_key[:8] + "...",
             len(content),
             mime,
+            digest[:12],
         )
         return StoredAttachment(
             storage_key=storage_key,
             original_filename=safe_name,
             mime_type=mime,
             size_bytes=len(content),
+            content_sha256=digest,
         )
 
     @staticmethod
-    def read(storage_key: str) -> tuple[bytes, Path]:
+    def read(
+        storage_key: str,
+        *,
+        expected_sha256: str | None = None,
+    ) -> tuple[bytes, Path]:
         path = SecureAttachmentStorage._absolute_path(storage_key)
         if not path.is_file():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attachment not found")
-        return decrypt_blob(path.read_bytes()), path
+        try:
+            plaintext = decrypt_blob(path.read_bytes())
+        except ValueError as exc:
+            logger.error("Attachment decrypt failed key=%s err=%s", storage_key[:8], exc)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Attachment decryption failed",
+            ) from exc
+
+        if expected_sha256:
+            actual = SecureAttachmentStorage.content_sha256(plaintext)
+            if actual != expected_sha256:
+                logger.error(
+                    "Attachment integrity mismatch key=%s expected=%s actual=%s",
+                    storage_key[:8],
+                    expected_sha256[:12],
+                    actual[:12],
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Attachment integrity check failed",
+                )
+        return plaintext, path
 
     @staticmethod
     def _legacy_uploads_root() -> Path:

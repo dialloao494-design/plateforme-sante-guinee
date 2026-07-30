@@ -201,6 +201,25 @@ class AppSettings:
                 "REMINDER_RESPOND_TOKEN must be a strong random value (32+ chars) in production"
             )
 
+        # PHI attachments must be encrypted at rest in production (Security Wave 2).
+        if self.is_production:
+            enc_key = (os.getenv("ATTACHMENT_ENCRYPTION_KEY") or "").strip()
+            if not enc_key:
+                failures.append(
+                    "ATTACHMENT_ENCRYPTION_KEY must be set in production "
+                    "(Fernet key for PHI attachment encryption at rest)"
+                )
+            else:
+                try:
+                    from cryptography.fernet import Fernet
+
+                    Fernet(enc_key.encode("utf-8"))
+                except Exception:
+                    failures.append(
+                        "ATTACHMENT_ENCRYPTION_KEY must be a valid Fernet key "
+                        "(generate with Fernet.generate_key())"
+                    )
+
         if failures:
             raise RuntimeError("Insecure deployment secrets: " + "; ".join(failures))
 
