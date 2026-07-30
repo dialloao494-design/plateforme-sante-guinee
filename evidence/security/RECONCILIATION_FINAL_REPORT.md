@@ -206,14 +206,10 @@ Current agent cannot read/write protection API (`403`).
 ## 14. Exact production commit SHA
 
 ```
-30061918b15090159256bd53279948c76efe5e75  (boot TLS/attachment — on main before Dockerfile simplify)
+40a163ec0dc89f581170a67d398eb5356646f3ef
 ```
 
-After Dockerfile simplify push, `main` tip may be newer — verify with:
-
-```bash
-git fetch origin main && git rev-parse origin/main
-```
+This is `origin/main` after Offline V1 + Security/Red Team reconciliation, Railway boot fixes, `pyotp`, simplified Dockerfile, and this report.
 
 **Clinic Node:** available under `deploy/clinic-node/` on that commit for mini-PC install — **not** a Railway/Vercel service.
 
