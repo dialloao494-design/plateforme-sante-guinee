@@ -1,0 +1,100 @@
+RECOVERY_MATRIX {
+  "ok": true,
+  "scenarios": [
+    {
+      "id": "S1_plain_precheck",
+      "ok": true,
+      "path": "/tmp/tmph0txfkb8/dump.sql.gz",
+      "encrypted": false,
+      "checks": [
+        {
+          "name": "gzip_sql",
+          "ok": true,
+          "detail": "80685da0b47673ac006e5ec30f4afb00f0f93d9f2f4a96ebb6b0b2e9c19981de"
+        },
+        {
+          "name": "plaintext_sha256",
+          "ok": true,
+          "detail": "80685da0b47673ac006e5ec30f4afb00f0f93d9f2f4a96ebb6b0b2e9c19981de"
+        }
+      ],
+      "error": null,
+      "validated_at": "2026-07-29T13:54:58.459943+00:00",
+      "sha256": "80685da0b47673ac006e5ec30f4afb00f0f93d9f2f4a96ebb6b0b2e9c19981de",
+      "bytes": 386
+    },
+    {
+      "id": "S2_sha256_match",
+      "ok": true,
+      "detail": "80685da0b47673ac006e5ec30f4afb00f0f93d9f2f4a96ebb6b0b2e9c19981de"
+    },
+    {
+      "id": "S3_encrypted_restore_gate",
+      "ok": true,
+      "path": "/tmp/tmph0txfkb8/pkg/dump.sql.gz.enc",
+      "encrypted": true,
+      "checks": [
+        {
+          "name": "encrypted_sha256",
+          "ok": true,
+          "detail": "17e7a04b4d62ea2261ea955cbb5876d9cba9e8ebd8e634bb3dd0e3b9b3a336dc"
+        },
+        {
+          "name": "decrypt",
+          "ok": true
+        },
+        {
+          "name": "gzip_sql",
+          "ok": true,
+          "detail": "80685da0b47673ac006e5ec30f4afb00f0f93d9f2f4a96ebb6b0b2e9c19981de"
+        }
+      ],
+      "error": null,
+      "validated_at": "2026-07-29T13:54:58.460123+00:00",
+      "sha256": "80685da0b47673ac006e5ec30f4afb00f0f93d9f2f4a96ebb6b0b2e9c19981de",
+      "bytes": 386
+    },
+    {
+      "id": "S4_dr_checklist",
+      "ok": true,
+      "items": [
+        {
+          "id": "DR-01",
+          "item": "Identify latest verified encrypted backup (SHA-256 OK)"
+        },
+        {
+          "id": "DR-02",
+          "item": "Isolate restore target network (no production traffic)"
+        },
+        {
+          "id": "DR-03",
+          "item": "Take pre-restore snapshot of current DB volume"
+        },
+        {
+          "id": "DR-04",
+          "item": "Run restore-drill (ephemeral) before live restore"
+        },
+        {
+          "id": "DR-05",
+          "item": "Live restore with dual-control / break-glass approval"
+        },
+        {
+          "id": "DR-06",
+          "item": "Rotate JWT, sync, update, attachment, and backup keys post-restore"
+        },
+        {
+          "id": "DR-07",
+          "item": "Verify /health/ready and sample clinical read paths"
+        },
+        {
+          "id": "DR-08",
+          "item": "Document RPO/RTO achieved and close incident ticket"
+        }
+      ]
+    }
+  ]
+}
+S5_REPLAY {'verify': True, 'first': (True, 'ok'), 'second': (False, 'replay_nonce')}
+S6_BAD_SIGNATURE SIGNATURE_INVALID
+S7_ROLLBACK sha256:deadbeef
+ALL_SCENARIOS_OK
