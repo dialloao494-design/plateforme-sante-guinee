@@ -1,12 +1,11 @@
-# Clinic Node — isolated offline appliance (Phase 0)
+# Clinic Node — isolated offline appliance (Security Wave 4 hardened)
 # Does NOT replace root docker-compose.yml (cloud/VPS).
 #
-# Usage (preferred — via installer):
-#   ./deploy/clinic-node/install/install.sh
+# Preferred networking: Docker bridge (Postgres NOT published to LAN).
+# Host-network compose.host.yml is lab-only.
 #
-# Manual:
-#   cd deploy/clinic-node
-#   docker compose --env-file .env up -d --build
+# Usage:
+#   ./deploy/clinic-node/install/install.sh
 
 name: clinic-node
 
@@ -25,8 +24,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
+    security_opt:
+      - no-new-privileges:true
     networks:
       - clinic
+    # Never publish 5432 to the host on bridge mode (LAN isolation).
 
   backend:
     build:
@@ -67,11 +69,16 @@ services:
       CLINIC_ID: ${CLINIC_ID:-}
       CLINIC_DATA_DIR: /clinic-data
       CLINIC_NODE_SOFTWARE_VERSION: ${CLINIC_NODE_SOFTWARE_VERSION:-offline-v1.0.0}
-      CLINIC_NODE_LICENSE_SECRET: ${CLINIC_NODE_LICENSE_SECRET:-${JWT_SECRET}}
-      CLINIC_NODE_UPDATE_SECRET: ${CLINIC_NODE_UPDATE_SECRET:-${JWT_SECRET}}
+      # Unique per-node secrets (must not equal JWT_SECRET — enforced at boot).
+      CLINIC_NODE_LICENSE_SECRET: ${CLINIC_NODE_LICENSE_SECRET:?CLINIC_NODE_LICENSE_SECRET required}
+      CLINIC_NODE_UPDATE_SECRET: ${CLINIC_NODE_UPDATE_SECRET:?CLINIC_NODE_UPDATE_SECRET required}
+      ATTACHMENT_ENCRYPTION_KEY: ${ATTACHMENT_ENCRYPTION_KEY:?ATTACHMENT_ENCRYPTION_KEY required}
+      CLINIC_NODE_NETWORK: ${CLINIC_NODE_NETWORK:-bridge}
+      CLINIC_NODE_ALLOW_HOST_NETWORK: ${CLINIC_NODE_ALLOW_HOST_NETWORK:-false}
       CLINIC_NODE_SYNC_LOCAL_MIRROR: ${CLINIC_NODE_SYNC_LOCAL_MIRROR:-true}
       CLOUD_SYNC_URL: ${CLOUD_SYNC_URL:-}
       CLINIC_NODE_ALLOW_RESTORE: ${CLINIC_NODE_ALLOW_RESTORE:-false}
+      BACKUP_ENCRYPTION_KEY_FILE: ${BACKUP_ENCRYPTION_KEY_FILE:-/clinic-data/backups/.backup-age-key}
     volumes:
       - ${CLINIC_DATA_DIR:-./data}/uploads:/app/uploads
       - ${CLINIC_DATA_DIR:-./data}/logs:/app/logs
@@ -87,6 +94,10 @@ services:
       timeout: 5s
       retries: 18
       start_period: 180s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     networks:
       - clinic
 
@@ -102,6 +113,8 @@ services:
     restart: unless-stopped
     expose:
       - "80"
+    security_opt:
+      - no-new-privileges:true
     networks:
       - clinic
 
@@ -120,6 +133,8 @@ services:
         condition: service_healthy
       frontend:
         condition: service_started
+    security_opt:
+      - no-new-privileges:true
     networks:
       - clinic
 

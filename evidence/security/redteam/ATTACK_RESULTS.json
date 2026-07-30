@@ -1,0 +1,27 @@
+{
+  "phase": "red_team_final_round2",
+  "critical_exploited_pre_fix_round2": [
+    "RT2-C1 nurse assessment foreign consultation_id PHI overwrite",
+    "RT2-C2 nurse assessment unvalidated admission_id"
+  ],
+  "high_exploited_pre_fix_round2": [
+    "RT2-H1 lab tech walk-in self-mark paid + price override",
+    "RT2-H2 lab/pharmacy global doctor fallback",
+    "RT2-H3 clinic admin claim unbound doctor",
+    "RT2-H4 clinic admin patient user_id relink",
+    "RT2-H5 medicine delivery / visit foreign patient",
+    "RT2-H6 appointment create unbound patient claim"
+  ],
+  "post_fix": {
+    "critical_open": 0,
+    "high_open": 0,
+    "exploited": 0
+  },
+  "pytest_summary": "282 passed, 1 skipped",
+  "pentest_harness": {
+    "EXPLOITED": 0,
+    "BLOCKED": 28,
+    "PARTIAL": 7
+  },
+  "verdict": "PRODUCTION APPROVED"
+}

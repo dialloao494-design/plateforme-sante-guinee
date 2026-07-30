@@ -143,7 +143,7 @@ def update_doctor(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_admin),
 ):
-    """Update doctor profile (Admin only)."""
+    """Update doctor profile (admin only, scoped by doctor ownership policy)."""
     DoctorOwnershipPolicy.assert_can_mutate_doctor_resource(
         db,
         target_doctor_id=doctor_id,

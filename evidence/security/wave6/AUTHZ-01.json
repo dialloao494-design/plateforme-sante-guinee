@@ -1,0 +1,14 @@
+{
+  "id": "AUTHZ-01",
+  "timestamp": "2026-07-30T03:58:47.024921+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "BLOCKED",
+  "severity": "Critical",
+  "notes": "",
+  "evidence": {
+    "status": 403,
+    "patient_b_id": 2,
+    "clinic_a_admin": 1
+  }
+}

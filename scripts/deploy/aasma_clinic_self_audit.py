@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Production self-audit for AASMA clinic feedback (Reception, Lab, Pharmacy)."""
-
 from __future__ import annotations
+
+import os
 
 import json
 import re
@@ -17,9 +18,9 @@ FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 BACKEND = "https://web-production-ad6a36.up.railway.app"
 
 CREDS = {
-    "reception": ("baldoumar14@gmail.com", "AasmaRecep1!"),
-    "lab": ("mamadoudianbarry06@gmail.com", "AasmaLab1!"),
-    "pharmacy": ("ben752231@gmail.com", "AasmaPharm1!"),
+    "reception": ("baldoumar14@gmail.com", os.environ["AASMA_RECEPTION_PASSWORD"]),
+    "lab": ("mamadoudianbarry06@gmail.com", os.environ["AASMA_LAB_PASSWORD"]),
+    "pharmacy": ("ben752231@gmail.com", os.environ["AASMA_PHARMACY_PASSWORD"]),
 }
 
 
@@ -252,7 +253,7 @@ def main() -> int:
     # --- Nurse API workflow ---
     report["nurse"] = []
     try:
-        admin = login("contactpolycliniqueaasma@gmail.com", "AasmaAdmin1!")
+        admin = login("contactpolycliniqueaasma@gmail.com", os.environ["AASMA_ADMIN_PASSWORD"])
         ah = auth_headers(admin["access_token"])
         dash = httpx.get(f"{BACKEND}/clinical/nurse/dashboard", headers=ah, timeout=60)
         report["nurse"].append(("Nurse dashboard API", dash.status_code == 200, dash.text[:120]))

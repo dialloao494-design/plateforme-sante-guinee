@@ -12,9 +12,9 @@ from datetime import datetime, timedelta
 BASE = "http://127.0.0.1:8000"
 PROXY = "http://127.0.0.1:5173"
 DOCTOR_EMAIL = "dr.mamady@example.com"
-DOCTOR_PASSWORD = "Doctor123!"
+DOCTOR_PASSWORD = os.environ.get("PILOT_DOCTOR_PASSWORD", "")
 PATIENT_EMAIL = "test.patient@example.com"
-PATIENT_PASSWORD = "Patient123!"
+PATIENT_PASSWORD = os.environ.get("PILOT_PATIENT_PASSWORD", "")
 DOCTOR_ID = 4  # Dr Mamady Keïta in pilot seed
 
 

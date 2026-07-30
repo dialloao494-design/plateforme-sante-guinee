@@ -29,7 +29,7 @@ def test_pharmacy_inventory_list_and_adjust(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         pharm = models.User(
             email=f"pharm.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="pharmacist",
             clinic_id=clinic_id,
         )

@@ -1,7 +1,13 @@
 # Production overlay — use with VPS + Let's Encrypt
 # docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production up -d
+#
+# Security Wave 3: production flags, TLS nginx ports, no host-published Postgres.
 
 services:
+  db:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env.production}
+
   backend:
     environment:
       ENVIRONMENT: production
@@ -14,6 +20,9 @@ services:
       BYPASS_AVAILABILITY_VALIDATION: "false"
       TRUSTED_PROXY_HOSTS: ${TRUSTED_PROXY_HOSTS:-127.0.0.1,backend}
       REMINDER_RESPOND_TOKEN: ${REMINDER_RESPOND_TOKEN:?REMINDER_RESPOND_TOKEN must be set in .env.production}
+      ATTACHMENT_ENCRYPTION_KEY: ${ATTACHMENT_ENCRYPTION_KEY:?ATTACHMENT_ENCRYPTION_KEY must be set in .env.production}
+      # Compose-internal Postgres has no TLS — do not force Railway sslmode.
+      DB_SSLMODE: ${DB_SSLMODE:-}
     deploy:
       resources:
         limits:
@@ -31,6 +40,8 @@ services:
     depends_on:
       - backend
       - frontend
+    security_opt:
+      - no-new-privileges:true
 
   certbot:
     image: certbot/certbot:latest
@@ -38,3 +49,5 @@ services:
       - ./certbot/www:/var/www/certbot
       - ./certbot/conf:/etc/letsencrypt
     entrypoint: /bin/sh -c "trap exit TERM; while :; do certbot renew; sleep 12h; done"
+    security_opt:
+      - no-new-privileges:true

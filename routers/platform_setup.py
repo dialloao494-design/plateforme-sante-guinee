@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -75,6 +75,7 @@ def platform_setup_status(db: Session = Depends(get_db)):
 @router.post("/platform/setup", response_model=Token, status_code=status.HTTP_201_CREATED)
 def complete_platform_owner_setup(
     registration: PlatformOwnerSetupRequest,
+    request: Request,
     db: Session = Depends(get_db),
     _: None = Depends(enforce_setup_rate_limit),
 ):
@@ -125,7 +126,12 @@ def complete_platform_owner_setup(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
     owner = provisioned.user
     logger.info("Platform owner created via setup page id=%s email=%s", owner.id, owner.email)
-    return create_token_response(owner)
+    return create_token_response(db, owner, request=request)

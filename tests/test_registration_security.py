@@ -17,7 +17,7 @@ class TestPublicRegistrationEndpoint:
             "/auth/register",
             json={
                 "email": "patient.secure@example.com",
-                "password": "Secret12",
+                "password": "Secret12Pass!",
                 "role": "patient",
             },
         )
@@ -31,7 +31,7 @@ class TestPublicRegistrationEndpoint:
             "/auth/register",
             json={
                 "email": "doctor.secure@example.com",
-                "password": "Secret12",
+                "password": "Secret12Pass!",
                 "role": "doctor",
             },
         )
@@ -57,7 +57,7 @@ class TestPublicRegistrationEndpoint:
             "/auth/register",
             json={
                 "email": "evil.admin@example.com",
-                "password": "Secret12",
+                "password": "Secret12Pass!",
                 "role": "admin",
             },
         )
@@ -72,7 +72,7 @@ class TestPublicRegistrationEndpoint:
                 "/auth/register",
                 json={
                     "email": f"case.{role_value.strip().lower()}@example.com",
-                    "password": "Secret12",
+                    "password": "Secret12Pass!",
                     "role": role_value,
                 },
             )
@@ -83,7 +83,7 @@ class TestPublicRegistrationEndpoint:
             "/auth/register",
             json={
                 "email": "superuser@example.com",
-                "password": "Secret12",
+                "password": "Secret12Pass!",
                 "role": "superadmin",
             },
         )
@@ -94,7 +94,7 @@ class TestPublicRegistrationEndpoint:
             "/auth/register",
             json={
                 "email": "inject@example.com",
-                "password": "Secret12",
+                "password": "Secret12Pass!",
                 "role": "patient",
                 "is_admin": True,
             },
@@ -106,7 +106,7 @@ class TestPublicRegistrationEndpoint:
             "/auth/register",
             json={
                 "email": "adm1n@example.com",
-                "password": "Secret12",
+                "password": "Secret12Pass!",
                 "role": "adm1n",
             },
         )
@@ -117,7 +117,7 @@ class TestPublicRegistrationEndpoint:
             "/auth/register",
             json={
                 "email": "blocked.admin@example.com",
-                "password": "Secret12",
+                "password": "Secret12Pass!",
                 "role": "admin",
             },
         )
@@ -135,7 +135,7 @@ class TestAdminProvisioningEndpoint:
             "/users/admins",
             json={
                 "email": "new.admin@example.com",
-                "password": "StrongPass1",
+                "password": "StrongPass1!",
             },
         )
         assert response.status_code == 401
@@ -145,20 +145,20 @@ class TestAdminProvisioningEndpoint:
             "/auth/register",
             json={
                 "email": "not.admin@example.com",
-                "password": "Secret12",
+                "password": "Secret12Pass!",
                 "role": "patient",
             },
         )
         login = client.post(
             "/auth/login-json",
-            json={"email": "not.admin@example.com", "password": "Secret12"},
+            json={"email": "not.admin@example.com", "password": "Secret12Pass!"},
         )
         token = login.json()["access_token"]
         response = client.post(
             "/users/admins",
             json={
                 "email": "should.fail@example.com",
-                "password": "StrongPass1",
+                "password": "StrongPass1!",
             },
             headers={"Authorization": f"Bearer {token}"},
         )
@@ -169,7 +169,7 @@ class TestAdminProvisioningEndpoint:
             "/users/admins",
             json={
                 "email": "ops.admin@example.com",
-                "password": "StrongPass1",
+                "password": "StrongPass1!",
             },
             headers=admin_headers,
         )
@@ -194,7 +194,7 @@ class TestUserProvisioningService:
             register_public_user(
                 db_session,
                 email="service.admin@example.com",
-                password="Secret12",
+                password="Secret12Pass!",
                 role="admin",
             )
 
@@ -208,7 +208,7 @@ class TestOrmPrivilegedRoleGuard:
         with pytest.raises(PrivilegedRoleAssignmentError):
             user = User(
                 email="orm.bypass@example.com",
-                hashed_password=hash_password("Secret12"),
+                hashed_password=hash_password("Secret12Pass!"),
                 role="admin",
             )
             db_session.add(user)
@@ -222,7 +222,7 @@ class TestOrmPrivilegedRoleGuard:
         with provisioning_channel("test_fixture"):
             user = User(
                 email="orm.allowed@example.com",
-                hashed_password=hash_password("Secret12"),
+                hashed_password=hash_password("Secret12Pass!"),
                 role="admin",
             )
             db_session.add(user)
@@ -237,7 +237,7 @@ class TestOrmPrivilegedRoleGuard:
 
         user = User(
             email="escalate@example.com",
-            hashed_password=hash_password("Secret12"),
+            hashed_password=hash_password("Secret12Pass!"),
             role="patient",
         )
         db_session.add(user)
@@ -255,7 +255,7 @@ class TestJwtRoleIntegrity:
             "/auth/register",
             json={
                 "email": "jwt.victim@example.com",
-                "password": "Secret12",
+                "password": "Secret12Pass!",
                 "role": "patient",
             },
         )
@@ -291,7 +291,7 @@ class TestAdminProvisioningChannels:
             create_admin_user(
                 db_session,
                 email="bad.channel@example.com",
-                password="StrongPass1",
+                password="StrongPass1!",
                 channel="public_register",
             )
 
@@ -311,7 +311,7 @@ class TestAdminBootstrap:
         email = "existing.patient@bootstrap.test"
         user = User(
             email=email,
-            hashed_password=hash_password("Secret12"),
+            hashed_password=hash_password("Secret12Pass!"),
             role="patient",
         )
         db_session.add(user)
@@ -319,7 +319,7 @@ class TestAdminBootstrap:
 
         monkeypatch.setenv("ENABLE_ADMIN_BOOTSTRAP", "true")
         monkeypatch.setenv("ADMIN_BOOTSTRAP_EMAIL", email)
-        monkeypatch.setenv("ADMIN_BOOTSTRAP_PASSWORD", "StrongPass1")
+        monkeypatch.setenv("ADMIN_BOOTSTRAP_PASSWORD", "StrongPass1!")
 
         result = bootstrap_initial_admin(db_session)
         assert result is None

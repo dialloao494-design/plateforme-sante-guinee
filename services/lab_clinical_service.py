@@ -195,9 +195,10 @@ class LabClinicalService:
             .first()
         )
         if not doctor:
-            doctor = db.query(models.Doctor).order_by(models.Doctor.id.asc()).first()
-        if not doctor:
-            raise HTTPException(status_code=400, detail="Aucun médecin configuré pour cette clinique")
+            raise HTTPException(
+                status_code=400,
+                detail="Aucun médecin configuré pour cette clinique",
+            )
         return doctor
 
     @staticmethod
@@ -255,9 +256,25 @@ class LabClinicalService:
             db, clinic_id=clinic_id, patient_id=payload.patient_id
         )
         created: list[models.LabOrder] = []
-        mark_paid = payload.payment_status == "paid"
+        # Lab technicians cannot mark charges paid — only billing/cashier roles may.
+        from core.roles import user_has_any_role
+
+        billing_roles = (
+            "cashier",
+            "receptionist",
+            "clinic_admin",
+            "admin",
+            "platform_admin",
+            "platform_owner",
+        )
+        mark_paid = payload.payment_status == "paid" and user_has_any_role(
+            actor.role, billing_roles
+        )
         for item in payload.tests:
-            price = item.price_gnf
+            # Client-supplied price is ignored for lab technicians — catalog/default only.
+            price = None
+            if user_has_any_role(actor.role, billing_roles):
+                price = item.price_gnf
             if price is None:
                 price = LabClinicalService.price_for_test(
                     clinic_id=clinic_id, test_code=item.test_code, db=db

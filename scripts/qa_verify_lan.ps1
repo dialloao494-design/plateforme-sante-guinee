@@ -53,7 +53,7 @@ $ok = (Test-Step "CORS preflight (phone origin)" {
 }) -and $ok
 
 $ok = (Test-Step "Login doctor (JSON)" {
-  $body = '{"email":"dr.amu@example.com","password":"Doctor123!"}'
+  $body = '{"email":"dr.amu@example.com","password":"[REDACTED]"}'
   $login = Invoke-RestMethod -Uri "$backendLocal/auth/login-json" -Method POST -ContentType "application/json" -Body $body -TimeoutSec 8
   if (-not $login.access_token) { throw "no token" }
   $h = @{ Authorization = "Bearer $($login.access_token)" }
@@ -62,7 +62,7 @@ $ok = (Test-Step "Login doctor (JSON)" {
 }) -and $ok
 
 $ok = (Test-Step "Login patient (JSON)" {
-  $body = '{"email":"test.patient@example.com","password":"Patient123!"}'
+  $body = '{"email":"test.patient@example.com","password":"[REDACTED]"}'
   $login = Invoke-RestMethod -Uri "$backendLocal/auth/login-json" -Method POST -ContentType "application/json" -Body $body -TimeoutSec 8
   if (-not $login.access_token) { throw "no token" }
 }) -and $ok

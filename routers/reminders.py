@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -30,9 +29,15 @@ def staff_notifications(
 ):
     if current_user.role not in STAFF_ROLES:
         raise HTTPException(status_code=403, detail="Staff only")
+    from core.roles import PLATFORM_SCOPE_ROLES, user_has_any_role
+
     clinic_id = None
-    if current_user.role != "admin" or current_user.clinic_id is not None:
+    if user_has_any_role(current_user.role, PLATFORM_SCOPE_ROLES):
+        clinic_id = None  # platform may see all
+    else:
         clinic = resolve_clinic_for_user(db, current_user)
+        if clinic is None or clinic.id is None:
+            raise HTTPException(status_code=403, detail="Clinic scope required")
         clinic_id = clinic.id
     return ReminderService.staff_notifications(db, clinic_id=clinic_id, limit=limit)
 
@@ -73,6 +78,8 @@ def whatsapp_verify(
     hub_challenge: str = Query(None, alias="hub.challenge"),
 ):
     wa = WhatsAppService()
+    if not wa.verify_token:
+        raise HTTPException(status_code=403, detail="WhatsApp verify token not configured")
     if hub_mode == "subscribe" and hub_verify_token == wa.verify_token:
         return int(hub_challenge) if hub_challenge and hub_challenge.isdigit() else hub_challenge
     raise HTTPException(status_code=403, detail="Verification failed")
@@ -80,8 +87,31 @@ def whatsapp_verify(
 
 @router.post("/whatsapp/webhook")
 async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
-    """WhatsApp Cloud API inbound messages — parse CONFIRMER / ANNULER / REPORTER."""
-    body = await request.json()
+    """WhatsApp Cloud API inbound messages — parse CONFIRMER / ANNULER / REPORTER.
+
+    Authenticity is enforced via Meta X-Hub-Signature-256 (WHATSAPP_APP_SECRET).
+    """
+    from core.whatsapp_webhook_security import (
+        WhatsAppWebhookAuthError,
+        verify_whatsapp_signature,
+    )
+
+    raw_body = await request.body()
+    try:
+        verify_whatsapp_signature(
+            raw_body=raw_body,
+            signature_header=request.headers.get("X-Hub-Signature-256")
+            or request.headers.get("x-hub-signature-256"),
+        )
+    except WhatsAppWebhookAuthError as exc:
+        raise HTTPException(status_code=403, detail="Webhook authentication failed") from exc
+
+    import json as _json
+
+    try:
+        body = _json.loads(raw_body.decode("utf-8") or "{}")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
     try:
         entry = body.get("entry", [{}])[0]
         changes = entry.get("changes", [{}])[0]
@@ -96,8 +126,7 @@ async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
         appointment_id = int(context.get("appointment_id", 0) or 0)
         if not appointment_id and from_phone:
             appointment_id = ReminderService.resolve_appointment_id_by_phone(db, from_phone) or 0
-        if not appointment_id:
-            appointment_id = int(os.getenv("WHATSAPP_DEFAULT_APPOINTMENT_ID", "0") or 0)
+        # Never fall back to a default appointment id — that enables cross-patient mutation.
         if not appointment_id:
             return {"status": "no_appointment_context"}
         action = "confirmed"
@@ -109,6 +138,8 @@ async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
             action = "confirmed"
         ReminderService.handle_patient_response(db, appointment_id=appointment_id, action=action, payload=text)
         return {"status": "processed", "action": action}
+    except HTTPException:
+        raise
     except Exception as exc:
         return {"status": "error", "detail": str(exc)}
 
@@ -118,7 +149,9 @@ def process_due_reminders(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role not in ("admin",):
-        raise HTTPException(status_code=403, detail="Admin only")
+    from core.roles import PLATFORM_SCOPE_ROLES, user_has_any_role
+
+    if not user_has_any_role(current_user.role, PLATFORM_SCOPE_ROLES):
+        raise HTTPException(status_code=403, detail="Platform admin only")
     sent = ReminderService.process_due_reminders(db)
     return {"sent": sent}

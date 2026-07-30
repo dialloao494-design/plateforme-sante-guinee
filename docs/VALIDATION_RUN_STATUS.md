@@ -28,7 +28,7 @@ cd C:\Users\wandassai\Downloads\plateforme-sante-guinee
 Vérifier :
 
 ```powershell
-$login = Invoke-RestMethod -Uri "http://127.0.0.1:8000/auth/login-json" -Method POST -ContentType "application/json" -Body '{"email":"dr.mamady@example.com","password":"Doctor123!"}'
+$login = Invoke-RestMethod -Uri "http://127.0.0.1:8000/auth/login-json" -Method POST -ContentType "application/json" -Body '{"email":"dr.mamady@example.com","password":"[REDACTED — ROTATE IF USED]"}'
 (Invoke-RestMethod -Uri "http://127.0.0.1:8000/teleconsultation/appointments/17/access" -Headers @{Authorization="Bearer $($login.access_token)"}).jitsi_domain
 ```
 
@@ -50,7 +50,7 @@ npm run dev:tunnel
 | Médecin (PC) | `http://localhost:5173/consultation/17` |
 | Patient (iPhone Safari) | `https://syndication-auction-aka-mighty.trycloudflare.com/consultation/17` |
 
-Comptes : `dr.mamady@example.com` / `Doctor123!` — `test.patient@example.com` / `Patient123!`
+Comptes : `dr.mamady@example.com` / `[REDACTED — ROTATE IF USED]` — `test.patient@example.com` / `[REDACTED — ROTATE IF USED]`
 
 **GO** si : 2 participants, vidéo + audio bidirectionnels, stable ≥ 1 min.
 

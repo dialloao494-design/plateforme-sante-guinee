@@ -45,11 +45,11 @@ def _auth_headers(user) -> dict[str, str]:
 def teleconsult_booking(db_session, client):
     suffix = uuid.uuid4().hex[:8]
     patient_user = register_public_user(
-        db_session, email=f"tc.patient.{suffix}@test.gn", password="Secret12", role="patient"
+        db_session, email=f"tc.patient.{suffix}@test.gn", password="Secret12Pass!", role="patient"
     ).user
     patient = db_session.query(Patient).filter(Patient.user_id == patient_user.id).first()
     doctor_user = register_public_user(
-        db_session, email=f"tc.doctor.{suffix}@test.gn", password="Secret12", role="doctor"
+        db_session, email=f"tc.doctor.{suffix}@test.gn", password="Secret12Pass!", role="doctor"
     ).user
     doctor = db_session.query(Doctor).filter(Doctor.user_id == doctor_user.id).first()
     clinic = bind_clinic_booking(db_session, doctor=doctor, patient=patient)

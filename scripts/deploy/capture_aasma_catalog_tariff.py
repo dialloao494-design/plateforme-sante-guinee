@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Capture production lab catalog screenshot with tariff prices."""
 from __future__ import annotations
+import os
 
 import sys
 from pathlib import Path
@@ -35,7 +36,7 @@ def main() -> int:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 1200})
-        ui_login(page, "mamadoudianbarry06@gmail.com", "AasmaLab1!")
+        ui_login(page, "mamadoudianbarry06@gmail.com", os.environ["AASMA_LAB_PASSWORD"])
         page.goto(f"{FRONTEND}/clinical/lab", wait_until="networkidle", timeout=120000)
         page.wait_for_selector("h1", timeout=120000)
         page.wait_for_timeout(3000)

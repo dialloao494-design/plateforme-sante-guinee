@@ -75,6 +75,13 @@ if [[ ! -f "${ENV_FILE}" ]]; then
   SECRET_KEY="$(gen_secret)"
   JWT_SECRET="$(gen_secret)"
   REMINDER_RESPOND_TOKEN="$(gen_secret)"
+  CLINIC_NODE_LICENSE_SECRET="$(gen_secret)"
+  CLINIC_NODE_UPDATE_SECRET="$(gen_secret)"
+  ATTACHMENT_ENCRYPTION_KEY="$(python3 - <<'PY'
+from cryptography.fernet import Fernet
+print(Fernet.generate_key().decode())
+PY
+)"
   NODE_ID="$(python3 - <<'PY'
 import uuid
 print(str(uuid.uuid4()))
@@ -102,6 +109,10 @@ POSTGRES_DB=sante
 SECRET_KEY=${SECRET_KEY}
 JWT_SECRET=${JWT_SECRET}
 REMINDER_RESPOND_TOKEN=${REMINDER_RESPOND_TOKEN}
+CLINIC_NODE_LICENSE_SECRET=${CLINIC_NODE_LICENSE_SECRET}
+CLINIC_NODE_UPDATE_SECRET=${CLINIC_NODE_UPDATE_SECRET}
+ATTACHMENT_ENCRYPTION_KEY=${ATTACHMENT_ENCRYPTION_KEY}
+REQUIRE_ATTACHMENT_ENCRYPTION=true
 NODE_ID=${NODE_ID}
 CLINIC_ID=${CLINIC_ID:-}
 CLINIC_DATA_DIR=${DATA_DIR}
@@ -115,6 +126,7 @@ ENABLE_DEMO_CLINIC_SEED=false
 ENABLE_LAN_DEV=false
 BYPASS_AVAILABILITY_VALIDATION=false
 CLINIC_NODE_NETWORK=${CLINIC_NODE_NETWORK:-auto}
+CLINIC_NODE_ALLOW_HOST_NETWORK=${CLINIC_NODE_ALLOW_HOST_NETWORK:-false}
 ENABLE_CLINIC_NODE_BOOTSTRAP=true
 CLINIC_NODE_CLINIC_NAME="${CLINIC_NAME}"
 CLINIC_NODE_CLINIC_CITY="${CLINIC_NODE_CLINIC_CITY:-}"
@@ -146,6 +158,16 @@ else
     sed -i "s/^HTTPS_PORT=.*/HTTPS_PORT=${HTTPS_PORT}/" "${ENV_FILE}"
   else
     echo "HTTPS_PORT=${HTTPS_PORT}" >> "${ENV_FILE}"
+  fi
+  # Wave 4 — ensure encryption/unique secrets exist on upgrades
+  if ! grep -q '^ATTACHMENT_ENCRYPTION_KEY=' "${ENV_FILE}"; then
+    echo "ATTACHMENT_ENCRYPTION_KEY=$(python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> "${ENV_FILE}"
+  fi
+  if ! grep -q '^CLINIC_NODE_LICENSE_SECRET=' "${ENV_FILE}"; then
+    echo "CLINIC_NODE_LICENSE_SECRET=$(gen_secret)" >> "${ENV_FILE}"
+  fi
+  if ! grep -q '^CLINIC_NODE_UPDATE_SECRET=' "${ENV_FILE}"; then
+    echo "CLINIC_NODE_UPDATE_SECRET=$(gen_secret)" >> "${ENV_FILE}"
   fi
 fi
 
@@ -179,10 +201,19 @@ fi
 
 COMPOSE_FILES=(-f "${NODE_DIR}/compose.yml")
 if [[ "${NETWORK_MODE}" == "host" ]]; then
-  echo "[install] Using host network mode (bridge unavailable or forced)."
+  echo "[install] Using host network mode (LAB ONLY — bridge preferred for mini-PC)."
+  if [[ "${CLINIC_NODE_ALLOW_HOST_NETWORK:-false}" != "true" ]]; then
+    echo "[install] Setting CLINIC_NODE_ALLOW_HOST_NETWORK=true for this lab fallback session."
+    if grep -q '^CLINIC_NODE_ALLOW_HOST_NETWORK=' "${ENV_FILE}"; then
+      sed -i 's/^CLINIC_NODE_ALLOW_HOST_NETWORK=.*/CLINIC_NODE_ALLOW_HOST_NETWORK=true/' "${ENV_FILE}"
+    else
+      echo "CLINIC_NODE_ALLOW_HOST_NETWORK=true" >> "${ENV_FILE}"
+    fi
+  fi
   sed \
     -e "s/listen 80;/listen ${HTTP_PORT};/" \
     -e "s/listen 443 ssl;/listen ${HTTPS_PORT} ssl;/" \
+    -e "s/listen 443 ssl http2;/listen ${HTTPS_PORT} ssl http2;/" \
     "${NODE_DIR}/proxy/app.https.host.conf" > "${NODE_DIR}/proxy/app.https.host.runtime.conf"
   COMPOSE_FILES=(-f "${NODE_DIR}/compose.host.yml")
   if grep -q '^CLINIC_NODE_NETWORK=' "${ENV_FILE}"; then
@@ -237,6 +268,10 @@ cat <<EOF
  Admin:    see ${DATA_DIR}/ADMIN_CREDENTIALS.txt (if freshly generated)
  Login:    local clinic admin — change password on first login
 
- Phase 1: local auth bootstrap enabled.
+ Security Wave 4 next steps (mini-PC):
+   sudo ${NODE_DIR}/scripts/harden-host-firewall.sh
+   sudo ${NODE_DIR}/scripts/verify-luks.sh ${DATA_DIR}/backups/luks-evidence.txt
+   ${NODE_DIR}/scripts/audit-pki-perms.sh ${DATA_DIR}
+   # After each backup: ${NODE_DIR}/scripts/encrypt-backup.sh data/backups/*.sql.gz
 ============================================
 EOF

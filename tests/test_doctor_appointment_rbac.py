@@ -37,7 +37,7 @@ def test_standalone_doctor_can_list_appointments_and_notifications(client, db_se
     with provisioning_channel("test_fixture"):
         user = models.User(
             email="standalone.doctor.rbac@test.gn",
-            hashed_password=hash_password("Secret12"),
+            hashed_password=hash_password("Secret12Pass!"),
             role="doctor",
         )
         db_session.add(user)

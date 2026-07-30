@@ -9,7 +9,7 @@ import os
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -283,7 +283,7 @@ def create_admin_user(
 
     if clinic_id is not None:
         user.clinic_id = clinic_id
-        user.must_change_password = False
+        user.must_change_password = True
         db.add(
             models.ClinicStaff(clinic_id=clinic_id, user_id=user.id, is_active=True)
         )
@@ -346,7 +346,7 @@ def create_staff_user(
         raise UserProvisioningError("Error creating staff user.") from exc
 
     user.clinic_id = clinic_id
-    user.must_change_password = False
+    user.must_change_password = True
     db.add(
         models.ClinicStaff(clinic_id=clinic_id, user_id=user.id, is_active=True)
     )
@@ -398,6 +398,7 @@ def create_clinic_admin_user(
         raise UserProvisioningError("Error creating clinic administrator.") from exc
 
     user.clinic_id = clinic_id
+    user.must_change_password = True
     db.add(models.ClinicStaff(clinic_id=clinic_id, user_id=user.id, is_active=True))
     db.commit()
     db.refresh(user)
@@ -451,17 +452,69 @@ def setup_first_platform_owner(
     email: str,
     password: str,
 ) -> ProvisionedUser:
-    """Create the first platform owner via the public setup page (one-time)."""
+    """Create the first platform owner via the public setup page (one-time).
+
+    Serializes concurrent setup with a Postgres advisory transaction lock (or
+    SQLite BEGIN IMMEDIATE). Post-insert demotion remains as defense in depth.
+    A partial unique index (uq_users_single_platform_owner) enforces at most one
+    platform_owner row when the DB dialect supports it.
+    """
+    bind = db.get_bind()
+    dialect = getattr(bind.dialect, "name", "") if bind is not None else ""
+
+    if dialect == "postgresql":
+        # Fixed key: 'SGPO' bytes as int — serializes all /platform/setup creators.
+        db.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": 0x5347504F})
+    elif dialect == "sqlite":
+        try:
+            db.execute(text("BEGIN IMMEDIATE"))
+        except Exception:
+            pass
+
     if platform_owner_exists(db):
         raise PlatformOwnerSetupClosedError(
             "Platform owner setup is disabled. Sign in with your owner account."
         )
-    return create_platform_owner_user(
-        db,
-        email=email,
-        password=password,
-        channel="platform_owner_setup",
+
+    try:
+        provisioned = create_platform_owner_user(
+            db,
+            email=email,
+            password=password,
+            channel="platform_owner_setup",
+        )
+    except IntegrityError as exc:
+        db.rollback()
+        raise PlatformOwnerSetupClosedError(
+            "Platform owner setup is disabled. Sign in with your owner account."
+        ) from exc
+
+    # Post-insert integrity: if racing inserts produced >1 owner, keep the lowest id.
+    owners = (
+        db.query(User)
+        .filter(User.role == "platform_owner")
+        .order_by(User.id.asc())
+        .all()
     )
+    if len(owners) > 1:
+        keeper = owners[0]
+        for extra in owners[1:]:
+            logger.error(
+                "Platform owner race detected — demoting duplicate id=%s email=%s",
+                extra.id,
+                extra.email,
+            )
+            extra.role = "patient"
+            extra.is_active = False
+            db.add(extra)
+        db.commit()
+        if provisioned.user.id != keeper.id:
+            raise PlatformOwnerSetupClosedError(
+                "Platform owner setup is disabled. Sign in with your owner account."
+            )
+        provisioned = ProvisionedUser(user=keeper, doctor_id=None)
+
+    return provisioned
 
 
 def bootstrap_platform_owner(db: Session) -> User | None:

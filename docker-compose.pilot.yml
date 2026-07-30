@@ -1,8 +1,12 @@
 # Pilote GO overlay — PostgreSQL + flags sécurisés + HTTPS self-signed
 # docker compose -f docker-compose.yml -f docker-compose.pilot.yml --env-file .env.pilot up -d --build
+#
+# LAB ONLY: Postgres is published on host 5433 for debugging.
+# Never use this overlay for production or clinic go-live.
 
 services:
   db:
+    # Lab-only host publish — production/staging compose never publish 5432.
     ports:
       - "5433:5432"
 

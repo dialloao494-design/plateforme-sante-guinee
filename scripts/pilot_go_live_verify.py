@@ -160,8 +160,8 @@ def main() -> int:
     log("Jitsi configuré", jitsi_ok, "JITSI_APP_SECRET present")
 
     # Clinical flows
-    pat = login("test.patient@example.com", "Patient123!")
-    doc = login("dr.mamady@example.com", "Doctor123!")
+    pat = login("test.patient@example.com", os.environ.get("PILOT_PATIENT_PASSWORD", ""))
+    doc = login("dr.mamady@example.com", os.environ.get("PILOT_DOCTOR_PASSWORD", ""))
     _, prof = req("GET", "/patients/me", pat)
     pid = prof.get("id") if isinstance(prof, dict) else None
     log("Patient profile", pid is not None, f"patient_id={pid}")

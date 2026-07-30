@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Capture production catalog screenshots proving tariff sheet match."""
 from __future__ import annotations
+import os
 
 import sys
 from pathlib import Path
@@ -28,7 +29,7 @@ def ui_login(page) -> None:
     page.evaluate("() => { localStorage.clear(); sessionStorage.clear(); }")
     page.reload(wait_until="networkidle")
     page.locator("#email").fill("mamadoudianbarry06@gmail.com")
-    page.locator("#password").fill("AasmaLab1!")
+    page.locator("#password").fill(os.environ["AASMA_LAB_PASSWORD"])
     page.click("button.login-submit")
     page.wait_for_function(
         "() => Boolean(localStorage.getItem('token') || localStorage.getItem('access_token'))",

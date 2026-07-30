@@ -7,6 +7,7 @@ import models
 import schemas
 from database import get_db
 from core.roles import PLATFORM_SCOPE_ROLES, user_has_any_role
+from core.tenant import is_platform_admin, user_clinic_id, assert_patient_in_clinic
 from security import get_current_admin, require_roles
 from services.patient_record_service import PatientRecordService
 
@@ -29,7 +30,7 @@ def _doctor_for_user(db: Session, user_id: int) -> models.Doctor | None:
 def _assert_doctor_can_access_patient(db: Session, current_user, patient_id: int) -> None:
     doctor = _doctor_for_user(db, current_user.id)
     if not doctor:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Doctor profile not found")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
     linked = (
         db.query(models.RendezVous)
         .filter(
@@ -41,8 +42,20 @@ def _assert_doctor_can_access_patient(db: Session, current_user, patient_id: int
     if not linked:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access this patient",
+            detail="Permission denied",
         )
+
+
+def _assert_admin_patient_clinic_scope(db: Session, current_user, patient: models.Patient) -> None:
+    """Clinic admins may only mutate patients in their clinic; platform may break glass."""
+    if is_platform_admin(current_user):
+        return
+    cid = user_clinic_id(current_user, db)
+    if cid is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
+    # Fail closed: unscoped/legacy patients (clinic_id NULL) are not mutable by clinic admins.
+    if patient.clinic_id is None or patient.clinic_id != cid:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
 
 
 @router.post("/", response_model=schemas.PatientResponse)
@@ -51,12 +64,19 @@ def create_patient(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_admin),
 ):
+    clinic_id = None if is_platform_admin(current_user) else user_clinic_id(current_user, db)
+    if not is_platform_admin(current_user) and clinic_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied",
+        )
     new_patient = models.Patient(
         user_id=patient.user_id,
         first_name=patient.first_name,
         last_name=patient.last_name,
         age=patient.age,
         gender=patient.gender,
+        clinic_id=clinic_id,
     )
     db.add(new_patient)
     db.commit()
@@ -70,13 +90,13 @@ def create_patient(
 @router.get("/", response_model=List[schemas.PatientResponse])
 def get_patients(
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["doctor", "admin", "platform_admin"])),
+    current_user=Depends(require_roles(["doctor", "admin", "platform_admin", "clinic_admin", "platform_owner"])),
 ):
     if user_has_any_role(current_user.role, PLATFORM_SCOPE_ROLES):
         return db.query(models.Patient).all()
 
     if current_user.role in ("clinic_admin", "admin"):
-        cid = current_user.clinic_id
+        cid = user_clinic_id(current_user, db)
         if not cid:
             return []
         return db.query(models.Patient).filter(models.Patient.clinic_id == cid).all()
@@ -84,6 +104,14 @@ def get_patients(
     doctor = _doctor_for_user(db, current_user.id)
     if not doctor:
         return []
+
+    # Prefer clinic-scoped list when doctor is assigned to a clinic
+    if doctor.clinic_id:
+        return (
+            db.query(models.Patient)
+            .filter(models.Patient.clinic_id == doctor.clinic_id, models.Patient.is_archived.is_(False))
+            .all()
+        )
 
     patient_ids = [
         row[0]
@@ -158,6 +186,7 @@ def delete_patient(
     patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
+    _assert_admin_patient_clinic_scope(db, current_user, patient)
     has_clinical = (
         db.query(models.ClinicalConsultation)
         .filter(models.ClinicalConsultation.patient_id == patient_id)
@@ -179,7 +208,7 @@ def update_patient(
     patient_id: int,
     patient_update: schemas.PatientCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["admin", "doctor"])),
+    current_user=Depends(require_roles(["admin", "clinic_admin", "platform_admin", "platform_owner", "doctor"])),
 ):
     patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not patient:
@@ -192,11 +221,25 @@ def update_patient(
         patient.age = patient_update.age
         patient.gender = patient_update.gender
     else:
-        patient.user_id = patient_update.user_id
+        _assert_admin_patient_clinic_scope(db, current_user, patient)
+        # Do not allow arbitrary user_id mass-assignment (account hijack / cross-tenant link).
+        # Keep existing patient.user_id unless platform explicitly clears/relinks via dedicated flow.
         patient.first_name = patient_update.first_name
         patient.last_name = patient_update.last_name
         patient.age = patient_update.age
         patient.gender = patient_update.gender
+        if patient_update.user_id is not None and patient_update.user_id != patient.user_id:
+            from core.roles import PLATFORM_SCOPE_ROLES, user_has_any_role
+
+            if not user_has_any_role(current_user.role, PLATFORM_SCOPE_ROLES):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Relinking patient to a different user requires platform privileges",
+                )
+            target = db.query(models.User).filter(models.User.id == patient_update.user_id).first()
+            if not target:
+                raise HTTPException(status_code=404, detail="Target user not found")
+            patient.user_id = patient_update.user_id
 
     db.commit()
     db.refresh(patient)

@@ -2,6 +2,7 @@
 """API evidence for clinic readiness features — run while backend is on :8000."""
 
 from __future__ import annotations
+import os
 
 import json
 import random
@@ -31,7 +32,7 @@ def main() -> int:
     evidence: dict = {}
 
     accounts = {
-        "admin": ("admin@pilot.local", "AdminPilot1!"),
+        "admin": ("admin@pilot.local", os.environ.get("PILOT_ADMIN_PASSWORD", "")),
         "reception": ("reception@pilot.local", "ReceptionPilot1!"),
         "doctor": ("dr.pilot@pilot.local", "DoctorPilot1!"),
     }

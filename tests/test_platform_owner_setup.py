@@ -33,8 +33,8 @@ class TestPlatformOwnerSetup:
             "/platform/setup",
             json={
                 "email": "owner.production@example.com",
-                "password": "SecureOwner1!",
-                "password_confirm": "SecureOwner1!",
+                "password": "SecureOwner12!",
+                "password_confirm": "SecureOwner12!",
             },
         )
         assert response.status_code == 201, response.text
@@ -51,8 +51,8 @@ class TestPlatformOwnerSetup:
             "/platform/setup",
             json={
                 "email": "owner.closed@example.com",
-                "password": "SecureOwner1!",
-                "password_confirm": "SecureOwner1!",
+                "password": "SecureOwner12!",
+                "password_confirm": "SecureOwner12!",
             },
         )
         response = client.get("/platform/setup/status")
@@ -63,16 +63,16 @@ class TestPlatformOwnerSetup:
             "/platform/setup",
             json={
                 "email": "owner.first@example.com",
-                "password": "SecureOwner1!",
-                "password_confirm": "SecureOwner1!",
+                "password": "SecureOwner12!",
+                "password_confirm": "SecureOwner12!",
             },
         )
         response = client.post(
             "/platform/setup",
             json={
                 "email": "owner.second@example.com",
-                "password": "SecureOwner2!",
-                "password_confirm": "SecureOwner2!",
+                "password": "SecureOwner12b!",
+                "password_confirm": "SecureOwner12b!",
             },
         )
         assert response.status_code == 403
@@ -82,8 +82,8 @@ class TestPlatformOwnerSetup:
             "/platform/setup",
             json={
                 "email": "owner.mismatch@example.com",
-                "password": "SecureOwner1!",
-                "password_confirm": "DifferentPass1!",
+                "password": "SecureOwner12!",
+                "password_confirm": "DifferentPass12!",
             },
         )
         assert response.status_code == 422
@@ -93,7 +93,7 @@ class TestPlatformOwnerSetup:
             db_session.add(
                 User(
                     email="existing.owner@example.com",
-                    hashed_password=hash_password("SecureOwner1!"),
+                    hashed_password=hash_password("SecureOwner12!"),
                     role="platform_owner",
                 )
             )
@@ -103,8 +103,8 @@ class TestPlatformOwnerSetup:
             "/platform/setup",
             json={
                 "email": "new.owner@example.com",
-                "password": "SecureOwner1!",
-                "password_confirm": "SecureOwner1!",
+                "password": "SecureOwner12!",
+                "password_confirm": "SecureOwner12!",
             },
         )
         assert response.status_code == 403
@@ -114,8 +114,8 @@ class TestPlatformOwnerSetup:
             "/platform/setup",
             json={
                 "email": "owner.api@example.com",
-                "password": "SecureOwner1!",
-                "password_confirm": "SecureOwner1!",
+                "password": "SecureOwner12!",
+                "password_confirm": "SecureOwner12!",
             },
         )
         token = setup.json()["access_token"]

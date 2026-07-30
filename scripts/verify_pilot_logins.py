@@ -7,6 +7,7 @@ Usage:
   python scripts/verify_pilot_logins.py http://127.0.0.1:8080
 """
 from __future__ import annotations
+import os
 
 import json
 import sys
@@ -14,11 +15,11 @@ import urllib.error
 import urllib.request
 
 ACCOUNTS = [
-    ("dr.amu@example.com", "Doctor123!"),
-    ("dr.souleimane@example.com", "Doctor123!"),
-    ("dr.fatou@example.com", "Doctor123!"),
-    ("dr.mamady@example.com", "Doctor123!"),
-    ("test.patient@example.com", "Patient123!"),
+    ("dr.amu@example.com", os.environ.get("PILOT_DOCTOR_PASSWORD", "")),
+    ("dr.souleimane@example.com", os.environ.get("PILOT_DOCTOR_PASSWORD", "")),
+    ("dr.fatou@example.com", os.environ.get("PILOT_DOCTOR_PASSWORD", "")),
+    ("dr.mamady@example.com", os.environ.get("PILOT_DOCTOR_PASSWORD", "")),
+    ("test.patient@example.com", os.environ.get("PILOT_PATIENT_PASSWORD", "")),
 ]
 
 

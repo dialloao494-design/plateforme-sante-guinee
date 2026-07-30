@@ -1,0 +1,14 @@
+{
+  "id": "JWT-01",
+  "timestamp": "2026-07-30T03:58:47.036174+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "PARTIAL",
+  "severity": "Critical",
+  "notes": "Encoding helper blocks HTML injection; residual SPA token-theft risk documented",
+  "evidence": {
+    "output_encoding": "&lt;script&gt;alert(1)&lt;/script&gt;",
+    "frontend_present": true,
+    "note": "sessionStorage JWT residual risk; CSP/encoding mitigations required"
+  }
+}

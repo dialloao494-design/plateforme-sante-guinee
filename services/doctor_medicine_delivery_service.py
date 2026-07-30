@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 import models
@@ -33,10 +34,25 @@ class DoctorMedicineDeliveryService:
         payload: DoctorMedicineDeliveryCreate,
         actor: User,
     ) -> models.DoctorMedicineDelivery:
+        patient_id = payload.patient_id
+        if patient_id is not None:
+            patient = (
+                db.query(models.Patient)
+                .filter(
+                    models.Patient.id == patient_id,
+                    models.Patient.clinic_id == clinic_id,
+                )
+                .first()
+            )
+            if not patient:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Patient does not belong to this clinic",
+                )
         delivered_at = payload.delivered_at or datetime.utcnow()
         row = models.DoctorMedicineDelivery(
             clinic_id=clinic_id,
-            patient_id=payload.patient_id,
+            patient_id=patient_id,
             patient_name=payload.patient_name.strip(),
             medicine_name=payload.medicine_name.strip(),
             quantity=payload.quantity,

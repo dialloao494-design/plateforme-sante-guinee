@@ -3,6 +3,8 @@ Optional Fernet encryption for clinical attachments at rest.
 
 When ATTACHMENT_ENCRYPTION_KEY is set, blobs are encrypted before write and
 decrypted on read. Plaintext legacy files remain readable until re-uploaded.
+
+Production requires ATTACHMENT_ENCRYPTION_KEY (enforced at boot via settings).
 """
 
 from __future__ import annotations
@@ -16,6 +18,13 @@ _initialized = False
 
 def encryption_enabled() -> bool:
     return bool(os.getenv("ATTACHMENT_ENCRYPTION_KEY", "").strip())
+
+
+def reset_encryption_cache() -> None:
+    """Clear cached Fernet instance (tests / key rotation)."""
+    global _fernet, _initialized
+    _fernet = None
+    _initialized = False
 
 
 def _get_fernet():

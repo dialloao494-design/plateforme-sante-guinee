@@ -110,7 +110,7 @@ def main() -> int:
     # Doctor login for clinical write + audit
     doc_code, doc_tok, _ = req("POST", "/auth/login-json", None, {
         "email": "dr.mamady@example.com",
-        "password": "Doctor123!",
+        "password": os.environ.get("PILOT_DOCTOR_PASSWORD", ""),
     })
     doc_token = doc_tok.get("access_token") if isinstance(doc_tok, dict) else None
     log("Connexion médecin démo", doc_code == 200 and bool(doc_token), f"HTTP {doc_code}")

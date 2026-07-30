@@ -1,0 +1,15 @@
+{
+  "id": "SEC-01",
+  "timestamp": "2026-07-30T03:58:47.216907+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "BLOCKED",
+  "severity": "Critical",
+  "notes": "",
+  "evidence": {
+    "dotenv_present_in_workdir": false,
+    "suspicious_hits": [
+      "docs/CLINIC_NODE_SECURITY_HARDENING_CHECKLIST.md"
+    ]
+  }
+}

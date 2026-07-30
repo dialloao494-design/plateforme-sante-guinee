@@ -36,7 +36,7 @@ def test_unified_invoice_generate_and_pay(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         reception = models.User(
             email=f"bill.reception.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="receptionist",
             clinic_id=clinic_id,
         )

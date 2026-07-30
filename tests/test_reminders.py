@@ -6,8 +6,9 @@ import uuid
 from datetime import datetime, timedelta
 
 import models
-from security import create_access_token, hash_password
 from core.provisioning_context import provisioning_channel
+from core.reminder_security import expected_reminder_respond_token
+from security import create_access_token, hash_password
 
 
 def _auth(user) -> dict[str, str]:
@@ -16,6 +17,12 @@ def _auth(user) -> dict[str, str]:
     )
     return {"Authorization": f"Bearer {token}"}
 
+
+def _respond_payload(appointment_id: int, action: str) -> dict:
+    return {
+        "action": action,
+        "token": expected_reminder_respond_token(appointment_id),
+    }
 
 def test_reminder_scheduling_and_patient_response(client, db_session, admin_user):
     suffix = uuid.uuid4().hex[:8]
@@ -30,7 +37,7 @@ def test_reminder_scheduling_and_patient_response(client, db_session, admin_user
     with provisioning_channel("test_fixture"):
         reception = models.User(
             email=f"rem.reception.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="receptionist",
             clinic_id=clinic_id,
         )
@@ -76,7 +83,7 @@ def test_reminder_scheduling_and_patient_response(client, db_session, admin_user
 
     r = client.post(
         f"/clinical/reminders/appointments/{appt_id}/respond",
-        json={"action": "confirmed"},
+        json=_respond_payload(appt_id, "confirmed"),
     )
     assert r.status_code == 200
 
@@ -86,7 +93,7 @@ def test_reminder_scheduling_and_patient_response(client, db_session, admin_user
 
     r = client.post(
         f"/clinical/reminders/appointments/{appt_id}/respond",
-        json={"action": "cancelled"},
+        json=_respond_payload(appt_id, "cancelled"),
     )
     assert r.status_code == 200
     appt = db_session.query(models.RendezVous).filter(models.RendezVous.id == appt_id).first()
@@ -106,7 +113,7 @@ def test_reschedule_requested_notification(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         reception = models.User(
             email=f"res.reception.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="receptionist",
             clinic_id=clinic_id,
         )
@@ -142,7 +149,7 @@ def test_reschedule_requested_notification(client, db_session, admin_user):
     appt_id = r.json()["id"]
     r = client.post(
         f"/clinical/reminders/appointments/{appt_id}/respond",
-        json={"action": "reschedule_requested"},
+        json=_respond_payload(appt_id, "reschedule_requested"),
     )
     assert r.status_code == 200
     r = client.get("/clinical/reminders/notifications", headers=_auth(reception))

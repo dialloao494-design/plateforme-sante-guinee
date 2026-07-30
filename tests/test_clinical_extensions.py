@@ -30,7 +30,7 @@ def _setup(client, db, admin_user):
     with provisioning_channel("test_fixture"):
         reception = models.User(
             email=f"ext.reception.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="receptionist",
             clinic_id=clinic_id,
         )
@@ -38,7 +38,7 @@ def _setup(client, db, admin_user):
         db.flush()
         doc_user = models.User(
             email=f"ext.doctor.{suffix}@test.com",
-            hashed_password=hash_password("DoctorPass1"),
+            hashed_password=hash_password("DoctorPass12!"),
             role="doctor",
             clinic_id=clinic_id,
         )
@@ -118,7 +118,7 @@ def test_radiology_order_endpoint(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         lab_user = models.User(
             email=f"ext.lab.{uuid.uuid4().hex[:6]}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="lab_technician",
             clinic_id=clinic_id,
         )

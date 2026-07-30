@@ -113,9 +113,10 @@ class PharmacyClinicalService:
             .first()
         )
         if not doctor:
-            doctor = db.query(models.Doctor).order_by(models.Doctor.id.asc()).first()
-        if not doctor:
-            raise HTTPException(status_code=400, detail="Aucun médecin configuré pour cette clinique")
+            raise HTTPException(
+                status_code=400,
+                detail="Aucun médecin configuré pour cette clinique",
+            )
         return doctor
 
     @staticmethod

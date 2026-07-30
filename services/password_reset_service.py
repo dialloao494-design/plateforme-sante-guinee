@@ -72,6 +72,9 @@ def reset_password_with_token(db: Session, *, raw_token: str, new_password: str)
     user.session_version = int(user.session_version or 0) + 1
     if hasattr(user, "must_change_password"):
         user.must_change_password = False
+    from services.auth_session_service import bump_token_version
+
+    bump_token_version(db, user)
     row.used_at = datetime.utcnow()
     db.add(user)
     db.add(row)

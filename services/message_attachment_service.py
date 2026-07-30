@@ -34,6 +34,9 @@ def assert_appointment_access(db: Session, appointment: models.RendezVous, curre
         return
 
     if role in ("clinic_admin", "admin"):
+        cid = getattr(current_user, "clinic_id", None)
+        if cid is None or appointment.clinic_id != cid:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         return
 
     if role == "patient":

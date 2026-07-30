@@ -40,8 +40,8 @@ Write-Host "  Frontend: http://${lan}:$FrontendPort"
 Write-Host "  Backend:  http://${lan}:$BackendPort  (auto-detected when using LAN frontend URL)"
 Write-Host ""
 Write-Host "Pilot accounts:" -ForegroundColor White
-Write-Host "  Doctor:  dr.amu@example.com / Doctor123!"
-Write-Host "  Patient: test.patient@example.com / Patient123!"
+Write-Host "  Doctor:  dr.amu@example.com / [REDACTED]"
+Write-Host "  Patient: test.patient@example.com / [REDACTED]"
 Write-Host ""
 Write-Host "Start servers:" -ForegroundColor White
 Write-Host "  Terminal 1: .\scripts\run_local_backend.ps1 -Port $BackendPort -Lan"

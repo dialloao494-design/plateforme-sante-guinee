@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Capture production proof screenshots for /clinical/lab dashboard corrections."""
+import os
 import sys
 from pathlib import Path
 
@@ -9,7 +10,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 LAB_EMAIL = "mamadoudianbarry06@gmail.com"
-LAB_PASSWORD = "AasmaLab1!"
+LAB_PASSWORD = os.environ["AASMA_LAB_PASSWORD"]
 OUT = Path(__file__).resolve().parents[2] / "docs/ui_e2e_screenshots/lab-dashboard-proof"
 OUT.mkdir(parents=True, exist_ok=True)
 

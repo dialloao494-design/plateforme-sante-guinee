@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Production screenshots — Reception HIS forms + AASMA reports (no Koloma)."""
 from __future__ import annotations
+import os
 
 import sys
 import time
@@ -11,7 +12,7 @@ from playwright.sync_api import sync_playwright
 sys.stdout.reconfigure(encoding="utf-8")
 FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 EMAIL = "baldoumar14@gmail.com"
-PASSWORD = "AasmaRecep1!"
+PASSWORD = os.environ["AASMA_RECEPTION_PASSWORD"]
 RUN_ID = str(int(time.time()))[-6:]
 OUT = Path(__file__).resolve().parents[2] / "docs/ui_e2e_screenshots/reception-his-proof-v2"
 OUT.mkdir(parents=True, exist_ok=True)

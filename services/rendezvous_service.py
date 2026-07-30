@@ -390,9 +390,13 @@ class RendezVousService:
                 detail="Patient belongs to another clinic",
             )
 
+        # Fail closed: unbound patients (clinic_id NULL) cannot be silently claimed
+        # via appointment creation — reception/admin must assign clinic first.
         if patient.clinic_id is None:
-            patient.clinic_id = doctor.clinic_id
-            db.add(patient)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Patient is not assigned to a clinic",
+            )
 
         new_rdv = models.RendezVous(
             date=rdv.date,

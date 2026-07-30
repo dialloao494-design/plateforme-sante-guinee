@@ -1,0 +1,67 @@
+/home/ubuntu/.local/lib/python3.12/site-packages/pydantic/_internal/_config.py:322: UserWarning: Valid config keys have changed in V2:
+* 'orm_mode' has been renamed to 'from_attributes'
+  warnings.warn(message, UserWarning)
+2026-07-29 14:13:00,343 - passlib.handlers.bcrypt - DEBUG - detected 'bcrypt' backend, version '4.0.1'
+2026-07-29 14:13:00,343 - passlib.handlers.bcrypt - DEBUG - 'bcrypt' backend lacks $2$ support, enabling workaround
+/workspace/scripts/security/run_penetration_tests.py:194: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  email_verified_at=datetime.utcnow(),
+2026-07-29 14:13:00,381 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,386 - httpx - INFO - HTTP Request: GET http://testserver/openapi.json "HTTP/1.1 404 Not Found"
+2026-07-29 14:13:00,386 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,390 - httpx - INFO - HTTP Request: GET http://testserver/docs "HTTP/1.1 404 Not Found"
+2026-07-29 14:13:00,390 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,395 - httpx - INFO - HTTP Request: GET http://testserver/health "HTTP/1.1 200 OK"
+2026-07-29 14:13:00,396 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,400 - routers.auth - WARNING - Login failed for admin.a@wave6.test: invalid password
+2026-07-29 14:13:00,403 - httpx - INFO - HTTP Request: POST http://testserver/auth/login-json "HTTP/1.1 401 Unauthorized"
+2026-07-29 14:13:00,404 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,407 - routers.auth - WARNING - Login failed for admin.a@wave6.test: invalid password
+2026-07-29 14:13:00,410 - httpx - INFO - HTTP Request: POST http://testserver/auth/login-json "HTTP/1.1 401 Unauthorized"
+2026-07-29 14:13:00,410 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,413 - routers.auth - WARNING - Login failed for admin.a@wave6.test: invalid password
+2026-07-29 14:13:00,415 - httpx - INFO - HTTP Request: POST http://testserver/auth/login-json "HTTP/1.1 429 Too Many Requests"
+2026-07-29 14:13:00,415 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,420 - routers.auth - WARNING - Login failed for admin.a@wave6.test: invalid password
+2026-07-29 14:13:00,421 - httpx - INFO - HTTP Request: POST http://testserver/auth/login-json "HTTP/1.1 429 Too Many Requests"
+2026-07-29 14:13:00,422 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,465 - routers.auth - WARNING - Login failed for admin.a@wave6.test: invalid password
+2026-07-29 14:13:00,466 - services.auth_session_service - WARNING - Account locked user_id=1 failures=5
+2026-07-29 14:13:00,467 - httpx - INFO - HTTP Request: POST http://testserver/auth/login-json "HTTP/1.1 429 Too Many Requests"
+2026-07-29 14:13:00,468 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,472 - httpx - INFO - HTTP Request: POST http://testserver/auth/login-json "HTTP/1.1 429 Too Many Requests"
+2026-07-29 14:13:00,474 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,477 - routers.auth - INFO - Login success for admin.b@wave6.test
+2026-07-29 14:13:00,483 - httpx - INFO - HTTP Request: POST http://testserver/auth/login-json "HTTP/1.1 200 OK"
+2026-07-29 14:13:00,483 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,490 - httpx - INFO - HTTP Request: GET http://testserver/auth/me "HTTP/1.1 200 OK"
+2026-07-29 14:13:00,491 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,496 - services.auth_session_service - INFO - Revoked refresh family=63be309d-86e4-4fcd-8520-ba542efc215c reason=logout count=1
+2026-07-29 14:13:00,499 - httpx - INFO - HTTP Request: POST http://testserver/auth/logout "HTTP/1.1 200 OK"
+2026-07-29 14:13:00,500 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,504 - httpx - INFO - HTTP Request: GET http://testserver/auth/me "HTTP/1.1 401 Unauthorized"
+2026-07-29 14:13:00,506 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,511 - httpx - INFO - HTTP Request: GET http://testserver/patients/1 "HTTP/1.1 403 Forbidden"
+2026-07-29 14:13:00,511 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,516 - httpx - INFO - HTTP Request: GET http://testserver/auth/me "HTTP/1.1 200 OK"
+2026-07-29 14:13:00,517 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,524 - httpx - INFO - HTTP Request: GET http://testserver/patients/2 "HTTP/1.1 403 Forbidden"
+2026-07-29 14:13:00,525 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,530 - httpx - INFO - HTTP Request: POST http://testserver/users/admins "HTTP/1.1 403 Forbidden"
+2026-07-29 14:13:00,530 - asyncio - DEBUG - Using selector: EpollSelector
+2026-07-29 14:13:00,535 - httpx - INFO - HTTP Request: GET http://testserver/platform/clinics "HTTP/1.1 403 Forbidden"
+Traceback (most recent call last):
+  File "/workspace/scripts/security/run_penetration_tests.py", line 914, in <module>
+    }
+      
+  File "/workspace/scripts/security/run_penetration_tests.py", line 904, in main
+    "EXPLOITED": sum(1 for f in findings if f["result"] == "EXPLOITED"),
+      ^^^^^^^^^
+  File "/workspace/scripts/security/run_penetration_tests.py", line 382, in run_all
+    import base64
+               ^^^
+  File "/home/ubuntu/.local/lib/python3.12/site-packages/jose/jwt.py", line 53, in encode
+    return jws.sign(claims, key, headers=headers, algorithm=algorithm)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/.local/lib/python3.12/site-packages/jose/jws.py", line 39, in sign
+    raise JWSError("Algorithm %s not supported." % algorithm)
+jose.exceptions.JWSError: Algorithm none not supported.

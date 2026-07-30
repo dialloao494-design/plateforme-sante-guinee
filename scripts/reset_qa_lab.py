@@ -79,7 +79,7 @@ def main() -> int:
         db.close()
 
     seed_pilot_accounts()
-    print("Pilot accounts re-synced (passwords Doctor123! / Patient123!).")
+    print("Pilot accounts re-synced (passwords [REDACTED] / [REDACTED]).")
     print("Schedules are empty — add availability from doctor profile or API before booking.")
     return 0
 

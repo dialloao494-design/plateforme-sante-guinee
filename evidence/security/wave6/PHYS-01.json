@@ -1,0 +1,12 @@
+{
+  "id": "PHYS-01",
+  "timestamp": "2026-07-30T03:58:47.146399+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "N/A_LAB",
+  "severity": "Critical",
+  "notes": "Physical FDE validation requires dedicated lab hardware (LUKS)",
+  "evidence": {
+    "luks_checklist_module": true
+  }
+}

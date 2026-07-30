@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Verify clinic logo appears in generated PDF receipts."""
-
 from __future__ import annotations
+import os
+
 
 import httpx
 
 BACKEND = "https://web-production-ad6a36.up.railway.app"
-EMAIL, PWD = "baldoumar14@gmail.com", "AasmaRecep1!"
+EMAIL, PWD = "baldoumar14@gmail.com", os.environ["AASMA_RECEPTION_PASSWORD"]
 
 
 def login() -> str:

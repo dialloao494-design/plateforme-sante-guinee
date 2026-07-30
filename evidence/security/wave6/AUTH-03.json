@@ -1,0 +1,14 @@
+{
+  "id": "AUTH-03",
+  "timestamp": "2026-07-30T03:58:47.017315+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "BLOCKED",
+  "severity": "High",
+  "notes": "",
+  "evidence": {
+    "clinical": 403,
+    "auth_me": 200,
+    "body": "{\"detail\":\"Password change required before continuing\"}"
+  }
+}

@@ -6,8 +6,9 @@ import uuid
 from datetime import datetime, timedelta
 
 import models
-from security import create_access_token, hash_password
 from core.provisioning_context import provisioning_channel
+from core.reminder_security import expected_reminder_respond_token
+from security import create_access_token, hash_password
 
 
 def _auth(user) -> dict[str, str]:
@@ -30,25 +31,25 @@ def test_full_clinic_workflow(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         reception = models.User(
             email=f"e2e.reception.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="receptionist",
             clinic_id=clinic_id,
         )
         radtech = models.User(
             email=f"e2e.rad.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="lab_technician",
             clinic_id=clinic_id,
         )
         pharmacist = models.User(
             email=f"e2e.pharma.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="pharmacist",
             clinic_id=clinic_id,
         )
         doc_user = models.User(
             email=f"e2e.doctor.{suffix}@test.com",
-            hashed_password=hash_password("DoctorPass1"),
+            hashed_password=hash_password("DoctorPass12!"),
             role="doctor",
             clinic_id=clinic_id,
         )
@@ -191,7 +192,11 @@ def test_full_clinic_workflow(client, db_session, admin_user):
     # WhatsApp patient response
     r = client.post(
         f"/clinical/reminders/appointments/{appt_id}/respond",
-        json={"action": "reschedule_requested", "payload": "REPORTER"},
+        json={
+            "action": "reschedule_requested",
+            "payload": "REPORTER",
+            "token": expected_reminder_respond_token(appt_id),
+        },
     )
     assert r.status_code == 200
     appt = db_session.query(models.RendezVous).filter(models.RendezVous.id == appt_id).first()

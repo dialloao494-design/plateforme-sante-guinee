@@ -31,7 +31,7 @@ class TestPlatformClinicDirectory:
             create_staff_user(
                 db_session,
                 email="staff@pilot.local",
-                password="StaffPass1!",
+                password="StaffPass12!",
                 role="receptionist",
                 clinic_id=demo.id,
                 channel="test_fixture",
@@ -39,7 +39,7 @@ class TestPlatformClinicDirectory:
             create_staff_user(
                 db_session,
                 email="alpha@test.sante-gn.test",
-                password="StaffPass1!",
+                password="StaffPass12!",
                 role="receptionist",
                 clinic_id=test_clinic.id,
                 channel="test_fixture",
@@ -79,7 +79,7 @@ class TestPlatformClinicDirectory:
             create_clinic_admin_user(
                 db_session,
                 email="contactpolycliniqueaasma@gmail.com",
-                password="AasmaPass1!",
+                password="AasmaPass12!",
                 clinic_id=aasma.id,
                 channel="admin_api",
             )
@@ -118,7 +118,7 @@ class TestPlatformClinicDirectory:
             create_staff_user(
                 db_session,
                 email="aasma.reception@real.gn",
-                password="StaffPass1!",
+                password="StaffPass12!",
                 role="receptionist",
                 clinic_id=a.id,
                 channel="test_fixture",
@@ -150,7 +150,7 @@ class TestPlatformClinicDirectory:
             provisioned = create_staff_user(
                 db_session,
                 email=nurse_email,
-                password="OldPass123!",
+                password="OldPass1234!",
                 role="nurse",
                 clinic_id=clinic.id,
                 channel="test_fixture",
@@ -161,14 +161,14 @@ class TestPlatformClinicDirectory:
 
         r = client.post(
             f"/platform/clinics/{clinic_id}/staff/{nurse_id}/reset-password",
-            json={"new_password": "NewSecure1!"},
+            json={"new_password": "NewSecure12!"},
             headers=admin_headers,
         )
         assert r.status_code == 200, r.text
 
         login_ok = client.post(
             "/auth/login-json",
-            json={"email": nurse_email, "password": "NewSecure1!"},
+            json={"email": nurse_email, "password": "NewSecure12!"},
         )
         assert login_ok.status_code == 200
 
@@ -180,7 +180,7 @@ class TestPlatformClinicDirectory:
             create_staff_user(
                 db_session,
                 email="stress@sante-gn.test",
-                password="StaffPass1!",
+                password="StaffPass12!",
                 role="receptionist",
                 clinic_id=clinic.id,
                 channel="test_fixture",
@@ -209,7 +209,7 @@ class TestPlatformClinicDirectory:
             create_staff_user(
                 db_session,
                 email="stress-patients-prod@sante-gn.test",
-                password="StaffPass1!",
+                password="StaffPass12!",
                 role="receptionist",
                 clinic_id=clinic.id,
                 channel="test_fixture",

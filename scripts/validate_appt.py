@@ -1,3 +1,4 @@
+import os
 #!/usr/bin/env python3
 import json
 import sys
@@ -35,8 +36,8 @@ def login(email, password):
 
 def main():
     checks = []
-    pat = login("test.patient@example.com", "Patient123!")
-    doc = login("dr.mamady@example.com", "Doctor123!")
+    pat = login("test.patient@example.com", os.environ.get("PILOT_PATIENT_PASSWORD", ""))
+    doc = login("dr.mamady@example.com", os.environ.get("PILOT_DOCTOR_PASSWORD", ""))
 
     print(f"=== VALIDATION RDV #{AID} ===")
     for role, token in [("patient", pat), ("medecin", doc)]:

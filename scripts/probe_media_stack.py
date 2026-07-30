@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Probe teleconsult stack: config, access, WebSocket (no WebRTC on platform backend)."""
 from __future__ import annotations
+import os
 
 import asyncio
 import json
@@ -79,8 +80,8 @@ def main():
     print("NOTE: La salle in-app (ConsultationRoom) n implemente PAS WebRTC/ICE/STUN.")
     print("      Le flux reel passe par Jitsi externe (meeting_link) si ouvert.\n")
 
-    pat = login("test.patient@example.com", "Patient123!")
-    doc = login("dr.mamady@example.com", "Doctor123!")
+    pat = login("test.patient@example.com", os.environ.get("PILOT_PATIENT_PASSWORD", ""))
+    doc = login("dr.mamady@example.com", os.environ.get("PILOT_DOCTOR_PASSWORD", ""))
 
     code, cfg = http_json("GET", "/teleconsultation/config", pat)
     print(f"[HTTP {code}] GET /teleconsultation/config")

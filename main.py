@@ -110,6 +110,24 @@ if cors_origin_regex:
     _cors_kwargs["allow_origin_regex"] = cors_origin_regex
 app.add_middleware(CORSMiddleware, **_cors_kwargs)
 
+# Security Wave 6 / Wave 1 — rate-limit + security headers middleware
+# Fail loud in production/staging if middleware cannot attach.
+try:
+    from slowapi.middleware import SlowAPIMiddleware
+    from core.security_headers import SecurityHeadersMiddleware
+
+    app.add_middleware(SlowAPIMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
+except Exception as _mw_exc:  # pragma: no cover
+    import logging as _logging
+
+    _logging.getLogger(__name__).error("Security middleware failed to attach: %s", _mw_exc)
+    if _settings.is_deployed:
+        raise RuntimeError(
+            f"Security middleware (SlowAPI/headers) must attach in deployed environments: {_mw_exc}"
+        ) from _mw_exc
+
+
 
 @app.middleware("http")
 async def low_bandwidth_cache_headers(request, call_next):
@@ -536,6 +554,7 @@ async def startup_event():
             ensure_pharmacy_inventory_schema,
             ensure_clinic_charge_payments_schema,
             ensure_patient_user_id_unique,
+            ensure_single_platform_owner_index,
             ensure_message_attachment_columns,
             ensure_patient_dossier_schema,
             ensure_user_roles_check_constraint,
@@ -570,6 +589,7 @@ async def startup_event():
         ensure_pharmacy_inventory_schema(engine)
         ensure_clinic_charge_payments_schema(engine)
         ensure_patient_user_id_unique(engine)
+        ensure_single_platform_owner_index(engine)
         ensure_user_roles_check_constraint(engine)
         normalize_legacy_user_roles(engine)
         ensure_email_verification_schema(engine)

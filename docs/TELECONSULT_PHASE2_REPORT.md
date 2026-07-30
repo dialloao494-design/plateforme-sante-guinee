@@ -83,7 +83,7 @@ VERDICT=GO
 | Login médecin | `http://localhost:5173/login` → **Médecin démo** |
 | Login patient | tunnel `/login` → **Patient démo** |
 
-**Comptes :** `dr.mamady@example.com` / `Doctor123!` · `test.patient@example.com` / `Patient123!`
+**Comptes :** `dr.mamady@example.com` / `[REDACTED — ROTATE IF USED]` · `test.patient@example.com` / `[REDACTED — ROTATE IF USED]`
 
 ---
 

@@ -30,6 +30,8 @@ from core.clinical_access import (
     user_clinic_id,
 )
 from core.http_utils import client_ip
+from core.input_validation import reject_suspicious_sql_input
+from core.rbac import Permission, assert_permission
 from database import get_db
 from schemas.clinical import (
     ChargePaymentRequest,
@@ -108,7 +110,7 @@ def _require_role(
     )
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
-        detail=f"Requires one of roles: {list(allowed)}",
+        detail="Permission denied",
     )
 
 
@@ -421,11 +423,13 @@ def operations_summary(
 
 @router.get("/reception/patients", response_model=List[PatientSearchResponse])
 def search_patients(
+    request: Request,
     q: str = Query(..., min_length=1),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     assert_role(current_user, PATIENT_LOOKUP_ROLES)
+    q = reject_suspicious_sql_input(q, field="q") or q
     clinic = resolve_clinic_for_user(db, current_user)
     return ClinicalWorkflowService.search_patients(db, clinic_id=clinic.id, query=q)
 
@@ -1452,10 +1456,19 @@ def assign_doctor_to_clinic(
     current_user: User = Depends(get_current_user),
 ):
     assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    assert_clinic_access(current_user, clinic_id, db)
     doctor = db.query(models.Doctor).filter(models.Doctor.id == doctor_id).first()
     clinic = db.query(models.Clinic).filter(models.Clinic.id == clinic_id).first()
     if not doctor or not clinic:
         raise HTTPException(status_code=404, detail="Doctor or clinic not found")
+    # Clinic admins may only reassign doctors already in their clinic (fail closed).
+    # Claiming unbound (clinic_id NULL) doctors is platform-only.
+    if current_user.role in ("clinic_admin", "admin"):
+        actor_cid = user_clinic_id(current_user, db)
+        if actor_cid is None or doctor.clinic_id is None or doctor.clinic_id != actor_cid:
+            raise HTTPException(status_code=403, detail="Access denied for this clinic")
+        if clinic_id != actor_cid:
+            raise HTTPException(status_code=403, detail="Access denied for this clinic")
     doctor.clinic_id = clinic_id
     staff_user = db.query(User).filter(User.id == doctor.user_id).first()
     if staff_user:
@@ -1493,7 +1506,7 @@ def list_audit_logs(
     current_user: User = Depends(get_current_user),
 ):
     clinic = resolve_clinic_for_user(db, current_user)
-    _require_role(db, current_user, CLINIC_OPS_ROLES, request, clinic_id=clinic.id, resource_type="audit_log")
+    assert_permission(current_user, Permission.ADMIN_AUDIT)
     logs = ClinicalAuditService.list_for_clinic(
         db, clinic_id=clinic.id, patient_id=patient_id, limit=min(limit, 500)
     )
@@ -1510,7 +1523,7 @@ def list_pending_charges(
     current_user: User = Depends(get_current_user),
 ):
     clinic = resolve_clinic_for_user(db, current_user)
-    _require_role(db, current_user, BILLING_READ_ROLES, request, clinic_id=clinic.id, resource_type="billing")
+    assert_permission(current_user, Permission.BILLING_READ)
     charges = ClinicBillingService.pending_charges(db, clinic_id=clinic.id)
     for c in charges:
         db.refresh(c, ["patient"])
@@ -1526,7 +1539,7 @@ def pay_charge(
     current_user: User = Depends(get_current_user),
 ):
     clinic = resolve_clinic_for_user(db, current_user)
-    _require_role(db, current_user, BILLING_PAY_ROLES, request, clinic_id=clinic.id, resource_type="billing")
+    assert_permission(current_user, Permission.BILLING_PAY)
     charge = ClinicBillingService.record_payment(
         db,
         charge_id=charge_id,
@@ -1558,6 +1571,7 @@ def daily_revenue(
     current_user: User = Depends(get_current_user),
 ):
     clinic = resolve_clinic_for_user(db, current_user)
+    # Role gate with denied-access audit (clinic readiness / compliance)
     _require_role(db, current_user, BILLING_REVENUE_ROLES, request, clinic_id=clinic.id, resource_type="billing")
     summary = ClinicBillingService.daily_summary(db, clinic_id=clinic.id, day=day)
     return DailyRevenueSummary(**summary)
@@ -1571,4 +1585,9 @@ def backup_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assert_role(current_user, ADMIN_ROLES)
+    assert_permission(current_user, Permission.ADMIN_BACKUP)
+    return {
+        "status": "ok",
+        "clinic_scoped": True,
+        "message": "Backup status endpoint authorized",
+    }

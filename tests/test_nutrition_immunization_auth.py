@@ -30,19 +30,19 @@ def _clinical_setup(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         nutritionist = models.User(
             email=f"nutri.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1!"),
+            hashed_password=hash_password("StaffPass12!"),
             role="nutritionist",
             clinic_id=clinic_id,
         )
         midwife = models.User(
             email=f"midwife.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1!"),
+            hashed_password=hash_password("StaffPass12!"),
             role="midwife",
             clinic_id=clinic_id,
         )
         reception = models.User(
             email=f"recv.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1!"),
+            hashed_password=hash_password("StaffPass12!"),
             role="receptionist",
             clinic_id=clinic_id,
         )
@@ -198,7 +198,7 @@ def test_password_reset_flow(client, db_session):
     suffix = uuid.uuid4().hex[:8]
     user = models.User(
         email=f"reset.{suffix}@test.com",
-        hashed_password=hash_password("OldPass1!"),
+        hashed_password=hash_password("OldPass12!!"),
         role="patient",
     )
     db_session.add(user)
@@ -212,8 +212,8 @@ def test_password_reset_flow(client, db_session):
     raw = create_reset_token(db_session, email=user.email)
     assert raw
 
-    r = client.post("/auth/reset-password", json={"token": raw, "new_password": "NewSecure1!"})
+    r = client.post("/auth/reset-password", json={"token": raw, "new_password": "NewSecure12!"})
     assert r.status_code == 200
 
     db_session.refresh(user)
-    assert verify_password("NewSecure1!", user.hashed_password)
+    assert verify_password("NewSecure12!", user.hashed_password)

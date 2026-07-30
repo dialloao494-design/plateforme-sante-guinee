@@ -219,6 +219,50 @@ class AppSettings:
                 "REMINDER_RESPOND_TOKEN must be a strong random value (32+ chars) when set on clinic-node"
             )
 
+        # PHI attachment encryption — required in production (no silent kill-switch)
+        if self.is_production:
+            enc_key = (os.getenv("ATTACHMENT_ENCRYPTION_KEY") or "").strip()
+            if enc_key:
+                try:
+                    from cryptography.fernet import Fernet
+
+                    Fernet(enc_key.encode("utf-8"))
+                except Exception:
+                    failures.append(
+                        "ATTACHMENT_ENCRYPTION_KEY must be a valid Fernet key when set"
+                    )
+            else:
+                # REQUIRE_ATTACHMENT_ENCRYPTION=false alone is insufficient —
+                # dual attestation required for emergency rollback only.
+                bypass = not _env_flag("REQUIRE_ATTACHMENT_ENCRYPTION", default=True)
+                attested = (
+                    os.getenv("EMERGENCY_SECURITY_BYPASS_ATTESTATION", "").strip()
+                    == "I_ACCEPT_PRODUCTION_PHI_RISK"
+                )
+                if not (bypass and attested):
+                    failures.append(
+                        "ATTACHMENT_ENCRYPTION_KEY must be set in production "
+                        "(to disable temporarily set REQUIRE_ATTACHMENT_ENCRYPTION=false "
+                        "AND EMERGENCY_SECURITY_BYPASS_ATTESTATION=I_ACCEPT_PRODUCTION_PHI_RISK)"
+                    )
+
+        # TLS to Postgres — reject sslmode=disable; require SSL on Railway production
+        try:
+            from core.deploy_hardening import assert_database_tls_policy
+
+            allow_insecure = _env_flag("ALLOW_INSECURE_DB_SSL", default=False) and (
+                os.getenv("EMERGENCY_SECURITY_BYPASS_ATTESTATION", "").strip()
+                == "I_ACCEPT_PRODUCTION_PHI_RISK"
+            )
+            assert_database_tls_policy(
+                os.getenv("DATABASE_URL") or "",
+                is_production=self.is_production,
+                railway_environment=os.getenv("RAILWAY_ENVIRONMENT"),
+                allow_insecure_db_ssl=allow_insecure,
+            )
+        except RuntimeError as exc:
+            failures.append(str(exc))
+
         if failures:
             raise RuntimeError("Insecure deployment secrets: " + "; ".join(failures))
 

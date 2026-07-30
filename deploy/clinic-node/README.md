@@ -1,4 +1,10 @@
-# Clinic Node — technician runbook (Phase 0)
+# Clinic Node (mini-PC appliance)
+
+> **Security Wave 4:** See [`docs/CLINIC_NODE_SECURITY_HARDENING_CHECKLIST.md`](../../docs/CLINIC_NODE_SECURITY_HARDENING_CHECKLIST.md)
+> and run `bash deploy/clinic-node/scripts/validate-clinic-node-security.sh`.
+> Bridge networking is the mini-PC default; host-network is lab-only.
+> Encrypt backups with `scripts/encrypt-backup.sh` before off-box copy.
+
 
 **Goal:** install the local clinic server in under 30 minutes with **no complex commands**.
 

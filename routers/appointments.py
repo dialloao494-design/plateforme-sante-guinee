@@ -30,7 +30,7 @@ def _assert_can_access_appointment(db: Session, appointment: models.RendezVous, 
 
     if role in ("clinic_admin", "admin"):
         cid = current_user.clinic_id
-        if cid is not None and appointment.clinic_id != cid:
+        if cid is None or appointment.clinic_id != cid:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
         return
 

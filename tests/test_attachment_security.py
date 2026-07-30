@@ -55,7 +55,7 @@ def _ensure_user(db_session, email: str, role: str):
     existing = db_session.query(User).filter(User.email == email).first()
     if existing:
         return existing
-    return register_public_user(db_session, email=email, password="Secret12", role=role).user
+    return register_public_user(db_session, email=email, password="Secret12Pass!", role=role).user
 
 
 def _auth_headers(user) -> dict[str, str]:

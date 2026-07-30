@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Verify auth survives refresh and hard refresh in production."""
-
 from __future__ import annotations
+import os
+
 
 import json
 import sys
@@ -12,10 +13,10 @@ from playwright.sync_api import sync_playwright
 FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 
 ROLES = [
-    ("reception", "baldoumar14@gmail.com", "AasmaRecep1!", "/clinical/reception"),
-    ("lab", "mamadoudianbarry06@gmail.com", "AasmaLab1!", "/clinical/lab"),
-    ("pharmacy", "ben752231@gmail.com", "AasmaPharm1!", "/clinical/pharmacy"),
-    ("admin", "contactpolycliniqueaasma@gmail.com", "AasmaAdmin1!", "/clinical/admin"),
+    ("reception", "baldoumar14@gmail.com", os.environ["AASMA_RECEPTION_PASSWORD"], "/clinical/reception"),
+    ("lab", "mamadoudianbarry06@gmail.com", os.environ["AASMA_LAB_PASSWORD"], "/clinical/lab"),
+    ("pharmacy", "ben752231@gmail.com", os.environ["AASMA_PHARMACY_PASSWORD"], "/clinical/pharmacy"),
+    ("admin", "contactpolycliniqueaasma@gmail.com", os.environ["AASMA_ADMIN_PASSWORD"], "/clinical/admin"),
 ]
 
 

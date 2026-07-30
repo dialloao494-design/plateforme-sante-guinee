@@ -1,0 +1,261 @@
+..............F                                                          [100%]
+=================================== FAILURES ===================================
+E   assert 403 == 200
+     +  where 403 = <Response [403 Forbidden]>.status_code
+---------------------------- Captured stderr setup -----------------------------
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_baseline, Baseline stamp for existing deployments (schema via SQLAlchemy models).
+INFO  [alembic.runtime.migration] Running upgrade 0001_baseline -> 0002_doctor_geo, Add doctor latitude/longitude columns if missing.
+/workspace/tests/test_end_to_end_clinic.py:196: assert 403 == 200
+=============================== warnings summary ===============================
+../home/ubuntu/.local/lib/python3.12/site-packages/pydantic/_internal/_config.py:272: 46 warnings
+  /home/ubuntu/.local/lib/python3.12/site-packages/pydantic/_internal/_config.py:272: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.6/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+../home/ubuntu/.local/lib/python3.12/site-packages/pydantic/_internal/_config.py:322
+  /home/ubuntu/.local/lib/python3.12/site-packages/pydantic/_internal/_config.py:322: UserWarning: Valid config keys have changed in V2:
+  * 'orm_mode' has been renamed to 'from_attributes'
+    warnings.warn(message, UserWarning)
+
+schemas/availability.py:11
+  /workspace/schemas/availability.py:11: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.6/migration/
+    @validator("day_of_week")
+
+schemas/availability.py:17
+  /workspace/schemas/availability.py:17: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.6/migration/
+    @validator("end_time")
+
+../home/ubuntu/.local/lib/python3.12/site-packages/passlib/utils/__init__.py:854
+  /home/ubuntu/.local/lib/python3.12/site-packages/passlib/utils/__init__.py:854: DeprecationWarning: 'crypt' is deprecated and slated for removal in Python 3.13
+    from crypt import crypt as _crypt
+
+main.py:450
+  /workspace/main.py:450: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+../home/ubuntu/.local/lib/python3.12/site-packages/fastapi/applications.py:4495
+../home/ubuntu/.local/lib/python3.12/site-packages/fastapi/applications.py:4495
+  /home/ubuntu/.local/lib/python3.12/site-packages/fastapi/applications.py:4495: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+main.py:628
+  /workspace/main.py:628: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+tests/test_clinical_workflow.py: 6 warnings
+tests/test_clinical_phase2.py: 4 warnings
+tests/test_visit_workflow_auth.py: 2 warnings
+tests/test_unified_billing.py: 1 warning
+tests/test_pharmacy_inventory.py: 1 warning
+tests/test_end_to_end_clinic.py: 1 warning
+  /home/ubuntu/.local/lib/python3.12/site-packages/httpx/_client.py:690: DeprecationWarning: The 'app' shortcut is now deprecated. Use the explicit style 'transport=WSGITransport(app=...)' instead.
+    warnings.warn(message, DeprecationWarning)
+
+tests/test_clinical_workflow.py: 29 warnings
+tests/test_clinical_phase2.py: 16 warnings
+tests/test_visit_workflow_auth.py: 9 warnings
+tests/test_unified_billing.py: 6 warnings
+tests/test_pharmacy_inventory.py: 3 warnings
+tests/test_end_to_end_clinic.py: 23 warnings
+  /workspace/security.py:74: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_clinical_workflow.py: 39 warnings
+tests/test_clinical_phase2.py: 16 warnings
+tests/test_visit_workflow_auth.py: 7 warnings
+tests/test_unified_billing.py: 6 warnings
+tests/test_pharmacy_inventory.py: 3 warnings
+tests/test_end_to_end_clinic.py: 23 warnings
+  /home/ubuntu/.local/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+tests/test_clinical_workflow.py: 39 warnings
+tests/test_clinical_phase2.py: 16 warnings
+tests/test_visit_workflow_auth.py: 7 warnings
+tests/test_unified_billing.py: 6 warnings
+tests/test_pharmacy_inventory.py: 3 warnings
+tests/test_end_to_end_clinic.py: 23 warnings
+  /workspace/services/auth_session_service.py:190: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    AccessTokenDenylist.expires_at > datetime.utcnow(),
+
+tests/test_clinical_workflow.py: 111 warnings
+tests/test_clinical_phase2.py: 23 warnings
+tests/test_visit_workflow_auth.py: 16 warnings
+tests/test_unified_billing.py: 29 warnings
+tests/test_pharmacy_inventory.py: 10 warnings
+tests/test_end_to_end_clinic.py: 92 warnings
+  /home/ubuntu/.local/lib/python3.12/site-packages/sqlalchemy/sql/schema.py:3592: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+
+tests/test_clinical_workflow.py::test_full_clinical_workflow
+  /workspace/tests/test_clinical_workflow.py:76: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    day_of_week=datetime.utcnow().weekday(),
+
+tests/test_clinical_workflow.py::test_full_clinical_workflow
+tests/test_clinical_workflow.py::test_full_clinical_workflow
+tests/test_clinical_workflow.py::test_resume_active_consultation
+tests/test_clinical_workflow.py::test_resume_active_consultation
+tests/test_unified_billing.py::test_unified_invoice_generate_and_pay
+tests/test_unified_billing.py::test_unified_invoice_generate_and_pay
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/reminder_service.py:34: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    if scheduled <= datetime.utcnow():
+
+tests/test_clinical_workflow.py::test_full_clinical_workflow
+tests/test_clinical_workflow.py::test_resume_active_consultation
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/clinical_workflow_service.py:266: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    rdv.updated_at = datetime.utcnow()
+
+tests/test_clinical_workflow.py::test_full_clinical_workflow
+tests/test_clinical_workflow.py::test_resume_active_consultation
+tests/test_clinical_workflow.py::test_doctor_dashboard_module
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/clinical_workflow_service.py:366: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    started_at=datetime.utcnow(),
+
+tests/test_clinical_workflow.py::test_full_clinical_workflow
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/clinical_workflow_service.py:1100: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    order.updated_at = datetime.utcnow()
+
+tests/test_clinical_workflow.py::test_full_clinical_workflow
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/clinical_workflow_service.py:1133: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    result.validated_at = datetime.utcnow()
+
+tests/test_clinical_workflow.py::test_full_clinical_workflow
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/clinical_workflow_service.py:1330: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    order.dispensed_at = datetime.utcnow()
+
+tests/test_clinical_workflow.py::test_full_clinical_workflow
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/clinical_workflow_service.py:1341: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    order.updated_at = datetime.utcnow()
+
+tests/test_clinical_workflow.py::test_admin_create_doctor_profile
+tests/test_clinical_workflow.py::test_lab_staff_login_after_admin_create
+  /workspace/services/user_provisioning.py:180: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    email_verified_at=datetime.utcnow() if auto_verify else None,
+
+tests/test_clinical_workflow.py::test_admin_create_doctor_profile
+tests/test_clinical_workflow.py::test_lab_staff_login_after_admin_create
+tests/test_visit_workflow_auth.py::test_register_returns_token_and_login_works
+  /workspace/services/auth_session_service.py:238: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    user.last_login_at = datetime.utcnow()
+
+tests/test_clinical_workflow.py::test_admin_create_doctor_profile
+tests/test_clinical_workflow.py::test_lab_staff_login_after_admin_create
+tests/test_visit_workflow_auth.py::test_register_returns_token_and_login_works
+tests/test_visit_workflow_auth.py::test_register_returns_token_and_login_works
+  /workspace/services/auth_session_service.py:49: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    expires_at=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+
+tests/test_clinical_workflow.py::test_doctor_dashboard_module
+  /workspace/services/clinical_workflow_service.py:636: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    date=datetime.utcnow(),
+
+tests/test_clinical_workflow.py::test_doctor_dashboard_module
+tests/test_clinical_workflow.py::test_doctor_dashboard_module
+  /workspace/services/clinical_workflow_service.py:459: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    consultation.updated_at = datetime.utcnow()
+
+tests/test_clinical_workflow.py::test_doctor_dashboard_module
+  /home/ubuntu/.local/lib/python3.12/site-packages/reportlab/lib/rl_safe_eval.py:12: DeprecationWarning: ast.NameConstant is deprecated and will be removed in Python 3.14; use ast.Constant instead
+    haveNameConstant = hasattr(ast,'NameConstant')
+
+tests/test_clinical_workflow.py::test_doctor_dashboard_module
+  /workspace/services/clinical_workflow_service.py:448: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    consultation.completed_at = datetime.utcnow()
+
+tests/test_clinical_phase2.py::test_nutrition_register_json_serializable
+  /workspace/services/nutrition_service.py:77: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    recorded_at=datetime.utcnow(),
+
+tests/test_visit_workflow_auth.py::test_register_returns_token_and_login_works
+  /workspace/services/email_verification_service.py:36: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    expires = datetime.utcnow() + timedelta(hours=VERIFY_TOKEN_HOURS)
+
+tests/test_visit_workflow_auth.py::test_register_returns_token_and_login_works
+  /workspace/services/email_verification_service.py:41: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ).update({"used_at": datetime.utcnow()})
+
+tests/test_visit_workflow_auth.py::test_child_visit_workflow_advances
+  /workspace/services/visit_workflow_service.py:89: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_visit_workflow_auth.py::test_child_visit_workflow_advances
+tests/test_visit_workflow_auth.py::test_child_visit_workflow_advances
+  /workspace/services/visit_workflow_service.py:218: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_unified_billing.py::test_unified_invoice_generate_and_pay
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/unified_billing_service.py:38: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    year = datetime.utcnow().year
+
+tests/test_unified_billing.py::test_unified_invoice_generate_and_pay
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/unified_billing_service.py:206: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    issued_at=datetime.utcnow(),
+
+tests/test_unified_billing.py::test_unified_invoice_generate_and_pay
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/unified_billing_service.py:278: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    invoice.paid_at = datetime.utcnow()
+
+tests/test_unified_billing.py::test_unified_invoice_generate_and_pay
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/unified_billing_service.py:286: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    charge.paid_at = datetime.utcnow()
+
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/imaging_service.py:134: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    reported_at=datetime.utcnow(),
+
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/imaging_service.py:170: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    result.validated_at = datetime.utcnow()
+
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/discharge_service.py:149: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    discharged_at=datetime.utcnow(),
+
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/discharge_service.py:155: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    consultation.completed_at = datetime.utcnow()
+
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/visit_service.py:68: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    visit.discharged_at = datetime.utcnow()
+
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/visit_service.py:69: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    visit.closed_at = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_end_to_end_clinic.py::test_full_clinic_workflow - assert 40...
+1 failed, 14 passed, 685 warnings in 1.89s
+

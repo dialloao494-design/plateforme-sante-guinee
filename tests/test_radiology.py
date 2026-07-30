@@ -30,13 +30,13 @@ def _clinical_setup(client, db_session, admin_user):
     with provisioning_channel("test_fixture"):
         reception = models.User(
             email=f"rad.reception.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="receptionist",
             clinic_id=clinic_id,
         )
         radtech = models.User(
             email=f"rad.tech.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="lab_technician",
             clinic_id=clinic_id,
         )
@@ -44,7 +44,7 @@ def _clinical_setup(client, db_session, admin_user):
         db_session.flush()
         doc_user = models.User(
             email=f"rad.doctor.{suffix}@test.com",
-            hashed_password=hash_password("DoctorPass1"),
+            hashed_password=hash_password("DoctorPass12!"),
             role="doctor",
             clinic_id=clinic_id,
         )

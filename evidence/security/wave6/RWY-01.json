@@ -1,0 +1,13 @@
+{
+  "id": "RWY-01",
+  "timestamp": "2026-07-30T03:58:47.140678+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "PARTIAL",
+  "severity": "Critical",
+  "notes": "Config review only in lab; private networking must be verified in Railway dashboard",
+  "evidence": {
+    "railway_toml_present": true,
+    "has_ssl_hints": false
+  }
+}

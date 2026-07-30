@@ -22,6 +22,27 @@ def upgrade() -> None:
             "users",
             sa.Column("session_version", sa.Integer(), nullable=False, server_default="0"),
         )
+        inspector = sa.inspect(bind)
+        columns = {column["name"] for column in inspector.get_columns("users")}
+
+    # Demote duplicate platform_owner rows before unique index (keep lowest id).
+    # Racing /platform/setup history otherwise breaks production migrations → 502.
+    op.execute(
+        sa.text(
+            """
+            UPDATE users
+            SET role = 'patient',
+                is_active = false
+            WHERE role = 'platform_owner'
+              AND id NOT IN (
+                SELECT id FROM (
+                  SELECT MIN(id) AS id FROM users WHERE role = 'platform_owner'
+                ) keeper
+              )
+            """
+        )
+    )
+
     existing = {index["name"] for index in inspector.get_indexes("users")}
     if INDEX_NAME in existing:
         return

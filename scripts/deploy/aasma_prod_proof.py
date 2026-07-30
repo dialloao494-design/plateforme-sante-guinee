@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Production proof: API checks + Playwright screenshots for AASMA dashboards."""
 from __future__ import annotations
+import os
 
 import json
 import sys
@@ -14,9 +15,9 @@ FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 BASE = "https://web-production-ad6a36.up.railway.app"
 
 ACCOUNTS = {
-    "reception": ("baldoumar14@gmail.com", "AasmaRecep1!", "/clinical/reception", "01-reception-dashboard.png"),
-    "lab": ("mamadoudianbarry06@gmail.com", "AasmaLab1!", "/clinical/lab", "02-lab-dashboard.png"),
-    "pharmacy": ("ben752231@gmail.com", "AasmaPharm1!", "/clinical/pharmacy", "06-pharmacy-stock.png"),
+    "reception": ("baldoumar14@gmail.com", os.environ["AASMA_RECEPTION_PASSWORD"], "/clinical/reception", "01-reception-dashboard.png"),
+    "lab": ("mamadoudianbarry06@gmail.com", os.environ["AASMA_LAB_PASSWORD"], "/clinical/lab", "02-lab-dashboard.png"),
+    "pharmacy": ("ben752231@gmail.com", os.environ["AASMA_PHARMACY_PASSWORD"], "/clinical/pharmacy", "06-pharmacy-stock.png"),
 }
 
 

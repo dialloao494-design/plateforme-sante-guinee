@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Production verification for pharmacy module corrections."""
+import os
 import json
 import re
 import sys
@@ -13,7 +14,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 BACKEND = "https://web-production-ad6a36.up.railway.app"
 EMAIL = "ben752231@gmail.com"
-PASSWORD = "AasmaPharm1!"
+PASSWORD = os.environ["AASMA_PHARMACY_PASSWORD"]
 OUT = Path(__file__).resolve().parents[2] / "docs/ui_e2e_screenshots/pharmacy-dashboard-proof"
 OUT.mkdir(parents=True, exist_ok=True)
 

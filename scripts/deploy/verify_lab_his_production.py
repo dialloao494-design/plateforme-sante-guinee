@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Production verification for Laboratory HIS dashboard."""
-
 from __future__ import annotations
+import os
+
 
 import json
 import sys
@@ -13,7 +14,7 @@ from playwright.sync_api import sync_playwright
 FRONTEND = "https://plateforme-sante-guinee.vercel.app"
 BACKEND = "https://web-production-ad6a36.up.railway.app"
 EMAIL = "mamadoudianbarry06@gmail.com"
-PASSWORD = "AasmaLab1!"
+PASSWORD = os.environ["AASMA_LAB_PASSWORD"]
 OUT = Path(__file__).resolve().parents[2] / "docs" / "LAB_HIS_PRODUCTION_PROOF.json"
 
 

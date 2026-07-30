@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Capture 6 production screenshots after real UI login."""
 from __future__ import annotations
+import os
 
 import sys
 from pathlib import Path
@@ -13,9 +14,9 @@ OUT = Path(__file__).resolve().parents[2] / "docs/ui_e2e_screenshots/aasma-prod-
 OUT.mkdir(parents=True, exist_ok=True)
 
 ACCOUNTS = {
-    "01-reception-dashboard.png": ("baldoumar14@gmail.com", "AasmaRecep1!", "/clinical/reception"),
-    "02-lab-dashboard.png": ("mamadoudianbarry06@gmail.com", "AasmaLab1!", "/clinical/lab"),
-    "06-pharmacy-stock.png": ("ben752231@gmail.com", "AasmaPharm1!", "/clinical/pharmacy"),
+    "01-reception-dashboard.png": ("baldoumar14@gmail.com", os.environ["AASMA_RECEPTION_PASSWORD"], "/clinical/reception"),
+    "02-lab-dashboard.png": ("mamadoudianbarry06@gmail.com", os.environ["AASMA_LAB_PASSWORD"], "/clinical/lab"),
+    "06-pharmacy-stock.png": ("ben752231@gmail.com", os.environ["AASMA_PHARMACY_PASSWORD"], "/clinical/pharmacy"),
 }
 
 
@@ -59,7 +60,7 @@ def main() -> int:
             page.close()
 
         page = browser.new_page(viewport={"width": 1440, "height": 900})
-        ui_login(page, "mamadoudianbarry06@gmail.com", "AasmaLab1!")
+        ui_login(page, "mamadoudianbarry06@gmail.com", os.environ["AASMA_LAB_PASSWORD"])
         page.goto(f"{FRONTEND}/clinical/lab", wait_until="networkidle", timeout=120000)
         page.wait_for_timeout(4000)
         assert_no_permission_banner(page)

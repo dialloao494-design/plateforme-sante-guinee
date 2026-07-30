@@ -1,0 +1,497 @@
+Run started:2026-07-29 20:57:42.430734+00:00
+
+Test results:
+>> Issue: [B404:blacklist] Consider possible security implications associated with the subprocess module.
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_imports.html#b404-import-subprocess
+   Location: core/attachment_malware.py:14:0
+13	import shutil
+14	import subprocess
+15	from typing import Optional
+
+--------------------------------------------------
+>> Issue: [B603:subprocess_without_shell_equals_true] subprocess call - check for execution of untrusted input.
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b603_subprocess_without_shell_equals_true.html
+   Location: core/attachment_malware.py:91:15
+90	        path.write_bytes(content)
+91	        proc = subprocess.run(
+92	            [clamscan, "--no-summary", "--stdout", str(path)],
+93	            capture_output=True,
+94	            text=True,
+95	            timeout=60,
+96	            check=False,
+97	        )
+98	        # clamscan: 0 clean, 1 found, 2 error
+
+--------------------------------------------------
+>> Issue: [B406:blacklist] Using escape to parse untrusted XML data is known to be vulnerable to XML attacks. Replace escape with the equivalent defusedxml package, or make sure defusedxml.defuse_stdlib() is called.
+   Severity: Low   Confidence: High
+   CWE: CWE-20 (https://cwe.mitre.org/data/definitions/20.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_imports.html#b406-import-xml-sax
+   Location: core/output_encoding.py:7:0
+6	import re
+7	from xml.sax.saxutils import escape as xml_escape
+8	
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'demo_plateforme_sante_guinee_stub_v1'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
+   Location: core/payment_policy.py:35:26
+34	
+35	DEMO_STAGING_STUB_TOKEN = "demo_plateforme_sante_guinee_stub_v1"
+36	
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'bearer'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
+   Location: routers/auth.py:221:8
+220	        "refresh_token": refresh_raw,
+221	        "token_type": "bearer",
+222	        "user_id": user.id,
+223	        "user_role": canonical_role,
+224	        "role": canonical_role,
+225	        "email": user.email,
+226	        "must_change_password": bool(getattr(user, "must_change_password", False)),
+227	        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+228	    }
+229	
+230	
+231	@router.post("/login", response_model=Token)
+232	@limiter.limit(login_rate_limit())
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'bearer'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
+   Location: routers/auth.py:308:8
+307	        "refresh_token": new_refresh,
+308	        "token_type": "bearer",
+309	        "user_id": user.id,
+310	        "user_role": canonical_role,
+311	        "role": canonical_role,
+312	        "email": user.email,
+313	        "must_change_password": bool(getattr(user, "must_change_password", False)),
+314	        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+315	    }
+316	
+317	
+318	@router.post("/logout")
+319	def logout(
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: routers/auth.py:468:8
+467	            )
+468	        except Exception:
+469	            pass
+470	
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'bearer'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
+   Location: routers/auth.py:478:8
+477	        "refresh_token": fresh["refresh_token"],
+478	        "token_type": "bearer",
+479	        "expires_in": fresh["expires_in"],
+480	        "must_change_password": False,
+481	    }
+482	
+483	
+484	@router.post("/forgot-password")
+485	@limiter.limit(forgot_password_rate_limit())
+486	def forgot_password(
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'False'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
+   Location: routers/auth.py:480:8
+479	        "expires_in": fresh["expires_in"],
+480	        "must_change_password": False,
+481	    }
+482	
+483	
+484	@router.post("/forgot-password")
+485	@limiter.limit(forgot_password_rate_limit())
+486	def forgot_password(
+487	    request: Request,
+488	    body: ForgotPasswordRequest,
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: services/auth_session_service.py:299:4
+298	            ip = request.client.host
+299	    except Exception:
+300	        pass
+301	    return ua, ip
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'AdminPilot1!'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
+   Location: services/clinic_pilot_seed.py:30:35
+29	PILOT_STAFF: list[dict[str, str]] = [
+30	    {"email": "admin@pilot.local", "password": "AdminPilot1!", "role": "admin"},
+31	    {"email": "reception@pilot.local", "password": "ReceptionPilot1!", "role": "receptionist"},
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'ReceptionPilot1!'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
+   Location: services/clinic_pilot_seed.py:31:39
+30	    {"email": "admin@pilot.local", "password": "AdminPilot1!", "role": "admin"},
+31	    {"email": "reception@pilot.local", "password": "ReceptionPilot1!", "role": "receptionist"},
+32	    {"email": "cashier@pilot.local", "password": "CashierPilot1!", "role": "cashier"},
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'CashierPilot1!'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
+   Location: services/clinic_pilot_seed.py:32:37
+31	    {"email": "reception@pilot.local", "password": "ReceptionPilot1!", "role": "receptionist"},
+32	    {"email": "cashier@pilot.local", "password": "CashierPilot1!", "role": "cashier"},
+33	    {"email": "dr.pilot@pilot.local", "password": "DoctorPilot1!", "role": "doctor"},
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'DoctorPilot1!'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
+   Location: services/clinic_pilot_seed.py:33:38
+32	    {"email": "cashier@pilot.local", "password": "CashierPilot1!", "role": "cashier"},
+33	    {"email": "dr.pilot@pilot.local", "password": "DoctorPilot1!", "role": "doctor"},
+34	    {"email": "lab@pilot.local", "password": "LabPilot1!", "role": "lab_technician"},
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'LabPilot1!'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
+   Location: services/clinic_pilot_seed.py:34:33
+33	    {"email": "dr.pilot@pilot.local", "password": "DoctorPilot1!", "role": "doctor"},
+34	    {"email": "lab@pilot.local", "password": "LabPilot1!", "role": "lab_technician"},
+35	    {"email": "pharmacy@pilot.local", "password": "PharmacyPilot1!", "role": "pharmacist"},
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'PharmacyPilot1!'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
+   Location: services/clinic_pilot_seed.py:35:38
+34	    {"email": "lab@pilot.local", "password": "LabPilot1!", "role": "lab_technician"},
+35	    {"email": "pharmacy@pilot.local", "password": "PharmacyPilot1!", "role": "pharmacist"},
+36	]
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'Patient123!'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
+   Location: services/demo_clinic_seed.py:21:24
+20	
+21	DEMO_PATIENT_PASSWORD = "Patient123!"
+22	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html
+   Location: services/hospitalization_service.py:131:8
+130	
+131	        assert payload.patient_id is not None
+132	        assert_patient_in_clinic(db, patient_id=payload.patient_id, clinic_id=clinic_id)
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: services/lab_clinical_service.py:636:24
+635	                            technician = validation.get("technician")
+636	                        except Exception:
+637	                            pass
+638	            if not row:
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'SimPatient1!'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
+   Location: services/medical_history_seed.py:24:22
+23	SEED_MARKER = "sim_history_"
+24	SIM_PORTAL_PASSWORD = "SimPatient1!"
+25	SIM_PORTAL_EMAIL_DOMAIN = "pilot.local"
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:157:16
+156	            last_name=last_name,
+157	            age=random.randint(18, 75),
+158	            gender=random.choice(["M", "F", "other"]),
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:158:19
+157	            age=random.randint(18, 75),
+158	            gender=random.choice(["M", "F", "other"]),
+159	            phone=f"+224620{i + 1:06d}",
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:165:11
+164	
+165	        if random.random() < 0.4:
+166	            db.add(
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:169:29
+168	                    patient_id=patient.id,
+169	                    allergen=random.choice(ALLERGENS),
+170	                    severity=random.choice(["mild", "moderate", "severe"]),
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:170:29
+169	                    allergen=random.choice(ALLERGENS),
+170	                    severity=random.choice(["mild", "moderate", "severe"]),
+171	                    reaction="Urticaire",
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:174:11
+173	            )
+174	        if random.random() < 0.35:
+175	            db.add(
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:178:35
+177	                    patient_id=patient.id,
+178	                    condition_name=random.choice(CONDITIONS),
+179	                    diagnosed_at=base_date + timedelta(days=random.randint(0, 365)),
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:179:60
+178	                    condition_name=random.choice(CONDITIONS),
+179	                    diagnosed_at=base_date + timedelta(days=random.randint(0, 365)),
+180	                    status="active",
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:184:22
+183	
+184	        visit_count = random.randint(2, 5)
+185	        visit_day = 0
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:187:25
+186	        for v in range(visit_count):
+187	            visit_day += random.randint(30, 120)
+188	            visit_date = datetime.combine(
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:191:42
+190	            )
+191	            diagnosis, rx_med, lab_test = random.choice(DIAGNOSES)
+192	
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:227:32
+226	                    consultation_id=consultation.id,
+227	                    bp_systolic=random.randint(110, 145),
+228	                    bp_diastolic=random.randint(70, 95),
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:228:33
+227	                    bp_systolic=random.randint(110, 145),
+228	                    bp_diastolic=random.randint(70, 95),
+229	                    heart_rate=random.randint(60, 100),
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:229:31
+228	                    bp_diastolic=random.randint(70, 95),
+229	                    heart_rate=random.randint(60, 100),
+230	                    temperature_c=round(random.uniform(36.2, 37.8), 1),
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:230:40
+229	                    heart_rate=random.randint(60, 100),
+230	                    temperature_c=round(random.uniform(36.2, 37.8), 1),
+231	                    weight_kg=round(random.uniform(50, 90), 1),
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:231:36
+230	                    temperature_c=round(random.uniform(36.2, 37.8), 1),
+231	                    weight_kg=round(random.uniform(50, 90), 1),
+232	                    recorded_at=visit_date,
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:300:55
+299	            if v < visit_count - 1:
+300	                fu_date = (visit_date + timedelta(days=random.choice([7, 15, 30, 90]))).date()
+301	                db.add(
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: services/medical_history_seed.py:308:38
+307	                        scheduled_date=fu_date,
+308	                        interval_type=random.choice(["7d", "15d", "1m", "3m"]),
+309	                        visit_type="follow_up" if v > 0 else "consultation",
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: services/nurse_assessment_service.py:368:8
+367	                return [str(s) for s in data if s]
+368	        except Exception:
+369	            pass
+370	        return []
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'Doctor123!'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
+   Location: services/pilot_seed.py:31:24
+30	
+31	PILOT_DOCTOR_PASSWORD = "Doctor123!"
+32	PILOT_PATIENT_PASSWORD = "Patient123!"
+
+--------------------------------------------------
+>> Issue: [B105:hardcoded_password_string] Possible hardcoded password: 'Patient123!'
+   Severity: Low   Confidence: Medium
+   CWE: CWE-259 (https://cwe.mitre.org/data/definitions/259.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html
+   Location: services/pilot_seed.py:32:25
+31	PILOT_DOCTOR_PASSWORD = "Doctor123!"
+32	PILOT_PATIENT_PASSWORD = "Patient123!"
+33	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: services/simple_pdf_builder.py:69:8
+68	            story.append(Spacer(1, 2 * mm))
+69	        except Exception:
+70	            pass
+71	    story.append(Paragraph(_esc(CLINIC_PRINT_NAME), styles["clinic"]))
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: services/user_provisioning.py:466:8
+465	            db.execute(text("BEGIN IMMEDIATE"))
+466	        except Exception:
+467	            pass
+468	
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 24825
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 43
+		Medium: 0
+		High: 0
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 15
+		High: 28
+Files skipped (0):

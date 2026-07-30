@@ -56,6 +56,8 @@ CLINIC_OPS_ROLES = (
     "pharmacist",
     "nutritionist",
     "midwife",
+    "nurse",
+    "pev_agent",
 )
 
 __all__ = [
@@ -87,7 +89,7 @@ def assert_role(user: User, allowed: tuple[str, ...]) -> None:
     if not user_has_any_role(user.role, allowed):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Requires one of roles: {list(allowed)}",
+            detail="Permission denied",
         )
 
 

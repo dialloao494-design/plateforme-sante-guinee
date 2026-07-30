@@ -1,0 +1,18 @@
+{
+  "id": "SSRF-01",
+  "timestamp": "2026-07-30T03:58:47.091162+00:00",
+  "operator": "wave6-automated-harness",
+  "environment": "lab-sqlite-testclient",
+  "result": "PARTIAL",
+  "severity": "High",
+  "notes": "No public webhook fetch endpoint found on main surface; residual risk on reminder/teleconsult URL fields",
+  "evidence": {
+    "probe_urls": [
+      "http://169.254.169.254/latest/meta-data/",
+      "http://127.0.0.1:5432/"
+    ],
+    "url_env_keys": [
+      "FRONTEND_URL"
+    ]
+  }
+}

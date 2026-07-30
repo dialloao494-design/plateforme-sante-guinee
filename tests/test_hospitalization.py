@@ -31,7 +31,7 @@ def _setup_clinic(client, db, admin_user):
     with provisioning_channel("test_fixture"):
         reception = models.User(
             email=f"hosp.reception.{suffix}@test.com",
-            hashed_password=hash_password("StaffPass1"),
+            hashed_password=hash_password("StaffPass12!"),
             role="receptionist",
             clinic_id=clinic_id,
         )
@@ -39,7 +39,7 @@ def _setup_clinic(client, db, admin_user):
         db.flush()
         doc_user = models.User(
             email=f"hosp.doctor.{suffix}@test.com",
-            hashed_password=hash_password("DoctorPass1"),
+            hashed_password=hash_password("DoctorPass12!"),
             role="doctor",
             clinic_id=clinic_id,
         )

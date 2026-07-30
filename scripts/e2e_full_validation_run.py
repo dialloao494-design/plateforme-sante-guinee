@@ -58,8 +58,8 @@ def main() -> int:
 
     print("=== E2E TELECONSULTATION — VALIDATION COMPLETE ===\n")
 
-    pat = login("test.patient@example.com", "Patient123!")
-    doc = login("dr.mamady@example.com", "Doctor123!")
+    pat = login("test.patient@example.com", os.environ.get("PILOT_PATIENT_PASSWORD", ""))
+    doc = login("dr.mamady@example.com", os.environ.get("PILOT_DOCTOR_PASSWORD", ""))
     check("Login patient + médecin", True)
 
     aid: int | None = None

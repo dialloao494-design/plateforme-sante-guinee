@@ -57,5 +57,5 @@ ssh "${VpsUser}@${VpsHost}" $remoteScript
 
 Write-Host ""
 Write-Host "DEMO: http://${VpsIp}" -ForegroundColor Green
-Write-Host "Medecin: dr.mamady@example.com / Doctor123!"
-Write-Host "Patient: test.patient@example.com / Patient123!"
+Write-Host "Medecin: dr.mamady@example.com / [REDACTED]"
+Write-Host "Patient: test.patient@example.com / [REDACTED]"

@@ -1,0 +1,59 @@
+{
+  "generated_at": "2026-07-29T14:26:09.164340+00:00",
+  "verdict": "GO FOR PRODUCTION SECURITY DEPLOYMENT",
+  "go_blockers": [],
+  "domains": {
+    "Authentication": "CONDITIONAL",
+    "Authorization": "PASS",
+    "API": "PASS",
+    "Database": "PASS",
+    "Docker": "PASS",
+    "Railway": "CONDITIONAL",
+    "Vercel": "PASS",
+    "Offline Node": "PASS",
+    "Synchronization": "PASS",
+    "Backup": "PASS",
+    "Disaster Recovery": "PASS",
+    "Licensing": "PASS",
+    "Updates": "PASS",
+    "Encryption": "PASS",
+    "Logging": "CONDITIONAL",
+    "Monitoring": "PASS"
+  },
+  "domain_fail_count": 0,
+  "pentest": {
+    "exit_code": 0,
+    "critical_exploited": [],
+    "high_exploited": [],
+    "results": {
+      "EXPLOITED": 0,
+      "PARTIAL": 7,
+      "BLOCKED": 28,
+      "N/A_LAB": 2,
+      "N/A_TABLETOP": 1
+    },
+    "attack_count": 38
+  },
+  "suites": [
+    {
+      "label": "SECURITY_SUITE",
+      "exit_code": 0,
+      "summary": "132 passed, 777 warnings in 2.55s",
+      "artifact": "evidence/security/wave7/WAVE7_SECURITY_SUITE.txt"
+    },
+    {
+      "label": "INTEGRATION_E2E",
+      "exit_code": 1,
+      "summary": "1 failed, 14 passed, 685 warnings in 1.89s",
+      "artifact": "evidence/security/wave7/WAVE7_INTEGRATION_E2E.txt"
+    },
+    {
+      "label": "FULL_UNIT_INTEGRATION",
+      "exit_code": 1,
+      "summary": "3 failed, 258 passed, 3904 warnings in 9.20s",
+      "artifact": "evidence/security/wave7/WAVE7_FULL_UNIT_INTEGRATION.txt"
+    }
+  ],
+  "residual_acceptance_count": 7,
+  "full_suite_note": "3 failed, 258 passed, 3904 warnings in 9.20s"
+}
