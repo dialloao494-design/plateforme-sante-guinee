@@ -1437,6 +1437,9 @@ def ensure_reception_his_schema(engine: Engine) -> None:
                 service_category VARCHAR(32) NOT NULL,
                 service_name VARCHAR(255) NOT NULL,
                 department VARCHAR(128),
+                catalog_code VARCHAR(64),
+                charge_type VARCHAR(64),
+                unit_price_gnf INTEGER,
                 status VARCHAR(32) NOT NULL DEFAULT 'pending',
                 notes TEXT,
                 created_by_user_id INTEGER REFERENCES users(id),
@@ -1451,6 +1454,23 @@ def ensure_reception_his_schema(engine: Engine) -> None:
             logger.info("Created clinic_service_requests table")
         except Exception as exc:
             logger.warning("clinic_service_requests migration failed: %s", exc)
+
+    if "clinic_service_requests" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("clinic_service_requests")}
+        for col, col_type in (
+            ("catalog_code", "VARCHAR(64)"),
+            ("charge_type", "VARCHAR(64)"),
+            ("unit_price_gnf", "INTEGER"),
+        ):
+            if col not in cols:
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(
+                            text(f"ALTER TABLE clinic_service_requests ADD COLUMN {col} {col_type}")
+                        )
+                    logger.info("Added clinic_service_requests.%s", col)
+                except Exception as exc:
+                    logger.warning("clinic_service_requests.%s migration skipped: %s", col, exc)
 
     if "admissions" in insp.get_table_names():
         cols = {c["name"] for c in insp.get_columns("admissions")}

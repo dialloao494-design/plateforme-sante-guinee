@@ -1102,6 +1102,9 @@ class ReceptionHisService:
             "service_category": row.service_category,
             "service_name": row.service_name,
             "department": row.department,
+            "catalog_code": getattr(row, "catalog_code", None),
+            "charge_type": getattr(row, "charge_type", None),
+            "unit_price_gnf": getattr(row, "unit_price_gnf", None),
             "status": row.status,
             "notes": row.notes,
             "created_at": row.created_at,
@@ -1155,6 +1158,9 @@ class ReceptionHisService:
             service_category=payload.service_category,
             service_name=payload.service_name.strip(),
             department=(payload.department or "").strip() or None,
+            catalog_code=(payload.catalog_code or "").strip() or None,
+            charge_type=(payload.charge_type or "").strip() or None,
+            unit_price_gnf=payload.unit_price_gnf,
             status=payload.status,
             notes=(payload.notes or "").strip() or None,
             created_by_user_id=actor.id,
@@ -1165,6 +1171,39 @@ class ReceptionHisService:
         row.request_number = ReceptionHisService._service_request_number(clinic_id, row.id)
         db.commit()
         db.refresh(row)
+        return row
+
+    @staticmethod
+    def get_service_request_by_number(
+        db: Session,
+        *,
+        clinic_id: int,
+        request_number: str,
+    ) -> models.ClinicServiceRequest:
+        number = (request_number or "").strip().upper()
+        if not number:
+            raise HTTPException(status_code=400, detail="N° de demande requis")
+        row = (
+            db.query(models.ClinicServiceRequest)
+            .options(joinedload(models.ClinicServiceRequest.patient))
+            .filter(
+                models.ClinicServiceRequest.clinic_id == clinic_id,
+                models.ClinicServiceRequest.request_number == number,
+            )
+            .first()
+        )
+        if not row and number.isdigit():
+            row = (
+                db.query(models.ClinicServiceRequest)
+                .options(joinedload(models.ClinicServiceRequest.patient))
+                .filter(
+                    models.ClinicServiceRequest.clinic_id == clinic_id,
+                    models.ClinicServiceRequest.id == int(number),
+                )
+                .first()
+            )
+        if not row:
+            raise HTTPException(status_code=404, detail="Demande de service introuvable")
         return row
 
     @staticmethod

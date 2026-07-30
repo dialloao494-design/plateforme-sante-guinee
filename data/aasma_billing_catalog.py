@@ -138,6 +138,20 @@ SERVICE_PRESTATIONS = [
     {"code": "medical_transport_ambulance", "label": "Transport médical / Ambulance", "price_gnf": 0},
 ]
 
+# Surgical acts available in reception service requests / billing
+SURGICAL_ACTS = [
+    {"code": "suture_simple", "label": "Suture simple", "price_gnf": 150_000},
+    {"code": "suture_complex", "label": "Suture complexe", "price_gnf": 300_000},
+    {"code": "abscess_drainage", "label": "Drainage d'abcès", "price_gnf": 200_000},
+    {"code": "circumcision", "label": "Circoncision", "price_gnf": 250_000},
+    {"code": "hernia_repair", "label": "Cure de hernie", "price_gnf": 800_000},
+    {"code": "appendectomy", "label": "Appendicectomie", "price_gnf": 1_200_000},
+    {"code": "cesarean", "label": "Césarienne", "price_gnf": 1_500_000},
+    {"code": "wound_debridement", "label": "Parage / débridement", "price_gnf": 250_000},
+    {"code": "minor_surgery", "label": "Petite chirurgie", "price_gnf": 350_000},
+    {"code": "exploration_laparo", "label": "Exploration chirurgicale", "price_gnf": 1_000_000},
+]
+
 BILLING_DEPARTMENTS = [
     "Consultation urgences",
     "Consultation spécialisée",
@@ -148,4 +162,5 @@ BILLING_DEPARTMENTS = [
     "Imagerie médicale",
     "Urgences",
     "Soins infirmiers",
+    "Chirurgie",
 ]

@@ -17,9 +17,12 @@ class ClinicServiceRequest(Base):
     admission_id = Column(Integer, ForeignKey("admissions.id"), nullable=True, index=True)
     request_number = Column(String(32), nullable=False, unique=True, index=True)
     service_category = Column(String(32), nullable=False, index=True)
-    # laboratory | nursing | imaging | pharmacy | doctor | service | other
+    # laboratory | nursing | imaging | pharmacy | doctor | service | surgery | consultation | other
     service_name = Column(String(255), nullable=False)
     department = Column(String(128), nullable=True)
+    catalog_code = Column(String(64), nullable=True, index=True)
+    charge_type = Column(String(64), nullable=True)
+    unit_price_gnf = Column(Integer, nullable=True)
     status = Column(String(32), nullable=False, default="pending", index=True)
     # pending | approved | completed | cancelled
     notes = Column(Text, nullable=True)

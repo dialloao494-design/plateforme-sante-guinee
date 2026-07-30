@@ -165,6 +165,7 @@ const SERVICE_REQUEST_CATEGORIES = [
   { value: 'laboratory', label: 'Laboratoire' },
   { value: 'imaging', label: 'Imagerie' },
   { value: 'consultation', label: 'Consultation spécialisée' },
+  { value: 'surgery', label: 'Actes chirurgicaux' },
   { value: 'nursing', label: 'Soins infirmiers' },
   { value: 'pharmacy', label: 'Pharmacie' },
   { value: 'doctor', label: 'Médecin' },
@@ -179,9 +180,36 @@ const SERVICE_REQUEST_STATUSES = [
   { value: 'cancelled', label: 'Annulée' },
 ];
 
+const SERVICE_REQUEST_CHARGE_TYPES = {
+  laboratory: 'laboratory',
+  imaging: 'imaging',
+  consultation: 'consultation',
+  surgery: 'procedure',
+  nursing: 'procedure',
+  pharmacy: 'pharmacy',
+  doctor: 'consultation',
+  service: 'procedure',
+  other: 'other',
+};
+
+const SERVICE_REQUEST_DEPARTMENTS = {
+  laboratory: 'Laboratoire',
+  imaging: 'Imagerie médicale',
+  consultation: 'Consultation spécialisée',
+  surgery: 'Chirurgie',
+  nursing: 'Soins infirmiers',
+  pharmacy: 'Pharmacie',
+  doctor: 'Consultation spécialisée',
+  service: 'Soins infirmiers',
+  other: 'Urgences',
+};
+
 const EMPTY_SERVICE_REQUEST = {
   service_category: 'laboratory',
   service_name: '',
+  catalog_code: '',
+  charge_type: 'laboratory',
+  unit_price_gnf: 0,
   status: 'pending',
 };
 
@@ -383,6 +411,9 @@ export default function ReceptionDashboard() {
   const [serviceRequestForm, setServiceRequestForm] = useState(EMPTY_SERVICE_REQUEST);
   const [editingServiceRequestId, setEditingServiceRequestId] = useState(null);
   const [loadingServiceRequests, setLoadingServiceRequests] = useState(false);
+  const [lastCreatedServiceRequest, setLastCreatedServiceRequest] = useState(null);
+  const [billingServiceRequestId, setBillingServiceRequestId] = useState('');
+  const [loadingBillingServiceRequest, setLoadingBillingServiceRequest] = useState(false);
 
   const updateReg = (v) => setRegForm((p) => ({ ...p, ...v }));
   const updateAdmission = (v) => setAdmissionForm((p) => ({ ...p, ...v }));
@@ -631,6 +662,9 @@ export default function ReceptionDashboard() {
     setServiceRequestForm({
       service_category: row.service_category,
       service_name: row.service_name,
+      catalog_code: row.catalog_code || '',
+      charge_type: row.charge_type || SERVICE_REQUEST_CHARGE_TYPES[row.service_category] || 'other',
+      unit_price_gnf: Number(row.unit_price_gnf || 0),
       status: row.status,
     });
     setServiceRequestExamSearchQ(row.service_name || '');
@@ -646,17 +680,28 @@ export default function ReceptionDashboard() {
       const payload = {
         service_category: serviceRequestForm.service_category,
         service_name: serviceRequestForm.service_name.trim(),
+        department: SERVICE_REQUEST_DEPARTMENTS[serviceRequestForm.service_category] || null,
+        catalog_code: serviceRequestForm.catalog_code || null,
+        charge_type:
+          serviceRequestForm.charge_type
+          || SERVICE_REQUEST_CHARGE_TYPES[serviceRequestForm.service_category]
+          || 'other',
+        unit_price_gnf: Number(serviceRequestForm.unit_price_gnf || 0),
         status: serviceRequestForm.status,
       };
       if (editingServiceRequestId) {
         await clinicalApi.receptionHisUpdateServiceRequest(editingServiceRequestId, payload);
         setMessage('Demande de service mise à jour.');
+        setLastCreatedServiceRequest(null);
       } else {
-        await clinicalApi.receptionHisCreateServiceRequest({
+        const { data } = await clinicalApi.receptionHisCreateServiceRequest({
           patient_id: selectedPatient.id,
           ...payload,
         });
-        setMessage('Demande de service créée.');
+        setLastCreatedServiceRequest(data);
+        setMessage(
+          `Demande enregistrée (${data.request_number}). Collez ce N° en facturation pour l'ajouter au tableau Produits / Services.`
+        );
       }
       resetServiceRequestForm();
       await loadServiceRequests();
@@ -1270,14 +1315,64 @@ export default function ReceptionDashboard() {
 
   const removeBillingLine = (id) => setBillingLineItems((prev) => prev.filter((l) => l.id !== id));
 
-  const chooseServiceRequest = (category, name) => {
+  const chooseServiceRequest = (category, name, extras = {}) => {
     setServiceRequestForm((prev) => ({
       ...prev,
       service_category: category,
       service_name: name,
+      catalog_code: extras.catalog_code || '',
+      charge_type: extras.charge_type || SERVICE_REQUEST_CHARGE_TYPES[category] || 'other',
+      unit_price_gnf: Number(extras.unit_price_gnf ?? 0),
     }));
     setServiceRequestExamSearchQ(name);
     setError('');
+  };
+
+  const applyServiceRequestToBilling = async (request, { switchTab = true } = {}) => {
+    if (!request?.id) return;
+    if (selectedPatient?.id && Number(selectedPatient.id) !== Number(request.patient_id)) {
+      await selectPatient({ id: request.patient_id });
+    } else if (!selectedPatient?.id) {
+      await selectPatient({ id: request.patient_id });
+    }
+    const chargeType =
+      request.charge_type
+      || SERVICE_REQUEST_CHARGE_TYPES[request.service_category]
+      || 'other';
+    const department =
+      request.department
+      || SERVICE_REQUEST_DEPARTMENTS[request.service_category]
+      || billingForm.department;
+    updateBilling({ department });
+    addBillingLine({
+      charge_type: chargeType,
+      description: `${request.service_name} [${request.request_number}]`,
+      quantity: 1,
+      unit_price_gnf: Number(request.unit_price_gnf || 0),
+      source_type: 'service_request',
+      source_ref: request.request_number,
+    });
+    setBillingServiceRequestId(request.request_number || '');
+    setLastCreatedServiceRequest(request);
+    if (switchTab) setTab('billing');
+    setMessage(`Demande ${request.request_number} ajoutée au tableau Produits / Services.`);
+    setError('');
+  };
+
+  const loadServiceRequestIntoBilling = async (e) => {
+    e?.preventDefault?.();
+    const q = billingServiceRequestId.trim();
+    if (!q) return setError('Collez le N° de demande de service (DSR-…).');
+    setLoadingBillingServiceRequest(true);
+    setError('');
+    try {
+      const { data } = await clinicalApi.receptionHisLookupServiceRequest(q);
+      await applyServiceRequestToBilling(data, { switchTab: false });
+    } catch (err) {
+      setError(formatApiError(err, 'Demande de service introuvable'));
+    } finally {
+      setLoadingBillingServiceRequest(false);
+    }
   };
 
   const billingSubtotal = useMemo(
@@ -1330,6 +1425,15 @@ export default function ReceptionDashboard() {
       (svc) => String(svc.label || '').toLowerCase().includes(q) || String(svc.code || '').toLowerCase().includes(q)
     );
   }, [servicePrestations, serviceRequestExamSearchQ]);
+
+  const surgicalActs = billingCatalog?.surgical_acts || [];
+  const filteredSurgicalActs = useMemo(() => {
+    const q = serviceRequestExamSearchQ.trim().toLowerCase();
+    if (!q) return surgicalActs;
+    return surgicalActs.filter(
+      (act) => String(act.label || '').toLowerCase().includes(q) || String(act.code || '').toLowerCase().includes(q)
+    );
+  }, [surgicalActs, serviceRequestExamSearchQ]);
 
   const refundInvoices = useMemo(() => {
     if (!invoiceSearchQ.trim()) return invoices;
@@ -1940,6 +2044,29 @@ export default function ReceptionDashboard() {
               {!activeInvoice && (
                 <form className="reception-his-inline-create" onSubmit={handleCreateInvoice}>
                   <fieldset className="reception-his-nested-fieldset">
+                    <legend>Demande de service enregistrée</legend>
+                    <p className="clinical-hint">
+                      Collez le N° de demande (DSR-…) pour l&apos;ajouter au tableau Produits / Services.
+                    </p>
+                    <div className="reception-his-search-inline">
+                      <input
+                        type="text"
+                        value={billingServiceRequestId}
+                        onChange={(e) => setBillingServiceRequestId(e.target.value)}
+                        placeholder="Ex. DSR-001-000123"
+                        disabled={!selectedPatient && !billingServiceRequestId}
+                      />
+                      <button
+                        type="button"
+                        className="clinical-btn clinical-btn--secondary"
+                        onClick={loadServiceRequestIntoBilling}
+                        disabled={loadingBillingServiceRequest || !billingServiceRequestId.trim()}
+                      >
+                        {loadingBillingServiceRequest ? 'Chargement…' : 'Ajouter à la facture'}
+                      </button>
+                    </div>
+                  </fieldset>
+                  <fieldset className="reception-his-nested-fieldset">
                     <legend>Service concerné / tarification</legend>
                     <p className="clinical-hint">
                       Sélectionnez le service ci-dessus, puis la spécialité ou l&apos;examen selon la fiche de tarifs AASMA.
@@ -2008,6 +2135,25 @@ export default function ReceptionDashboard() {
                       >
                         + Hospitalisation · {formatGNF((billingCatalog?.consultation_services || []).find((c) => c.code === 'hospitalization')?.price_gnf || 350000)}
                       </button>
+                    )}
+                    {billingForm.department === 'Chirurgie' && surgicalActs.length > 0 && (
+                      <div className="reception-his-service-options">
+                        {surgicalActs.map((act) => (
+                          <button
+                            key={act.code}
+                            type="button"
+                            className="clinical-btn clinical-btn--secondary"
+                            onClick={() => addBillingLine({
+                              charge_type: 'procedure',
+                              description: act.label,
+                              quantity: 1,
+                              unit_price_gnf: act.price_gnf || 0,
+                            })}
+                          >
+                            + {act.label} · {formatGNF(act.price_gnf || 0)}
+                          </button>
+                        ))}
+                      </div>
                     )}
                     {(billingForm.department === 'Imagerie médicale') && imagingExaminations.length > 0 && (
                       <div className="reception-his-specialty-picker">
@@ -2501,7 +2647,15 @@ export default function ReceptionDashboard() {
                   <select
                     value={serviceRequestForm.service_category}
                     onChange={(e) => {
-                      setServiceRequestForm((p) => ({ ...p, service_category: e.target.value, service_name: '' }));
+                      const category = e.target.value;
+                      setServiceRequestForm((p) => ({
+                        ...p,
+                        service_category: category,
+                        service_name: '',
+                        catalog_code: '',
+                        charge_type: SERVICE_REQUEST_CHARGE_TYPES[category] || 'other',
+                        unit_price_gnf: 0,
+                      }));
                       setServiceRequestExamSearchQ('');
                     }}
                     disabled={!selectedPatient}
@@ -2547,7 +2701,11 @@ export default function ReceptionDashboard() {
                       <li key={test.code}>
                         <button
                           type="button"
-                          onClick={() => chooseServiceRequest('laboratory', `${test.name} (${test.code})`)}
+                          onClick={() => chooseServiceRequest('laboratory', `${test.name} (${test.code})`, {
+                            catalog_code: test.code,
+                            charge_type: 'laboratory',
+                            unit_price_gnf: test.price_gnf || 0,
+                          })}
                           disabled={!selectedPatient}
                         >
                           {test.name} ({test.code})
@@ -2582,7 +2740,11 @@ export default function ReceptionDashboard() {
                         key={exam.code}
                         type="button"
                         className="clinical-btn clinical-btn--secondary"
-                        onClick={() => chooseServiceRequest('imaging', exam.label)}
+                        onClick={() => chooseServiceRequest('imaging', exam.label, {
+                          catalog_code: exam.code,
+                          charge_type: 'imaging',
+                          unit_price_gnf: exam.price_gnf || 0,
+                        })}
                         disabled={!selectedPatient}
                       >
                         {exam.label} · {formatGNF(exam.price_gnf || 0)}
@@ -2616,7 +2778,12 @@ export default function ReceptionDashboard() {
                         className="clinical-btn clinical-btn--secondary"
                         onClick={() => chooseServiceRequest(
                           'consultation',
-                          `Consultation spécialisée — ${spec.label}`
+                          `Consultation spécialisée — ${spec.label}`,
+                          {
+                            catalog_code: spec.code,
+                            charge_type: 'consultation',
+                            unit_price_gnf: spec.price_gnf || 0,
+                          }
                         )}
                         disabled={!selectedPatient}
                       >
@@ -2634,6 +2801,42 @@ export default function ReceptionDashboard() {
                 </fieldset>
               )}
 
+              {serviceRequestForm.service_category === 'surgery' && (
+                <fieldset className="reception-his-nested-fieldset">
+                  <legend>Actes chirurgicaux</legend>
+                  <label>
+                    Rechercher un acte
+                    <input
+                      type="search"
+                      value={serviceRequestExamSearchQ}
+                      onChange={(e) => setServiceRequestExamSearchQ(e.target.value)}
+                      placeholder="Suture, césarienne, hernie…"
+                      disabled={!selectedPatient}
+                    />
+                  </label>
+                  <div className="reception-his-service-options">
+                    {filteredSurgicalActs.map((act) => (
+                      <button
+                        key={act.code}
+                        type="button"
+                        className="clinical-btn clinical-btn--secondary"
+                        onClick={() => chooseServiceRequest('surgery', act.label, {
+                          catalog_code: act.code,
+                          charge_type: 'procedure',
+                          unit_price_gnf: act.price_gnf || 0,
+                        })}
+                        disabled={!selectedPatient}
+                      >
+                        {act.label} · {formatGNF(act.price_gnf || 0)}
+                      </button>
+                    ))}
+                  </div>
+                  {filteredSurgicalActs.length === 0 && (
+                    <p className="clinical-hint">Aucun acte chirurgical trouvé.</p>
+                  )}
+                </fieldset>
+              )}
+
               {serviceRequestForm.service_category === 'service' && (
                 <fieldset className="reception-his-nested-fieldset">
                   <legend>Services / Prestations</legend>
@@ -2643,7 +2846,11 @@ export default function ReceptionDashboard() {
                         key={svc.code}
                         type="button"
                         className="clinical-btn clinical-btn--secondary"
-                        onClick={() => chooseServiceRequest('service', svc.label)}
+                        onClick={() => chooseServiceRequest('service', svc.label, {
+                          catalog_code: svc.code,
+                          charge_type: 'procedure',
+                          unit_price_gnf: svc.price_gnf || 0,
+                        })}
                         disabled={!selectedPatient}
                       >
                         {svc.label} · {formatGNF(svc.price_gnf || 0)}
@@ -2658,18 +2865,39 @@ export default function ReceptionDashboard() {
                   Service / prestation
                   <input
                     value={serviceRequestForm.service_name}
-                    onChange={(e) => setServiceRequestForm((p) => ({ ...p, service_name: e.target.value }))}
+                    onChange={(e) => setServiceRequestForm((p) => ({
+                      ...p,
+                      service_name: e.target.value,
+                      charge_type: SERVICE_REQUEST_CHARGE_TYPES[p.service_category] || 'other',
+                    }))}
                     disabled={!selectedPatient}
                     required
                   />
                 </label>
               )}
+              {serviceRequestForm.service_name ? (
+                <p className="clinical-hint">
+                  Sélection enregistrée : <strong>{serviceRequestForm.service_name}</strong>
+                  {' · '}
+                  {formatGNF(serviceRequestForm.unit_price_gnf || 0)}
+                  {' — cliquez « Créer la demande » pour la conserver.'}
+                </p>
+              ) : null}
               <div className="reception-his-form-actions">
-                <button type="submit" className="clinical-btn" disabled={!selectedPatient || loading}>
+                <button type="submit" className="clinical-btn" disabled={!selectedPatient || loading || !serviceRequestForm.service_name.trim()}>
                   {editingServiceRequestId ? 'Mettre à jour la demande' : 'Créer la demande'}
                 </button>
                 {editingServiceRequestId && (
                   <button type="button" className="clinical-btn clinical-btn--secondary" onClick={resetServiceRequestForm}>Annuler</button>
+                )}
+                {lastCreatedServiceRequest?.request_number && (
+                  <button
+                    type="button"
+                    className="clinical-btn clinical-btn--secondary"
+                    onClick={() => applyServiceRequestToBilling(lastCreatedServiceRequest)}
+                  >
+                    Facturer {lastCreatedServiceRequest.request_number}
+                  </button>
                 )}
               </div>
             </form>
@@ -2702,6 +2930,7 @@ export default function ReceptionDashboard() {
                       <td>{formatDateTime(row.created_at)}</td>
                       <td>
                         <div className="reception-his-refund-actions">
+                          <button type="button" className="clinical-btn" onClick={() => applyServiceRequestToBilling(row)}>Facturer</button>
                           <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => startEditServiceRequest(row)}>Modifier</button>
                           <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => deleteServiceRequest(row.id)}>Supprimer</button>
                         </div>

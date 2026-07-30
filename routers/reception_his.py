@@ -175,6 +175,7 @@ def billing_catalog(
         BILLING_DEPARTMENTS,
         SERVICE_PRESTATIONS,
         SPECIALIZED_SPECIALTIES,
+        SURGICAL_ACTS,
     )
 
     lab_tests = []
@@ -202,6 +203,7 @@ def billing_catalog(
         "specialized_specialties": SPECIALIZED_SPECIALTIES,
         "imaging_examinations": IMAGING_EXAMINATIONS,
         "service_prestations": SERVICE_PRESTATIONS,
+        "surgical_acts": SURGICAL_ACTS,
         "billing_departments": BILLING_DEPARTMENTS,
         "lab_tests": lab_tests,
     }
@@ -276,6 +278,21 @@ def list_service_requests(
         db, clinic_id=clinic.id, patient_id=patient_id, q=q, status=status
     )
     return [_service_request_out(r) for r in rows]
+
+
+@router.get("/service-requests/lookup", response_model=ServiceRequestResponse)
+def lookup_service_request(
+    q: str = Query(..., min_length=1, description="N° demande (DSR-…) ou id numérique"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Resolve a registered service request for billing (paste ID into facturation)."""
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    row = ReceptionHisService.get_service_request_by_number(
+        db, clinic_id=clinic.id, request_number=q
+    )
+    return _service_request_out(row)
 
 
 @router.post("/service-requests", response_model=ServiceRequestResponse, status_code=201)

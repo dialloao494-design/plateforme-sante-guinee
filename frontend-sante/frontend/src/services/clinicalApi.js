@@ -181,6 +181,10 @@ const clinicalApi = {
     httpClient.get('/clinical/reception/his/dashboard/queue', { params: { bucket } }),
   receptionHisListServiceRequests: (params = {}) =>
     httpClient.get('/clinical/reception/his/service-requests', { params }),
+  receptionHisLookupServiceRequest: (q) =>
+    httpClient.get('/clinical/reception/his/service-requests/lookup', {
+      params: { q: String(q || '').trim() },
+    }),
   receptionHisCreateServiceRequest: (data) => {
     invalidateApiCache('/clinical/reception/his/');
     return httpClient.post('/clinical/reception/his/service-requests', data);

@@ -49,9 +49,9 @@ def append_official_clinic_header(story: list, *, page_width: float, document_ti
         "ClinicMotto",
         parent=base["Normal"],
         fontName=font_bold,
-        fontSize=11,
+        fontSize=9,
         alignment=TA_CENTER,
-        leading=13,
+        leading=11,
         textColor=colors.HexColor("#0f172a"),
         spaceAfter=4,
     )

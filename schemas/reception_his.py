@@ -150,20 +150,39 @@ class ReceptionAdmissionCreate(BaseModel):
         raise ValueError("Sélectionnez au moins un service")
 
 
+SERVICE_REQUEST_CATEGORIES = Literal[
+    "laboratory",
+    "nursing",
+    "imaging",
+    "pharmacy",
+    "doctor",
+    "service",
+    "surgery",
+    "consultation",
+    "other",
+]
+
+
 class ServiceRequestCreate(BaseModel):
     patient_id: int
     admission_id: Optional[int] = None
-    service_category: Literal["laboratory", "nursing", "imaging", "pharmacy", "doctor", "service", "other"]
+    service_category: SERVICE_REQUEST_CATEGORIES
     service_name: str = Field(..., min_length=1, max_length=255)
     department: Optional[str] = Field(None, max_length=128)
+    catalog_code: Optional[str] = Field(None, max_length=64)
+    charge_type: Optional[str] = Field(None, max_length=64)
+    unit_price_gnf: Optional[int] = Field(None, ge=0)
     notes: Optional[str] = None
     status: Literal["pending", "approved", "completed", "cancelled"] = "pending"
 
 
 class ServiceRequestUpdate(BaseModel):
-    service_category: Optional[Literal["laboratory", "nursing", "imaging", "pharmacy", "doctor", "service", "other"]] = None
+    service_category: Optional[SERVICE_REQUEST_CATEGORIES] = None
     service_name: Optional[str] = Field(None, min_length=1, max_length=255)
     department: Optional[str] = Field(None, max_length=128)
+    catalog_code: Optional[str] = Field(None, max_length=64)
+    charge_type: Optional[str] = Field(None, max_length=64)
+    unit_price_gnf: Optional[int] = Field(None, ge=0)
     notes: Optional[str] = None
     status: Optional[Literal["pending", "approved", "completed", "cancelled"]] = None
 
@@ -178,6 +197,9 @@ class ServiceRequestResponse(BaseModel):
     service_category: str
     service_name: str
     department: Optional[str] = None
+    catalog_code: Optional[str] = None
+    charge_type: Optional[str] = None
+    unit_price_gnf: Optional[int] = None
     status: str
     notes: Optional[str] = None
     created_at: datetime

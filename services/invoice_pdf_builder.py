@@ -12,7 +12,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from data.clinic_branding import CLINIC_FOOTER_LINE, CLINIC_PRINT_NAME
+from data.clinic_branding import CLINIC_PRINT_NAME
 from services.clinic_print_header import append_official_clinic_header
 from services.pdf_fonts import ensure_clinic_fonts
 
@@ -275,9 +275,9 @@ def build_hospital_invoice_pdf(
         canvas.setFont(styles["font_reg"], 8)
         canvas.setFillColor(colors.grey)
         y = 12 * mm
+        # Keep printed-by + date/time; omit clinic address from invoice footer.
         canvas.drawString(doc.leftMargin, y + 14, f"Imprimé par : {printed_by or '—'}")
         canvas.drawString(doc.leftMargin, y + 4, f"Date : {printed_date or '—'}    Heure : {printed_time or '—'}")
-        canvas.drawCentredString(A4[0] / 2, y + 4, CLINIC_FOOTER_LINE[:90])
         canvas.drawRightString(A4[0] - doc.rightMargin, y + 4, f"Page {canvas.getPageNumber()}")
         canvas.restoreState()
 
