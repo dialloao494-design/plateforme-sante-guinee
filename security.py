@@ -142,7 +142,7 @@ def require_roles(required_roles: list[str]):
         if not user_has_any_role(current_user.role, required_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Operation requires one of roles: {required_roles}",
+                detail="Permission denied",
             )
         return current_user
 

@@ -161,6 +161,9 @@ def _send_via_resend(
 
 
 def send_password_reset_email(email: str, link: str) -> bool:
+    from core.output_encoding import escape_html
+
+    safe_link = escape_html(link)
     subject = "Réinitialisation de mot de passe — Plateforme Santé Guinée"
     text = (
         "Bonjour,\n\n"
@@ -170,13 +173,16 @@ def send_password_reset_email(email: str, link: str) -> bool:
     )
     html = (
         f"<p>Bonjour,</p><p>Cliquez pour réinitialiser votre mot de passe "
-        f'(lien valide 2 h) : <a href="{link}">{link}</a></p>'
+        f'(lien valide 2 h) : <a href="{safe_link}">{safe_link}</a></p>'
         "<p>Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.</p>"
     )
     return send_email(to=email, subject=subject, text_body=text, html_body=html)
 
 
 def send_email_verification_email(email: str, link: str) -> bool:
+    from core.output_encoding import escape_html
+
+    safe_link = escape_html(link)
     subject = "Confirmez votre adresse email — Plateforme Santé Guinée"
     text = (
         "Bonjour,\n\n"
@@ -186,6 +192,6 @@ def send_email_verification_email(email: str, link: str) -> bool:
     )
     html = (
         f"<p>Bonjour,</p><p>Confirmez votre adresse email : "
-        f'<a href="{link}">Vérifier mon email</a></p><p>Ce lien expire dans 48 heures.</p>'
+        f'<a href="{safe_link}">Vérifier mon email</a></p><p>Ce lien expire dans 48 heures.</p>'
     )
     return send_email(to=email, subject=subject, text_body=text, html_body=html)

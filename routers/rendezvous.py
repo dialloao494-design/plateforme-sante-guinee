@@ -50,24 +50,31 @@ def _assert_can_access_appointment(db: Session, appointment: models.RendezVous, 
         return
 
     if current_user.role in ("clinic_admin", "admin"):
-        cid = current_user.clinic_id
-        if cid is not None and appointment.clinic_id != cid:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+        from core.tenant import user_clinic_id
+
+        cid = user_clinic_id(current_user, db)
+        if cid is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission denied",
+            )
+        if appointment.clinic_id is not None and appointment.clinic_id != cid:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
         return
 
     if current_user.role == "patient":
         patient = _get_or_create_patient_for_user(db, current_user.id)
         if appointment.patient_id != patient.id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
         return
 
     if current_user.role == "doctor":
         doctor = _get_doctor_for_user(db, current_user.id)
         if not doctor or appointment.doctor_id != doctor.id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
         return
 
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
 
 
 @router.post("/", response_model=rendezvous_schemas.RendezVousResponse, status_code=status.HTTP_201_CREATED)
