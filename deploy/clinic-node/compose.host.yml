@@ -1,0 +1,129 @@
+# LAB ONLY — host-network Clinic Node fallback.
+# Mini-PC production default: compose.yml (bridge).
+# Requires CLINIC_NODE_ALLOW_HOST_NETWORK=true for boot acceptance.
+# Postgres is bound to 127.0.0.1 only (not LAN-wide).
+
+name: clinic-node
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    network_mode: host
+    # Security Wave 4: never listen on all interfaces when host networking is used.
+    command: ["postgres", "-c", "listen_addresses=127.0.0.1"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sante}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      POSTGRES_DB: ${POSTGRES_DB:-sante}
+    volumes:
+      - ${CLINIC_DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sante} -d ${POSTGRES_DB:-sante} -h 127.0.0.1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    security_opt:
+      - no-new-privileges:true
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      ENVIRONMENT: clinic-node
+      DEBUG: "false"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sante}:${POSTGRES_PASSWORD}@127.0.0.1:5432/${POSTGRES_DB:-sante}
+      POSTGRES_USER: ${POSTGRES_USER:-sante}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-sante}
+      SECRET_KEY: ${SECRET_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      DOMAIN: ${DOMAIN:-sante-locale}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-sante-locale,localhost,127.0.0.1,backend,proxy}
+      TRUSTED_PROXY_HOSTS: ${TRUSTED_PROXY_HOSTS:-proxy,127.0.0.1,localhost,backend}
+      FRONTEND_URL: ${FRONTEND_URL:-https://sante-locale}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://sante-locale,https://127.0.0.1,https://localhost}
+      ENABLE_PILOT_SEED: "false"
+      ENABLE_STARTUP_TEST_USER: "false"
+      ENABLE_STARTUP_SEED: "false"
+      ENABLE_DEMO_CLINIC_SEED: "false"
+      ENABLE_LAN_DEV: "false"
+      BYPASS_AVAILABILITY_VALIDATION: "false"
+      DISABLE_API_DOCS: ${DISABLE_API_DOCS:-true}
+      ENABLE_CLINIC_NODE_BOOTSTRAP: ${ENABLE_CLINIC_NODE_BOOTSTRAP:-true}
+      CLINIC_NODE_CLINIC_NAME: ${CLINIC_NODE_CLINIC_NAME:-Clinique Locale}
+      CLINIC_NODE_CLINIC_CITY: ${CLINIC_NODE_CLINIC_CITY:-}
+      CLINIC_NODE_ADMIN_EMAIL: ${CLINIC_NODE_ADMIN_EMAIL:-}
+      CLINIC_NODE_ADMIN_PASSWORD: ${CLINIC_NODE_ADMIN_PASSWORD:-}
+      CLINIC_NODE_ADMIN_MUST_CHANGE_PASSWORD: ${CLINIC_NODE_ADMIN_MUST_CHANGE_PASSWORD:-true}
+      CLINIC_NODE_BOOTSTRAP_STAFF: ${CLINIC_NODE_BOOTSTRAP_STAFF:-false}
+      NODE_ID: ${NODE_ID:-}
+      CLINIC_ID: ${CLINIC_ID:-}
+      CLINIC_DATA_DIR: /clinic-data
+      CLINIC_NODE_SOFTWARE_VERSION: ${CLINIC_NODE_SOFTWARE_VERSION:-offline-v1.0.0}
+      CLINIC_NODE_LICENSE_SECRET: ${CLINIC_NODE_LICENSE_SECRET:?CLINIC_NODE_LICENSE_SECRET required}
+      CLINIC_NODE_UPDATE_SECRET: ${CLINIC_NODE_UPDATE_SECRET:?CLINIC_NODE_UPDATE_SECRET required}
+      ATTACHMENT_ENCRYPTION_KEY: ${ATTACHMENT_ENCRYPTION_KEY:?ATTACHMENT_ENCRYPTION_KEY required}
+      CLINIC_NODE_NETWORK: host
+      CLINIC_NODE_ALLOW_HOST_NETWORK: ${CLINIC_NODE_ALLOW_HOST_NETWORK:-false}
+      CLINIC_NODE_SYNC_LOCAL_MIRROR: ${CLINIC_NODE_SYNC_LOCAL_MIRROR:-true}
+      CLOUD_SYNC_URL: ${CLOUD_SYNC_URL:-}
+      CLINIC_NODE_ALLOW_RESTORE: ${CLINIC_NODE_ALLOW_RESTORE:-false}
+    volumes:
+      - ${CLINIC_DATA_DIR:-./data}/uploads:/app/uploads
+      - ${CLINIC_DATA_DIR:-./data}/logs:/app/logs
+      - ${CLINIC_DATA_DIR:-./data}:/clinic-data
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 180s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  frontend:
+    build:
+      context: ../../frontend-sante/frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+        VITE_SAME_ORIGIN_API: "true"
+        VITE_CLINIC_NODE: "true"
+        VITE_TELECONSULT_PROVIDER: stub
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - /bin/sh
+      - -c
+      - |
+        sed -i 's/listen *80;/listen 8080;/' /etc/nginx/conf.d/default.conf
+        nginx -g 'daemon off;'
+    security_opt:
+      - no-new-privileges:true
+
+  proxy:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./proxy/app.https.host.runtime.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${CLINIC_DATA_DIR:-./data}/pki:/etc/nginx/certs:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    security_opt:
+      - no-new-privileges:true

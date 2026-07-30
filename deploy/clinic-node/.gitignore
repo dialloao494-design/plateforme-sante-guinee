@@ -1,0 +1,10 @@
+# Clinic Node local data — never commit
+data/
+.env
+*.pem
+*.key
+*.age
+.backup-age-key
+proxy/app.https.host.runtime.conf
+compose.host.runtime.yml
+!env/clinic-node.env.example
