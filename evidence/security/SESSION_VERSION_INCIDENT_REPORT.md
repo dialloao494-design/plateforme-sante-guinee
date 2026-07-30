@@ -57,4 +57,4 @@ Filled after Railway redeploy of this commit (see SHA below). No `drop_all`, res
 
 ## 9. Deployed commit SHA
 
-See git tip after push to `main`.
+`1d73a65a8da2641b4db2c8dbd238a0739f267e6d`
