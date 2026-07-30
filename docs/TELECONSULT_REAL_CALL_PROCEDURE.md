@@ -13,7 +13,7 @@
 | **Docker Desktop** | https://www.docker.com/products/docker-desktop/ | `docker info` sans erreur |
 | **cloudflared** | `winget install Cloudflare.cloudflared` **ou** `scripts\tunnel\cloudflared.exe` (déjà dans le repo) | `.\scripts\tunnel\cloudflared.exe --version` |
 | **Python 3.12** + **Node.js** | Déjà utilisés pour la plateforme | Backend + Vite démarrent |
-| **Comptes pilotes** | Seed actif | Médecin `dr.mamady@example.com` / `Doctor123!` — Patient `test.patient@example.com` / `Patient123!` |
+| **Comptes pilotes** | Seed actif | Médecin `dr.mamady@example.com` / `[REDACTED — ROTATE IF USED]` — Patient `test.patient@example.com` / `[REDACTED — ROTATE IF USED]` |
 
 > **Ne pas utiliser `meet.jit.si`** — il provoque `membersOnly` et OAuth en iframe.
 

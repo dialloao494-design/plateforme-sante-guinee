@@ -91,7 +91,7 @@ Copier la nouvelle URL patient.
 | Médecin | `http://localhost:5173/consultation/18` |
 | Patient iPhone | `https://<URL-tunnel-app>/consultation/18` |
 
-Comptes : `dr.mamady@example.com` / `Doctor123!` — `test.patient@example.com` / `Patient123!`
+Comptes : `dr.mamady@example.com` / `[REDACTED — ROTATE IF USED]` — `test.patient@example.com` / `[REDACTED — ROTATE IF USED]`
 
 ---
 

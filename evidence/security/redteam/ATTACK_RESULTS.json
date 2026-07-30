@@ -1,34 +1,27 @@
 {
-  "phase": "red_team_final",
-  "critical_exploited_pre_fix": [
-    "RT-C1 WhatsApp webhook unauthenticated appointment mutation",
-    "RT-C2 Platform owner setup race / multi-owner",
-    "RT-C3 Committed production credentials in docs/scripts"
+  "phase": "red_team_final_round2",
+  "critical_exploited_pre_fix_round2": [
+    "RT2-C1 nurse assessment foreign consultation_id PHI overwrite",
+    "RT2-C2 nurse assessment unvalidated admission_id"
   ],
-  "high_exploited_pre_fix": [
-    "RT-H1 clinic_admin/admin IDOR fail-open when clinic_id NULL",
-    "RT-H2 doctor PUT/DELETE cross-clinic",
-    "RT-H3 message attachment clinic_admin IDOR",
-    "RT-H4 teleconsult admin global access",
-    "RT-H5 doctor dashboard global admin listing",
-    "RT-H6 reminder staff notifications / process-due global admin",
-    "RT-H7 unassigned patient mutation by clinic admin",
-    "RT-H8 refresh token rotation race",
-    "RT-H9 MFA soft gate for required roles",
-    "RT-H10 reminder respond token fail-open",
-    "RT-H11 attachment encryption kill-switch",
-    "RT-H12 update package empty digests / path traversal",
-    "RT-H13 blank JWT jti denylist bypass"
+  "high_exploited_pre_fix_round2": [
+    "RT2-H1 lab tech walk-in self-mark paid + price override",
+    "RT2-H2 lab/pharmacy global doctor fallback",
+    "RT2-H3 clinic admin claim unbound doctor",
+    "RT2-H4 clinic admin patient user_id relink",
+    "RT2-H5 medicine delivery / visit foreign patient",
+    "RT2-H6 appointment create unbound patient claim"
   ],
   "post_fix": {
     "critical_open": 0,
     "high_open": 0,
     "exploited": 0
   },
-  "pytest_summary": "275 passed, 1 skipped, 3967 warnings in 10.12s",
+  "pytest_summary": "282 passed, 1 skipped",
   "pentest_harness": {
     "EXPLOITED": 0,
     "BLOCKED": 28,
     "PARTIAL": 7
-  }
+  },
+  "verdict": "PRODUCTION APPROVED"
 }

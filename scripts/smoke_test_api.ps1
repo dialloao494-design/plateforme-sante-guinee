@@ -66,13 +66,13 @@ try {
 Write-Host "SMOKE OK"
 
 Write-Host "Case-insensitive login-json (email casing)"
-$caseBody = '{"email":"DR.AMU@EXAMPLE.COM","password":"Doctor123!"}'
+$caseBody = '{"email":"DR.AMU@EXAMPLE.COM","password":"[REDACTED]"}'
 $caseLogin = Invoke-RestMethod -Uri "$Base/auth/login-json" -Method Post -Body $caseBody -ContentType "application/json"
 if (-not $caseLogin.access_token) { throw "case-insensitive login failed" }
 
 Write-Host "Optional: doctor dashboard (demo account dr.amu@example.com)"
 try {
-  $docLogin = Invoke-Json POST "/auth/login-json" @{ email = "dr.amu@example.com"; password = "Doctor123!" }
+  $docLogin = Invoke-Json POST "/auth/login-json" @{ email = "dr.amu@example.com"; password = "[REDACTED]" }
   $dTok = $docLogin.access_token
   $dAuth = @{ Authorization = "Bearer $dTok" }
   $docApts = Invoke-Json GET "/doctor/appointments" -Headers $dAuth

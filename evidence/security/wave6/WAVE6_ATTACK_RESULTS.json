@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-29T20:57:52.049567+00:00",
+  "generated_at": "2026-07-30T03:58:47.223724+00:00",
   "plan": "docs/PENETRATION_TESTING_PLAN.md",
   "attack_count_expected": 38,
   "attack_count_executed": 38,
@@ -16,7 +16,7 @@
   "findings": [
     {
       "id": "W0-RECON",
-      "timestamp": "2026-07-29T20:57:51.749928+00:00",
+      "timestamp": "2026-07-30T03:58:46.937263+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -47,7 +47,7 @@
     },
     {
       "id": "AUTH-01",
-      "timestamp": "2026-07-29T20:57:51.785877+00:00",
+      "timestamp": "2026-07-30T03:58:46.973455+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -66,7 +66,7 @@
     },
     {
       "id": "AUTH-02",
-      "timestamp": "2026-07-29T20:57:51.818133+00:00",
+      "timestamp": "2026-07-30T03:58:47.005398+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -81,7 +81,7 @@
     },
     {
       "id": "AUTH-03",
-      "timestamp": "2026-07-29T20:57:51.829951+00:00",
+      "timestamp": "2026-07-30T03:58:47.017315+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -95,7 +95,7 @@
     },
     {
       "id": "AUTHZ-01",
-      "timestamp": "2026-07-29T20:57:51.837546+00:00",
+      "timestamp": "2026-07-30T03:58:47.024921+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -109,7 +109,7 @@
     },
     {
       "id": "AUTHZ-02",
-      "timestamp": "2026-07-29T20:57:51.854602+00:00",
+      "timestamp": "2026-07-30T03:58:47.036130+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -122,7 +122,7 @@
     },
     {
       "id": "JWT-01",
-      "timestamp": "2026-07-29T20:57:51.854716+00:00",
+      "timestamp": "2026-07-30T03:58:47.036174+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "PARTIAL",
@@ -136,7 +136,7 @@
     },
     {
       "id": "JWT-02",
-      "timestamp": "2026-07-29T20:57:51.864390+00:00",
+      "timestamp": "2026-07-30T03:58:47.044317+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -150,7 +150,7 @@
     },
     {
       "id": "SESS-01",
-      "timestamp": "2026-07-29T20:57:51.891991+00:00",
+      "timestamp": "2026-07-30T03:58:47.069118+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -163,7 +163,7 @@
     },
     {
       "id": "SQL-01",
-      "timestamp": "2026-07-29T20:57:51.910858+00:00",
+      "timestamp": "2026-07-30T03:58:47.087899+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -189,7 +189,7 @@
     },
     {
       "id": "XSS-02",
-      "timestamp": "2026-07-29T20:57:51.910876+00:00",
+      "timestamp": "2026-07-30T03:58:47.087916+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -201,7 +201,7 @@
     },
     {
       "id": "CSRF-01",
-      "timestamp": "2026-07-29T20:57:51.914379+00:00",
+      "timestamp": "2026-07-30T03:58:47.091133+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -213,7 +213,7 @@
     },
     {
       "id": "SSRF-01",
-      "timestamp": "2026-07-29T20:57:51.914408+00:00",
+      "timestamp": "2026-07-30T03:58:47.091162+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "PARTIAL",
@@ -231,7 +231,7 @@
     },
     {
       "id": "CMD-01",
-      "timestamp": "2026-07-29T20:57:51.933172+00:00",
+      "timestamp": "2026-07-30T03:58:47.109398+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "PARTIAL",
@@ -245,7 +245,7 @@
     },
     {
       "id": "UPLOAD-01",
-      "timestamp": "2026-07-29T20:57:51.938353+00:00",
+      "timestamp": "2026-07-30T03:58:47.113945+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -257,7 +257,7 @@
     },
     {
       "id": "PDF-01",
-      "timestamp": "2026-07-29T20:57:51.954746+00:00",
+      "timestamp": "2026-07-30T03:58:47.129462+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -269,7 +269,7 @@
     },
     {
       "id": "DOCKER-01",
-      "timestamp": "2026-07-29T20:57:51.955115+00:00",
+      "timestamp": "2026-07-30T03:58:47.129873+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -284,7 +284,7 @@
     },
     {
       "id": "PG-01",
-      "timestamp": "2026-07-29T20:57:51.964789+00:00",
+      "timestamp": "2026-07-30T03:58:47.139840+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -296,7 +296,7 @@
     },
     {
       "id": "FAST-01",
-      "timestamp": "2026-07-29T20:57:51.964825+00:00",
+      "timestamp": "2026-07-30T03:58:47.139872+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -310,7 +310,7 @@
     },
     {
       "id": "RWY-01",
-      "timestamp": "2026-07-29T20:57:51.965626+00:00",
+      "timestamp": "2026-07-30T03:58:47.140678+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "PARTIAL",
@@ -323,7 +323,7 @@
     },
     {
       "id": "VERC-01",
-      "timestamp": "2026-07-29T20:57:51.965676+00:00",
+      "timestamp": "2026-07-30T03:58:47.140730+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "PARTIAL",
@@ -337,7 +337,7 @@
     },
     {
       "id": "NODE-01",
-      "timestamp": "2026-07-29T20:57:51.965753+00:00",
+      "timestamp": "2026-07-30T03:58:47.140807+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -351,7 +351,7 @@
     },
     {
       "id": "LAN-01",
-      "timestamp": "2026-07-29T20:57:51.965776+00:00",
+      "timestamp": "2026-07-30T03:58:47.140835+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -363,7 +363,7 @@
     },
     {
       "id": "INS-01",
-      "timestamp": "2026-07-29T20:57:51.970136+00:00",
+      "timestamp": "2026-07-30T03:58:47.144293+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -375,7 +375,7 @@
     },
     {
       "id": "PHYS-01",
-      "timestamp": "2026-07-29T20:57:51.972490+00:00",
+      "timestamp": "2026-07-30T03:58:47.146399+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "N/A_LAB",
@@ -387,7 +387,7 @@
     },
     {
       "id": "BAK-01",
-      "timestamp": "2026-07-29T20:57:51.972509+00:00",
+      "timestamp": "2026-07-30T03:58:47.146407+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -396,12 +396,12 @@
       "evidence": {
         "encrypted": true,
         "pre_restore_ok": true,
-        "sha256": "5ba16d61e1b4bdcf7e0e72d1b6b95b13f38253b48b95a952993489cb15b64eee"
+        "sha256": "31a905393a047e6ddd8aa5e40ed1c6f9af069ce85fc88597ade17bfc44af9dcb"
       }
     },
     {
       "id": "RAN-01",
-      "timestamp": "2026-07-29T20:57:51.972530+00:00",
+      "timestamp": "2026-07-30T03:58:47.146427+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "N/A_TABLETOP",
@@ -414,7 +414,7 @@
     },
     {
       "id": "SYNC-01",
-      "timestamp": "2026-07-29T20:57:51.973514+00:00",
+      "timestamp": "2026-07-30T03:58:47.147368+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -433,7 +433,7 @@
     },
     {
       "id": "REPLAY-01",
-      "timestamp": "2026-07-29T20:57:51.973521+00:00",
+      "timestamp": "2026-07-30T03:58:47.147374+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -452,7 +452,7 @@
     },
     {
       "id": "LIC-01",
-      "timestamp": "2026-07-29T20:57:51.973532+00:00",
+      "timestamp": "2026-07-30T03:58:47.147383+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -464,7 +464,7 @@
     },
     {
       "id": "UPD-01",
-      "timestamp": "2026-07-29T20:57:51.974492+00:00",
+      "timestamp": "2026-07-30T03:58:47.148366+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -476,7 +476,7 @@
     },
     {
       "id": "MITM-01",
-      "timestamp": "2026-07-29T20:57:51.974518+00:00",
+      "timestamp": "2026-07-30T03:58:47.148394+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "N/A_LAB",
@@ -489,7 +489,7 @@
     },
     {
       "id": "DEP-01",
-      "timestamp": "2026-07-29T20:57:51.974687+00:00",
+      "timestamp": "2026-07-30T03:58:47.148554+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "PARTIAL",
@@ -502,7 +502,7 @@
     },
     {
       "id": "CI-01",
-      "timestamp": "2026-07-29T20:57:51.974692+00:00",
+      "timestamp": "2026-07-30T03:58:47.148559+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "PARTIAL",
@@ -517,7 +517,7 @@
     },
     {
       "id": "SEC-01",
-      "timestamp": "2026-07-29T20:57:52.041314+00:00",
+      "timestamp": "2026-07-30T03:58:47.216907+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -532,7 +532,7 @@
     },
     {
       "id": "DOS-01",
-      "timestamp": "2026-07-29T20:57:52.041325+00:00",
+      "timestamp": "2026-07-30T03:58:47.216918+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -545,7 +545,7 @@
     },
     {
       "id": "MED-01",
-      "timestamp": "2026-07-29T20:57:52.045756+00:00",
+      "timestamp": "2026-07-30T03:58:47.220918+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",
@@ -557,7 +557,7 @@
     },
     {
       "id": "AUD-01",
-      "timestamp": "2026-07-29T20:57:52.049551+00:00",
+      "timestamp": "2026-07-30T03:58:47.223711+00:00",
       "operator": "wave6-automated-harness",
       "environment": "lab-sqlite-testclient",
       "result": "BLOCKED",

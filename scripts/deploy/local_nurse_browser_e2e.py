@@ -20,7 +20,7 @@ BACKEND = os.getenv("NURSE_E2E_BACKEND", "http://127.0.0.1:8023")
 
 CREDS = {
     "reception": ("reception@pilot.local", "ReceptionPilot1!"),
-    "nurse": ("admin@pilot.local", "AdminPilot1!"),
+    "nurse": ("admin@pilot.local", os.environ.get("PILOT_ADMIN_PASSWORD", "")),
     "doctor": ("dr.pilot@pilot.local", "DoctorPilot1!"),
 }
 

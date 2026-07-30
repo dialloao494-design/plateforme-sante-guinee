@@ -110,12 +110,12 @@ When `ENABLE_PILOT_SEED=true`:
 
 | Role | Email | Password |
 |------|-------|----------|
-| Manager | `admin@pilot.local` | `AdminPilot1!` |
+| Manager | `admin@pilot.local` | `[REDACTED — ROTATE IF USED]` |
 | Reception | `reception@pilot.local` | `ReceptionPilot1!` |
 | Doctor | `dr.pilot@pilot.local` | `DoctorPilot1!` |
 | Lab | `lab@pilot.local` | `LabPilot1!` |
 | Pharmacy | `pharmacy@pilot.local` | `PharmacyPilot1!` |
-| Patient | `test.patient@example.com` | `Patient123!` |
+| Patient | `test.patient@example.com` | `[REDACTED — ROTATE IF USED]` |
 
 Simulated history patients (after seed): `sim.patient.001@pilot.local` / `SimPatient1!`
 

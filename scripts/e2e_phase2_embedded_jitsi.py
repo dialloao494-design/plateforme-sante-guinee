@@ -43,7 +43,7 @@ def login(email, password):
 
 def ensure_joinable_appointment() -> int:
     """Create or refresh a teleconsultation RDV in the join window."""
-    pat = login("test.patient@example.com", "Patient123!")
+    pat = login("test.patient@example.com", os.environ.get("PILOT_PATIENT_PASSWORD", ""))
     when = (datetime.now() + timedelta(minutes=8)).strftime("%Y-%m-%dT%H:%M:%S")
     code, appt = req(
         "POST",
@@ -96,8 +96,8 @@ def main():
         return 1
 
     aid = ensure_joinable_appointment()
-    pat = login("test.patient@example.com", "Patient123!")
-    doc = login("dr.mamady@example.com", "Doctor123!")
+    pat = login("test.patient@example.com", os.environ.get("PILOT_PATIENT_PASSWORD", ""))
+    doc = login("dr.mamady@example.com", os.environ.get("PILOT_DOCTOR_PASSWORD", ""))
 
     for role, token in [("patient", pat), ("doctor", doc)]:
         code, acc = req("GET", f"/teleconsultation/appointments/{aid}/access", token)

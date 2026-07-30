@@ -1,6 +1,6 @@
 {
   "id": "BAK-01",
-  "timestamp": "2026-07-29T20:57:51.972509+00:00",
+  "timestamp": "2026-07-30T03:58:47.146407+00:00",
   "operator": "wave6-automated-harness",
   "environment": "lab-sqlite-testclient",
   "result": "BLOCKED",
@@ -9,6 +9,6 @@
   "evidence": {
     "encrypted": true,
     "pre_restore_ok": true,
-    "sha256": "5ba16d61e1b4bdcf7e0e72d1b6b95b13f38253b48b95a952993489cb15b64eee"
+    "sha256": "31a905393a047e6ddd8aa5e40ed1c6f9af069ce85fc88597ade17bfc44af9dcb"
   }
 }

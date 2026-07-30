@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Quick audit of pilot clinic account assignment (API must be running on :8000)."""
 from __future__ import annotations
+import os
 
 import json
 import sys
@@ -10,14 +11,14 @@ import requests
 BASE = "http://127.0.0.1:8000"
 
 ACCOUNTS = [
-    ("admin@pilot.local", "AdminPilot1!", "admin"),
+    ("admin@pilot.local", os.environ.get("PILOT_ADMIN_PASSWORD", ""), "admin"),
     ("reception@pilot.local", "ReceptionPilot1!", "receptionist"),
     ("cashier@pilot.local", "CashierPilot1!", "cashier"),
     ("dr.pilot@pilot.local", "DoctorPilot1!", "doctor"),
     ("lab@pilot.local", "LabPilot1!", "lab_technician"),
     ("pharmacy@pilot.local", "PharmacyPilot1!", "pharmacist"),
-    ("dr.mamady@example.com", "Doctor123!", "doctor"),
-    ("test.patient@example.com", "Patient123!", "patient"),
+    ("dr.mamady@example.com", os.environ.get("PILOT_DOCTOR_PASSWORD", ""), "doctor"),
+    ("test.patient@example.com", os.environ.get("PILOT_PATIENT_PASSWORD", ""), "patient"),
 ]
 
 

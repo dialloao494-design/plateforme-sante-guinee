@@ -2,6 +2,7 @@
 """Production QA — end-to-end API validation (no new product features)."""
 
 from __future__ import annotations
+import os
 
 import json
 import random
@@ -20,12 +21,12 @@ ROOT = Path(__file__).resolve().parents[1]
 DB = ROOT / "sante.db"
 
 ACCOUNTS = {
-    "patient": ("test.patient@example.com", "Patient123!"),
+    "patient": ("test.patient@example.com", os.environ.get("PILOT_PATIENT_PASSWORD", "")),
     "reception": ("reception@pilot.local", "ReceptionPilot1!"),
     "doctor": ("dr.pilot@pilot.local", "DoctorPilot1!"),
     "lab": ("lab@pilot.local", "LabPilot1!"),
     "pharmacy": ("pharmacy@pilot.local", "PharmacyPilot1!"),
-    "admin": ("admin@pilot.local", "AdminPilot1!"),
+    "admin": ("admin@pilot.local", os.environ.get("PILOT_ADMIN_PASSWORD", "")),
 }
 
 
