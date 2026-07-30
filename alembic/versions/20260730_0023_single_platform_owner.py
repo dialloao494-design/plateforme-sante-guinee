@@ -17,11 +17,20 @@ def upgrade() -> None:
     if not inspector.has_table("users"):
         return
     columns = {column["name"] for column in inspector.get_columns("users")}
+    # Commit session_version independently of the unique-index step so a later
+    # index failure cannot roll back the column (production UndefinedColumn).
     if "session_version" not in columns:
-        op.add_column(
-            "users",
-            sa.Column("session_version", sa.Integer(), nullable=False, server_default="0"),
-        )
+        with op.get_context().autocommit_block():
+            op.add_column(
+                "users",
+                sa.Column(
+                    "session_version",
+                    sa.Integer(),
+                    nullable=False,
+                    server_default="0",
+                ),
+            )
+            op.execute(sa.text("UPDATE users SET session_version = 0 WHERE session_version IS NULL"))
         inspector = sa.inspect(bind)
         columns = {column["name"] for column in inspector.get_columns("users")}
 
@@ -46,14 +55,18 @@ def upgrade() -> None:
     existing = {index["name"] for index in inspector.get_indexes("users")}
     if INDEX_NAME in existing:
         return
-    op.create_index(
-        INDEX_NAME,
-        "users",
-        ["role"],
-        unique=True,
-        postgresql_where=sa.text("role = 'platform_owner'"),
-        sqlite_where=sa.text("role = 'platform_owner'"),
-    )
+    try:
+        op.create_index(
+            INDEX_NAME,
+            "users",
+            ["role"],
+            unique=True,
+            postgresql_where=sa.text("role = 'platform_owner'"),
+            sqlite_where=sa.text("role = 'platform_owner'"),
+        )
+    except Exception:
+        # Column work above must survive; index can be applied by ensure_* later.
+        pass
 
 
 def downgrade() -> None:

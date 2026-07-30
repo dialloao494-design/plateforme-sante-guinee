@@ -1,6 +1,6 @@
 #!/bin/sh
-# Railway / Docker entrypoint — wait for DB, apply schema, start uvicorn.
-# Intentionally runs as the container user (no gosu) for Railway compatibility.
+# Railway / Docker entrypoint:
+# 1) wait for Postgres  2) alembic upgrade head  3) verify security columns  4) start uvicorn
 set -e
 
 echo "[entrypoint] Waiting for PostgreSQL..."
@@ -12,6 +12,7 @@ url = os.environ.get("DATABASE_URL", "")
 if url.startswith("postgres://"):
     url = url.replace("postgres://", "postgresql://", 1)
 if not url.startswith("postgresql"):
+    print("[entrypoint] Non-Postgres DATABASE_URL — skipping DB wait.")
     sys.exit(0)
 
 engine = create_engine(url, pool_pre_ping=True)
@@ -24,11 +25,15 @@ for i in range(60):
     except Exception as exc:
         print(f"[entrypoint] DB not ready ({i+1}/60): {exc}")
         time.sleep(2)
+print("[entrypoint] FATAL: database not reachable", file=sys.stderr)
 sys.exit(1)
 PY
 
-echo "[entrypoint] Applying schema (create_all + Alembic)..."
+echo "[entrypoint] Applying Alembic migrations to head..."
 python <<'PY'
+import os
+import sys
+
 import models.user  # noqa: F401
 import models.patient  # noqa: F401
 import models.doctor  # noqa: F401
@@ -57,7 +62,7 @@ import models.nurse_assessment  # noqa: F401
 import models.clinic_charge  # noqa: F401
 import models.clinic_charge_payment  # noqa: F401
 
-from database import engine, Base
+from database import engine
 from database_migrations import (
     ensure_alembic_version_column,
     ensure_doctor_geolocation_columns,
@@ -65,37 +70,61 @@ from database_migrations import (
     ensure_user_roles_check_constraint,
     normalize_legacy_user_roles,
     ensure_single_platform_owner_index,
+    ensure_user_session_security_columns,
+    run_alembic_upgrade_head,
 )
+from sqlalchemy import inspect, text
 
-Base.metadata.create_all(bind=engine)
+deployed = (os.getenv("ENVIRONMENT") or "").strip().lower() in {
+    "production",
+    "staging",
+    "clinic-node",
+    "clinic_node",
+} or bool((os.getenv("RAILWAY_ENVIRONMENT") or "").strip())
+
 ensure_alembic_version_column(engine)
 
 try:
-    from alembic.config import Config
-    from alembic import command
-
-    cfg = Config("alembic.ini")
-    command.upgrade(cfg, "head")
+    run_alembic_upgrade_head(fail_closed=deployed)
     print("[entrypoint] Alembic upgrade head OK.")
 except Exception as exc:
-    print(f"[entrypoint] Alembic warning (retry after widen): {exc}")
-    ensure_alembic_version_column(engine)
-    try:
-        from alembic.config import Config
-        from alembic import command
+    print(f"[entrypoint] FATAL: Alembic upgrade failed: {exc}", file=sys.stderr)
+    if deployed:
+        sys.exit(1)
+    print("[entrypoint] Continuing in non-deployed mode after Alembic failure.")
 
-        cfg = Config("alembic.ini")
-        command.upgrade(cfg, "head")
-        print("[entrypoint] Alembic upgrade head OK (retry).")
-    except Exception as exc2:
-        print(f"[entrypoint] Alembic warning (fallback migrations): {exc2}")
+# Failsafe DDL for security columns (covers stamped-without-DDL production DBs).
+try:
+    ensure_user_session_security_columns(engine)
+    print("[entrypoint] users.session_version / token_version verified.")
+except Exception as exc:
+    print(f"[entrypoint] FATAL: security column ensure failed: {exc}", file=sys.stderr)
+    sys.exit(1)
 
 ensure_doctor_geolocation_columns(engine)
 ensure_patient_dossier_schema(engine)
 ensure_user_roles_check_constraint(engine)
 normalize_legacy_user_roles(engine)
 ensure_single_platform_owner_index(engine)
-print("[entrypoint] Schema ready.")
+
+insp = inspect(engine)
+if "users" not in insp.get_table_names():
+    print("[entrypoint] FATAL: users table missing after migrations", file=sys.stderr)
+    sys.exit(1)
+cols = {c["name"] for c in insp.get_columns("users")}
+required = {"session_version", "token_version", "role", "email", "hashed_password"}
+missing = sorted(required - cols)
+if missing:
+    print(
+        f"[entrypoint] FATAL: users missing required columns: {missing}",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+# Smoke: ORM-shaped SELECT that previously crashed production.
+with engine.connect() as conn:
+    conn.execute(text("SELECT id, session_version, token_version FROM users LIMIT 1"))
+print("[entrypoint] Schema ready — starting application.")
 PY
 
 if [ "${ENABLE_PILOT_SEED:-false}" = "true" ]; then

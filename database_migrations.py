@@ -801,6 +801,88 @@ def ensure_alembic_version_column(engine: Engine) -> None:
         logger.warning("alembic_version column widen skipped: %s", exc)
 
 
+def ensure_user_session_security_columns(engine: Engine) -> None:
+    """
+    Ensure users.session_version + Wave0 identity columns exist.
+
+    Production crash evidence: UndefinedColumn users.session_version.
+    create_all() does not add columns to existing tables — this helper must run
+    after Alembic (and as a failsafe if Alembic was stamped without DDL).
+    """
+    insp = inspect(engine)
+    if "users" not in insp.get_table_names():
+        return
+    dialect = engine.dialect.name
+    cols = {c["name"] for c in insp.get_columns("users")}
+
+    def _add_int_not_null(column: str) -> None:
+        nonlocal cols
+        if column in cols:
+            return
+        if dialect == "postgresql":
+            stmt = (
+                f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {column} "
+                "INTEGER NOT NULL DEFAULT 0"
+            )
+        else:
+            stmt = f"ALTER TABLE users ADD COLUMN {column} INTEGER NOT NULL DEFAULT 0"
+        with engine.begin() as conn:
+            conn.execute(text(stmt))
+            conn.execute(text(f"UPDATE users SET {column} = 0 WHERE {column} IS NULL"))
+        logger.info("Added users.%s", column)
+        cols.add(column)
+
+    def _add_bool_not_null(column: str, default: str = "false") -> None:
+        nonlocal cols
+        if column in cols:
+            return
+        if dialect == "postgresql":
+            stmt = (
+                f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {column} "
+                f"BOOLEAN NOT NULL DEFAULT {default}"
+            )
+        else:
+            stmt = (
+                f"ALTER TABLE users ADD COLUMN {column} BOOLEAN NOT NULL DEFAULT 0"
+            )
+        with engine.begin() as conn:
+            conn.execute(text(stmt))
+        logger.info("Added users.%s", column)
+        cols.add(column)
+
+    def _add_nullable(column: str, sql_type: str) -> None:
+        nonlocal cols
+        if column in cols:
+            return
+        if dialect == "postgresql":
+            stmt = f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {column} {sql_type}"
+        else:
+            stmt = f"ALTER TABLE users ADD COLUMN {column} {sql_type}"
+        with engine.begin() as conn:
+            conn.execute(text(stmt))
+        logger.info("Added users.%s", column)
+        cols.add(column)
+
+    _add_int_not_null("session_version")
+    _add_int_not_null("token_version")
+    _add_int_not_null("failed_login_attempts")
+    _add_bool_not_null("mfa_enabled", "false")
+    _add_nullable("locked_until", "TIMESTAMP" if dialect == "postgresql" else "DATETIME")
+    _add_nullable("password_changed_at", "TIMESTAMP" if dialect == "postgresql" else "DATETIME")
+    _add_nullable("last_login_at", "TIMESTAMP" if dialect == "postgresql" else "DATETIME")
+    _add_nullable("mfa_secret", "VARCHAR")
+
+    # Final verification — raise so entrypoint/startup can fail closed.
+    insp = inspect(engine)
+    cols = {c["name"] for c in insp.get_columns("users")}
+    missing = sorted({"session_version", "token_version"} - cols)
+    if missing:
+        raise RuntimeError(
+            "users security columns still missing after ensure_user_session_security_columns: "
+            + ", ".join(missing)
+        )
+
+
 def ensure_single_platform_owner_index(engine: Engine) -> None:
     """Enforce at most one platform_owner account (partial unique index)."""
     insp = inspect(engine)
@@ -1422,8 +1504,15 @@ def ensure_reception_his_schema(engine: Engine) -> None:
                     logger.warning("consultations.%s migration skipped: %s", col, exc)
 
 
-def run_alembic_upgrade_head() -> None:
-    """Apply Alembic migrations on startup (Railway runs uvicorn without Docker entrypoint)."""
+def run_alembic_upgrade_head(*, fail_closed: bool | None = None) -> None:
+    """Apply Alembic migrations on startup (Railway may rely on this path)."""
+    import os
+
+    if fail_closed is None:
+        env = (os.getenv("ENVIRONMENT") or "").strip().lower()
+        fail_closed = env in {"production", "staging", "clinic-node", "clinic_node"} or bool(
+            (os.getenv("RAILWAY_ENVIRONMENT") or "").strip()
+        )
     try:
         from alembic.config import Config
         from alembic import command
@@ -1432,7 +1521,12 @@ def run_alembic_upgrade_head() -> None:
         command.upgrade(cfg, "head")
         logger.info("Alembic upgrade head completed on startup")
     except Exception as exc:
-        logger.warning("Alembic upgrade on startup failed (fallback ensure_* may apply): %s", exc)
+        logger.error("Alembic upgrade on startup failed: %s", exc)
+        if fail_closed:
+            raise RuntimeError(
+                "Alembic upgrade head failed — refusing to start with incompatible schema"
+            ) from exc
+        logger.warning("Alembic upgrade failed (non-deployed); fallback ensure_* may apply: %s", exc)
 
 
 def ensure_nurse_assessment_schema(engine: Engine) -> None:

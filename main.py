@@ -569,10 +569,12 @@ async def startup_event():
             ensure_nurse_assessment_schema,
             ensure_lab_result_reference_range_text,
             ensure_clinic_node_ops_schema,
+            ensure_user_session_security_columns,
             run_alembic_upgrade_head,
         )
 
-        run_alembic_upgrade_head()
+        run_alembic_upgrade_head(fail_closed=_settings.is_deployed)
+        ensure_user_session_security_columns(engine)
 
         ensure_doctor_geolocation_columns(engine)
         ensure_message_attachment_columns(engine)
@@ -630,7 +632,14 @@ async def startup_event():
                 else set()
             )
             missing_user_columns = sorted(
-                {"role", "clinic_id", "session_version"} - user_columns
+                {
+                    "role",
+                    "clinic_id",
+                    "session_version",
+                    "token_version",
+                    "must_change_password",
+                }
+                - user_columns
             )
             if missing_tables or missing_user_columns:
                 raise RuntimeError(
