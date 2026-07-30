@@ -2054,7 +2054,6 @@ export default function ReceptionDashboard() {
                         value={billingServiceRequestId}
                         onChange={(e) => setBillingServiceRequestId(e.target.value)}
                         placeholder="Ex. DSR-001-000123"
-                        disabled={!selectedPatient && !billingServiceRequestId}
                       />
                       <button
                         type="button"
