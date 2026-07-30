@@ -206,7 +206,7 @@ Current agent cannot read/write protection API (`403`).
 ## 14. Exact production commit SHA
 
 ```
-40a163ec0dc89f581170a67d398eb5356646f3ef
+912bf1488e5b859a4e4fa9db1780905dd47b7222
 ```
 
 This is `origin/main` after Offline V1 + Security/Red Team reconciliation, Railway boot fixes, `pyotp`, simplified Dockerfile, and this report.
