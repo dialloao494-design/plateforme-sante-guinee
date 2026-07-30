@@ -52,18 +52,6 @@ const authDebug = (...args) => {
   console.info('[AUTH-DEBUG]', ...args);
 };
 
-const devLog = (...args) => {
-  if (import.meta.env.DEV) {
-    console.log(...args);
-  }
-};
-
-const devWarn = (...args) => {
-  if (import.meta.env.DEV) {
-    console.warn(...args);
-  }
-};
-
 /* eslint-disable react-refresh/only-export-components */
 const AuthContext = createContext();
 
@@ -134,8 +122,10 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const logout = useCallback(() => {
+    // Keep the token available until Axios has sent the revocation request, while
+    // clearing React state immediately so the UI logs out without network delay.
+    void authAPI.logout().catch(() => {}).finally(() => clearClientAuth());
     clearPasswordResetFlags();
-    clearClientAuth();
     setUser(null);
     setError(null);
   }, []);
@@ -282,7 +272,6 @@ export const AuthProvider = ({ children }) => {
       const loginPayload = await authAPI.login(trimmedEmail, password);
       authDebug('login: response ok', Boolean(loginPayload?.access_token), loginPayload?.role);
       const normalizedUser = await applyLoginToken(loginPayload);
-      const home = normalizedUser?.role;
       authDebug('login: complete', { role: normalizedUser?.role, clinic_id: normalizedUser?.clinic_id });
       return {
         success: true,
@@ -307,7 +296,12 @@ export const AuthProvider = ({ children }) => {
     setActionLoading(true);
     setError(null);
     try {
-      await authAPI.changePassword(currentPassword, newPassword);
+      const response = await authAPI.changePassword(currentPassword, newPassword);
+      const replacementToken = response?.data?.access_token;
+      if (!replacementToken) {
+        throw new Error('Le serveur n’a pas renouvelé la session sécurisée.');
+      }
+      setAuthToken(replacementToken);
       invalidateCache('/auth/me');
       const updated = await refreshUser();
       return { success: true, user: updated };

@@ -17,6 +17,7 @@ from schemas.billing_unified import InvoiceGenerateRequest, InvoicePayRequest, I
 from security import get_current_user
 from services.pdf_service import invoice_pdf_legacy
 from services.unified_billing_service import UnifiedBillingService
+from services.reception_his_service import ReceptionHisService
 
 router = APIRouter(prefix="/clinical/billing/unified", tags=["Unified Billing"])
 
@@ -57,6 +58,69 @@ def _invoice_response(invoice: models.Invoice) -> InvoiceResponse:
         patient_name=patient_name,
         items=items,
     )
+
+
+@router.get("/patients/search")
+def search_billing_patients(
+    q: str = Query(..., min_length=2, max_length=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Clinic-scoped patient lookup for safe invoice creation."""
+    _require_role(current_user, BILLING_READ_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    patients = ReceptionHisService.search_patients(
+        db, clinic_id=clinic.id, query=q, limit=15
+    )
+    return [
+        {
+            "id": patient.id,
+            "patient_number": patient.patient_number,
+            "first_name": patient.first_name,
+            "last_name": patient.last_name,
+            "date_of_birth": patient.date_of_birth,
+            "phone": patient.phone,
+        }
+        for patient in patients
+    ]
+
+
+@router.get("/patients/{patient_id}/open-visits")
+def list_patient_open_visits(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, BILLING_READ_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    patient = (
+        db.query(models.Patient)
+        .filter(models.Patient.id == patient_id, models.Patient.clinic_id == clinic.id)
+        .first()
+    )
+    if not patient:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail="Patient not found")
+    visits = (
+        db.query(models.ClinicalVisit)
+        .filter(
+            models.ClinicalVisit.patient_id == patient_id,
+            models.ClinicalVisit.clinic_id == clinic.id,
+            models.ClinicalVisit.status.in_(("open", "billing", "paid")),
+        )
+        .order_by(models.ClinicalVisit.started_at.desc())
+        .limit(20)
+        .all()
+    )
+    return [
+        {
+            "id": visit.id,
+            "status": visit.status,
+            "started_at": visit.started_at,
+        }
+        for visit in visits
+    ]
 
 
 @router.get("/invoices", response_model=List[InvoiceResponse])

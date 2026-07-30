@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
+import PatientPicker from '../../components/PatientPicker.jsx';
 
 import './clinical.css';
 
@@ -12,7 +13,8 @@ function formatGNF(n) {
 
 export default function UnifiedBillingDashboard() {
   const [invoices, setInvoices] = useState([]);
-  const [patientId, setPatientId] = useState('');
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [patientVisits, setPatientVisits] = useState([]);
   const [visitId, setVisitId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [message, setMessage] = useState('');
@@ -33,16 +35,29 @@ export default function UnifiedBillingDashboard() {
   }, [load]);
 
   const generate = async () => {
-    if (!patientId) return;
+    if (!selectedPatient) return;
     try {
       await clinicalApi.generateInvoice({
-        patient_id: Number(patientId),
+        patient_id: selectedPatient.id,
         visit_id: visitId ? Number(visitId) : undefined,
       });
       setMessage('Facture unifiée générée');
       load();
     } catch (err) {
       setError(err?.response?.data?.detail || 'Génération impossible');
+    }
+  };
+
+  const selectPatient = async (patient) => {
+    setSelectedPatient(patient);
+    setVisitId('');
+    setPatientVisits([]);
+    if (!patient) return;
+    try {
+      const response = await clinicalApi.billingPatientVisits(patient.id);
+      setPatientVisits(response?.data || []);
+    } catch (err) {
+      setError(err?.response?.data?.detail || 'Visites du patient indisponibles');
     }
   };
 
@@ -84,16 +99,26 @@ export default function UnifiedBillingDashboard() {
 
       <section className="clinical-panel">
         <h2>Générer une facture</h2>
-        <div className="clinical-form" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <label>
-            ID patient
-            <input value={patientId} onChange={(e) => setPatientId(e.target.value)} />
-          </label>
-          <label>
-            ID visite (optionnel)
-            <input value={visitId} onChange={(e) => setVisitId(e.target.value)} />
-          </label>
-          <button type="button" className="clinical-btn" onClick={generate}>Générer</button>
+        <div className="clinical-form">
+          <PatientPicker
+            search={clinicalApi.billingPatientSearch}
+            selected={selectedPatient}
+            onSelect={selectPatient}
+          />
+          {selectedPatient && (
+            <>
+              <label htmlFor="billing-visit">Visite à facturer</label>
+              <select id="billing-visit" value={visitId} onChange={(e) => setVisitId(e.target.value)}>
+                <option value="">Toutes les charges non facturées</option>
+                {patientVisits.map((visit) => (
+                  <option key={visit.id} value={visit.id}>
+                    Visite du {new Date(visit.started_at).toLocaleString('fr-GN')} · {visit.status}
+                  </option>
+                ))}
+              </select>
+              <button type="button" className="clinical-btn" onClick={generate}>Générer la facture</button>
+            </>
+          )}
         </div>
       </section>
 

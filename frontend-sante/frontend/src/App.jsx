@@ -95,6 +95,7 @@ function App() {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">Aller au contenu principal</a>
       <header className="app-topbar">
         <button
           type="button"
@@ -117,7 +118,7 @@ function App() {
 
       <Sidebar isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 
-      <main className="app-main">
+      <main className="app-main" id="main-content" tabIndex="-1">
         <header className="app-header">
           <nav className="app-breadcrumb" aria-label="Fil d'Ariane">
             <ol className="app-breadcrumb-list">

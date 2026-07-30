@@ -13,6 +13,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 import models
+from core.tenant import is_platform_admin, user_clinic_id
 from models.user import User
 
 
@@ -38,12 +39,22 @@ class DoctorOwnershipPolicy:
         Raises 403 when a doctor targets another practitioner's data.
         Raises 404 when a doctor account has no profile.
         """
-        if current_user.role in ("platform_owner", "platform_admin", "clinic_admin", "admin"):
-            doctor = db.query(models.Doctor).filter(models.Doctor.id == target_doctor_id).first()
-            if not doctor:
+        doctor = db.query(models.Doctor).filter(models.Doctor.id == target_doctor_id).first()
+        if not doctor:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Doctor not found",
+            )
+
+        if is_platform_admin(current_user):
+            return None
+
+        if current_user.role in ("clinic_admin", "admin"):
+            actor_clinic_id = user_clinic_id(current_user, db)
+            if actor_clinic_id != doctor.clinic_id:
                 raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Doctor not found",
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Doctor belongs to another clinic",
                 )
             return None
 
@@ -60,7 +71,7 @@ class DoctorOwnershipPolicy:
                 detail="Doctor profile not found",
             )
 
-        if own_doctor.id != target_doctor_id:
+        if own_doctor.id != doctor.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to modify another doctor's schedule",

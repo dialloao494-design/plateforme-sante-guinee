@@ -358,6 +358,7 @@ def reset_staff_password(
         raise HTTPException(status_code=400, detail="Cannot reset password for platform accounts")
     validate_password(body.new_password)
     user.hashed_password = hash_password(body.new_password)
+    user.session_version = int(user.session_version or 0) + 1
     user.must_change_password = False
     db.commit()
     return {"id": user.id, "email": user.email, "reset": True}

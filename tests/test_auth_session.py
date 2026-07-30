@@ -9,7 +9,13 @@ from security import create_access_token, hash_password, verify_password
 
 def _auth_headers(user):
     token = create_access_token(
-        {"sub": user.email, "user_id": user.id, "user_role": user.role, "role": user.role}
+        {
+            "sub": user.email,
+            "user_id": user.id,
+            "user_role": user.role,
+            "role": user.role,
+            "session_version": user.session_version,
+        }
     )
     return {"Authorization": f"Bearer {token}"}
 
@@ -34,18 +40,25 @@ def test_auth_me_includes_profile_fields(client, db_session, admin_user):
 
 def test_change_password_updates_hash(client, db_session, admin_user):
   old_hash = admin_user.hashed_password
+  old_session_version = admin_user.session_version
+  old_headers = _auth_headers(admin_user)
   r = client.post(
       "/auth/change-password",
       json={"current_password": "AdminPass1", "new_password": "NewSecure1!"},
-      headers=_auth_headers(admin_user),
+      headers=old_headers,
   )
   assert r.status_code == 200, r.text
   db_session.refresh(admin_user)
   assert admin_user.hashed_password != old_hash
   assert verify_password("NewSecure1!", admin_user.hashed_password)
+  assert r.json()["access_token"]
+  assert client.get("/auth/me", headers=old_headers).status_code == 401
+  replacement_headers = {"Authorization": f"Bearer {r.json()['access_token']}"}
+  assert client.get("/auth/me", headers=replacement_headers).status_code == 200
 
   # restore for other tests
   admin_user.hashed_password = old_hash
+  admin_user.session_version = old_session_version
   db_session.commit()
 
 
@@ -56,3 +69,15 @@ def test_change_password_rejects_wrong_current(client, admin_user):
       headers=_auth_headers(admin_user),
   )
   assert r.status_code == 400
+
+
+def test_logout_revokes_previously_issued_token(client, db_session, admin_user):
+  old_session_version = admin_user.session_version
+  headers = _auth_headers(admin_user)
+
+  response = client.post("/auth/logout", headers=headers)
+  assert response.status_code == 204, response.text
+  assert client.get("/auth/me", headers=headers).status_code == 401
+
+  admin_user.session_version = old_session_version
+  db_session.commit()

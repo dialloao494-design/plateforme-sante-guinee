@@ -159,6 +159,7 @@ def create_token_response(user: User):
             "user_id": user.id,
             "user_role": canonical_role,
             "role": canonical_role,
+            "session_version": int(getattr(user, "session_version", 0) or 0),
         }
     )
     return {
@@ -344,12 +345,29 @@ def change_password(
             detail="Mot de passe actuel incorrect",
         )
     current_user.hashed_password = hash_password(body.new_password)
+    current_user.session_version = int(current_user.session_version or 0) + 1
     if hasattr(current_user, "must_change_password"):
         current_user.must_change_password = False
     db.add(current_user)
     db.commit()
+    db.refresh(current_user)
     logger.info("Password changed for user id=%s", current_user.id)
-    return {"message": "Mot de passe mis à jour"}
+    return {
+        "message": "Mot de passe mis à jour",
+        **create_token_response(current_user),
+    }
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Revoke every access token issued for the current account."""
+    current_user.session_version = int(current_user.session_version or 0) + 1
+    db.add(current_user)
+    db.commit()
+    return None
 
 
 @router.post("/forgot-password")

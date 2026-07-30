@@ -280,6 +280,10 @@ const clinicalApi = {
   assignBed: (id, data) => httpClient.post(`/clinical/hospitalization/admissions/${id}/assign-bed`, data),
 
   // Unified billing
+  billingPatientSearch: (q) =>
+    httpClient.get('/clinical/billing/unified/patients/search', { params: { q } }),
+  billingPatientVisits: (patientId) =>
+    httpClient.get(`/clinical/billing/unified/patients/${patientId}/open-visits`),
   listInvoices: (status) =>
     httpClient.get('/clinical/billing/unified/invoices', { params: status ? { status } : {} }),
   generateInvoice: (data) => httpClient.post('/clinical/billing/unified/invoices/generate', data),

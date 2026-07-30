@@ -28,6 +28,19 @@ logger = logging.getLogger(__name__)
 
 class PlatformSetupStatusResponse(BaseModel):
     setup_required: bool
+    public_setup_enabled: bool
+
+
+def _public_setup_enabled() -> bool:
+    environment = (os.getenv("ENVIRONMENT") or "development").lower().strip()
+    if environment not in {"production", "staging"}:
+        return True
+    return (os.getenv("ALLOW_PUBLIC_PLATFORM_OWNER_SETUP") or "").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 def _reject_disposable_setup_email(email: str) -> None:
@@ -45,7 +58,11 @@ def _reject_disposable_setup_email(email: str) -> None:
 @router.get("/platform/setup/status", response_model=PlatformSetupStatusResponse)
 def platform_setup_status(db: Session = Depends(get_db)):
     """Returns whether the first-time owner setup wizard should be shown."""
-    return PlatformSetupStatusResponse(setup_required=not platform_owner_exists(db))
+    enabled = _public_setup_enabled()
+    return PlatformSetupStatusResponse(
+        setup_required=enabled and not platform_owner_exists(db),
+        public_setup_enabled=enabled,
+    )
 
 
 @router.post("/platform/setup", response_model=Token, status_code=status.HTTP_201_CREATED)
@@ -59,6 +76,11 @@ def complete_platform_owner_setup(
 
     Disabled permanently once a platform_owner user exists.
     """
+    if not _public_setup_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Public platform owner setup is disabled.",
+        )
     if platform_owner_exists(db):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

@@ -38,6 +38,7 @@ export const getAuthenticatedUser = async (opts = {}) => {
 export const authAPI = {
   login,
   me: (opts) => getAuthenticatedUser(opts),
+  logout: () => httpClient.post('/auth/logout'),
   signup: (userData) => httpClient.post('/auth/register', userData),
   changePassword: (currentPassword, newPassword) =>
     httpClient.post('/auth/change-password', {

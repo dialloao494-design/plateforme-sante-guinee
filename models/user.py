@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Integer, String
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Index, Integer, String, text
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -18,6 +18,13 @@ class User(Base):
             f"role IN ({_CLINICAL_ROLES})",
             name="ck_users_role_allowed",
         ),
+        Index(
+            "uq_users_single_platform_owner",
+            "role",
+            unique=True,
+            postgresql_where=text("role = 'platform_owner'"),
+            sqlite_where=text("role = 'platform_owner'"),
+        ),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -27,6 +34,7 @@ class User(Base):
     clinic_id = Column(Integer, nullable=True, index=True)  # staff home clinic
     is_active = Column(Boolean, nullable=False, default=True)
     must_change_password = Column(Boolean, nullable=False, default=False)
+    session_version = Column(Integer, nullable=False, default=0)
     email_verified_at = Column(DateTime, nullable=True)
 
     patient_profile = relationship("Patient", back_populates="user", uselist=False)

@@ -12,7 +12,13 @@ from core.provisioning_context import provisioning_channel
 
 def _auth(user) -> dict[str, str]:
     token = create_access_token(
-        {"sub": user.email, "user_id": user.id, "user_role": user.role, "role": user.role}
+        {
+            "sub": user.email,
+            "user_id": user.id,
+            "user_role": user.role,
+            "role": user.role,
+            "session_version": user.session_version,
+        }
     )
     return {"Authorization": f"Bearer {token}"}
 
@@ -57,6 +63,19 @@ def test_unified_invoice_generate_and_pay(client, db_session, admin_user):
         headers=_auth(reception),
     )
     patient_id = r.json()["id"]
+    search = client.get(
+        "/clinical/billing/unified/patients/search",
+        params={"q": "Aminata"},
+        headers=_auth(reception),
+    )
+    assert search.status_code == 200
+    assert [patient["id"] for patient in search.json()] == [patient_id]
+
+    visits = client.get(
+        f"/clinical/billing/unified/patients/{patient_id}/open-visits",
+        headers=_auth(reception),
+    )
+    assert visits.status_code == 200
     slot = (datetime.now() + timedelta(hours=4)).replace(second=0, microsecond=0)
     r = client.post(
         "/clinical/reception/appointments",

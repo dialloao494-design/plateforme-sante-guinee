@@ -444,9 +444,11 @@ async def startup_event():
         import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message, models.notification_event, models.attachment_access_log, models.clinical_note, models.consultation_summary, models.patient_document, models.clinical_audit_log
         import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.clinic_charge_payment, models.medical_history, models.hospitalization, models.clinical_visit, models.invoice, models.discharge, models.imaging, models.appointment_reminder, models.pharmacy_inventory, models.password_reset_token, models.email_verification_token, models.visit_workflow, models.nutrition, models.immunization, models.nursing_care, models.nurse_assessment  # noqa: F401
 
-        # Always create tables if they don't exist (safe / idempotent)
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database tables verified / created.")
+        # Local/test environments may bootstrap an empty disposable database.
+        # Deployed environments must be controlled by versioned migrations only.
+        if not _settings.is_deployed:
+            Base.metadata.create_all(bind=engine)
+            logger.info("Development database tables verified / created.")
 
         from database_migrations import (
             ensure_attachment_access_log_table,
@@ -507,6 +509,35 @@ async def startup_event():
         ensure_nurse_assessment_schema(engine)
         ensure_lab_result_reference_range_text(engine)
 
+        if _settings.is_deployed:
+            from sqlalchemy import inspect
+
+            inspector = inspect(engine)
+            required_tables = {
+                "users",
+                "clinics",
+                "patients",
+                "doctors",
+                "clinical_visits",
+                "invoices",
+                "clinical_audit_logs",
+            }
+            missing_tables = sorted(required_tables - set(inspector.get_table_names()))
+            user_columns = (
+                {column["name"] for column in inspector.get_columns("users")}
+                if not missing_tables and "users" in required_tables
+                else set()
+            )
+            missing_user_columns = sorted(
+                {"role", "clinic_id", "session_version"} - user_columns
+            )
+            if missing_tables or missing_user_columns:
+                raise RuntimeError(
+                    "Database schema is incomplete after migrations: "
+                    f"missing_tables={missing_tables}, "
+                    f"missing_users_columns={missing_user_columns}"
+                )
+
         from database import SessionLocal
         from services.user_provisioning import bootstrap_initial_admin, bootstrap_platform_owner
 
@@ -517,7 +548,10 @@ async def startup_event():
         finally:
             bootstrap_db.close()
     except Exception as exc:
-        logger.error("Failed to create tables: %s", exc)
+        logger.exception("Database schema initialization failed")
+        if _settings.is_deployed:
+            # Never accept traffic with a partially migrated clinical schema.
+            raise RuntimeError("Database schema initialization failed") from exc
 
     # Optional weak test user — disabled by default (set ENABLE_STARTUP_TEST_USER=true to enable)
     if _env_flag("ENABLE_STARTUP_TEST_USER", default=False):

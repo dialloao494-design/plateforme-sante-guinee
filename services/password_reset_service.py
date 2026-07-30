@@ -69,6 +69,7 @@ def reset_password_with_token(db: Session, *, raw_token: str, new_password: str)
         return False
 
     user.hashed_password = hash_password(new_password)
+    user.session_version = int(user.session_version or 0) + 1
     if hasattr(user, "must_change_password"):
         user.must_change_password = False
     row.used_at = datetime.utcnow()

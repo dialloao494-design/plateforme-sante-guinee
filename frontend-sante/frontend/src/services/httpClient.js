@@ -87,7 +87,7 @@ const ensureNginxApiPath = (url = '') => {
   return `/api${path}`;
 };
 
-import { clearAllClientStorage, getAuthToken, setAuthToken } from '../utils/authStorage.js';
+import { clearAllClientStorage, getAuthToken } from '../utils/authStorage.js';
 import { invalidateCache } from '../utils/apiCache.js';
 
 // Resolve API base URL from environment variable

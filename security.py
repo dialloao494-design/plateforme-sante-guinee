@@ -1,6 +1,7 @@
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
+from uuid import uuid4
 from fastapi import Depends, HTTPException, status
 from database import get_db
 from sqlalchemy.orm import Session
@@ -55,9 +56,11 @@ def validate_role(role: str) -> str:
 # JWT CONFIG
 # ==============================
 
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
+JWT_ISSUER = os.getenv("JWT_ISSUER", "plateforme-sante-guinee")
+JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "plateforme-sante-guinee-api")
 
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY environment variable is required")
@@ -65,8 +68,18 @@ if not SECRET_KEY:
 
 def create_access_token(data: dict):
     to_encode = data.copy()
+    now = datetime.utcnow()
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
+    to_encode.setdefault("session_version", 0)
+    to_encode.update(
+        {
+            "exp": expire,
+            "iat": now,
+            "jti": uuid4().hex,
+            "iss": JWT_ISSUER,
+            "aud": JWT_AUDIENCE,
+        }
+    )
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -82,7 +95,13 @@ def get_current_user(
     )
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+            issuer=JWT_ISSUER,
+            audience=JWT_AUDIENCE,
+        )
         user_id = payload.get("user_id")
         token_role = payload.get("user_role") or payload.get("role")
         email: str = payload.get("sub")
@@ -111,6 +130,8 @@ def get_current_user(
         )
 
     if token_role and not roles_equivalent(token_role, user.role):
+        raise credentials_exception
+    if int(payload.get("session_version", 0)) != int(getattr(user, "session_version", 0) or 0):
         raise credentials_exception
 
     return user
@@ -244,7 +265,13 @@ def get_current_user_or_none(
         return None
     
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+            issuer=JWT_ISSUER,
+            audience=JWT_AUDIENCE,
+        )
         user_id = payload.get("user_id")
         email: str = payload.get("sub")
 

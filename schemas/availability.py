@@ -1,4 +1,4 @@
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from datetime import time
 
 
@@ -8,17 +8,18 @@ class DoctorAvailabilityBase(BaseModel):
     start_time: time
     end_time: time
 
-    @validator("day_of_week")
+    @field_validator("day_of_week")
+    @classmethod
     def validate_day_of_week(cls, v):
         if not 0 <= v <= 6:
             raise ValueError("day_of_week must be between 0 (Monday) and 6 (Sunday)")
         return v
 
-    @validator("end_time")
-    def validate_times(cls, v, values):
-        if "start_time" in values and v <= values["start_time"]:
+    @model_validator(mode="after")
+    def validate_times(self):
+        if self.end_time <= self.start_time:
             raise ValueError("end_time must be after start_time")
-        return v
+        return self
 
 
 class DoctorAvailabilityCreate(DoctorAvailabilityBase):
@@ -26,18 +27,16 @@ class DoctorAvailabilityCreate(DoctorAvailabilityBase):
 
 
 class DoctorAvailabilityResponse(DoctorAvailabilityBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     is_active: bool
 
-    class Config:
-        orm_mode = True
-
 
 class DoctorAvailabilityUpdate(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     day_of_week: int | None = None
     start_time: time | None = None
     end_time: time | None = None
     is_active: bool | None = None
-
-    class Config:
-        orm_mode = True

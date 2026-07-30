@@ -15,6 +15,7 @@ from security import get_current_doctor, get_current_admin, require_roles, get_c
 from services.availability_service import AvailabilityService
 from services.doctor_availability_access import DoctorAvailabilityAccessService
 from services.doctor_search import apply_doctor_search_filter
+from core.doctor_ownership_policy import DoctorOwnershipPolicy
 
 router = APIRouter(
     prefix="/doctors",
@@ -143,9 +144,13 @@ def update_doctor(
     current_user=Depends(get_current_admin),
 ):
     """Update doctor profile (Admin only)."""
+    DoctorOwnershipPolicy.assert_can_mutate_doctor_resource(
+        db,
+        target_doctor_id=doctor_id,
+        current_user=current_user,
+        resource="doctor profile",
+    )
     doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
-    if not doctor:
-        raise HTTPException(status_code=404, detail="Doctor not found")
     
     # Update only provided fields
     if doctor_update.first_name is not None:
@@ -178,9 +183,13 @@ def delete_doctor(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_admin),
 ):
+    DoctorOwnershipPolicy.assert_can_mutate_doctor_resource(
+        db,
+        target_doctor_id=doctor_id,
+        current_user=current_user,
+        resource="doctor profile",
+    )
     doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
-    if not doctor:
-        raise HTTPException(status_code=404, detail="Doctor not found")
     db.delete(doctor)
     db.commit()
     return {"detail": "Doctor deleted successfully"}
@@ -275,5 +284,3 @@ def get_doctor_schedule(
         "doctor_name": f"{doctor.first_name} {doctor.last_name}",
         "schedule": schedule
     }
-
-

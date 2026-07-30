@@ -467,25 +467,6 @@ export default function LabDashboard() {
     return undefined;
   }, [selectedPatient?.id, actionableOrders, activeOrderId]);
 
-  const selectOrderById = async (orderId) => {
-    let order = orders.find((o) => o.id === orderId) || patientOrders.find((o) => o.id === orderId);
-    if (!order) {
-      await load();
-      order = orders.find((o) => o.id === orderId);
-    }
-    if (!order) {
-      const req = serviceRequests.find((r) => r.lab_order_id === orderId);
-      if (req) {
-        order = { id: orderId, test_name: req.exam_name, status: 'ordered', patient_id: selectedPatient?.id };
-      }
-    }
-    if (order) {
-      selectOrder(order);
-    } else {
-      setError('Commande laboratoire introuvable. Réessayez après actualisation.');
-    }
-  };
-
   const toggleSampleType = (code) => {
     setSampleTypes((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
   };
@@ -554,9 +535,9 @@ export default function LabDashboard() {
     setMessage(
       order
         ? `Modèle chargé : ${LAB_TEMPLATES[templateId]?.title || templateId}`
-        : `Modèle chargé (aperçu) : ${LAB_TEMPLATES[templateId]?.title || templateId} — facturez l\'examen à la réception pour enregistrer.`,
+        : `Modèle chargé (aperçu) : ${LAB_TEMPLATES[templateId]?.title || templateId} — facturez l'examen à la réception pour enregistrer.`,
     );
-    setError(order ? '' : 'Aucun examen facturé en cours — le tableau est prêt pour la saisie, mais l\'enregistrement nécessite une commande.');
+    setError(order ? '' : "Aucun examen facturé en cours — le tableau est prêt pour la saisie, mais l'enregistrement nécessite une commande.");
   };
 
   const printLabReport = async (resultId) => {

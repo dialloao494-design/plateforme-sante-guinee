@@ -10,6 +10,21 @@ import VerifyEmail from "../pages/VerifyEmail.jsx";
 import NotFound from "../pages/NotFound.jsx";
 import ProtectedRoute from "./ProtectedRoute";
 import AdminRouteEntry from "./AdminRouteEntry.jsx";
+import {
+  BILLING_ROLES,
+  CLINIC_ADMIN_ROLES,
+  HOSPITALIZATION_ROLES,
+  IMMUNIZATION_ROLES,
+  NURSE_DASHBOARD_ROLES,
+  NURSING_ROLES,
+  NUTRITION_ROLES,
+  PATIENT_HISTORY_ROLES,
+  PEV_ROLES,
+  PLATFORM_CLINIC_PROVISION_ROLES,
+  PLATFORM_OWNER_ROLES,
+  RECEPTION_ROLES,
+  STAFF_ADMIN_ROLES,
+} from "../config/routeRoles.js";
 
 const Dashboard = lazy(() => import("../pages/Dashboard"));
 const Doctors = lazy(() => import("../pages/Doctors"));
@@ -51,33 +66,6 @@ const ImmunizationDashboard = lazy(() => import("../pages/clinical/ImmunizationD
 const NursingCareDashboard = lazy(() => import("../pages/clinical/NursingCareDashboard.jsx"));
 const NurseDashboard = lazy(() => import("../pages/clinical/NurseDashboard.jsx"));
 const PatientHistoryDashboard = lazy(() => import("../pages/clinical/PatientHistoryDashboard.jsx"));
-
-const STAFF_ADMIN_ROLES = ["admin", "clinic_admin", "platform_admin"];
-const PLATFORM_OWNER_ROLES = ["platform_owner"];
-const PLATFORM_CLINIC_PROVISION_ROLES = ["platform_owner", "platform_admin"];
-const CLINIC_ADMIN_ROLES = ["admin", "clinic_admin"];
-const RECEPTION_ROLES = ["receptionist", "cashier"];
-const BILLING_ROLES = ["receptionist", "cashier", "admin", "clinic_admin"];
-const NUTRITION_ROLES = ["nutritionist", "midwife", "doctor", "admin", "clinic_admin", "platform_admin", "pev_agent", "nurse"];
-const PEV_ROLES = ["pev_agent", "midwife", "receptionist", "doctor", "admin", "clinic_admin", "platform_admin"];
-const NURSE_DASHBOARD_ROLES = ["nurse", "midwife", "admin", "clinic_admin", "receptionist", "doctor"];
-const NURSING_ROLES = ["nurse", "midwife", "admin", "clinic_admin", "receptionist", "doctor"];
-const IMMUNIZATION_ROLES = PEV_ROLES.concat(["nutritionist"]);
-const HOSPITALIZATION_ROLES = ["admin", "clinic_admin", "platform_admin", "receptionist", "doctor", "nurse"];
-const PATIENT_HISTORY_ROLES = [
-  "receptionist",
-  "cashier",
-  "doctor",
-  "lab_technician",
-  "pharmacist",
-  "nutritionist",
-  "pev_agent",
-  "nurse",
-  "midwife",
-  "clinic_admin",
-  "admin",
-  "platform_admin",
-];
 
 const AppRoutes = () => {
   return (

@@ -15,7 +15,7 @@ export default function ChangePassword({ forced = false }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [formError, setFormError] = useState('');
 
-  const isForced = false;
+  const isForced = forced;
 
   useEffect(() => {
     if (isForced) {

@@ -65,15 +65,17 @@ def test_clinic_admin_cannot_provision_staff_for_other_clinic(client, db_session
     assert response.status_code == 403, response.text
 
 
-    with provisioning_channel("platform_owner_bootstrap"):
-        owner = models.User(
-            email="rbac.platform.owner@test.gn",
-            hashed_password=hash_password("Secret12"),
-            role="platform_owner",
-        )
-        db_session.add(owner)
-        db_session.commit()
-        db_session.refresh(owner)
+    owner = db_session.query(models.User).filter(models.User.role == "platform_owner").first()
+    if owner is None:
+        with provisioning_channel("platform_owner_bootstrap"):
+            owner = models.User(
+                email="rbac.platform.owner@test.gn",
+                hashed_password=hash_password("Secret12"),
+                role="platform_owner",
+            )
+            db_session.add(owner)
+            db_session.commit()
+            db_session.refresh(owner)
 
     response = client.post(
         "/clinical/clinics",

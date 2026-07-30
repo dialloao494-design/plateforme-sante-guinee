@@ -31,6 +31,9 @@ jobs:
           cache: npm
           cache-dependency-path: frontend-sante/frontend/package-lock.json
       - run: npm ci
+      - run: npm run lint
+      - name: Audit production dependencies (block critical advisories)
+        run: npm audit --omit=dev --audit-level=critical
       - run: npm run build
         env:
           VITE_API_URL: https://example.com/api

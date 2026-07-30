@@ -2192,6 +2192,54 @@
   box-shadow: 0 0 0 3px rgba(59, 125, 221, 0.15);
 }
 
+.patient-identity-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 2px solid #0d9488;
+  border-radius: 10px;
+  background: #f0fdfa;
+}
+
+.patient-identity-banner div,
+.patient-picker-result {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.patient-identity-banner span,
+.patient-picker-result span {
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.patient-picker-form {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.patient-picker-form input {
+  min-width: min(28rem, 70vw);
+}
+
+.patient-picker-result {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0.25rem;
+}
+
+.patient-picker-result:focus-visible,
+.patient-picker-result:hover {
+  outline: 3px solid rgba(13, 148, 136, 0.28);
+  outline-offset: 3px;
+}
+
 /* Identity */
 .doctor-identity {
   display: flex;
@@ -2475,4 +2523,3 @@
   padding: 0.35rem 0.5rem;
   font: inherit;
 }
-

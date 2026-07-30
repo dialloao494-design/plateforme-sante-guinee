@@ -15,6 +15,11 @@ def _clear_platform_owners(db_session):
         synchronize_session=False
     )
     db_session.commit()
+    yield
+    db_session.query(User).filter(User.role == "platform_owner").delete(
+        synchronize_session=False
+    )
+    db_session.commit()
 
 
 class TestPlatformOwnerSetup:

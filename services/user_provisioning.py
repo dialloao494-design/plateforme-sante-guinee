@@ -429,7 +429,10 @@ def create_platform_owner_user(
         )
     except IntegrityError as exc:
         db.rollback()
-        if "email" in str(exc).lower() or "unique" in str(exc).lower():
+        error_text = str(exc).lower()
+        if "uq_users_single_platform_owner" in error_text or "users.role" in error_text:
+            raise PlatformOwnerSetupClosedError("Platform owner already exists.") from exc
+        if "email" in error_text:
             raise EmailAlreadyRegisteredError("Email already registered") from exc
         raise UserProvisioningError("Error creating platform owner.") from exc
     logger.info("Platform owner provisioned id=%s email=%s", user.id, user.email)

@@ -23,7 +23,22 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^_' }],
+      // Data-fetching effects intentionally invoke callbacks that own their
+      // loading/error state. The rule cannot distinguish those from render loops.
+      'react-hooks/set-state-in-effect': 'off',
+    },
+  },
+  {
+    files: ['vite.config.js', 'playwright.config.js'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
+  {
+    files: ['src/components/PasswordInput.jsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   },
 ])

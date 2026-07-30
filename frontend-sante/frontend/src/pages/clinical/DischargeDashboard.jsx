@@ -10,6 +10,7 @@ export default function DischargeDashboard() {
   const [summaries, setSummaries] = useState([]);
   const [openVisits, setOpenVisits] = useState([]);
   const [visitId, setVisitId] = useState('');
+  const [selectedVisit, setSelectedVisit] = useState(null);
   const [checklist, setChecklist] = useState(null);
   const [followUp, setFollowUp] = useState('');
   const [message, setMessage] = useState('');
@@ -44,12 +45,17 @@ export default function DischargeDashboard() {
   };
 
   const onSelectVisit = (id) => {
+    setSelectedVisit(openVisits.find((visit) => visit.id === id) || null);
     setVisitId(String(id));
     loadChecklist(id);
   };
 
   const discharge = async (force = false) => {
     if (!visitId) return;
+    const patientName = selectedVisit?.patient_name || 'ce patient';
+    if (!window.confirm(`Confirmer la sortie de ${patientName} ? Cette action clôture la visite.`)) {
+      return;
+    }
     try {
       await clinicalApi.executeDischarge({
         visit_id: Number(visitId),
@@ -59,6 +65,7 @@ export default function DischargeDashboard() {
       setMessage('Patient sorti — dossier archivé');
       setChecklist(null);
       setVisitId('');
+      setSelectedVisit(null);
       setFollowUp('');
       load();
     } catch (err) {
@@ -104,19 +111,32 @@ export default function DischargeDashboard() {
       <section className="clinical-panel">
         <h2>Workflow sortie</h2>
         <div className="clinical-form">
-          <label>
-            Visite sélectionnée
-            <input value={visitId} onChange={(e) => setVisitId(e.target.value)} placeholder="ID visite" />
-          </label>
+          {selectedVisit ? (
+            <div className="patient-identity-banner" role="status">
+              <div>
+                <strong>{selectedVisit.patient_name || `Patient ${selectedVisit.patient_id}`}</strong>
+                <span>Visite sélectionnée · {selectedVisit.status}</span>
+              </div>
+              <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => {
+                setVisitId('');
+                setSelectedVisit(null);
+                setChecklist(null);
+              }}>
+                Annuler la sélection
+              </button>
+            </div>
+          ) : (
+            <p className="clinical-empty">Sélectionnez une visite dans la liste ci-dessus.</p>
+          )}
           <label>
             Consignes de suivi
             <textarea rows={2} value={followUp} onChange={(e) => setFollowUp(e.target.value)} />
           </label>
           <div className="clinical-actions">
-            <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => loadChecklist()}>
+            <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => loadChecklist()} disabled={!visitId}>
               Vérifier checklist
             </button>
-            <button type="button" className="clinical-btn" onClick={() => discharge(false)}>
+            <button type="button" className="clinical-btn" onClick={() => discharge(false)} disabled={!visitId || !checklist?.ready_for_discharge}>
               Sortir patient
             </button>
           </div>

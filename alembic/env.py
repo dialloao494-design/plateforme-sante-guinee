@@ -13,14 +13,10 @@ load_dotenv()
 
 from database import Base, DATABASE_URL  # noqa: E402
 
-import models.user  # noqa: F401,E402
-import models.patient  # noqa: F401,E402
-import models.doctor  # noqa: F401,E402
-import models.rendezvous  # noqa: F401,E402
-import models.payment  # noqa: F401,E402
-import models.availability  # noqa: F401,E402
-import models.message  # noqa: F401,E402
-import models.notification_event  # noqa: F401,E402
+# Import the complete ORM registry before assigning target_metadata. Importing a
+# hand-maintained subset makes Alembic autogenerate silently miss newer clinical
+# tables and foreign keys.
+import models  # noqa: F401,E402
 
 config = context.config
 if config.config_file_name is not None:

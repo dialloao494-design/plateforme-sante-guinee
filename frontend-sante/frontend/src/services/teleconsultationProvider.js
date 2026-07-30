@@ -46,7 +46,7 @@ export function inferProviderFromMeetingUrl(url) {
 /**
  * @param {{ appointmentId: number | string }} params
  */
-export function resolveRoomProvider(params) {
+export function resolveRoomProvider() {
   const fromEnv = getConfiguredTeleconsultProvider();
   if (fromEnv !== TELECONSULT_PROVIDERS.stub) {
     return fromEnv;
