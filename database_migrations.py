@@ -812,20 +812,29 @@ def ensure_single_platform_owner_index(engine: Engine) -> None:
         return
     try:
         with engine.begin() as conn:
-            if dialect == "sqlite":
-                conn.execute(
-                    text(
-                        "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_single_platform_owner "
-                        "ON users (role) WHERE role = 'platform_owner'"
-                    )
+            # Demote extras before unique index — duplicate platform_owner rows
+            # from historical /platform/setup races otherwise crash production boot.
+            conn.execute(
+                text(
+                    """
+                    UPDATE users
+                    SET role = 'patient',
+                        is_active = false
+                    WHERE role = 'platform_owner'
+                      AND id NOT IN (
+                        SELECT id FROM (
+                          SELECT MIN(id) AS id FROM users WHERE role = 'platform_owner'
+                        ) keeper
+                      )
+                    """
                 )
-            else:
-                conn.execute(
-                    text(
-                        "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_single_platform_owner "
-                        "ON users (role) WHERE role = 'platform_owner'"
-                    )
+            )
+            conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_single_platform_owner "
+                    "ON users (role) WHERE role = 'platform_owner'"
                 )
+            )
         logger.info("Applied unique partial index uq_users_single_platform_owner")
     except Exception as exc:
         logger.warning("uq_users_single_platform_owner migration skipped: %s", exc)

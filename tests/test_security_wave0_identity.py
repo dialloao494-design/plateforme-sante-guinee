@@ -148,9 +148,10 @@ def test_change_password_revokes_old_token_and_issues_new(client, db_session, ad
     new_me = client.get("/auth/me", headers=_headers(body["access_token"]))
     assert new_me.status_code == 200
 
-    # restore password for other tests
+    # restore password/session for other tests sharing the in-memory DB
     admin_user.hashed_password = hash_password("AdminPass12!")
     admin_user.token_version = 0
+    admin_user.session_version = 0
     admin_user.must_change_password = False
     db_session.add(admin_user)
     db_session.commit()

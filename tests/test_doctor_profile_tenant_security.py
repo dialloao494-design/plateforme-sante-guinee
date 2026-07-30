@@ -32,7 +32,7 @@ def test_clinic_admin_cannot_update_or_delete_other_clinic_doctor(client, db_ses
     with provisioning_channel("test_fixture"):
         admin = models.User(
             email=f"clinic.admin.{suffix}@test.gn",
-            hashed_password=hash_password("AdminPass1"),
+            hashed_password=hash_password("AdminPass12!"),
             role="clinic_admin",
             clinic_id=clinic_a.id,
         )
@@ -42,7 +42,7 @@ def test_clinic_admin_cannot_update_or_delete_other_clinic_doctor(client, db_ses
     doctor_user = register_public_user(
         db_session,
         email=f"doctor.tenant.{suffix}@test.gn",
-        password="DoctorPass1",
+        password="DoctorPass12!",
         role="doctor",
     ).user
     doctor = db_session.query(models.Doctor).filter(models.Doctor.user_id == doctor_user.id).one()

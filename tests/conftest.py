@@ -115,6 +115,24 @@ def client(db_session: Session):
     app.dependency_overrides.clear()
 
 
+def _reset_admin_fixture_user(user: User, db_session: Session) -> User:
+    """Normalize shared in-memory admin so later tests are not poisoned."""
+    user.hashed_password = hash_password("AdminPass12!")
+    user.must_change_password = False
+    user.is_active = True
+    user.token_version = 0
+    if hasattr(user, "session_version"):
+        user.session_version = 0
+    if hasattr(user, "failed_login_attempts"):
+        user.failed_login_attempts = 0
+    if hasattr(user, "locked_until"):
+        user.locked_until = None
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
 @pytest.fixture()
 def admin_user(db_session: Session) -> User:
     from core.provisioning_context import provisioning_channel
@@ -122,35 +140,25 @@ def admin_user(db_session: Session) -> User:
     email = "admin@clinic.test"
     existing = db_session.query(User).filter(User.email == email).first()
     if existing:
-        existing.hashed_password = hash_password("AdminPass12!")
-        existing.must_change_password = False
-        existing.is_active = True
         if existing.role != "platform_owner":
             # Prefer the canonical fixture identity when possible.
             pass
-        db_session.add(existing)
-        db_session.commit()
-        db_session.refresh(existing)
-        return existing
+        return _reset_admin_fixture_user(existing, db_session)
 
     # Partial unique index allows only one platform_owner in the shared test DB.
     existing_owner = (
         db_session.query(User).filter(User.role == "platform_owner").first()
     )
     if existing_owner:
-        existing_owner.hashed_password = hash_password("AdminPass12!")
-        existing_owner.must_change_password = False
-        existing_owner.is_active = True
-        db_session.add(existing_owner)
-        db_session.commit()
-        db_session.refresh(existing_owner)
-        return existing_owner
+        return _reset_admin_fixture_user(existing_owner, db_session)
 
     with provisioning_channel("test_fixture"):
         user = User(
             email=email,
             hashed_password=hash_password("AdminPass12!"),
             role="platform_owner",
+            session_version=0,
+            token_version=0,
         )
         db_session.add(user)
         db_session.commit()

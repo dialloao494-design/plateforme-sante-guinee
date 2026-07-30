@@ -1,0 +1,2467 @@
+........................................................................ [ 23%]
+........................................................................ [ 47%]
+............................................s........................... [ 71%]
+........................................................................ [ 95%]
+...............                                                          [100%]
+=============================== warnings summary ===============================
+../home/ubuntu/.local/lib/python3.12/site-packages/pydantic/_internal/_config.py:272
+  /home/ubuntu/.local/lib/python3.12/site-packages/pydantic/_internal/_config.py:272: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.6/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+../home/ubuntu/.local/lib/python3.12/site-packages/pydantic/_internal/_config.py:322
+  /home/ubuntu/.local/lib/python3.12/site-packages/pydantic/_internal/_config.py:322: UserWarning: Valid config keys have changed in V2:
+  * 'orm_mode' has been renamed to 'from_attributes'
+    warnings.warn(message, UserWarning)
+
+../home/ubuntu/.local/lib/python3.12/site-packages/passlib/utils/__init__.py:854
+  /home/ubuntu/.local/lib/python3.12/site-packages/passlib/utils/__init__.py:854: DeprecationWarning: 'crypt' is deprecated and slated for removal in Python 3.13
+    from crypt import crypt as _crypt
+
+main.py:528
+  /workspace/main.py:528: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+../home/ubuntu/.local/lib/python3.12/site-packages/fastapi/applications.py:4495
+  /home/ubuntu/.local/lib/python3.12/site-packages/fastapi/applications.py:4495: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+main.py:765
+  /workspace/main.py:765: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+../home/ubuntu/.local/lib/python3.12/site-packages/reportlab/lib/rl_safe_eval.py:12
+  /home/ubuntu/.local/lib/python3.12/site-packages/reportlab/lib/rl_safe_eval.py:12: DeprecationWarning: ast.NameConstant is deprecated and will be removed in Python 3.14; use ast.Constant instead
+    haveNameConstant = hasattr(ast,'NameConstant')
+
+tests/test_attachment_security.py: 14 warnings
+tests/test_auth_session.py: 4 warnings
+tests/test_clinic_admin_platform_rbac.py: 3 warnings
+tests/test_clinic_isolation_security.py: 4 warnings
+tests/test_clinic_readiness.py: 5 warnings
+tests/test_clinical_extensions.py: 3 warnings
+tests/test_clinical_phase2.py: 4 warnings
+tests/test_clinical_reporting.py: 1 warning
+tests/test_clinical_workflow.py: 6 warnings
+tests/test_discharge.py: 1 warning
+tests/test_doctor_appointment_rbac.py: 1 warning
+tests/test_doctor_availability_security.py: 11 warnings
+tests/test_doctor_profile_tenant_security.py: 1 warning
+tests/test_end_to_end_clinic.py: 1 warning
+tests/test_hospitalization.py: 3 warnings
+tests/test_medical_history.py: 1 warning
+tests/test_nurse_assessment.py: 3 warnings
+tests/test_nutrition_immunization_auth.py: 4 warnings
+tests/test_patient_record_security.py: 16 warnings
+tests/test_payment_access_enforcement.py: 1 warning
+tests/test_payment_settlement_security.py: 3 warnings
+tests/test_pharmacy_inventory.py: 1 warning
+tests/test_platform_clinic_directory.py: 6 warnings
+tests/test_platform_owner_setup.py: 7 warnings
+tests/test_radiology.py: 1 warning
+tests/test_redteam_final_assessment.py: 7 warnings
+tests/test_redteam_round2_clinical_idor.py: 3 warnings
+tests/test_registration_security.py: 14 warnings
+tests/test_reminders.py: 2 warnings
+tests/test_security_wave0_identity.py: 9 warnings
+tests/test_security_wave1_api.py: 5 warnings
+tests/test_security_wave6_pentest.py: 1 warning
+tests/test_teleconsult_meeting_link_security.py: 10 warnings
+tests/test_unified_billing.py: 1 warning
+tests/test_visit_workflow_auth.py: 2 warnings
+  /home/ubuntu/.local/lib/python3.12/site-packages/httpx/_client.py:690: DeprecationWarning: The 'app' shortcut is now deprecated. Use the explicit style 'transport=WSGITransport(app=...)' instead.
+    warnings.warn(message, DeprecationWarning)
+
+tests/test_attachment_security.py::TestAttachmentDownloadAuth::test_download_without_token_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a84ce960>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_attachment_security.py::TestAttachmentDownloadAuth::test_download_without_token_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a84ce930>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_attachment_security.py::TestAttachmentDownloadAuth::test_download_without_token_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a8358ce0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_attachment_security.py::TestAttachmentDownloadAuth::test_download_without_token_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a8359ac0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_attachment_security.py::TestAttachmentDownloadAuth::test_download_without_token_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a89afaa0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_attachment_security.py::TestAttachmentDownloadAuth::test_download_without_token_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a987e2d0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_attachment_security.py: 11 warnings
+tests/test_auth_session.py: 3 warnings
+tests/test_clinic_admin_platform_rbac.py: 3 warnings
+tests/test_clinic_isolation_security.py: 6 warnings
+tests/test_clinic_node_bootstrap.py: 1 warning
+tests/test_clinic_node_production.py: 5 warnings
+tests/test_clinic_readiness.py: 5 warnings
+tests/test_clinical_extensions.py: 3 warnings
+tests/test_clinical_phase2.py: 4 warnings
+tests/test_clinical_reporting.py: 1 warning
+tests/test_clinical_workflow.py: 6 warnings
+tests/test_discharge.py: 1 warning
+tests/test_doctor_availability_security.py: 13 warnings
+tests/test_doctor_profile_tenant_security.py: 1 warning
+tests/test_end_to_end_clinic.py: 1 warning
+tests/test_hospitalization.py: 3 warnings
+tests/test_medical_history.py: 1 warning
+tests/test_nurse_assessment.py: 3 warnings
+tests/test_nutrition_immunization_auth.py: 4 warnings
+tests/test_patient_record_security.py: 16 warnings
+tests/test_payment_access_enforcement.py: 5 warnings
+tests/test_payment_settlement_security.py: 4 warnings
+tests/test_pharmacy_inventory.py: 1 warning
+tests/test_platform_clinic_directory.py: 6 warnings
+tests/test_platform_owner_setup.py: 4 warnings
+tests/test_radiology.py: 1 warning
+tests/test_redteam_final_assessment.py: 5 warnings
+tests/test_redteam_round2_clinical_idor.py: 7 warnings
+tests/test_registration_security.py: 6 warnings
+tests/test_reminders.py: 2 warnings
+tests/test_security_wave0_identity.py: 7 warnings
+tests/test_security_wave1_api.py: 4 warnings
+tests/test_security_wave6_pentest.py: 1 warning
+tests/test_teleconsult_meeting_link_security.py: 10 warnings
+tests/test_unified_billing.py: 1 warning
+tests/test_visit_workflow_auth.py: 2 warnings
+  /home/ubuntu/.local/lib/python3.12/site-packages/sqlalchemy/sql/schema.py:3592: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+
+tests/test_attachment_security.py: 11 warnings
+tests/test_doctor_availability_security.py: 13 warnings
+tests/test_doctor_profile_tenant_security.py: 1 warning
+tests/test_patient_record_security.py: 16 warnings
+tests/test_payment_access_enforcement.py: 5 warnings
+tests/test_payment_settlement_security.py: 4 warnings
+tests/test_registration_security.py: 4 warnings
+tests/test_teleconsult_meeting_link_security.py: 10 warnings
+tests/test_visit_workflow_auth.py: 1 warning
+  /workspace/services/email_verification_service.py:36: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    expires = datetime.utcnow() + timedelta(hours=VERIFY_TOKEN_HOURS)
+
+tests/test_attachment_security.py: 11 warnings
+tests/test_doctor_availability_security.py: 13 warnings
+tests/test_doctor_profile_tenant_security.py: 1 warning
+tests/test_patient_record_security.py: 16 warnings
+tests/test_payment_access_enforcement.py: 5 warnings
+tests/test_payment_settlement_security.py: 4 warnings
+tests/test_registration_security.py: 4 warnings
+tests/test_teleconsult_meeting_link_security.py: 10 warnings
+tests/test_visit_workflow_auth.py: 1 warning
+  /workspace/services/email_verification_service.py:41: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ).update({"used_at": datetime.utcnow()})
+
+tests/test_attachment_security.py: 11 warnings
+  /workspace/tests/test_attachment_security.py:83: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    date=datetime.utcnow() + timedelta(days=1),
+
+tests/test_attachment_security.py: 11 warnings
+tests/test_auth_session.py: 4 warnings
+tests/test_clinic_admin_platform_rbac.py: 3 warnings
+tests/test_clinic_isolation_security.py: 4 warnings
+tests/test_clinic_readiness.py: 5 warnings
+tests/test_clinical_extensions.py: 3 warnings
+tests/test_clinical_phase2.py: 4 warnings
+tests/test_clinical_reporting.py: 1 warning
+tests/test_clinical_workflow.py: 6 warnings
+tests/test_discharge.py: 1 warning
+tests/test_doctor_appointment_rbac.py: 1 warning
+tests/test_doctor_availability_security.py: 13 warnings
+tests/test_doctor_profile_tenant_security.py: 1 warning
+tests/test_end_to_end_clinic.py: 1 warning
+tests/test_hospitalization.py: 3 warnings
+tests/test_medical_history.py: 1 warning
+tests/test_nurse_assessment.py: 3 warnings
+tests/test_nutrition_immunization_auth.py: 3 warnings
+tests/test_patient_record_security.py: 16 warnings
+tests/test_payment_access_enforcement.py: 1 warning
+tests/test_payment_settlement_security.py: 3 warnings
+tests/test_pharmacy_inventory.py: 1 warning
+tests/test_platform_clinic_directory.py: 6 warnings
+tests/test_platform_owner_setup.py: 4 warnings
+tests/test_radiology.py: 1 warning
+tests/test_redteam_final_assessment.py: 4 warnings
+tests/test_redteam_round2_clinical_idor.py: 2 warnings
+tests/test_registration_security.py: 6 warnings
+tests/test_reminders.py: 2 warnings
+tests/test_security_wave0_identity.py: 8 warnings
+tests/test_security_wave1_api.py: 4 warnings
+tests/test_security_wave6_pentest.py: 1 warning
+tests/test_teleconsult_meeting_link_security.py: 10 warnings
+tests/test_unified_billing.py: 1 warning
+tests/test_visit_workflow_auth.py: 2 warnings
+  /workspace/security.py:75: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_attachment_security.py: 10 warnings
+tests/test_auth_session.py: 4 warnings
+tests/test_clinic_admin_platform_rbac.py: 3 warnings
+tests/test_clinic_isolation_security.py: 4 warnings
+tests/test_clinic_readiness.py: 5 warnings
+tests/test_clinical_extensions.py: 3 warnings
+tests/test_clinical_phase2.py: 4 warnings
+tests/test_clinical_reporting.py: 1 warning
+tests/test_clinical_workflow.py: 6 warnings
+tests/test_discharge.py: 1 warning
+tests/test_doctor_appointment_rbac.py: 1 warning
+tests/test_doctor_availability_security.py: 11 warnings
+tests/test_doctor_profile_tenant_security.py: 1 warning
+tests/test_end_to_end_clinic.py: 1 warning
+tests/test_hospitalization.py: 3 warnings
+tests/test_medical_history.py: 1 warning
+tests/test_nurse_assessment.py: 3 warnings
+tests/test_nutrition_immunization_auth.py: 3 warnings
+tests/test_patient_record_security.py: 16 warnings
+tests/test_payment_access_enforcement.py: 1 warning
+tests/test_payment_settlement_security.py: 3 warnings
+tests/test_pharmacy_inventory.py: 1 warning
+tests/test_platform_clinic_directory.py: 6 warnings
+tests/test_platform_owner_setup.py: 1 warning
+tests/test_radiology.py: 1 warning
+tests/test_redteam_final_assessment.py: 5 warnings
+tests/test_redteam_round2_clinical_idor.py: 2 warnings
+tests/test_registration_security.py: 4 warnings
+tests/test_reminders.py: 2 warnings
+tests/test_security_wave0_identity.py: 6 warnings
+tests/test_security_wave1_api.py: 4 warnings
+tests/test_security_wave6_pentest.py: 1 warning
+tests/test_teleconsult_meeting_link_security.py: 6 warnings
+tests/test_unified_billing.py: 1 warning
+tests/test_visit_workflow_auth.py: 1 warning
+  /home/ubuntu/.local/lib/python3.12/site-packages/jose/jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+tests/test_attachment_security.py: 10 warnings
+tests/test_auth_session.py: 4 warnings
+tests/test_clinic_admin_platform_rbac.py: 3 warnings
+tests/test_clinic_isolation_security.py: 4 warnings
+tests/test_clinic_readiness.py: 5 warnings
+tests/test_clinical_extensions.py: 3 warnings
+tests/test_clinical_phase2.py: 4 warnings
+tests/test_clinical_reporting.py: 1 warning
+tests/test_clinical_workflow.py: 6 warnings
+tests/test_discharge.py: 1 warning
+tests/test_doctor_appointment_rbac.py: 1 warning
+tests/test_doctor_availability_security.py: 11 warnings
+tests/test_doctor_profile_tenant_security.py: 1 warning
+tests/test_end_to_end_clinic.py: 1 warning
+tests/test_hospitalization.py: 3 warnings
+tests/test_medical_history.py: 1 warning
+tests/test_nurse_assessment.py: 3 warnings
+tests/test_nutrition_immunization_auth.py: 3 warnings
+tests/test_patient_record_security.py: 16 warnings
+tests/test_payment_access_enforcement.py: 1 warning
+tests/test_payment_settlement_security.py: 3 warnings
+tests/test_pharmacy_inventory.py: 1 warning
+tests/test_platform_clinic_directory.py: 6 warnings
+tests/test_platform_owner_setup.py: 1 warning
+tests/test_radiology.py: 1 warning
+tests/test_redteam_final_assessment.py: 3 warnings
+tests/test_redteam_round2_clinical_idor.py: 2 warnings
+tests/test_registration_security.py: 4 warnings
+tests/test_reminders.py: 2 warnings
+tests/test_security_wave0_identity.py: 5 warnings
+tests/test_security_wave1_api.py: 4 warnings
+tests/test_security_wave6_pentest.py: 1 warning
+tests/test_teleconsult_meeting_link_security.py: 6 warnings
+tests/test_unified_billing.py: 1 warning
+tests/test_visit_workflow_auth.py: 1 warning
+  /workspace/services/auth_session_service.py:227: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    AccessTokenDenylist.expires_at > datetime.utcnow(),
+
+tests/test_attachment_security.py::TestAttachmentDownloadAuth::test_doctor_can_download_appointment_attachment
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2c45d60>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_attachment_security.py::TestAttachmentDownloadAuth::test_doctor_can_download_appointment_attachment
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2c46390>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_attachment_security.py::TestMessageListDoesNotExposePublicUrls::test_list_messages_returns_authenticated_download_path_only
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2c89f70>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_attachment_security.py::TestMessageListDoesNotExposePublicUrls::test_list_messages_returns_authenticated_download_path_only
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2c88b00>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_attachment_security.py::TestAttachmentUploadValidation::test_disallowed_extension_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2ca5d00>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_attachment_security.py::TestAttachmentUploadValidation::test_disallowed_extension_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2ca5ee0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_attachment_security.py::TestAttachmentUploadValidation::test_disallowed_extension_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2cf4e90>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_attachment_security.py::TestAttachmentUploadValidation::test_disallowed_extension_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2cf4ec0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_auth_session.py::test_auth_me_includes_profile_fields
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2cf7140>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_auth_session.py::test_auth_me_includes_profile_fields
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2cf7ce0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_auth_session.py::test_auth_me_includes_profile_fields
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2cf47a0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_auth_session.py::test_auth_me_includes_profile_fields
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2cf6390>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_auth_session.py::test_change_password_updates_hash
+tests/test_nutrition_immunization_auth.py::test_password_reset_flow
+tests/test_security_wave0_identity.py::test_change_password_revokes_old_token_and_issues_new
+tests/test_security_wave6_pentest.py::test_all_attack_ids_executed
+  /workspace/services/auth_session_service.py:284: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    user.password_changed_at = datetime.utcnow()
+
+tests/test_auth_session.py::test_change_password_updates_hash
+tests/test_auth_session.py::test_logout_revokes_previously_issued_token
+tests/test_nutrition_immunization_auth.py::test_password_reset_flow
+tests/test_security_wave0_identity.py::test_change_password_revokes_old_token_and_issues_new
+tests/test_security_wave6_pentest.py::test_all_attack_ids_executed
+  /workspace/services/auth_session_service.py:169: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_auth_session.py::test_change_password_updates_hash
+tests/test_security_wave0_identity.py::test_change_password_revokes_old_token_and_issues_new
+tests/test_security_wave6_pentest.py::test_all_attack_ids_executed
+  /workspace/routers/auth.py:466: DeprecationWarning: datetime.datetime.utcfromtimestamp() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.fromtimestamp(timestamp, datetime.UTC).
+    datetime.utcfromtimestamp(exp)
+
+tests/test_auth_session.py: 1 warning
+tests/test_clinical_workflow.py: 2 warnings
+tests/test_payment_access_enforcement.py: 1 warning
+tests/test_payment_settlement_security.py: 3 warnings
+tests/test_platform_clinic_directory.py: 6 warnings
+tests/test_platform_owner_setup.py: 4 warnings
+tests/test_redteam_final_assessment.py: 1 warning
+tests/test_registration_security.py: 6 warnings
+tests/test_security_wave0_identity.py: 7 warnings
+tests/test_security_wave6_pentest.py: 1 warning
+tests/test_visit_workflow_auth.py: 1 warning
+  /workspace/services/auth_session_service.py:49: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    expires_at=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+
+tests/test_auth_session.py::test_change_password_rejects_wrong_current
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2b3b440>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_auth_session.py::test_change_password_rejects_wrong_current
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2b39b50>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_auth_session.py::test_logout_revokes_previously_issued_token
+tests/test_security_wave0_identity.py::test_logout_denylists_access_token
+tests/test_security_wave6_pentest.py::test_all_attack_ids_executed
+  /workspace/routers/auth.py:349: DeprecationWarning: datetime.datetime.utcfromtimestamp() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.fromtimestamp(timestamp, datetime.UTC).
+    datetime.utcfromtimestamp(exp)
+
+tests/test_clinic_admin_platform_rbac.py::test_clinic_admin_cannot_provision_staff_for_other_clinic
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2b81c70>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinic_admin_platform_rbac.py::test_clinic_admin_cannot_provision_staff_for_other_clinic
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2b838f0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinic_admin_platform_rbac.py::test_clinic_admin_cannot_provision_staff_for_other_clinic
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2bead20>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinic_admin_platform_rbac.py::test_clinic_admin_cannot_provision_staff_for_other_clinic
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2bead80>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinic_isolation_security.py::test_patient_search_is_scoped_to_clinic
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2be9430>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinic_isolation_security.py::test_patient_search_is_scoped_to_clinic
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2be99a0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinic_isolation_security.py::test_cross_clinic_dossier_denied
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2cf7e90>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinic_isolation_security.py::test_cross_clinic_dossier_denied
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2cf4c80>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinic_node_bootstrap.py: 1 warning
+tests/test_clinical_workflow.py: 2 warnings
+tests/test_doctor_availability_security.py: 13 warnings
+tests/test_platform_clinic_directory.py: 6 warnings
+tests/test_platform_owner_setup.py: 4 warnings
+tests/test_registration_security.py: 1 warning
+tests/test_security_wave0_identity.py: 1 warning
+tests/test_security_wave1_api.py: 4 warnings
+  /workspace/services/user_provisioning.py:182: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    email_verified_at=datetime.utcnow() if auto_verify else None,
+
+tests/test_clinic_node_bootstrap.py::TestClinicNodeBootstrap::test_bootstrap_creates_clinic_and_admin
+tests/test_clinic_node_production.py::TestLicenseCrypto::test_sign_and_verify
+tests/test_clinic_node_production.py::TestLicenseCrypto::test_activate_and_state_ok
+tests/test_clinic_node_production.py::TestLicenseCrypto::test_expired_state
+  /workspace/services/clinic_node_license_service.py:62: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    issued = issued_at or datetime.utcnow()
+
+tests/test_clinic_node_bootstrap.py::TestClinicNodeBootstrap::test_bootstrap_creates_clinic_and_admin
+tests/test_clinic_node_production.py::TestLicenseCrypto::test_activate_and_state_ok
+tests/test_clinic_node_production.py::TestLicenseCrypto::test_expired_state
+  /workspace/services/clinic_node_license_service.py:152: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    activated_at=datetime.utcnow(),
+
+tests/test_clinic_node_bootstrap.py::TestClinicNodeBootstrap::test_bootstrap_creates_clinic_and_admin
+tests/test_clinic_node_production.py::TestLicenseCrypto::test_activate_and_state_ok
+tests/test_clinic_node_production.py::TestLicenseCrypto::test_expired_state
+  /workspace/services/clinic_node_license_service.py:153: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    last_validated_at=datetime.utcnow(),
+
+tests/test_clinic_node_bootstrap.py::TestClinicNodeBootstrap::test_bootstrap_creates_clinic_and_admin
+tests/test_clinic_node_production.py::TestLicenseCrypto::test_activate_and_state_ok
+tests/test_clinic_node_production.py::TestLicenseCrypto::test_expired_state
+  /workspace/services/clinic_node_license_service.py:94: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_clinic_node_bootstrap.py::TestClinicNodeBootstrap::test_bootstrap_creates_clinic_and_admin
+  /workspace/services/clinic_node_license_service.py:127: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    existing.last_validated_at = datetime.utcnow()
+
+tests/test_clinic_node_production.py::TestLicenseCrypto::test_expired_state
+  /workspace/tests/test_clinic_node_production.py:59: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.valid_until = datetime.utcnow() - timedelta(days=2)
+
+tests/test_clinic_node_production.py::TestLicenseCrypto::test_expired_state
+  /workspace/tests/test_clinic_node_production.py:60: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.grace_until = datetime.utcnow() - timedelta(days=1)
+
+tests/test_clinic_node_production.py::TestSyncQueue::test_local_mirror_push_and_ingest
+  /workspace/services/clinic_node_sync_service.py:103: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_clinic_node_production.py::TestSyncQueue::test_local_mirror_push_and_ingest
+  /workspace/services/clinic_node_sync_service.py:195: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.acked_at = datetime.utcnow()
+
+tests/test_clinic_node_production.py::TestConflicts::test_resolve_merge_and_manual
+  /workspace/services/clinic_node_conflict_service.py:113: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    conflict.resolved_at = datetime.utcnow()
+
+tests/test_clinic_readiness.py: 4 warnings
+tests/test_clinical_extensions.py: 2 warnings
+tests/test_clinical_workflow.py: 2 warnings
+tests/test_discharge.py: 1 warning
+tests/test_end_to_end_clinic.py: 1 warning
+tests/test_hospitalization.py: 2 warnings
+tests/test_medical_history.py: 1 warning
+tests/test_radiology.py: 1 warning
+tests/test_reminders.py: 2 warnings
+tests/test_unified_billing.py: 1 warning
+  /workspace/services/reminder_service.py:34: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    if scheduled <= datetime.utcnow():
+
+tests/test_clinic_readiness.py: 4 warnings
+tests/test_clinical_extensions.py: 1 warning
+tests/test_clinical_workflow.py: 2 warnings
+tests/test_end_to_end_clinic.py: 1 warning
+tests/test_hospitalization.py: 2 warnings
+tests/test_radiology.py: 1 warning
+  /workspace/services/clinical_workflow_service.py:266: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    rdv.updated_at = datetime.utcnow()
+
+tests/test_clinic_readiness.py::test_unified_timeline_includes_cis
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a27024e0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinic_readiness.py::test_unified_timeline_includes_cis
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2700b90>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinic_readiness.py: 3 warnings
+tests/test_clinical_extensions.py: 1 warning
+tests/test_clinical_workflow.py: 3 warnings
+tests/test_end_to_end_clinic.py: 1 warning
+tests/test_hospitalization.py: 2 warnings
+tests/test_nurse_assessment.py: 1 warning
+tests/test_radiology.py: 1 warning
+  /workspace/services/clinical_workflow_service.py:366: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    started_at=datetime.utcnow(),
+
+tests/test_clinic_readiness.py::test_billing_consultation_lab_pharmacy
+  /workspace/services/clinic_billing_service.py:168: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    charge.paid_at = datetime.utcnow()
+
+tests/test_clinic_readiness.py::test_billing_consultation_lab_pharmacy
+  /workspace/services/clinic_billing_service.py:169: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    charge.updated_at = datetime.utcnow()
+
+tests/test_clinic_readiness.py::test_billing_consultation_lab_pharmacy
+  /workspace/services/clinic_billing_service.py:188: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    target = day or datetime.utcnow().date()
+
+tests/test_clinic_readiness.py::test_backup_validation_service
+  /workspace/services/backup_validation_service.py:23: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "checked_at": datetime.utcnow().isoformat() + "Z",
+
+tests/test_clinic_readiness.py::test_backup_validation_service
+  /workspace/services/backup_validation_service.py:44: DeprecationWarning: datetime.datetime.utcfromtimestamp() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.fromtimestamp(timestamp, datetime.UTC).
+    mtime = datetime.utcfromtimestamp(latest.stat().st_mtime)
+
+tests/test_clinic_readiness.py::test_backup_validation_service
+  /workspace/services/backup_validation_service.py:45: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    age = datetime.utcnow() - mtime
+
+tests/test_clinic_readiness.py::test_lab_validation_creates_document
+tests/test_clinical_workflow.py::test_full_clinical_workflow
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/clinical_workflow_service.py:1100: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    order.updated_at = datetime.utcnow()
+
+tests/test_clinic_readiness.py::test_lab_validation_creates_document
+tests/test_clinical_workflow.py::test_full_clinical_workflow
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/clinical_workflow_service.py:1133: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    result.validated_at = datetime.utcnow()
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+tests/test_unified_billing.py::test_unified_invoice_generate_and_pay
+  /workspace/services/unified_billing_service.py:38: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    year = datetime.utcnow().year
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+tests/test_unified_billing.py::test_unified_invoice_generate_and_pay
+  /workspace/services/unified_billing_service.py:206: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    issued_at=datetime.utcnow(),
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a83b13d0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a83b10d0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2d55a00>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2d55f70>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2c8b3b0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2c8b380>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2ca6d80>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2ca71d0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2b38bf0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2b38c20>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2b821e0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2b82270>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2ba3e90>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2ba3e30>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2a49610>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2a494c0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2cf6450>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2cf4380>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2be9880>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2be9b50>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2922690>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a29203b0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2acfef0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2acc4a0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a27dcf50>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a27dd580>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a268d130>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a268d0d0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a25d3080>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a25d30b0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2443620>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a24416d0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+tests/test_unified_billing.py::test_unified_invoice_generate_and_pay
+  /workspace/services/unified_billing_service.py:278: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    invoice.paid_at = datetime.utcnow()
+
+tests/test_clinical_extensions.py::test_unified_billing_invoice_flow
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+tests/test_unified_billing.py::test_unified_invoice_generate_and_pay
+  /workspace/services/unified_billing_service.py:286: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    charge.paid_at = datetime.utcnow()
+
+tests/test_clinical_phase2.py::test_nutrition_register_json_serializable
+tests/test_nutrition_immunization_auth.py::test_nutrition_assessment_and_history
+  /workspace/services/nutrition_service.py:77: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    recorded_at=datetime.utcnow(),
+
+tests/test_clinical_phase2.py::test_koloma_monthly_reports
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a28b2d50>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_phase2.py::test_koloma_monthly_reports
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a28b0f20>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_workflow.py::test_full_clinical_workflow
+  /workspace/tests/test_clinical_workflow.py:76: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    day_of_week=datetime.utcnow().weekday(),
+
+tests/test_clinical_workflow.py::test_full_clinical_workflow
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/clinical_workflow_service.py:1330: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    order.dispensed_at = datetime.utcnow()
+
+tests/test_clinical_workflow.py::test_full_clinical_workflow
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/clinical_workflow_service.py:1341: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    order.updated_at = datetime.utcnow()
+
+tests/test_clinical_workflow.py: 2 warnings
+tests/test_payment_access_enforcement.py: 1 warning
+tests/test_payment_settlement_security.py: 3 warnings
+tests/test_platform_clinic_directory.py: 6 warnings
+tests/test_redteam_final_assessment.py: 1 warning
+tests/test_registration_security.py: 3 warnings
+tests/test_security_wave0_identity.py: 7 warnings
+tests/test_security_wave6_pentest.py: 1 warning
+tests/test_visit_workflow_auth.py: 1 warning
+  /workspace/services/auth_session_service.py:275: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    user.last_login_at = datetime.utcnow()
+
+tests/test_clinical_workflow.py::test_assign_doctor_syncs_user_clinic
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a203f380>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_workflow.py::test_assign_doctor_syncs_user_clinic
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a203ef90>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_clinical_workflow.py::test_doctor_dashboard_module
+  /workspace/services/clinical_workflow_service.py:636: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    date=datetime.utcnow(),
+
+tests/test_clinical_workflow.py::test_doctor_dashboard_module
+  /workspace/services/clinical_workflow_service.py:459: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    consultation.updated_at = datetime.utcnow()
+
+tests/test_clinical_workflow.py::test_doctor_dashboard_module
+  /workspace/services/clinical_workflow_service.py:448: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    consultation.completed_at = datetime.utcnow()
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a129d550>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a129c890>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2311730>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2311520>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a246f800>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a246f5c0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a268d2b0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a268f470>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2a8ce60>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2a8d790>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2703d70>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a27009e0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2b6b200>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2b69c10>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2c47560>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2c456a0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a154b9e0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1df4440>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a15fa390>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a15fa360>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1599520>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1598ef0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/discharge_service.py:149: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    discharged_at=datetime.utcnow(),
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/visit_service.py:80: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    visit.discharged_at = datetime.utcnow()
+
+tests/test_discharge.py::test_discharge_workflow_with_billing_and_emr
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/visit_service.py:81: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    visit.closed_at = datetime.utcnow()
+
+tests/test_doctor_availability_security.py::TestCrossDoctorAvailabilityBlocked::test_doctor_cannot_delete_peer_slot
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2ca6990>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_doctor_availability_security.py::TestCrossDoctorAvailabilityBlocked::test_doctor_cannot_delete_peer_slot
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2ca4ef0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_doctor_availability_security.py::TestCrossDoctorAvailabilityBlocked::test_doctor_cannot_delete_peer_slot
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2b68740>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_doctor_availability_security.py::TestCrossDoctorAvailabilityBlocked::test_doctor_cannot_delete_peer_slot
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2b6ab70>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_doctor_availability_security.py::TestOwnScheduleAllowed::test_doctor_can_update_own_slot
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2a24560>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_doctor_availability_security.py::TestOwnScheduleAllowed::test_doctor_can_update_own_slot
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2a26330>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_doctor_availability_security.py::TestOwnScheduleAllowed::test_doctor_can_update_own_slot
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2ca6180>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_doctor_availability_security.py::TestOwnScheduleAllowed::test_doctor_can_update_own_slot
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2ca6870>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_doctor_availability_security.py::TestAdminCrossDoctorManagement::test_admin_can_update_any_doctor_slot
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a23c0dd0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_doctor_availability_security.py::TestAdminCrossDoctorManagement::test_admin_can_update_any_doctor_slot
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a23c03b0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_doctor_availability_security.py::TestAdminCrossDoctorManagement::test_admin_can_update_any_doctor_slot
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a26185c0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_doctor_availability_security.py::TestAdminCrossDoctorManagement::test_admin_can_update_any_doctor_slot
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a241f650>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_doctor_profile_tenant_security.py::test_clinic_admin_cannot_update_or_delete_other_clinic_doctor
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2b827b0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_doctor_profile_tenant_security.py::test_clinic_admin_cannot_update_or_delete_other_clinic_doctor
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2b80c50>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_doctor_profile_tenant_security.py::test_clinic_admin_cannot_update_or_delete_other_clinic_doctor
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1350410>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_doctor_profile_tenant_security.py::test_clinic_admin_cannot_update_or_delete_other_clinic_doctor
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a13534a0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+tests/test_radiology.py::test_radiology_order_report_validate_and_emr
+  /workspace/services/imaging_service.py:134: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    reported_at=datetime.utcnow(),
+
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+tests/test_radiology.py::test_radiology_order_report_validate_and_emr
+  /workspace/services/imaging_service.py:170: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    result.validated_at = datetime.utcnow()
+
+tests/test_end_to_end_clinic.py::test_full_clinic_workflow
+  /workspace/services/discharge_service.py:155: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    consultation.completed_at = datetime.utcnow()
+
+tests/test_hospitalization.py::test_admit_from_consultation_and_assign_bed
+tests/test_hospitalization.py::test_bed_transfer_releases_previous_bed
+  /workspace/services/hospitalization_service.py:32: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    year = datetime.utcnow().year
+
+tests/test_hospitalization.py::test_admit_from_consultation_and_assign_bed
+tests/test_hospitalization.py::test_bed_transfer_releases_previous_bed
+  /workspace/services/hospitalization_service.py:286: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    admission.admitted_at = datetime.utcnow()
+
+tests/test_hospitalization.py::test_admit_from_consultation_and_assign_bed
+tests/test_hospitalization.py::test_bed_transfer_releases_previous_bed
+  /workspace/routers/hospitalization.py:92: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    length_of_stay = round((datetime.utcnow() - admission.admitted_at).total_seconds() / 86400, 1)
+
+tests/test_hospitalization.py::test_bed_transfer_releases_previous_bed
+  /workspace/services/hospitalization_service.py:271: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    stay.released_at = datetime.utcnow()
+
+tests/test_invoice_serial_allocation.py::test_next_serial_uses_max_not_count
+  /workspace/services/reception_his_service.py:53: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    year = datetime.utcnow().year
+
+tests/test_nurse_assessment.py::test_nurse_assessment_save_and_doctor_sync
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1beaae0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_nurse_assessment.py::test_nurse_assessment_save_and_doctor_sync
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1be9d90>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_nurse_assessment.py::test_nurse_assessment_save_and_doctor_sync
+tests/test_nurse_assessment.py::test_nurse_assessment_string_zero_vitals_are_treated_as_empty
+tests/test_nurse_assessment.py::test_nurse_assessment_creates_distinct_history_rows
+tests/test_redteam_round2_clinical_idor.py::test_rt2_nurse_cannot_sync_foreign_consultation
+  /workspace/services/nurse_assessment_service.py:169: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_nurse_assessment.py::test_nurse_assessment_save_and_doctor_sync
+  /workspace/tests/test_nurse_assessment.py:115: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    date=datetime.utcnow(),
+
+tests/test_nurse_assessment.py::test_nurse_assessment_save_and_doctor_sync
+  /workspace/services/nurse_assessment_service.py:301: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    consultation.updated_at = datetime.utcnow()
+
+tests/test_nurse_assessment.py::test_nurse_assessment_creates_distinct_history_rows
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1935ee0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_nurse_assessment.py::test_nurse_assessment_creates_distinct_history_rows
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1936210>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_nutrition_immunization_auth.py::test_password_reset_flow
+  /workspace/services/password_reset_service.py:35: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    expires = datetime.utcnow() + timedelta(hours=RESET_TOKEN_HOURS)
+
+tests/test_nutrition_immunization_auth.py::test_password_reset_flow
+  /workspace/services/password_reset_service.py:40: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ).update({"used_at": datetime.utcnow()})
+
+tests/test_nutrition_immunization_auth.py::test_password_reset_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a186f8c0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_nutrition_immunization_auth.py::test_password_reset_flow
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a186fb00>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_nutrition_immunization_auth.py::test_password_reset_flow
+  /workspace/services/password_reset_service.py:60: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    models.PasswordResetToken.expires_at > datetime.utcnow(),
+
+tests/test_nutrition_immunization_auth.py::test_password_reset_flow
+  /workspace/services/password_reset_service.py:78: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    row.used_at = datetime.utcnow()
+
+tests/test_patient_record_security.py: 16 warnings
+  /workspace/tests/test_patient_record_security.py:51: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    date=datetime.utcnow() + timedelta(days=2),
+
+tests/test_patient_record_security.py::TestPatientDossierRBAC::test_linked_doctor_can_read_dossier
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a18a74a0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDossierRBAC::test_linked_doctor_can_read_dossier
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a18a7230>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDossierRBAC::test_linked_doctor_can_read_dossier
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a18d9730>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDossierRBAC::test_linked_doctor_can_read_dossier
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a18d82f0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDossierRBAC::test_patient_cannot_create_clinical_note
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a18a7f50>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDossierRBAC::test_patient_cannot_create_clinical_note
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a18a40e0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDossierRBAC::test_patient_cannot_create_clinical_note
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a17a4470>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDossierRBAC::test_patient_cannot_create_clinical_note
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a17a5e20>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDossierRBAC::test_unlinked_doctor_cannot_create_note
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a18a7aa0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDossierRBAC::test_unlinked_doctor_cannot_create_note
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a18a4d10>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDossierRBAC::test_unlinked_doctor_denied_timeline
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1060080>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDossierRBAC::test_unlinked_doctor_denied_timeline
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1060ad0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDossierRBAC::test_unlinked_doctor_denied_timeline
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a17914c0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDossierRBAC::test_unlinked_doctor_denied_timeline
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a10a8b90>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestClinicalAuditLog::test_create_note_creates_audit_entry
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a102c8f0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestClinicalAuditLog::test_create_note_creates_audit_entry
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a102d820>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDocuments::test_patient_can_download_document
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0f29220>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDocuments::test_patient_can_download_document
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0f292b0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDocuments::test_patient_can_download_document
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a17ec380>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_patient_record_security.py::TestPatientDocuments::test_patient_can_download_document
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a17ee3c0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_payment_access_enforcement.py::TestAppointmentStatusAlignment::test_doctor_can_confirm_unpaid_pending
+tests/test_payment_access_enforcement.py::TestAppointmentStatusAlignment::test_cannot_set_status_paid_without_treasury
+tests/test_payment_access_enforcement.py::TestAppointmentStatusAlignment::test_doctor_can_confirm_after_payment
+tests/test_payment_access_enforcement.py::TestAppointmentStatusAlignment::test_doctor_put_confirm_unpaid_allowed
+  /workspace/tests/test_payment_access_enforcement.py:142: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    date=datetime.utcnow() + timedelta(days=2),
+
+tests/test_payment_access_enforcement.py::TestAppointmentStatusAlignment::test_doctor_can_confirm_unpaid_pending
+tests/test_payment_access_enforcement.py::TestAppointmentStatusAlignment::test_doctor_put_confirm_unpaid_allowed
+  /workspace/services/rendezvous_service.py:510: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    rdv.updated_at = datetime.utcnow()
+
+tests/test_payment_access_enforcement.py::TestAppointmentStatusAlignment::test_doctor_can_confirm_after_payment
+tests/test_payment_access_enforcement.py::TestRefundRevokesTeleconsultAccess::test_full_refund_blocks_subsequent_access
+tests/test_payment_settlement_security.py::TestRendezvousConfirmPayment::test_admin_can_settle_via_rendezvous_confirm
+tests/test_teleconsult_meeting_link_security.py::TestAppointmentApiNeverExposesJoinUrl::test_paid_appointment_still_hides_meeting_link
+tests/test_teleconsult_meeting_link_security.py::TestTeleconsultAccessPaymentGate::test_access_endpoint_issues_credentials_after_payment
+tests/test_teleconsult_meeting_link_security.py::TestTeleconsultAccessPaymentGate::test_room_status_never_includes_meeting_url
+tests/test_teleconsult_meeting_link_security.py::TestRefundClearsMeetingLink::test_full_refund_clears_stored_meeting_link
+  /workspace/services/payment_settlement.py:145: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    appointment.updated_at = datetime.utcnow()
+
+tests/test_payment_access_enforcement.py::TestRefundRevokesTeleconsultAccess::test_full_refund_blocks_subsequent_access
+  /workspace/tests/test_payment_access_enforcement.py:228: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    date=datetime.utcnow() + timedelta(minutes=15),
+
+tests/test_payment_access_enforcement.py::TestRefundRevokesTeleconsultAccess::test_full_refund_blocks_subsequent_access
+tests/test_teleconsult_meeting_link_security.py::TestRefundClearsMeetingLink::test_full_refund_clears_stored_meeting_link
+  /workspace/services/payment_refunds.py:100: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    payment.updated_at = datetime.utcnow()
+
+tests/test_payment_access_enforcement.py::TestRefundRevokesTeleconsultAccess::test_full_refund_blocks_subsequent_access
+tests/test_teleconsult_meeting_link_security.py::TestRefundClearsMeetingLink::test_full_refund_clears_stored_meeting_link
+  /workspace/services/payment_refunds.py:105: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    locked.updated_at = datetime.utcnow()
+
+tests/test_payment_settlement_security.py::TestRendezvousConfirmPayment::test_patient_cannot_use_rendezvous_confirm_payment
+tests/test_payment_settlement_security.py::TestRendezvousConfirmPayment::test_no_paid_state_after_blocked_confirm
+tests/test_payment_settlement_security.py::TestRendezvousConfirmPayment::test_admin_can_settle_via_rendezvous_confirm
+  /workspace/tests/test_payment_settlement_security.py:46: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    date=datetime.utcnow() + timedelta(days=2),
+
+tests/test_payment_settlement_security.py::TestRendezvousConfirmPayment::test_no_paid_state_after_blocked_confirm
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0e86660>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_payment_settlement_security.py::TestRendezvousConfirmPayment::test_no_paid_state_after_blocked_confirm
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0e86690>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_payment_settlement_security.py::TestSettlementService::test_direct_settle_without_channel_evidence_blocked
+  /workspace/tests/test_payment_settlement_security.py:133: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    date=datetime.utcnow() + timedelta(days=1),
+
+tests/test_pharmacy_inventory.py::test_pharmacy_inventory_list_and_adjust
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0e6e180>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_pharmacy_inventory.py::test_pharmacy_inventory_list_and_adjust
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0e6f860>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_summary_defaults_to_production_only
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_directory_search_by_name_and_admin
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_clinic_detail_and_staff_scoped
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_clinic_with_patients_is_production
+  /workspace/services/platform_clinic_service.py:51: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0c2d850>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0c2d100>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a113c5c0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a113db80>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1df6de0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1df53a0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2a8d340>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2a8c800>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a241ee10>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a241ec30>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2442390>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2441cd0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1382660>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1381f40>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1121850>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1120800>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1c345f0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1c36f60>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1cd6840>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1cd4bf0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1b8f9b0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1b8eea0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1be3140>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1be1e20>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1936330>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1936510>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1901160>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a19020f0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1838b30>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a183acc0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a18d8890>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a18d88c0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1763d40>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1763aa0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a17a6f90>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a17a7650>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a102dcd0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a102dc70>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a10f1be0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a10f1bb0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0f2aed0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0f2af60>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0fab950>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0fa9fd0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0ff4350>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0ff4380>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0e86b70>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0e86b40>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0fd0fe0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0fd3140>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0fd3890>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0fd0bf0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0ec57c0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0ec5c10>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0e195e0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_clinic_directory.py::TestPlatformClinicDirectory::test_test_accounts_hidden_from_production_filter
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0e18800>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_owner_setup.py::TestPlatformOwnerSetup::test_setup_creates_owner_and_returns_token
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0ec7f80>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_owner_setup.py::TestPlatformOwnerSetup::test_setup_creates_owner_and_returns_token
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0ec7f50>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_owner_setup.py::TestPlatformOwnerSetup::test_setup_creates_owner_and_returns_token
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0e6cef0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_owner_setup.py::TestPlatformOwnerSetup::test_setup_creates_owner_and_returns_token
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0e6ce00>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_owner_setup.py::TestPlatformOwnerSetup::test_second_setup_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0e84ec0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_owner_setup.py::TestPlatformOwnerSetup::test_second_setup_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0e852b0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_owner_setup.py::TestPlatformOwnerSetup::test_owner_can_access_platform_settings
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0e1e9c0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_owner_setup.py::TestPlatformOwnerSetup::test_owner_can_access_platform_settings
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0e1d610>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_owner_setup.py::TestPlatformOwnerSetup::test_owner_can_access_platform_settings
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0ec51f0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_platform_owner_setup.py::TestPlatformOwnerSetup::test_owner_can_access_platform_settings
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0ec5a30>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_redteam_final_assessment.py::test_rt_clinic_admin_cannot_access_other_clinic_appointment
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0fd2270>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_redteam_final_assessment.py::test_rt_clinic_admin_cannot_access_other_clinic_appointment
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0fd3e60>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_redteam_final_assessment.py::test_rt_clinic_admin_cannot_access_other_clinic_appointment
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a10f13d0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_redteam_final_assessment.py::test_rt_clinic_admin_cannot_access_other_clinic_appointment
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a10f3680>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_redteam_final_assessment.py::test_rt_clinic_admin_cannot_access_other_clinic_appointment
+  /workspace/tests/test_redteam_final_assessment.py:157: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    date=datetime.utcnow() + timedelta(days=1),
+
+tests/test_redteam_final_assessment.py::test_rt_admin_without_clinic_denied_appointment_access
+  /workspace/tests/test_redteam_final_assessment.py:187: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    date=datetime.utcnow() + timedelta(days=2),
+
+tests/test_redteam_final_assessment.py::test_rt_access_token_rejects_empty_jti
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1087800>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_redteam_final_assessment.py::test_rt_access_token_rejects_empty_jti
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1084f80>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_redteam_final_assessment.py::test_rt_access_token_rejects_empty_jti
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a10ce8a0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_redteam_final_assessment.py::test_rt_access_token_rejects_empty_jti
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a10cf800>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_redteam_final_assessment.py::test_rt_access_token_rejects_empty_jti
+  /workspace/tests/test_redteam_final_assessment.py:224: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "exp": datetime.utcnow() + timedelta(minutes=15),
+
+tests/test_redteam_final_assessment.py::test_rt_refresh_rotation_cas
+tests/test_security_wave0_identity.py::test_refresh_rotates_and_reuse_revokes
+  /workspace/services/auth_session_service.py:91: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    if row.expires_at <= datetime.utcnow():
+
+tests/test_redteam_final_assessment.py::test_rt_refresh_rotation_cas
+tests/test_security_wave0_identity.py::test_refresh_rotates_and_reuse_revokes
+  /workspace/services/auth_session_service.py:110: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_redteam_final_assessment.py::test_rt_refresh_rotation_cas
+tests/test_security_wave0_identity.py::test_refresh_rotates_and_reuse_revokes
+  /workspace/services/auth_session_service.py:142: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    expires_at=datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+
+tests/test_redteam_final_assessment.py::test_rt_refresh_rotation_cas
+tests/test_security_wave0_identity.py::test_refresh_rotates_and_reuse_revokes
+tests/test_security_wave0_identity.py::test_logout_denylists_access_token
+tests/test_security_wave6_pentest.py::test_all_attack_ids_executed
+  /workspace/services/auth_session_service.py:183: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_redteam_round2_clinical_idor.py::test_rt2_nurse_cannot_sync_foreign_consultation
+  /workspace/tests/test_redteam_round2_clinical_idor.py:95: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    date=datetime.utcnow() + timedelta(hours=1),
+
+tests/test_redteam_round2_clinical_idor.py::test_rt2_lab_tech_cannot_mark_walkin_paid
+  /workspace/services/lab_clinical_service.py:219: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_redteam_round2_clinical_idor.py::test_rt2_clinic_admin_cannot_claim_unbound_doctor
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a17a70b0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_redteam_round2_clinical_idor.py::test_rt2_clinic_admin_cannot_claim_unbound_doctor
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a17a7ad0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_redteam_round2_clinical_idor.py::test_rt2_clinic_admin_cannot_claim_unbound_doctor
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1791f40>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_redteam_round2_clinical_idor.py::test_rt2_clinic_admin_cannot_claim_unbound_doctor
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1793200>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestPublicRegistrationEndpoint::test_register_doctor_succeeds
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1731220>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestPublicRegistrationEndpoint::test_register_doctor_succeeds
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a17318e0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestPublicRegistrationEndpoint::test_register_doctor_succeeds
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1732870>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestPublicRegistrationEndpoint::test_register_doctor_succeeds
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a17322a0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestPublicRegistrationEndpoint::test_register_admin_role_case_variants_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a18da570>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestPublicRegistrationEndpoint::test_register_admin_role_case_variants_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a18db020>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestPublicRegistrationEndpoint::test_register_admin_role_case_variants_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1733b30>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestPublicRegistrationEndpoint::test_register_admin_role_case_variants_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1731c40>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestPublicRegistrationEndpoint::test_register_admin_via_typosquat_role_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1839dc0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestPublicRegistrationEndpoint::test_register_admin_via_typosquat_role_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a183bc20>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestPublicRegistrationEndpoint::test_register_admin_via_typosquat_role_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a18dab70>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestPublicRegistrationEndpoint::test_register_admin_via_typosquat_role_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a18daf60>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestAdminProvisioningEndpoint::test_create_admin_requires_admin_role
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1980440>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestAdminProvisioningEndpoint::test_create_admin_requires_admin_role
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a19818e0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestAdminProvisioningEndpoint::test_create_admin_requires_admin_role
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a18a65a0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestAdminProvisioningEndpoint::test_create_admin_requires_admin_role
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a18a6ba0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestJwtRoleIntegrity::test_forged_admin_claim_in_token_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1bf6180>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestJwtRoleIntegrity::test_forged_admin_claim_in_token_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1bf69c0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestJwtRoleIntegrity::test_forged_admin_claim_in_token_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a10a8dd0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_registration_security.py::TestJwtRoleIntegrity::test_forged_admin_claim_in_token_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a10aa4b0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_reminders.py::test_reschedule_requested_notification
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1983680>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_reminders.py::test_reschedule_requested_notification
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1981910>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_security_wave0_identity.py::test_refresh_rotates_and_reuse_revokes
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0e2a600>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_security_wave0_identity.py::test_refresh_rotates_and_reuse_revokes
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0e2acf0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_security_wave0_identity.py::test_must_change_password_blocks_clinical_api
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1cab950>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_security_wave0_identity.py::test_must_change_password_blocks_clinical_api
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1cab410>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_security_wave0_identity.py::test_account_lockout_after_failures
+tests/test_security_wave6_pentest.py::test_all_attack_ids_executed
+  /workspace/services/auth_session_service.py:250: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_security_wave0_identity.py::test_account_lockout_after_failures
+tests/test_security_wave6_pentest.py::test_all_attack_ids_executed
+  /workspace/services/auth_session_service.py:236: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    if locked_until and locked_until > datetime.utcnow():
+
+tests/test_security_wave0_identity.py::test_account_lockout_after_failures
+tests/test_security_wave6_pentest.py::test_all_attack_ids_executed
+  /workspace/services/auth_session_service.py:237: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    retry_after = int((locked_until - datetime.utcnow()).total_seconds())
+
+tests/test_security_wave0_identity.py::test_token_version_mismatch_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2c5d070>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_security_wave0_identity.py::test_token_version_mismatch_rejected
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2c5c4d0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_security_wave1_api.py::test_security_headers_present
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a23a01a0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_security_wave1_api.py::test_security_headers_present
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a23a1700>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_security_wave1_api.py::test_security_headers_present
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a24439e0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_security_wave1_api.py::test_security_headers_present
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2b3b830>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_security_wave1_api.py::test_search_sql_probe_blocked
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2619220>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_security_wave1_api.py::test_search_sql_probe_blocked
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a261b0b0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_security_wave1_api.py::test_search_sql_probe_blocked
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a18da750>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_security_wave1_api.py::test_search_sql_probe_blocked
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a18da510>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_security_wave6_pentest.py::test_all_attack_ids_executed
+  /workspace/scripts/security/run_penetration_tests.py:194: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    email_verified_at=datetime.utcnow(),
+
+tests/test_security_wave6_pentest.py::test_all_attack_ids_executed
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a153fa10>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_security_wave6_pentest.py::test_all_attack_ids_executed
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a153db20>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_teleconsult_meeting_link_security.py::TestMeetingLinkNotCreatedBeforePayment::test_legacy_meeting_link_stripped_from_api_response
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0f7d3a0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_teleconsult_meeting_link_security.py::TestMeetingLinkNotCreatedBeforePayment::test_legacy_meeting_link_stripped_from_api_response
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0f7c470>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_teleconsult_meeting_link_security.py::TestTeleconsultAccessPaymentGate::test_access_endpoint_blocked_before_payment
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0a8e5a0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_teleconsult_meeting_link_security.py::TestTeleconsultAccessPaymentGate::test_access_endpoint_blocked_before_payment
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0a8ef90>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_teleconsult_meeting_link_security.py::TestTeleconsultAccessPaymentGate::test_access_endpoint_blocked_before_payment
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0cc6ae0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_teleconsult_meeting_link_security.py::TestTeleconsultAccessPaymentGate::test_access_endpoint_blocked_before_payment
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0cc6b10>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_teleconsult_meeting_link_security.py::TestTeleconsultExposurePolicy::test_unpaid_access_payload_has_no_meeting_url
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0dd2d80>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_teleconsult_meeting_link_security.py::TestTeleconsultExposurePolicy::test_unpaid_access_payload_has_no_meeting_url
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0dd2480>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_teleconsult_meeting_link_security.py::TestTeleconsultExposurePolicy::test_unpaid_access_payload_has_no_meeting_url
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0c088f0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_teleconsult_meeting_link_security.py::TestTeleconsultExposurePolicy::test_unpaid_access_payload_has_no_meeting_url
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0c0a5a0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info./home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0c9ea20>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0c9c230>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0e394c0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0e39a00>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a100ba70>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1008ad0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0f46690>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0f45280>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0faa690>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0fa9220>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a102d8b0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a102f3e0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a17ef8f0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a17ecc20>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1760650>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1760c20>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a18a4980>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0e6dc70>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a18186b0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1819e50>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1982fc0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1981c40>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a19c1f70>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a19c05f0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1bbf620>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1bbfb90>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1b8cfb0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1b8ff80>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1cf6630>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1cf67e0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a11e16a0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a11e38f0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a1a63590>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a1a62a20>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a23c1880>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a23c1940>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a261af30>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a26197f0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a2b6b1a0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a2b69130>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a11234a0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0e1b2f0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0cc4530>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0cc7ad0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0a36540>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0a36000>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0cc4ad0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0cc4d40>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0ab55e0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0ab40b0>
+  warnings.warn(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+
+
+tests/test_teleconsult_meeting_link_security.py::TestTeleconsultExposurePolicy::test_unpaid_access_payload_has_no_meeting_url
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0a458e0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_teleconsult_meeting_link_security.py::TestTeleconsultExposurePolicy::test_unpaid_access_payload_has_no_meeting_url
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0a46420>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_unified_billing.py::test_unified_invoice_generate_and_pay
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0a475f0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_unified_billing.py::test_unified_invoice_generate_and_pay
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0a46180>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_visit_workflow_auth.py::test_child_visit_workflow_advances
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:321: ResourceWarning: Unclosed <MemoryObjectSendStream at 7f38a0a55df0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_visit_workflow_auth.py::test_child_visit_workflow_advances
+  /home/ubuntu/.local/lib/python3.12/site-packages/anyio/streams/memory.py:190: ResourceWarning: Unclosed <MemoryObjectReceiveStream at 7f38a0a563f0>
+    warnings.warn(
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_visit_workflow_auth.py::test_child_visit_workflow_advances
+  /workspace/services/visit_workflow_service.py:89: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_visit_workflow_auth.py::test_child_visit_workflow_advances
+  /workspace/services/visit_workflow_service.py:218: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+302 passed, 1 skipped, 1417 warnings in 10.59s

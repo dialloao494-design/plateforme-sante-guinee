@@ -64,6 +64,10 @@ import models.immunization  # noqa: F401
 import models.password_reset_token  # noqa: F401
 import models.email_verification_token  # noqa: F401
 import models.visit_workflow  # noqa: F401
+import models.refresh_token  # noqa: F401 — Wave 0 denylist/refresh
+import models.nurse_assessment  # noqa: F401
+import models.clinic_charge  # noqa: F401
+import models.clinic_charge_payment  # noqa: F401
 
 from database import engine, Base
 from database_migrations import (
@@ -72,6 +76,7 @@ from database_migrations import (
     ensure_patient_dossier_schema,
     ensure_user_roles_check_constraint,
     normalize_legacy_user_roles,
+    ensure_single_platform_owner_index,
 )
 
 Base.metadata.create_all(bind=engine)
@@ -101,6 +106,7 @@ ensure_doctor_geolocation_columns(engine)
 ensure_patient_dossier_schema(engine)
 ensure_user_roles_check_constraint(engine)
 normalize_legacy_user_roles(engine)
+ensure_single_platform_owner_index(engine)
 print("[entrypoint] Schema ready.")
 PY
 

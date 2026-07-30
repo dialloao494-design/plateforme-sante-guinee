@@ -12,7 +12,14 @@ from security import create_access_token, hash_password, verify_password
 
 def _auth(user) -> dict[str, str]:
     token = create_access_token(
-        {"sub": user.email, "user_id": user.id, "user_role": user.role, "role": user.role}
+        {
+            "sub": user.email,
+            "user_id": user.id,
+            "user_role": user.role,
+            "role": user.role,
+            "session_version": int(getattr(user, "session_version", 0) or 0),
+            "tv": int(getattr(user, "token_version", 0) or 0),
+        }
     )
     return {"Authorization": f"Bearer {token}"}
 
