@@ -1459,10 +1459,13 @@ def assign_doctor_to_clinic(
     clinic = db.query(models.Clinic).filter(models.Clinic.id == clinic_id).first()
     if not doctor or not clinic:
         raise HTTPException(status_code=404, detail="Doctor or clinic not found")
-    # Clinic admins may only reassign doctors already in (or unbound to) their clinic.
+    # Clinic admins may only reassign doctors already in their clinic (fail closed).
+    # Claiming unbound (clinic_id NULL) doctors is platform-only.
     if current_user.role in ("clinic_admin", "admin"):
         actor_cid = user_clinic_id(current_user, db)
-        if doctor.clinic_id is not None and doctor.clinic_id != actor_cid:
+        if actor_cid is None or doctor.clinic_id is None or doctor.clinic_id != actor_cid:
+            raise HTTPException(status_code=403, detail="Access denied for this clinic")
+        if clinic_id != actor_cid:
             raise HTTPException(status_code=403, detail="Access denied for this clinic")
     doctor.clinic_id = clinic_id
     staff_user = db.query(User).filter(User.id == doctor.user_id).first()

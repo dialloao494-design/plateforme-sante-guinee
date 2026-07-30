@@ -118,7 +118,21 @@ class NurseAssessmentService:
         db: Session, *, clinic_id: int, patient_id: int, admission_id: Optional[int]
     ) -> Optional[int]:
         if admission_id:
-            return admission_id
+            admission = (
+                db.query(models.Admission)
+                .filter(
+                    models.Admission.id == admission_id,
+                    models.Admission.clinic_id == clinic_id,
+                    models.Admission.patient_id == patient_id,
+                )
+                .first()
+            )
+            if not admission:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Admission does not belong to this clinic/patient",
+                )
+            return admission.id
         admission = (
             db.query(models.Admission)
             .filter(
@@ -175,7 +189,23 @@ class NurseAssessmentService:
             vitals_notes = f"{vitals_notes}\n{bmi_note}".strip() if vitals_notes else bmi_note
 
         consultation_id = payload.consultation_id
-        if not consultation_id:
+        if consultation_id:
+            consultation = (
+                db.query(models.ClinicalConsultation)
+                .filter(
+                    models.ClinicalConsultation.id == consultation_id,
+                    models.ClinicalConsultation.clinic_id == clinic_id,
+                    models.ClinicalConsultation.patient_id == payload.patient_id,
+                    models.ClinicalConsultation.deleted_at.is_(None),
+                )
+                .first()
+            )
+            if not consultation:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Consultation does not belong to this clinic/patient",
+                )
+        else:
             consultation = (
                 db.query(models.ClinicalConsultation)
                 .filter(
@@ -233,6 +263,8 @@ class NurseAssessmentService:
             db.query(models.ClinicalConsultation)
             .filter(
                 models.ClinicalConsultation.id == consultation_id,
+                models.ClinicalConsultation.clinic_id == assessment.clinic_id,
+                models.ClinicalConsultation.patient_id == assessment.patient_id,
                 models.ClinicalConsultation.deleted_at.is_(None),
             )
             .first()

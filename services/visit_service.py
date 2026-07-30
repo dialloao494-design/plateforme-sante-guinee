@@ -36,6 +36,18 @@ class VisitService:
     def get_or_create_for_patient_clinic(
         db: Session, *, clinic_id: int, patient_id: int, appointment_id: int | None = None
     ) -> models.ClinicalVisit:
+        from fastapi import HTTPException
+
+        patient = (
+            db.query(models.Patient)
+            .filter(models.Patient.id == patient_id, models.Patient.clinic_id == clinic_id)
+            .first()
+        )
+        if not patient:
+            raise HTTPException(
+                status_code=403,
+                detail="Patient does not belong to this clinic",
+            )
         q = db.query(models.ClinicalVisit).filter(
             models.ClinicalVisit.clinic_id == clinic_id,
             models.ClinicalVisit.patient_id == patient_id,

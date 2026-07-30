@@ -222,11 +222,24 @@ def update_patient(
         patient.gender = patient_update.gender
     else:
         _assert_admin_patient_clinic_scope(db, current_user, patient)
-        patient.user_id = patient_update.user_id
+        # Do not allow arbitrary user_id mass-assignment (account hijack / cross-tenant link).
+        # Keep existing patient.user_id unless platform explicitly clears/relinks via dedicated flow.
         patient.first_name = patient_update.first_name
         patient.last_name = patient_update.last_name
         patient.age = patient_update.age
         patient.gender = patient_update.gender
+        if patient_update.user_id is not None and patient_update.user_id != patient.user_id:
+            from core.roles import PLATFORM_SCOPE_ROLES, user_has_any_role
+
+            if not user_has_any_role(current_user.role, PLATFORM_SCOPE_ROLES):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Relinking patient to a different user requires platform privileges",
+                )
+            target = db.query(models.User).filter(models.User.id == patient_update.user_id).first()
+            if not target:
+                raise HTTPException(status_code=404, detail="Target user not found")
+            patient.user_id = patient_update.user_id
 
     db.commit()
     db.refresh(patient)
