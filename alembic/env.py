@@ -49,7 +49,10 @@ def run_migrations_online() -> None:
         with context.begin_transaction():
             from sqlalchemy import inspect, text
 
-            if inspect(connection).has_table("alembic_version"):
+            if (
+                connection.dialect.name == "postgresql"
+                and inspect(connection).has_table("alembic_version")
+            ):
                 connection.execute(
                     text(
                         "ALTER TABLE alembic_version "

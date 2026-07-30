@@ -26,6 +26,11 @@ def _has_column(table: str, column: str) -> bool:
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    if "doctors" not in inspect(bind).get_table_names():
+        # The historical baseline is a stamp-only migration. Empty databases are
+        # bootstrapped from the complete SQLAlchemy registry before upgrading.
+        return
     if not _has_column("doctors", "latitude"):
         op.add_column("doctors", sa.Column("latitude", sa.Float(), nullable=True))
     if not _has_column("doctors", "longitude"):
