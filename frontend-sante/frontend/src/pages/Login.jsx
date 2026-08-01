@@ -101,6 +101,10 @@ const Login = () => {
         <p className="login-eyebrow">Plateforme Santé · Guinée</p>
         <h1 className="login-title">Connexion</h1>
         <p className="login-lead">Accédez à votre espace selon votre rôle.</p>
+        <p className="login-lead" style={{ fontSize: '0.92rem' }}>
+          Adresse officielle&nbsp;: <strong>plateforme-sante-guinee.vercel.app</strong>
+          {" "}(n’utilisez plus l’ancien lien seven-rust).
+        </p>
         <form onSubmit={handleSubmit} className="login-form">
           <div className="login-field">
             <label htmlFor="email">Email</label>

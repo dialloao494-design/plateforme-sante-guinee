@@ -1,0 +1,95 @@
+name: Deprecate legacy seven-rust frontend
+
+# Deploys a permanent redirect from the retired Vercel project
+# frontend-seven-rust-94 → https://plateforme-sante-guinee.vercel.app
+#
+# Required secrets (same org token as main frontend deploy):
+#   VERCEL_TOKEN
+#   VERCEL_ORG_ID
+# Optional:
+#   VERCEL_LEGACY_PROJECT_ID  (if unset, resolved by project name)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "legacy-frontend-redirect/**"
+      - ".github/workflows/deprecate-legacy-frontend.yml"
+
+concurrency:
+  group: deprecate-legacy-frontend
+  cancel-in-progress: true
+
+jobs:
+  redirect-legacy:
+    name: Deploy legacy redirect
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: legacy-frontend-redirect
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_LEGACY_PROJECT_ID: ${{ secrets.VERCEL_LEGACY_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require Vercel credentials
+        if: env.VERCEL_TOKEN == '' || env.VERCEL_ORG_ID == ''
+        run: |
+          echo "::error title=Missing Vercel secrets::Set VERCEL_TOKEN and VERCEL_ORG_ID (and preferably VERCEL_LEGACY_PROJECT_ID)."
+          echo "Until secrets exist, deprecate manually: Vercel → project frontend-seven-rust-94 → deploy legacy-frontend-redirect/ or archive the project."
+          echo "See docs/ops/CANONICAL_FRONTEND_CLINIC_LINK.md"
+          exit 1
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@41.4.4
+
+      - name: Resolve legacy project id
+        id: legacy
+        shell: bash
+        run: |
+          set -euo pipefail
+          pid="${VERCEL_LEGACY_PROJECT_ID:-}"
+          if [ -z "${pid}" ]; then
+            echo "VERCEL_LEGACY_PROJECT_ID unset — searching by project name..."
+            # Best-effort discovery among org projects
+            pid="$(vercel project ls --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" 2>/dev/null \
+              | awk 'BEGIN{IGNORECASE=1} /seven-rust|frontend-seven/ {print $1; exit}')"
+          fi
+          if [ -z "${pid}" ]; then
+            echo "::error title=Legacy project not found::Set secret VERCEL_LEGACY_PROJECT_ID to the frontend-seven-rust-94 project id."
+            vercel project ls --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" || true
+            exit 1
+          fi
+          echo "LEGACY_PROJECT_ID=${pid}" >> "$GITHUB_ENV"
+          echo "Resolved legacy project: ${pid}"
+
+      - name: Deploy permanent redirect to production
+        env:
+          VERCEL_PROJECT_ID: ${{ env.LEGACY_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID"
+          vercel deploy --prod --yes --token="$VERCEL_TOKEN" --scope="$VERCEL_ORG_ID"
+
+      - name: Verify legacy host redirects
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o /tmp/legacy_body.html -w '%{http_code}' \
+            -L --max-redirs 0 \
+            'https://frontend-seven-rust-94.vercel.app/' || true)"
+          loc="$(curl -sSI 'https://frontend-seven-rust-94.vercel.app/' | tr -d '\r' | awk 'BEGIN{IGNORECASE=1}/^location:/{print $2; exit}')"
+          echo "HTTP ${code} Location=${loc}"
+          if [[ "${code}" =~ ^30[78]$ ]] && [[ "${loc}" == https://plateforme-sante-guinee.vercel.app* ]]; then
+            echo "Legacy redirect OK"
+            exit 0
+          fi
+          # Accept 200 with meta-refresh/deprecation page as interim
+          if [[ "${code}" == "200" ]] && grep -qi 'plateforme-sante-guinee.vercel.app' /tmp/legacy_body.html; then
+            echo "Legacy deprecation page OK"
+            exit 0
+          fi
+          echo "::warning title=Legacy verify inconclusive::Deploy may still be propagating. Check https://frontend-seven-rust-94.vercel.app/"

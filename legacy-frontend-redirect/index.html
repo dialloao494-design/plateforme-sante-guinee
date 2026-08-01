@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="refresh" content="0; url=https://plateforme-sante-guinee.vercel.app/login" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redirection — Plateforme Santé Guinée</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #0f172a;
+        --muted: #334155;
+        --teal: #0f766e;
+        --bg: #f0fdfa;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+        background:
+          radial-gradient(circle at top, #ccfbf1 0%, transparent 45%),
+          linear-gradient(180deg, #ecfeff 0%, var(--bg) 100%);
+        color: var(--ink);
+        padding: 24px;
+      }
+      main {
+        max-width: 34rem;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid #99f6e4;
+        border-radius: 18px;
+        padding: 28px 24px;
+        box-shadow: 0 18px 40px rgba(15, 118, 110, 0.12);
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: 1.45rem;
+        color: var(--teal);
+      }
+      p {
+        margin: 0 0 12px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+      a.button {
+        display: inline-block;
+        margin-top: 8px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        background: var(--teal);
+        color: #fff;
+        text-decoration: none;
+        font-weight: 700;
+      }
+      code {
+        font-size: 0.92em;
+        word-break: break-all;
+      }
+    </style>
+    <script>
+      (function () {
+        var target = "https://plateforme-sante-guinee.vercel.app/login";
+        try {
+          if (navigator.serviceWorker) {
+            navigator.serviceWorker.getRegistrations().then(function (regs) {
+              regs.forEach(function (reg) { reg.unregister(); });
+            });
+          }
+          if (window.caches) {
+            caches.keys().then(function (keys) {
+              keys.forEach(function (key) { caches.delete(key); });
+            });
+          }
+        } catch (e) {}
+        window.location.replace(target);
+      })();
+    </script>
+  </head>
+  <body>
+    <main>
+      <h1>Ancien lien désactivé</h1>
+      <p>
+        L’adresse <code>frontend-seven-rust-94.vercel.app</code> n’est plus utilisée.
+        Elle ne peut plus se connecter au serveur de production.
+      </p>
+      <p>
+        Utilisez exclusivement&nbsp;:
+        <br />
+        <strong>https://plateforme-sante-guinee.vercel.app</strong>
+      </p>
+      <a class="button" href="https://plateforme-sante-guinee.vercel.app/login">
+        Ouvrir la connexion officielle
+      </a>
+    </main>
+  </body>
+</html>
