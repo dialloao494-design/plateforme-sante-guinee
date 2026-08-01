@@ -180,6 +180,11 @@ def reset_clinic_staff_password(
     user.hashed_password = hash_password(body.new_password)
     user.session_version = int(user.session_version or 0) + 1
     user.must_change_password = False
+    # Admin reset must clear lockout so clinic staff can sign in immediately.
+    if hasattr(user, "failed_login_attempts"):
+        user.failed_login_attempts = 0
+    if hasattr(user, "locked_until"):
+        user.locked_until = None
     db.commit()
     return {"id": user.id, "email": user.email, "reset": True}
 

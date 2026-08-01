@@ -90,14 +90,26 @@ export default function DepartmentQueuePanel({ department, title, onSelectPatien
                 <td>{WORKFLOW_LABELS[item.workflow_type] || item.workflow_type}</td>
                 <td>{new Date(item.started_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</td>
                 <td>
-                  <button
-                    type="button"
-                    className="clinical-btn primary clinical-btn-sm"
-                    disabled={busy}
-                    onClick={() => completeStep(item)}
-                  >
-                    Terminer l&apos;étape
-                  </button>
+                  <div className="clinical-actions">
+                    {onSelectPatient && (
+                      <button
+                        type="button"
+                        className="clinical-btn clinical-btn-sm"
+                        disabled={busy}
+                        onClick={() => onSelectPatient(item)}
+                      >
+                        Ouvrir
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="clinical-btn primary clinical-btn-sm"
+                      disabled={busy}
+                      onClick={() => completeStep(item)}
+                    >
+                      Terminer l&apos;étape
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

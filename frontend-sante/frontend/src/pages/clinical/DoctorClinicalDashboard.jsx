@@ -91,12 +91,16 @@ const formatDateTime = (value) => {
   }
 };
 
+const QUEUE_PAGE_SIZE = 12;
+
 export default function DoctorClinicalDashboard() {
   const { user } = useAuth();
   const searchRef = useRef(null);
+  const consultRef = useRef(null);
 
   const [stats, setStats] = useState(null);
   const [queue, setQueue] = useState([]);
+  const [queueExpanded, setQueueExpanded] = useState(false);
   const [activeBucket, setActiveBucket] = useState(null);
   const [bucketRows, setBucketRows] = useState([]);
   const [loadingBucket, setLoadingBucket] = useState(false);
@@ -257,8 +261,14 @@ export default function DoctorClinicalDashboard() {
       setHistory(histRes.status === 'fulfilled' ? histRes.value.data || [] : []);
       refreshServiceRequests(patientId);
       setMessage(`Consultation #${consult.id} ouverte`);
+      setQueueExpanded(false);
       loadDashboard();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Scroll to the consultation panel — NOT page top. With long queues the
+      // form used to open far below the fold while the viewport jumped to
+      // stats, so doctors thought the dashboard was broken.
+      requestAnimationFrame(() => {
+        consultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     } catch (err) {
       setError(formatApiError(err, "Impossible d'ouvrir la consultation"));
     } finally {
@@ -582,11 +592,16 @@ export default function DoctorClinicalDashboard() {
     return filtered.slice(0, 80);
   })();
 
+  const clinicLabel = user?.clinic_name || CLINIC_PRINT_NAME;
+  const visibleQueue =
+    consultation && !queueExpanded ? queue.slice(0, 0) : queueExpanded ? queue : queue.slice(0, QUEUE_PAGE_SIZE);
+  const hiddenQueueCount = Math.max(0, queue.length - visibleQueue.length);
+
   return (
     <div className="clinical-page reception-his">
       <header className="reception-his-header">
         <div>
-          <p className="nurse-his-clinic-name">{CLINIC_PRINT_NAME}</p>
+          <p className="nurse-his-clinic-name">{clinicLabel}</p>
           <h1>Tableau de bord — Médecin</h1>
           <p className="clinical-lead">Consultation · Examens · Imagerie · Hospitalisation</p>
           <p className="reception-his-session">Session : {user?.full_name || user?.email || 'Médecin'}</p>
@@ -675,33 +690,32 @@ export default function DoctorClinicalDashboard() {
         </section>
       )}
 
-      <DepartmentQueuePanel department="doctor" title="File de visite — Médecin" />
-
-      <div className="clinical-grid">
-        <section className="clinical-card">
-          <h2>File d&apos;attente</h2>
-          <ul className="clinical-list">
-            {queue.map((item) => (
-              <li key={item.id}>
-                <strong>{item.patient_name}</strong>
-                <br />
-                {formatDateTime(item.date)} · <span className="clinical-badge">{item.clinical_status}</span>
-                <div className="clinical-actions">
-                  <button type="button" className="clinical-btn" onClick={() => openPatient(item.patient_id, item.chief_complaint)} disabled={busy}>
-                    Ouvrir le dossier
-                  </button>
-                </div>
-              </li>
-            ))}
-            {queue.length === 0 && <li>Aucun patient en attente.</li>}
-          </ul>
-        </section>
-
+      {/* Active consultation first so it is never buried under a long queue */}
+      <div className="clinical-grid doctor-dashboard-layout">
         {consultation ? (
-          <section className="clinical-card doctor-consult" style={{ gridColumn: '1 / -1' }}>
+          <section
+            ref={consultRef}
+            className="clinical-card doctor-consult doctor-consult--active"
+            style={{ gridColumn: '1 / -1' }}
+            tabIndex={-1}
+          >
             <div className="doctor-consult-head">
               <h2>Médecin — Consultation #{consultation.id}</h2>
-              <span className="clinical-badge">{consultation.status || 'in_progress'}</span>
+              <div className="doctor-consult-head-actions">
+                <span className="clinical-badge">{consultation.status || 'in_progress'}</span>
+                <button
+                  type="button"
+                  className="clinical-btn secondary clinical-btn-sm"
+                  onClick={() => {
+                    setConsultation(null);
+                    setIdentity(null);
+                    setForm(EMPTY_FORM);
+                    setQueueExpanded(true);
+                  }}
+                >
+                  Fermer / retour file
+                </button>
+              </div>
             </div>
 
             {/* 1. Identité du patient */}
@@ -1217,10 +1231,82 @@ export default function DoctorClinicalDashboard() {
         ) : (
           <section className="clinical-card">
             <h2>Consultation</h2>
-            <p className="clinical-lead">Recherchez un patient ou sélectionnez-le dans la file pour démarrer une consultation.</p>
+            <p className="clinical-lead">
+              Recherchez un patient ou sélectionnez-le dans la file d&apos;attente pour démarrer une consultation.
+            </p>
           </section>
         )}
+
+        <section className="clinical-card doctor-queue-card" style={{ gridColumn: consultation ? '1 / -1' : undefined }}>
+          <div className="doctor-queue-head">
+            <h2>File d&apos;attente ({queue.length})</h2>
+            {consultation && (
+              <button
+                type="button"
+                className="clinical-btn secondary clinical-btn-sm"
+                onClick={() => setQueueExpanded((v) => !v)}
+              >
+                {queueExpanded ? 'Masquer la file' : 'Afficher la file'}
+              </button>
+            )}
+          </div>
+          {consultation && !queueExpanded ? (
+            <p className="clinical-hint">
+              Consultation en cours — la file est repliée pour garder le dossier visible.
+              {queue.length > 0 ? ` ${queue.length} patient(s) en attente.` : ''}
+            </p>
+          ) : (
+            <>
+              <ul className="clinical-list">
+                {visibleQueue.map((item) => (
+                  <li key={item.id}>
+                    <strong>{item.patient_name}</strong>
+                    <br />
+                    {formatDateTime(item.date)} · <span className="clinical-badge">{item.clinical_status}</span>
+                    <div className="clinical-actions">
+                      <button
+                        type="button"
+                        className="clinical-btn"
+                        onClick={() => openPatient(item.patient_id, item.chief_complaint)}
+                        disabled={busy}
+                      >
+                        Ouvrir le dossier
+                      </button>
+                    </div>
+                  </li>
+                ))}
+                {queue.length === 0 && <li>Aucun patient en attente.</li>}
+              </ul>
+              {hiddenQueueCount > 0 && (
+                <button
+                  type="button"
+                  className="clinical-btn secondary"
+                  onClick={() => setQueueExpanded(true)}
+                >
+                  Voir les {hiddenQueueCount} autres patients
+                </button>
+              )}
+              {queueExpanded && queue.length > QUEUE_PAGE_SIZE && (
+                <button
+                  type="button"
+                  className="clinical-btn secondary"
+                  onClick={() => setQueueExpanded(false)}
+                >
+                  Réduire la file
+                </button>
+              )}
+            </>
+          )}
+        </section>
       </div>
+
+      <DepartmentQueuePanel
+        department="doctor"
+        title="Parcours visite — étape Médecin"
+        onSelectPatient={(item) => {
+          if (item?.patient_id) openPatient(item.patient_id);
+        }}
+      />
 
       {showDischargePrint && (
         <div className="doctor-discharge-print-root" aria-hidden={!showDischargePrint}>
