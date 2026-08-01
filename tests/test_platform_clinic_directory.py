@@ -172,6 +172,48 @@ class TestPlatformClinicDirectory:
         )
         assert login_ok.status_code == 200
 
+    def test_platform_staff_unlock_clears_lockout(self, client, db_session, admin_headers):
+        from datetime import datetime, timedelta
+
+        email = "locked.doc@aasma.gn"
+        with provisioning_channel("test"):
+            clinic = Clinic(name="Clinique Unlock", city="Conakry", is_active=True)
+            db_session.add(clinic)
+            db_session.flush()
+            provisioned = create_staff_user(
+                db_session,
+                email=email,
+                password="LockedPass12!",
+                role="doctor",
+                clinic_id=clinic.id,
+                channel="test_fixture",
+            )
+            user = provisioned.user
+            user.failed_login_attempts = 8
+            user.locked_until = datetime.utcnow() + timedelta(minutes=15)
+            db_session.commit()
+            clinic_id = clinic.id
+            user_id = user.id
+
+        locked = client.post(
+            "/auth/login-json",
+            json={"email": email, "password": "LockedPass12!"},
+        )
+        assert locked.status_code == 429, locked.text
+
+        unlocked = client.post(
+            f"/platform/clinics/{clinic_id}/staff/{user_id}/unlock",
+            headers=admin_headers,
+        )
+        assert unlocked.status_code == 200, unlocked.text
+        assert unlocked.json()["unlocked"] is True
+
+        login_ok = client.post(
+            "/auth/login-json",
+            json={"email": email, "password": "LockedPass12!"},
+        )
+        assert login_ok.status_code == 200, login_ok.text
+
     def test_test_accounts_hidden_from_production_filter(self, client, db_session, admin_headers):
         with provisioning_channel("test"):
             clinic = Clinic(name="Stress Test Clinic", city="Conakry", is_active=True)
