@@ -73,11 +73,33 @@ export const AuthProvider = ({ children }) => {
 
   const toUserFriendlyLoginMessage = (err) => {
     const status = err?.response?.status;
-    const detail = String(err?.response?.data?.detail || err?.response?.data?.message || err?.message || '').toLowerCase();
+    const rawDetail = err?.response?.data?.detail ?? err?.response?.data?.message ?? '';
+    const detailText = Array.isArray(rawDetail)
+      ? rawDetail.map((d) => d?.msg || d?.detail || JSON.stringify(d)).join(' ')
+      : String(rawDetail || '');
+    const detail = detailText.toLowerCase();
     const code = String(err?.code || '').toLowerCase();
 
     if (status === 401 || status === 400) {
       return 'Email ou mot de passe incorrect';
+    }
+
+    // Account lockout / rate limit — never hide behind a generic message.
+    if (status === 429 || /locked|too many failed|slow down|rate limit|try again later/.test(detail)) {
+      const retryAfter = Number(err?.response?.headers?.['retry-after'] || 0);
+      if (/locked/.test(detail)) {
+        return retryAfter > 0
+          ? `Compte temporairement verrouillé après trop d’échecs. Réessayez dans ${Math.ceil(retryAfter / 60)} min.`
+          : 'Compte temporairement verrouillé après trop d’échecs. Réessayez dans quelques minutes.';
+      }
+      return 'Trop de tentatives. Patientez un instant puis réessayez.';
+    }
+
+    if (status === 403) {
+      if (/password change required|must_change_password/.test(detail)) {
+        return 'Changement de mot de passe requis avant de continuer.';
+      }
+      return detailText || 'Accès refusé.';
     }
 
     if (
@@ -86,13 +108,23 @@ export const AuthProvider = ({ children }) => {
       /failed to fetch|network error|network|econnrefused|connection refused|timeout|405 not allowed|nginx/.test(detail) ||
       (!status && /login failed|network error/i.test(String(err?.message || '')))
     ) {
-      return import.meta.env.PROD
-        ? 'Impossible de joindre le serveur. Réessayez dans un instant.'
-        : 'Impossible de joindre l’API. Vérifiez que le backend tourne sur http://127.0.0.1:8000.';
+      if (import.meta.env.PROD) {
+        const host = typeof window !== 'undefined' ? String(window.location.hostname || '') : '';
+        if (/seven-rust-94\.vercel\.app$/i.test(host)) {
+          return 'Ancien lien désactivé. Ouvrez https://plateforme-sante-guinee.vercel.app pour vous connecter.';
+        }
+        return 'Impossible de joindre le serveur. Réessayez dans un instant. Vérifiez que vous utilisez https://plateforme-sante-guinee.vercel.app';
+      }
+      return 'Impossible de joindre l’API. Vérifiez que le backend tourne sur http://127.0.0.1:8000.';
     }
 
     if (/missing authentication token/.test(detail)) {
       return 'Session non établie après connexion. Réessayez ou videz le cache du navigateur.';
+    }
+
+    // Prefer the real backend detail over a opaque generic string.
+    if (detailText && status && status >= 400) {
+      return `Erreur ${status} : ${detailText}`;
     }
 
     return 'Une erreur est survenue, veuillez réessayer';
