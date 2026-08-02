@@ -83,6 +83,6 @@ curl -fsS "http://127.0.0.1/api/health"
 echo ""
 curl -fsS -X POST "http://127.0.0.1/api/auth/login-json" \
   -H "Content-Type: application/json" \
-  -d '{"email":"dr.mamady@example.com","password":"Doctor123!"}' | head -c 200
+  -d '{"email":"dr.mamady@example.com","password":"DoctorPilot123!"}' | head -c 200
 echo ""
 echo "OK — http://${VPS_IP}"

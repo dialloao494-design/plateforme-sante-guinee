@@ -96,5 +96,5 @@ echo ""
 docker compose --env-file .env.vps-ip ps
 echo ""
 echo "DEMO URL: http://${VPS_IP}"
-echo "Doctor: dr.mamady@example.com / Doctor123!"
-echo "Patient: test.patient@example.com / Patient123!"
+echo "Doctor: dr.mamady@example.com / DoctorPilot123!"
+echo "Patient: test.patient@example.com / PatientPilot123!"

@@ -89,9 +89,10 @@ const Patients = () => {
             <input
               type="number"
               min={1}
-              placeholder="ID utilisateur du compte patient (requis)"
+              placeholder="ID compte patient (rôle patient, même clinique)"
               value={formData.userId}
               onChange={(e) => setFormData((prev) => ({ ...prev, userId: e.target.value }))}
+              title="Doit être un utilisateur actif avec le rôle patient, non déjà lié, de la même clinique"
             />
           )}
           <input

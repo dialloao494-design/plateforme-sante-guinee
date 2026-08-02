@@ -164,3 +164,76 @@ BILLING_DEPARTMENTS = [
     "Soins infirmiers",
     "Chirurgie",
 ]
+
+
+def _charge_type_for_catalog_bucket(bucket: str) -> str:
+    mapping = {
+        "consultation": "consultation",
+        "specialty": "consultation",
+        "imaging": "radiology",
+        "prestation": "nursing",
+        "surgery": "procedure",
+    }
+    return mapping.get(bucket, "procedure")
+
+
+def resolve_billing_catalog_item(catalog_code: str | None) -> dict | None:
+    """Resolve an authoritative AASMA catalog row by code.
+
+    Returns dict with keys: code, label, price_gnf, charge_type, bucket.
+    """
+    code = (catalog_code or "").strip()
+    if not code:
+        return None
+
+    for row in CONSULTATION_SERVICES:
+        if row.get("code") == code:
+            return {
+                "code": code,
+                "label": row["label"],
+                "price_gnf": int(row.get("price_gnf") or 0),
+                "charge_type": row.get("charge_type") or "consultation",
+                "bucket": "consultation",
+            }
+
+    for row in SPECIALIZED_SPECIALTIES:
+        if row.get("code") == code:
+            return {
+                "code": code,
+                "label": f"Consultation spécialisée — {row['label']}",
+                "price_gnf": int(row.get("price_gnf") or 0),
+                "charge_type": "consultation",
+                "bucket": "specialty",
+            }
+
+    for row in IMAGING_EXAMINATIONS:
+        if row.get("code") == code:
+            return {
+                "code": code,
+                "label": row["label"],
+                "price_gnf": int(row.get("price_gnf") or 0),
+                "charge_type": "radiology",
+                "bucket": "imaging",
+            }
+
+    for row in SERVICE_PRESTATIONS:
+        if row.get("code") == code:
+            return {
+                "code": code,
+                "label": row["label"],
+                "price_gnf": int(row.get("price_gnf") or 0),
+                "charge_type": _charge_type_for_catalog_bucket("prestation"),
+                "bucket": "prestation",
+            }
+
+    for row in SURGICAL_ACTS:
+        if row.get("code") == code:
+            return {
+                "code": code,
+                "label": row["label"],
+                "price_gnf": int(row.get("price_gnf") or 0),
+                "charge_type": "procedure",
+                "bucket": "surgery",
+            }
+
+    return None

@@ -23,7 +23,7 @@ ACCOUNTS = [
     ("audit.nutri.9a4b5d83@sante-gn.test", "AuditNutri1!", "nutritionist"),
     ("audit.midwife.9a4b5d83@sante-gn.test", "AuditMidwife1!", "midwife"),
     ("cashier@pilot.local", "CashierPilot1!", "cashier"),
-    ("lab@pilot.local", "LabPilot1!", "lab_technician"),
+    ("lab@pilot.local", "LabPilot123!", "lab_technician"),
     ("pharmacy@pilot.local", "PharmacyPilot1!", "pharmacist"),
     ("reception@pilot.local", "ReceptionPilot1!", "receptionist"),
     ("dr.pilot@pilot.local", "DoctorPilot1!", "doctor"),

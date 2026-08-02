@@ -24,7 +24,7 @@ ACCOUNTS = {
     "patient": ("test.patient@example.com", os.environ.get("PILOT_PATIENT_PASSWORD", "")),
     "reception": ("reception@pilot.local", "ReceptionPilot1!"),
     "doctor": ("dr.pilot@pilot.local", "DoctorPilot1!"),
-    "lab": ("lab@pilot.local", "LabPilot1!"),
+    "lab": ("lab@pilot.local", "LabPilot123!"),
     "pharmacy": ("pharmacy@pilot.local", "PharmacyPilot1!"),
     "admin": ("admin@pilot.local", os.environ.get("PILOT_ADMIN_PASSWORD", "")),
 }

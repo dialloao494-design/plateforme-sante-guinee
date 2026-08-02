@@ -15,7 +15,7 @@ ACCOUNTS = [
     ("reception@pilot.local", "ReceptionPilot1!", "receptionist"),
     ("cashier@pilot.local", "CashierPilot1!", "cashier"),
     ("dr.pilot@pilot.local", "DoctorPilot1!", "doctor"),
-    ("lab@pilot.local", "LabPilot1!", "lab_technician"),
+    ("lab@pilot.local", "LabPilot123!", "lab_technician"),
     ("pharmacy@pilot.local", "PharmacyPilot1!", "pharmacist"),
     ("dr.mamady@example.com", os.environ.get("PILOT_DOCTOR_PASSWORD", ""), "doctor"),
     ("test.patient@example.com", os.environ.get("PILOT_PATIENT_PASSWORD", ""), "patient"),

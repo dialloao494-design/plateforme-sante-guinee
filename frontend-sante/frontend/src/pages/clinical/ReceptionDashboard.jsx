@@ -146,6 +146,7 @@ const EMPTY_BILLING = {
   billing_date: todayStr,
   department: 'Consultation externe',
   exemption_percent: '0',
+  exemption_reason: '',
 };
 const newPaymentLineId = () => `pay-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 const emptyPaymentLine = () => ({ id: newPaymentLineId(), amount_gnf: '', payment_method: 'orange_money', reference: '' });
@@ -1145,6 +1146,9 @@ export default function ReceptionDashboard() {
     e.preventDefault();
     if (!selectedPatient?.id) return setError('Recherchez et sélectionnez un patient avant de créer la facture.');
     if (billingLineItems.length === 0) return setError('Ajoutez au moins une prestation à la facture.');
+    if (Number(billingForm.exemption_percent || 0) > 0 && !String(billingForm.exemption_reason || '').trim()) {
+      return setError('Indiquez le motif d’exemption avant de créer la facture.');
+    }
     setLoading(true);
     setError('');
     setMessage('');
@@ -1158,8 +1162,14 @@ export default function ReceptionDashboard() {
           quantity: Number(l.quantity || 1),
           unit_price_gnf: Number(l.unit_price_gnf || 0),
           source_type: l.source_type || 'reception',
+          source_ref: l.source_ref || undefined,
+          catalog_code: l.catalog_code || undefined,
         })),
         exemption_percent: Number(billingForm.exemption_percent || 0),
+        exemption_reason:
+          Number(billingForm.exemption_percent || 0) > 0
+            ? (billingForm.exemption_reason || '').trim() || undefined
+            : undefined,
         billing_date: billingForm.billing_date || undefined,
       });
       setActiveInvoice(data || null);
@@ -1351,6 +1361,7 @@ export default function ReceptionDashboard() {
       unit_price_gnf: Number(request.unit_price_gnf || 0),
       source_type: 'service_request',
       source_ref: request.request_number,
+      catalog_code: request.catalog_code || undefined,
     });
     setBillingServiceRequestId(request.request_number || '');
     setLastCreatedServiceRequest(request);
@@ -2271,6 +2282,18 @@ export default function ReceptionDashboard() {
                       <AmountDisplay amountGnf={draftExemptionAmount || null} />
                     </label>
                   </div>
+                  {Number(billingForm.exemption_percent || 0) > 0 && (
+                    <label>
+                      Motif d&apos;exemption (obligatoire)
+                      <input
+                        type="text"
+                        value={billingForm.exemption_reason || ''}
+                        onChange={(e) => updateBilling({ exemption_reason: e.target.value })}
+                        placeholder="Ex. : tarification sociale, prise en charge…"
+                        required
+                      />
+                    </label>
+                  )}
                   <div className="reception-his-form-row reception-his-form-row--2">
                     <label>
                       Nouveau total

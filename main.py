@@ -717,11 +717,14 @@ async def startup_event():
             from services.pilot_seed import seed_pilot_accounts
 
             seed_pilot_accounts()
+        except Exception as exc:
+            logger.error("Failed to seed telehealth pilot accounts: %s", exc)
+        try:
             from services.clinic_pilot_seed import seed_clinic_pilot_accounts
 
             seed_clinic_pilot_accounts()
         except Exception as exc:
-            logger.error("Failed to seed pilot accounts: %s", exc)
+            logger.error("Failed to seed clinic pilot accounts: %s", exc)
     else:
         logger.info("Pilot seed skipped (ENABLE_PILOT_SEED not set).")
 
