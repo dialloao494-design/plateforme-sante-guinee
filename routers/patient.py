@@ -58,6 +58,51 @@ def _assert_admin_patient_clinic_scope(db: Session, current_user, patient: model
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
 
 
+def _validate_patient_user_link(
+    db,
+    *,
+    user_id: int | None,
+    clinic_id: int | None,
+    allow_platform: bool,
+) -> int | None:
+    """Ensure linked account exists, is a patient, clinic-compatible, and unused."""
+    if user_id is None:
+        return None
+    target = db.query(models.User).filter(models.User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Target user not found")
+    if not target.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Target user is inactive")
+    role = (target.role or "").strip().lower()
+    if role != "patient":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Linked account must have the patient role",
+        )
+    target_clinic = getattr(target, "clinic_id", None)
+    if clinic_id is not None and target_clinic is not None and int(target_clinic) != int(clinic_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Linked account belongs to another clinic",
+        )
+    if clinic_id is not None and target_clinic is None and not allow_platform:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Linked account has no clinic assignment",
+        )
+    existing = (
+        db.query(models.Patient)
+        .filter(models.Patient.user_id == user_id)
+        .first()
+    )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This account is already linked to another patient profile",
+        )
+    return user_id
+
+
 @router.post("/", response_model=schemas.PatientResponse)
 def create_patient(
     patient: schemas.PatientCreate,
@@ -70,8 +115,14 @@ def create_patient(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied",
         )
-    new_patient = models.Patient(
+    linked_user_id = _validate_patient_user_link(
+        db,
         user_id=patient.user_id,
+        clinic_id=clinic_id,
+        allow_platform=is_platform_admin(current_user),
+    )
+    new_patient = models.Patient(
+        user_id=linked_user_id,
         first_name=patient.first_name,
         last_name=patient.last_name,
         age=patient.age,
@@ -236,10 +287,12 @@ def update_patient(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Relinking patient to a different user requires platform privileges",
                 )
-            target = db.query(models.User).filter(models.User.id == patient_update.user_id).first()
-            if not target:
-                raise HTTPException(status_code=404, detail="Target user not found")
-            patient.user_id = patient_update.user_id
+            patient.user_id = _validate_patient_user_link(
+                db,
+                user_id=patient_update.user_id,
+                clinic_id=patient.clinic_id,
+                allow_platform=True,
+            )
 
     db.commit()
     db.refresh(patient)

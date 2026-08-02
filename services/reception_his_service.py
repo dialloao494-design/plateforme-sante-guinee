@@ -402,6 +402,104 @@ class ReceptionHisService:
         return admission
 
     @staticmethod
+    def _resolve_invoice_line(
+        db: Session,
+        *,
+        clinic_id: int,
+        patient_id: int,
+        row,
+        seen_dsr_ids: set[int],
+    ) -> dict:
+        """Build one invoice line. DSR lines are server-authoritative and single-use."""
+        from data.aasma_billing_catalog import resolve_billing_catalog_item
+
+        source_type = (row.source_type or "reception").strip() or "reception"
+        source_ref = (getattr(row, "source_ref", None) or "").strip()
+        quantity = max(1, int(row.quantity or 1))
+        catalog_code = (getattr(row, "catalog_code", None) or "").strip() or None
+        override_reason = (getattr(row, "price_override_reason", None) or "").strip()
+
+        # --- Service request (DSR) path ---
+        if source_type == "service_request" or source_ref.upper().startswith("DSR-"):
+            dsr = ReceptionHisService.get_service_request_by_number(
+                db, clinic_id=clinic_id, request_number=source_ref or str(getattr(row, "source_ref", "") or "")
+            )
+            if dsr.patient_id != patient_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"La demande {dsr.request_number} n'appartient pas à ce patient",
+                )
+            if dsr.status == "cancelled":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Demande {dsr.request_number} annulée — facturation refusée",
+                )
+            if dsr.id in seen_dsr_ids:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Demande {dsr.request_number} déjà présente sur cette facture",
+                )
+            already = (
+                db.query(models.InvoiceItem)
+                .join(models.Invoice, models.Invoice.id == models.InvoiceItem.invoice_id)
+                .filter(
+                    models.InvoiceItem.source_type == "service_request",
+                    models.InvoiceItem.source_id == dsr.id,
+                    models.Invoice.clinic_id == clinic_id,
+                    models.Invoice.status != "cancelled",
+                )
+                .first()
+            )
+            if already:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Demande {dsr.request_number} déjà facturée",
+                )
+            seen_dsr_ids.add(dsr.id)
+            unit = int(dsr.unit_price_gnf or 0)
+            if catalog_code or dsr.catalog_code:
+                cat = resolve_billing_catalog_item(catalog_code or dsr.catalog_code)
+                if cat and not override_reason:
+                    unit = int(cat["price_gnf"])
+            return {
+                "charge_type": dsr.charge_type or row.charge_type or "procedure",
+                "description": f"{dsr.service_name} [{dsr.request_number}]",
+                "quantity": quantity,
+                "unit_price_gnf": unit,
+                "amount_gnf": unit * quantity,
+                "source_type": "service_request",
+                "source_id": dsr.id,
+                "service_request": dsr,
+            }
+
+        # --- Catalog-authoritative manual line ---
+        description = (row.description or "").strip()
+        unit = int(row.unit_price_gnf or 0)
+        charge_type = row.charge_type
+        if catalog_code:
+            cat = resolve_billing_catalog_item(catalog_code)
+            if not cat:
+                raise HTTPException(status_code=400, detail=f"Code catalogue inconnu: {catalog_code}")
+            description = cat["label"]
+            charge_type = cat["charge_type"]
+            if override_reason:
+                # Negotiated price allowed only with audit reason.
+                unit = int(row.unit_price_gnf or cat["price_gnf"])
+            else:
+                unit = int(cat["price_gnf"])
+
+        return {
+            "charge_type": charge_type,
+            "description": description,
+            "quantity": quantity,
+            "unit_price_gnf": unit,
+            "amount_gnf": unit * quantity,
+            "source_type": source_type,
+            "source_id": None,
+            "service_request": None,
+        }
+
+    @staticmethod
     def create_invoice(
         db: Session,
         *,
@@ -419,19 +517,20 @@ class ReceptionHisService:
             issued_at = datetime.combine(payload.billing_date, time.min)
 
         line_payloads = []
+        billed_requests: list[models.ClinicServiceRequest] = []
+        seen_dsr_ids: set[int] = set()
         if payload.items:
             for row in payload.items:
-                amt = int(row.quantity) * int(row.unit_price_gnf)
-                line_payloads.append(
-                    {
-                        "charge_type": row.charge_type,
-                        "description": row.description.strip(),
-                        "quantity": int(row.quantity),
-                        "unit_price_gnf": int(row.unit_price_gnf),
-                        "amount_gnf": amt,
-                        "source_type": row.source_type or "reception",
-                    }
+                line = ReceptionHisService._resolve_invoice_line(
+                    db,
+                    clinic_id=clinic_id,
+                    patient_id=payload.patient_id,
+                    row=row,
+                    seen_dsr_ids=seen_dsr_ids,
                 )
+                if line.get("service_request") is not None:
+                    billed_requests.append(line["service_request"])
+                line_payloads.append(line)
         else:
             total = int(payload.total_amount_gnf or 0)
             line_payloads.append(
@@ -442,13 +541,24 @@ class ReceptionHisService:
                     "unit_price_gnf": total,
                     "amount_gnf": total,
                     "source_type": "reception",
+                    "source_id": None,
+                    "service_request": None,
                 }
             )
 
         subtotal = sum(int(l["amount_gnf"]) for l in line_payloads)
         exemption_percent = float(payload.exemption_percent or 0)
+        if exemption_percent > 0 and not (getattr(payload, "exemption_reason", None) or "").strip():
+            raise HTTPException(
+                status_code=400,
+                detail="exemption_reason est requis lorsque exemption_percent > 0",
+            )
         exemption_amount = int(subtotal * exemption_percent / 100)
         net_total = max(0, subtotal - exemption_amount)
+
+        notes = None
+        if exemption_percent > 0:
+            notes = f"Exemption {exemption_percent:g}% — {(payload.exemption_reason or '').strip()}"
 
         invoice = models.Invoice(
             clinic_id=clinic_id,
@@ -461,24 +571,43 @@ class ReceptionHisService:
             exemption_amount_gnf=exemption_amount,
             total_amount_gnf=net_total,
             paid_amount_gnf=0,
+            notes=notes,
             issued_at=issued_at,
             created_by_user_id=actor.id,
         )
         db.add(invoice)
         db.flush()
         for idx, line in enumerate(line_payloads):
+            source_id = line.get("source_id")
+            if source_id is None:
+                source_id = invoice.id * 1000 + idx
             item = models.InvoiceItem(
                 invoice_id=invoice.id,
                 charge_type=line["charge_type"],
                 source_type=line["source_type"],
-                source_id=invoice.id * 1000 + idx,
+                source_id=int(source_id),
                 description=line["description"],
                 quantity=line["quantity"],
                 unit_price_gnf=line["unit_price_gnf"],
                 amount_gnf=line["amount_gnf"],
             )
             db.add(item)
-        db.commit()
+        for dsr in billed_requests:
+            dsr.status = "completed"
+            dsr.updated_by_user_id = actor.id
+            db.add(dsr)
+        try:
+            db.commit()
+        except Exception as exc:
+            db.rollback()
+            from sqlalchemy.exc import IntegrityError
+
+            if isinstance(exc, IntegrityError):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Conflit de facturation (demande déjà facturée)",
+                ) from exc
+            raise
         db.refresh(invoice)
         log_cis(
             db,
@@ -1148,21 +1277,57 @@ class ReceptionHisService:
         actor: User,
     ) -> models.ClinicServiceRequest:
         from core.tenant import assert_patient_in_clinic
+        from data.aasma_billing_catalog import resolve_billing_catalog_item
 
         assert_patient_in_clinic(db, patient_id=payload.patient_id, clinic_id=clinic_id)
+
+        catalog_code = (payload.catalog_code or "").strip() or None
+        service_name = (payload.service_name or "").strip()
+        charge_type = (payload.charge_type or "").strip() or None
+        unit_price = payload.unit_price_gnf
+        override_reason = (getattr(payload, "price_override_reason", None) or "").strip()
+        notes = (payload.notes or "").strip() or None
+
+        if catalog_code:
+            cat = resolve_billing_catalog_item(catalog_code)
+            if not cat:
+                raise HTTPException(status_code=400, detail=f"Code catalogue inconnu: {catalog_code}")
+            service_name = cat["label"]
+            charge_type = cat["charge_type"]
+            if override_reason:
+                if unit_price is None:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="unit_price_gnf requis avec price_override_reason",
+                    )
+                notes = (
+                    f"{notes + ' | ' if notes else ''}"
+                    f"Prix négocié ({unit_price} GNF) — {override_reason}"
+                )
+            else:
+                # Ignore client-supplied price when catalog resolves.
+                unit_price = int(cat["price_gnf"])
+        elif unit_price is not None and not override_reason:
+            # Free-text lines still allowed, but negotiated overrides need a reason
+            # only when catalog_code is present. Without catalog, accept unit_price.
+            pass
+
+        if not service_name:
+            raise HTTPException(status_code=400, detail="service_name requis")
+
         row = models.ClinicServiceRequest(
             clinic_id=clinic_id,
             patient_id=payload.patient_id,
             admission_id=payload.admission_id,
             request_number="PENDING",
             service_category=payload.service_category,
-            service_name=payload.service_name.strip(),
+            service_name=service_name,
             department=(payload.department or "").strip() or None,
-            catalog_code=(payload.catalog_code or "").strip() or None,
-            charge_type=(payload.charge_type or "").strip() or None,
-            unit_price_gnf=payload.unit_price_gnf,
+            catalog_code=catalog_code,
+            charge_type=charge_type,
+            unit_price_gnf=unit_price,
             status=payload.status,
-            notes=(payload.notes or "").strip() or None,
+            notes=notes,
             created_by_user_id=actor.id,
             updated_by_user_id=actor.id,
         )

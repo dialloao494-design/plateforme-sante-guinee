@@ -167,11 +167,14 @@ class ServiceRequestCreate(BaseModel):
     patient_id: int
     admission_id: Optional[int] = None
     service_category: SERVICE_REQUEST_CATEGORIES
+    # When catalog_code is set, the server overwrites name/charge_type/price.
     service_name: str = Field(..., min_length=1, max_length=255)
     department: Optional[str] = Field(None, max_length=128)
     catalog_code: Optional[str] = Field(None, max_length=64)
     charge_type: Optional[str] = Field(None, max_length=64)
     unit_price_gnf: Optional[int] = Field(None, ge=0)
+    # Required when client wants a non-catalog negotiated unit price.
+    price_override_reason: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
     status: Literal["pending", "approved", "completed", "cancelled"] = "pending"
 
@@ -231,7 +234,10 @@ class ReceptionInvoiceLineItem(BaseModel):
     quantity: int = Field(1, ge=1)
     unit_price_gnf: int = Field(..., ge=0)
     source_type: Optional[str] = "reception"
+    # DSR number (e.g. DSR-017-000044) when billing a service request.
     source_ref: Optional[str] = None
+    catalog_code: Optional[str] = Field(None, max_length=64)
+    price_override_reason: Optional[str] = Field(None, max_length=255)
 
 
 class ReceptionInvoiceCreate(BaseModel):
@@ -241,10 +247,15 @@ class ReceptionInvoiceCreate(BaseModel):
     total_amount_gnf: Optional[int] = Field(None, ge=0)
     items: Optional[List[ReceptionInvoiceLineItem]] = None
     exemption_percent: float = Field(0, ge=0, le=100)
+    # Required when exemption_percent > 0.
+    exemption_reason: Optional[str] = Field(None, max_length=255)
     billing_date: Optional[date] = None
 
     @model_validator(mode="after")
     def _require_lines_or_legacy(self):
+        if self.exemption_percent and float(self.exemption_percent) > 0:
+            if not (self.exemption_reason or "").strip():
+                raise ValueError("exemption_reason est requis lorsque exemption_percent > 0")
         if self.items:
             return self
         if self.description and self.total_amount_gnf is not None:
