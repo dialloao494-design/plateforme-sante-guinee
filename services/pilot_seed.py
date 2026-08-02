@@ -7,9 +7,9 @@ Rules:
 - No duplicate users: lookup by lower(email); create-or-sync only.
 - Doctor profiles always aligned with pilot doctor users.
 
-Passwords (documented in FINAL_AUTH_STABILIZATION.md):
-- All pilot doctors: Doctor123!
-- Pilot patient: Patient123!
+Passwords (must satisfy PASSWORD_MIN_LENGTH ≥ 12):
+- All pilot doctors: DoctorPilot123!
+- Pilot patient: PatientPilot123!
 """
 
 from __future__ import annotations
@@ -28,8 +28,8 @@ from services.availability_service import AvailabilityService
 
 logger = logging.getLogger(__name__)
 
-PILOT_DOCTOR_PASSWORD = "Doctor123!"
-PILOT_PATIENT_PASSWORD = "Patient123!"
+PILOT_DOCTOR_PASSWORD = "DoctorPilot123!"
+PILOT_PATIENT_PASSWORD = "PatientPilot123!"
 
 # Canonical pilot doctor emails (stable for documentation & UX).
 PILOT_DOCTORS: list[dict[str, Any]] = [
@@ -135,7 +135,7 @@ def _ensure_user_doctor(db: Session, email: str, plain_password: str, profile: d
         if not pwd_ok:
             user.hashed_password = hash_password(plain_password)
             changed = True
-            logger.info("Pilot seed: repaired password hash for %s (was not Doctor123!)", email)
+            logger.info("Pilot seed: repaired password hash for %s (was not DoctorPilot123!)", email)
         if user.role != "doctor":
             user.role = "doctor"
             changed = True
@@ -209,7 +209,7 @@ def _ensure_pilot_patient(db: Session) -> None:
         if not pwd_ok:
             user.hashed_password = hash_password(PILOT_PATIENT_PASSWORD)
             changed = True
-            logger.info("Pilot seed: repaired password hash for %s (was not Patient123!)", email)
+            logger.info("Pilot seed: repaired password hash for %s (was not PatientPilot123!)", email)
         if user.role != "patient":
             user.role = "patient"
             changed = True

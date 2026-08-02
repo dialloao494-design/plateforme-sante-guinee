@@ -17,6 +17,7 @@ import logging
 from sqlalchemy import func
 
 import models
+from security import hash_password, verify_password
 from services.pilot_seed import PILOT_DOCTORS
 from services.user_provisioning import EmailAlreadyRegisteredError, create_staff_user
 
@@ -31,7 +32,7 @@ PILOT_STAFF: list[dict[str, str]] = [
     {"email": "reception@pilot.local", "password": "ReceptionPilot1!", "role": "receptionist"},
     {"email": "cashier@pilot.local", "password": "CashierPilot1!", "role": "cashier"},
     {"email": "dr.pilot@pilot.local", "password": "DoctorPilot1!", "role": "doctor"},
-    {"email": "lab@pilot.local", "password": "LabPilot1!", "role": "lab_technician"},
+    {"email": "lab@pilot.local", "password": "LabPilot123!", "role": "lab_technician"},
     {"email": "pharmacy@pilot.local", "password": "PharmacyPilot1!", "role": "pharmacist"},
 ]
 
@@ -94,8 +95,21 @@ def _ensure_staff_account(db, clinic_id: int, email: str, password: str, role: s
             user = db.query(models.User).filter(func.lower(models.User.email) == email_l).first()
     if not user:
         return
+    changed = False
     if user.role != role:
         user.role = role
+        changed = True
+    try:
+        pwd_ok = verify_password(password, user.hashed_password)
+    except Exception:
+        pwd_ok = False
+    if not pwd_ok:
+        user.hashed_password = hash_password(password)
+        changed = True
+        logger.info("CIS pilot seed: repaired password hash for %s", email_l)
+    if changed:
+        db.commit()
+        db.refresh(user)
     _assign_user_to_clinic(db, user, clinic_id)
     logger.info("CIS pilot seed: synced staff %s clinic_id=%s", email_l, clinic_id)
 

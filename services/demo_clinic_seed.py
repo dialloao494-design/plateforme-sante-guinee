@@ -18,7 +18,7 @@ from services.user_provisioning import EmailAlreadyRegisteredError, register_pub
 
 logger = logging.getLogger(__name__)
 
-DEMO_PATIENT_PASSWORD = "Patient123!"
+DEMO_PATIENT_PASSWORD = "PatientPilot123!"
 
 # Demo patient accounts (same password for simplicity during demos)
 DEMO_PEOPLE = [
