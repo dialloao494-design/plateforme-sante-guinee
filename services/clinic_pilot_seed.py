@@ -90,9 +90,9 @@ def _ensure_staff_account(db, clinic_id: int, email: str, password: str, role: s
                 channel="admin_api",
             )
             logger.info("CIS pilot seed: created staff %s (%s)", email_l, role)
-            return
         except EmailAlreadyRegisteredError:
-            user = db.query(models.User).filter(func.lower(models.User.email) == email_l).first()
+            pass
+        user = db.query(models.User).filter(func.lower(models.User.email) == email_l).first()
     if not user:
         return
     changed = False
