@@ -107,6 +107,11 @@ def _ensure_staff_account(db, clinic_id: int, email: str, password: str, role: s
         user.hashed_password = hash_password(password)
         changed = True
         logger.info("CIS pilot seed: repaired password hash for %s", email_l)
+    # Demo pilot passwords are shared test credentials — do not force a password change
+    # (create_staff_user sets must_change_password=True by default).
+    if getattr(user, "must_change_password", False):
+        user.must_change_password = False
+        changed = True
     if changed:
         db.commit()
         db.refresh(user)
