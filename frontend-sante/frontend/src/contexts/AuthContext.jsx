@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api.js';
 import { clearClientAuth, setAuthSessionReady } from '../services/httpClient.js';
 import { invalidateCache } from '../utils/apiCache.js';
-import { touchSessionActivity, getAuthItem, setAuthItem, removeAuthItem, setAuthToken, getAuthToken, clearLegacySharedAuth } from '../utils/authStorage.js';
+import { touchSessionActivity, getAuthItem, setAuthItem, removeAuthItem, clearLegacySharedAuth } from '../utils/authStorage.js';
 import { CACHE_TTL, getCached, setCached, buildCacheKey } from '../utils/apiCache.js';
 import {
   AUTH_BOOTSTRAP_TIMEOUT_MS,
@@ -122,20 +122,35 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const logout = useCallback(() => {
-    // Keep the token available until Axios has sent the revocation request, while
-    // clearing React state immediately so the UI logs out without network delay.
+    // Clear React state immediately; the logout request clears HttpOnly cookies server-side.
     void authAPI.logout().catch(() => {}).finally(() => clearClientAuth());
     clearPasswordResetFlags();
     setUser(null);
     setError(null);
   }, []);
 
+  const fetchCurrentUser = useCallback(async ({ allowRefresh = false } = {}) => {
+    try {
+      return await withTimeout(
+        authAPI.me({ forceRefresh: true }),
+        AUTH_BOOTSTRAP_TIMEOUT_MS,
+        '/auth/me'
+      );
+    } catch (err) {
+      if (allowRefresh && err?.response?.status === 401) {
+        await withTimeout(authAPI.refresh(), AUTH_BOOTSTRAP_TIMEOUT_MS, '/auth/refresh');
+        return await withTimeout(
+          authAPI.me({ forceRefresh: true }),
+          AUTH_BOOTSTRAP_TIMEOUT_MS,
+          '/auth/me'
+        );
+      }
+      throw err;
+    }
+  }, []);
+
   const refreshUser = useCallback(async () => {
-    const data = await withTimeout(
-      authAPI.me({ forceRefresh: true }),
-      AUTH_BOOTSTRAP_TIMEOUT_MS,
-      '/auth/me'
-    );
+    const data = await fetchCurrentUser({ allowRefresh: true });
     if (!data) {
       throw new Error('Profil utilisateur vide');
     }
@@ -143,37 +158,20 @@ export const AuthProvider = ({ children }) => {
     setUser(normalizedUser);
     setAuthInitError(null);
     return normalizedUser;
-  }, [normalizeAndStoreUser]);
+  }, [fetchCurrentUser, normalizeAndStoreUser]);
 
   const bootstrapSession = useCallback(async () => {
     setAuthSessionReady(false);
-    const storedToken = getAuthToken();
-    if (!storedToken) {
-      setUser(null);
-      setAuthInitError(null);
-      setAuthLoading(false);
-      setAuthSessionReady(true);
-      return;
-    }
-
     const cachedProfile = readCachedProfile();
     if (cachedProfile) {
       setUser(cachedProfile);
-    }
-
-    if (!getAuthItem('token')) {
-      setAuthToken(storedToken);
     }
 
     setAuthInitError(null);
     setAuthLoading(true);
 
     try {
-      const data = await withTimeout(
-        authAPI.me({ forceRefresh: true }),
-        AUTH_BOOTSTRAP_TIMEOUT_MS,
-        '/auth/me'
-      );
+      const data = await fetchCurrentUser({ allowRefresh: true });
       if (!data) {
         throw new Error('Profil utilisateur vide');
       }
@@ -187,7 +185,7 @@ export const AuthProvider = ({ children }) => {
       if (status === 401 || status === 403) {
         clearClientAuth();
         setUser(null);
-        setAuthInitError(toBootstrapErrorMessage(err));
+        setAuthInitError(null);
       } else {
         setAuthInitError(toBootstrapErrorMessage(err));
         if (!cachedProfile) {
@@ -198,7 +196,7 @@ export const AuthProvider = ({ children }) => {
       setAuthLoading(false);
       setAuthSessionReady(true);
     }
-  }, [normalizeAndStoreUser]);
+  }, [fetchCurrentUser, normalizeAndStoreUser]);
 
   const retrySessionBootstrap = useCallback(async () => {
     await bootstrapSession();
@@ -208,48 +206,32 @@ export const AuthProvider = ({ children }) => {
     bootstrapSession();
   }, [bootstrapSession]);
 
-  const applyLoginToken = useCallback(
+  const establishSession = useCallback(
     async (loginPayload) => {
-      authDebug('applyLoginToken: start');
-      const access_token =
-        loginPayload?.access_token ||
-        loginPayload?.accessToken ||
-        loginPayload?.token;
-
-      if (!access_token) {
-        authDebug('applyLoginToken: missing access_token in payload', loginPayload);
-        throw new Error('Login response missing access_token');
-      }
-
+      authDebug('establishSession: start', loginPayload?.role || loginPayload?.user_role);
       clearPasswordResetFlags();
       invalidateCache();
       invalidateCache('/auth/me');
-      setAuthToken(access_token);
       clearLegacySharedAuth();
-      authDebug('applyLoginToken: token stored', Boolean(access_token));
 
-      const meResponse = await withTimeout(
-        authAPI.me({ forceRefresh: true }),
-        AUTH_BOOTSTRAP_TIMEOUT_MS,
-        '/auth/me'
-      );
-      authDebug('applyLoginToken: /auth/me ok', meResponse?.email, meResponse?.role);
+      const meResponse = await fetchCurrentUser();
+      authDebug('establishSession: /auth/me ok', meResponse?.email, meResponse?.role);
       if (!meResponse) {
         throw new Error('Profil utilisateur vide après connexion');
       }
       const normalizedUser = normalizeAndStoreUser(meResponse);
       setUser(normalizedUser);
-      authDebug('applyLoginToken: user state set', normalizedUser?.role);
+      authDebug('establishSession: user state set', normalizedUser?.role);
       return normalizedUser;
     },
-    [normalizeAndStoreUser],
+    [fetchCurrentUser, normalizeAndStoreUser],
   );
 
   const loginWithToken = async (loginPayload) => {
     setActionLoading(true);
     setError(null);
     try {
-      const normalizedUser = await applyLoginToken(loginPayload);
+      const normalizedUser = await establishSession(loginPayload);
       return { success: true, role: normalizedUser?.role, clinic_id: normalizedUser?.clinic_id };
     } catch (err) {
       clearClientAuth();
@@ -270,8 +252,8 @@ export const AuthProvider = ({ children }) => {
       const trimmedEmail = String(email || '').trim().toLowerCase();
       authDebug('login: request start', trimmedEmail);
       const loginPayload = await authAPI.login(trimmedEmail, password);
-      authDebug('login: response ok', Boolean(loginPayload?.access_token), loginPayload?.role);
-      const normalizedUser = await applyLoginToken(loginPayload);
+      authDebug('login: response ok', Boolean(loginPayload?.csrf_token), loginPayload?.role);
+      const normalizedUser = await establishSession(loginPayload);
       authDebug('login: complete', { role: normalizedUser?.role, clinic_id: normalizedUser?.clinic_id });
       return {
         success: true,
@@ -296,12 +278,7 @@ export const AuthProvider = ({ children }) => {
     setActionLoading(true);
     setError(null);
     try {
-      const response = await authAPI.changePassword(currentPassword, newPassword);
-      const replacementToken = response?.data?.access_token;
-      if (!replacementToken) {
-        throw new Error('Le serveur n’a pas renouvelé la session sécurisée.');
-      }
-      setAuthToken(replacementToken);
+      await authAPI.changePassword(currentPassword, newPassword);
       invalidateCache('/auth/me');
       const updated = await refreshUser();
       return { success: true, user: updated };

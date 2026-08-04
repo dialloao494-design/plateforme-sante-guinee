@@ -176,6 +176,73 @@ def get_patients(
     return db.query(models.Patient).filter(models.Patient.id.in_(patient_ids)).all()
 
 
+@router.get("/linkable-accounts")
+def list_linkable_patient_accounts(
+    q: str = "",
+    limit: int = 20,
+    clinic_id: int | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_admin),
+):
+    """Search unlinked patient-role user accounts for clinic-safe patient linking.
+
+    Removes the need for operators to type raw numeric user IDs.
+    """
+    query = (q or "").strip()
+    if len(query) < 2:
+        return []
+    try:
+        limit = max(1, min(int(limit or 20), 50))
+    except (TypeError, ValueError):
+        limit = 20
+
+    actor_clinic = None if is_platform_admin(current_user) else user_clinic_id(current_user, db)
+    if not is_platform_admin(current_user) and actor_clinic is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
+
+    scope_clinic = actor_clinic
+    if is_platform_admin(current_user) and clinic_id is not None:
+        scope_clinic = int(clinic_id)
+
+    linked_ids = {
+        row[0]
+        for row in db.query(models.Patient.user_id)
+        .filter(models.Patient.user_id.isnot(None))
+        .all()
+    }
+
+    users_q = db.query(models.User).filter(
+        models.User.is_active.is_(True),
+        models.User.role == "patient",
+    )
+    if scope_clinic is not None:
+        users_q = users_q.filter(models.User.clinic_id == scope_clinic)
+
+    # Match email substring or exact numeric id.
+    if query.isdigit():
+        users_q = users_q.filter(
+            (models.User.id == int(query)) | models.User.email.ilike(f"%{query}%")
+        )
+    else:
+        users_q = users_q.filter(models.User.email.ilike(f"%{query}%"))
+
+    rows = users_q.order_by(models.User.email.asc()).limit(limit * 3).all()
+    results = []
+    for user in rows:
+        if user.id in linked_ids:
+            continue
+        results.append(
+            {
+                "id": user.id,
+                "email": user.email,
+                "clinic_id": getattr(user, "clinic_id", None),
+            }
+        )
+        if len(results) >= limit:
+            break
+    return results
+
+
 @router.get("/me", response_model=schemas.PatientResponse)
 def get_my_patient_profile(
     db: Session = Depends(get_db),

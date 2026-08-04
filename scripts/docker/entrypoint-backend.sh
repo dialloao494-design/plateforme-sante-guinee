@@ -1,6 +1,6 @@
 #!/bin/sh
 # Railway / Docker entrypoint:
-# 1) wait for Postgres  2) alembic upgrade head  3) verify security columns  4) start uvicorn
+# 1) wait for Postgres  2) alembic upgrade head  3) verify schema (no runtime DDL)  4) start uvicorn
 set -e
 
 COMMIT_SHA="${RAILWAY_GIT_COMMIT_SHA:-${RAILWAY_GIT_COMMIT:-${GIT_COMMIT:-unset}}}"
@@ -99,6 +99,7 @@ deployed = (os.getenv("ENVIRONMENT") or "").strip().lower() in {
     "clinic_node",
 } or bool((os.getenv("RAILWAY_ENVIRONMENT") or "").strip())
 
+# alembic_version column helper is metadata-only for migration bookkeeping.
 ensure_alembic_version_column(engine)
 
 try:
@@ -116,20 +117,25 @@ except Exception as exc:
         sys.exit(1)
     print("[entrypoint] Continuing in non-deployed mode after Alembic failure.")
 
-# Failsafe DDL for security columns (covers stamped-without-DDL production DBs).
-try:
-    ensure_user_session_security_columns(engine)
-    print("[entrypoint] users.session_version / token_version verified.")
-except Exception as exc:
-    print(f"[entrypoint] FATAL: security column ensure failed: {exc}", file=sys.stderr)
-    sys.exit(1)
+# Production/deployed: Alembic is the sole schema authority — no runtime DDL.
+# Development/local: keep ensure_* helpers for disposable databases.
+if deployed:
+    print("[entrypoint] Deployed mode: skipping runtime ensure_* schema mutations (Alembic-only).")
+else:
+    try:
+        ensure_user_session_security_columns(engine)
+        print("[entrypoint] users.session_version / token_version verified.")
+    except Exception as exc:
+        print(f"[entrypoint] FATAL: security column ensure failed: {exc}", file=sys.stderr)
+        sys.exit(1)
 
-ensure_doctor_geolocation_columns(engine)
-ensure_patient_dossier_schema(engine)
-ensure_user_roles_check_constraint(engine)
-normalize_legacy_user_roles(engine)
-ensure_single_platform_owner_index(engine)
+    ensure_doctor_geolocation_columns(engine)
+    ensure_patient_dossier_schema(engine)
+    ensure_user_roles_check_constraint(engine)
+    normalize_legacy_user_roles(engine)
+    ensure_single_platform_owner_index(engine)
 
+# Verify-only checks (no DDL) — fail closed if schema incomplete.
 insp = inspect(engine)
 if "users" not in insp.get_table_names():
     print("[entrypoint] FATAL: users table missing after migrations", file=sys.stderr)

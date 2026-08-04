@@ -1,4 +1,4 @@
-/** Per-tab auth persistence — sessionStorage isolates each browser tab. */
+/** Per-tab auth persistence for non-secret profile state only. */
 
 import { invalidateCache } from './apiCache.js';
 
@@ -13,6 +13,10 @@ export const AUTH_STORAGE_KEYS = [
   'session_last_activity',
   'sg_auth_profile',
 ];
+
+const PROFILE_STORAGE_KEYS = AUTH_STORAGE_KEYS.filter(
+  (key) => key !== 'token' && key !== 'access_token'
+);
 
 function tabStore() {
   return typeof window !== 'undefined' ? sessionStorage : null;
@@ -35,11 +39,7 @@ function migrateLegacyAuthOnce() {
   if (!tab || !legacy) {
     return;
   }
-  const hasTabToken = tab.getItem('token') || tab.getItem('access_token');
-  if (hasTabToken) {
-    return;
-  }
-  for (const key of AUTH_STORAGE_KEYS) {
+  for (const key of PROFILE_STORAGE_KEYS) {
     try {
       const value = legacy.getItem(key);
       if (value != null) {
@@ -100,17 +100,13 @@ export function removeAuthItem(key) {
 }
 
 export function getAuthToken() {
-  return getAuthItem('token') || getAuthItem('access_token');
+  return null;
 }
 
 export function setAuthToken(token) {
-  if (!token) {
-    removeAuthItem('token');
-    removeAuthItem('access_token');
-    return;
-  }
-  setAuthItem('token', token);
-  setAuthItem('access_token', token);
+  void token;
+  removeAuthItem('token');
+  removeAuthItem('access_token');
 }
 
 export function touchSessionActivity() {

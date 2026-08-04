@@ -186,6 +186,8 @@ class ServiceRequestUpdate(BaseModel):
     catalog_code: Optional[str] = Field(None, max_length=64)
     charge_type: Optional[str] = Field(None, max_length=64)
     unit_price_gnf: Optional[int] = Field(None, ge=0)
+    # Required when changing to a non-catalog negotiated unit price.
+    price_override_reason: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
     status: Optional[Literal["pending", "approved", "completed", "cancelled"]] = None
 
@@ -229,10 +231,11 @@ class ReceptionAdmissionResponse(BaseModel):
 
 
 class ReceptionInvoiceLineItem(BaseModel):
-    charge_type: str = Field(..., min_length=1, max_length=32)
-    description: str = Field(..., min_length=1)
+    charge_type: Optional[str] = Field(None, min_length=1, max_length=32)
+    description: Optional[str] = Field(None, min_length=1)
     quantity: int = Field(1, ge=1)
-    unit_price_gnf: int = Field(..., ge=0)
+    # Optional display/override hint only — server is authoritative for catalog prices.
+    unit_price_gnf: Optional[int] = Field(None, ge=0)
     source_type: Optional[str] = "reception"
     # DSR number (e.g. DSR-017-000044) when billing a service request.
     source_ref: Optional[str] = None
@@ -244,6 +247,7 @@ class ReceptionInvoiceCreate(BaseModel):
     patient_id: int
     department: str = Field(..., min_length=1, max_length=128)
     description: Optional[str] = None
+    # Legacy total_amount_gnf path removed — items[] with catalog_code or DSR required.
     total_amount_gnf: Optional[int] = Field(None, ge=0)
     items: Optional[List[ReceptionInvoiceLineItem]] = None
     exemption_percent: float = Field(0, ge=0, le=100)
@@ -252,15 +256,16 @@ class ReceptionInvoiceCreate(BaseModel):
     billing_date: Optional[date] = None
 
     @model_validator(mode="after")
-    def _require_lines_or_legacy(self):
+    def _require_server_authoritative_lines(self):
         if self.exemption_percent and float(self.exemption_percent) > 0:
             if not (self.exemption_reason or "").strip():
                 raise ValueError("exemption_reason est requis lorsque exemption_percent > 0")
-        if self.items:
-            return self
-        if self.description and self.total_amount_gnf is not None:
-            return self
-        raise ValueError("Fournir items[] ou description + total_amount_gnf")
+        if not self.items:
+            raise ValueError(
+                "items[] requis — les montants legacy (description + total_amount_gnf) "
+                "ne sont plus acceptés; utiliser catalog_code ou source_ref DSR"
+            )
+        return self
 
 
 class InvoiceItemOut(BaseModel):

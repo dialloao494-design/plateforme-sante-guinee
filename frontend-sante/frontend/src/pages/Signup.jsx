@@ -39,12 +39,6 @@ const Signup = () => {
         role,
       });
 
-      if (!data?.access_token) {
-        setError('Compte créé mais connexion automatique impossible. Utilisez la page de connexion.');
-        navigate('/login');
-        return;
-      }
-
       const result = await loginWithToken(data);
       if (result.success) {
         navigate(getRoleHomePath(result.role, result.clinic_id), { replace: true });

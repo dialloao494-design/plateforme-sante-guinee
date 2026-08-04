@@ -9,6 +9,7 @@ from models.user import User
 import models
 from core.roles import effective_role, roles_equivalent, user_has_any_role
 from core.password_policy import validate_password  # noqa: F401 — re-export for schemas
+from core.auth_cookie_config import ACCESS_COOKIE_NAME
 from fastapi.security import OAuth2PasswordBearer
 from dotenv import load_dotenv
 import os
@@ -16,7 +17,7 @@ import uuid
 
 load_dotenv()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 # ==============================
@@ -111,9 +112,20 @@ def _path_allowed_during_must_change(path: str) -> bool:
     return False
 
 
+def get_access_token_from_request(
+    request: Request | None,
+    bearer_token: str | None = None,
+) -> str | None:
+    if bearer_token:
+        return bearer_token
+    if request is None:
+        return None
+    return request.cookies.get(ACCESS_COOKIE_NAME)
+
+
 def get_current_user(
     request: Request,
-    token: str = Depends(oauth2_scheme),
+    token: str | None = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
     credentials_exception = HTTPException(
@@ -122,8 +134,12 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    resolved_token = get_access_token_from_request(request, token)
+    if not resolved_token:
+        raise credentials_exception
+
     try:
-        payload = decode_access_token(token)
+        payload = decode_access_token(resolved_token)
         user_id = payload.get("user_id")
         token_role = payload.get("user_role") or payload.get("role")
         email: str = payload.get("sub")
@@ -317,15 +333,17 @@ def require_admin(current_user: User = Depends(get_current_user)):
 
 
 def get_current_user_or_none(
+    request: Request,
     token: str | None = Depends(oauth2_scheme_optional),
     db: Session = Depends(get_db),
 ):
     """Optional authentication dependency. Returns None if no token is provided or valid."""
-    if token is None:
+    resolved_token = get_access_token_from_request(request, token)
+    if resolved_token is None:
         return None
 
     try:
-        payload = decode_access_token(token)
+        payload = decode_access_token(resolved_token)
         user_id = payload.get("user_id")
         email: str = payload.get("sub")
         token_role = payload.get("user_role") or payload.get("role")
