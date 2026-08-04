@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api.js';
 import { clearClientAuth, setAuthSessionReady } from '../services/httpClient.js';
@@ -66,6 +66,7 @@ export const AuthProvider = ({ children }) => {
   const [authInitError, setAuthInitError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState(null);
+  const bootstrapStartedRef = useRef(false);
 
   const clearPasswordResetFlags = () => {
     removeAuthItem('password_reset_required');
@@ -160,7 +161,11 @@ export const AuthProvider = ({ children }) => {
     return normalizedUser;
   }, [fetchCurrentUser, normalizeAndStoreUser]);
 
-  const bootstrapSession = useCallback(async () => {
+  const bootstrapSession = useCallback(async ({ force = false } = {}) => {
+    if (bootstrapStartedRef.current && !force) {
+      return;
+    }
+    bootstrapStartedRef.current = true;
     setAuthSessionReady(false);
     const cachedProfile = readCachedProfile();
     if (cachedProfile) {
@@ -171,7 +176,8 @@ export const AuthProvider = ({ children }) => {
     setAuthLoading(true);
 
     try {
-      const data = await fetchCurrentUser({ allowRefresh: true });
+      // Anonymous first paint: do not attempt refresh (avoids extra remount churn).
+      const data = await fetchCurrentUser({ allowRefresh: false });
       if (!data) {
         throw new Error('Profil utilisateur vide');
       }
@@ -183,7 +189,7 @@ export const AuthProvider = ({ children }) => {
       logAuthSessionFailure('bootstrap', err);
       const status = err?.response?.status;
       if (status === 401 || status === 403) {
-        clearClientAuth();
+        // Quiet anonymous session — no cookies yet.
         setUser(null);
         setAuthInitError(null);
       } else {
@@ -199,11 +205,12 @@ export const AuthProvider = ({ children }) => {
   }, [fetchCurrentUser, normalizeAndStoreUser]);
 
   const retrySessionBootstrap = useCallback(async () => {
-    await bootstrapSession();
+    bootstrapStartedRef.current = false;
+    await bootstrapSession({ force: true });
   }, [bootstrapSession]);
 
   useEffect(() => {
-    bootstrapSession();
+    void bootstrapSession();
   }, [bootstrapSession]);
 
   const establishSession = useCallback(

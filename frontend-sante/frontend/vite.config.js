@@ -67,8 +67,9 @@ export default defineConfig(({ mode }) => {
             },
           ],
         },
+        // Keep SW out of Vite dev / Playwright — autoUpdate remounts detach form inputs.
         devOptions: {
-          enabled: true,
+          enabled: false,
         },
       }),
     ],

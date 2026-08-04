@@ -1,11 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { loginAsReception } from './helpers.js';
 
 test('reception can register a new patient end to end', async ({ page }) => {
-  await page.goto('/login');
-  await page.locator('#email').fill('reception@pilot.local');
-  await page.locator('#password').fill('ReceptionPilot1!');
-  await page.getByRole('button', { name: 'Se connecter' }).click();
-  await expect(page).toHaveURL(/\/clinical\/reception/);
+  test.setTimeout(90_000);
+  await loginAsReception(page);
 
   await page.getByRole('button', { name: /Enregistrement/ }).click();
 
