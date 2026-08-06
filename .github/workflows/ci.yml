@@ -32,6 +32,10 @@ jobs:
           cache-dependency-path: frontend-sante/frontend/package-lock.json
       - run: npm ci
       - run: npm run lint
+      - name: Unit tests (apiError + reception duplicate regression locks)
+        run: npm run test:unit
+      - name: Offline pure/unit tests
+        run: npm run test:offline
       - name: Audit production dependencies (block high/critical advisories)
         run: npm audit --omit=dev --audit-level=high
       - run: npm run build

@@ -87,12 +87,18 @@ def test_reception_his_duplicate_registration_requires_confirm(client, db_sessio
     )
     assert dup.status_code == 409, dup.text
     detail = dup.json()["detail"]
-    assert isinstance(detail, dict)
+    # Contract lock: frontend formatApiError + registrationConflict depend on an
+    # *object* detail (not a bare string). A string detail would silently regress
+    # reception into opaque Axios "Request failed with status code 409".
+    assert isinstance(detail, dict), detail
+    assert not isinstance(detail, str)
     assert detail["code"] == "duplicate_patient"
+    assert isinstance(detail["message"], str) and detail["message"].strip()
     assert "similaires" in detail["message"].lower() or "déjà" in detail["message"].lower()
-    assert detail["matches"]
+    assert isinstance(detail["matches"], list) and detail["matches"]
     assert detail["matches"][0]["id"] == first["id"]
     assert "phone" in detail["matches"][0]["match_reasons"]
+    assert "confirm_duplicate" in _payload()  # schema field stays available
 
     confirmed = client.post(
         "/clinical/reception/his/patients",
