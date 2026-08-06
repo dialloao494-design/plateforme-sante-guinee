@@ -1048,6 +1048,31 @@
   font-size: 0.9rem;
 }
 
+.reception-his-duplicate-panel {
+  margin: 0 0 1.25rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  background: #fffbeb;
+}
+
+.reception-his-duplicate-panel h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.reception-his-duplicate-panel p {
+  margin: 0 0 0.75rem;
+  color: #78350f;
+}
+
+.reception-his-duplicate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
 .reception-his-form-sheet h2 {
   text-align: center;
   margin-top: 0;
