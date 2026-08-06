@@ -188,3 +188,95 @@ def test_doctor_catalog_exposes_surgical_acts(client, db_session, admin_user):
     acts = body.get("surgical_acts") or []
     assert len(acts) >= 5
     assert any(a.get("code") == "suture_simple" for a in acts)
+
+
+def test_invoice_receipt_endpoint_fills_required_fields(client, db_session, admin_user):
+    """Real receipt generation must not leave identity fields blank."""
+    import uuid
+
+    import models
+    from core.provisioning_context import provisioning_channel
+    from security import create_access_token, hash_password
+    from services.reception_his_service import _patient_number
+
+    suffix = uuid.uuid4().hex[:8]
+    clinic = models.Clinic(name=f"Receipt Clinic {suffix}", address="Conakry", is_active=True)
+    db_session.add(clinic)
+    db_session.commit()
+    db_session.refresh(clinic)
+    with provisioning_channel("test_fixture"):
+        receptionist = models.User(
+            email=f"recv.receipt.{suffix}@test.com",
+            hashed_password=hash_password("ReceptionTest1!"),
+            role="receptionist",
+            clinic_id=clinic.id,
+            is_active=True,
+        )
+        db_session.add(receptionist)
+        db_session.commit()
+        db_session.refresh(receptionist)
+    patient = models.Patient(
+        clinic_id=clinic.id,
+        first_name="Mariama",
+        last_name="Sow",
+        gender="F",
+        age=40,
+        patient_number=None,  # force formal PAT-xxx fallback
+        phone="620111222",
+    )
+    db_session.add(patient)
+    db_session.commit()
+    db_session.refresh(patient)
+
+    token = create_access_token(
+        {
+            "sub": receptionist.email,
+            "user_id": receptionist.id,
+            "user_role": receptionist.role,
+            "role": receptionist.role,
+        }
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    created = client.post(
+        "/clinical/reception/his/invoices",
+        headers=headers,
+        json={
+            "patient_id": patient.id,
+            "department": "Consultation externe",
+            "description": "Consultation",
+            "total_amount_gnf": 50000,
+            "items": [
+                {
+                    "charge_type": "consultation",
+                    "description": "Consultation générale",
+                    "quantity": 1,
+                    "unit_price_gnf": 50000,
+                }
+            ],
+        },
+    )
+    assert created.status_code == 201, created.text
+    invoice = created.json()
+    paid = client.post(
+        f"/clinical/reception/his/invoices/{invoice['id']}/payments",
+        headers=headers,
+        json={"amount_gnf": 50000, "payment_method": "cash"},
+    )
+    assert paid.status_code == 200, paid.text
+
+    r = client.get(
+        f"/clinical/reception/his/invoices/{invoice['id']}/receipt",
+        headers=headers,
+    )
+    assert r.status_code == 200, r.text
+    assert r.headers.get("content-type", "").startswith("application/pdf")
+    pdf_bytes = r.content
+    assert pdf_bytes[:4] == b"%PDF"
+    text = _pdf_text(pdf_bytes)
+    formal = _patient_number(clinic.id, patient.id)
+    assert invoice["invoice_number"] in text
+    assert "Mariama" in text and "Sow" in text
+    assert formal in text  # not blank / not raw numeric id alone
+    assert "Imprimé par" in text
+    assert "Date" in text and "Heure" in text
+    assert "Caissier" in text

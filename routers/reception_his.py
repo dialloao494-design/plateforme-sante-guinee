@@ -593,13 +593,13 @@ def print_receipt(
         else ""
     )
     # Prefer formal dossier number; never leave blank when patient exists.
-    from services.reception_his_service import ReceptionHisService as _RHS
+    from services import reception_his_service as _rhs_mod
 
     patient_file = ""
     if invoice.patient:
         patient_file = (invoice.patient.patient_number or "").strip()
         if not patient_file:
-            patient_file = _RHS._patient_number(clinic.id, invoice.patient.id)
+            patient_file = _rhs_mod._patient_number(clinic.id, invoice.patient.id)
     items = [
         {
             "description": i.description,
