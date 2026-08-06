@@ -77,6 +77,9 @@ def test_nurse_assessment_save_and_doctor_sync(client, db_session, admin_user):
             "bp_diastolic": 80,
             "heart_rate": 78,
             "respiratory_rate": 16,
+            "spo2_percent": 98.0,
+            "muac_cm": 24.5,
+            "head_circumference_cm": 54.0,
             "height_cm": 165,
             "weight_kg": 60,
             "reason_for_consultation": "Douleur thoracique",
@@ -90,6 +93,9 @@ def test_nurse_assessment_save_and_doctor_sync(client, db_session, admin_user):
     body = r.json()
     assert body["reason_for_consultation"] == "Douleur thoracique"
     assert body["bmi"] == 22.0
+    assert body["spo2_percent"] == 98.0
+    assert body["muac_cm"] == 24.5
+    assert body["head_circumference_cm"] == 54.0
     assert body["hospitalized_daily_vitals"] == "TA 120/80, T 37.8, SpO2 98%"
     assert body["prescription"] == "Paracétamol 500 mg si douleur"
 

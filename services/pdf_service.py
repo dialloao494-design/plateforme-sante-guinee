@@ -231,6 +231,9 @@ def invoice_pdf(
     printed_date: str = "",
     printed_time: str = "",
     patient_file_number: str = "",
+    invoice_date: str = "",
+    invoice_time: str = "",
+    cashier: str = "",
     document_title: str = "FACTURE",
 ) -> bytes:
     from services.invoice_pdf_builder import build_hospital_invoice_pdf
@@ -255,6 +258,9 @@ def invoice_pdf(
         printed_by=printed_by,
         printed_date=footer_date,
         printed_time=footer_time,
+        invoice_date=invoice_date or footer_date,
+        invoice_time=invoice_time or footer_time,
+        cashier=cashier or printed_by,
         document_title=document_title,
     )
 

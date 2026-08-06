@@ -5,14 +5,16 @@ const parseMinutes = (value, fallback) => {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 };
 
+// Pilot clinic: logout after 5 minutes of inactivity (override via VITE_SESSION_IDLE_MINUTES).
 export const SESSION_IDLE_MINUTES = parseMinutes(
   import.meta.env.VITE_SESSION_IDLE_MINUTES,
-  30
+  5
 );
 
+// Warn 1 minute before idle logout (override via VITE_SESSION_WARNING_MINUTES).
 export const SESSION_WARNING_MINUTES = parseMinutes(
   import.meta.env.VITE_SESSION_WARNING_MINUTES,
-  5
+  1
 );
 
 export const SESSION_IDLE_MS = SESSION_IDLE_MINUTES * 60 * 1000;

@@ -1280,7 +1280,20 @@ export default function ReceptionDashboard() {
   const printInvoiceReceipt = async (invoiceId) => {
     try {
       const { data } = await clinicalApi.receptionHisInvoiceReceipt(invoiceId);
-      window.open(URL.createObjectURL(data), '_blank');
+      // Force application/pdf so browsers never render an empty/error blob tab.
+      const blob = data instanceof Blob ? data : new Blob([data], { type: 'application/pdf' });
+      const typed = blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
+      const url = URL.createObjectURL(typed);
+      const opened = window.open(url, '_blank');
+      if (!opened) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `facture-${invoiceId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch {
       setError('Impossible d’imprimer le reçu.');
     }
@@ -1289,7 +1302,11 @@ export default function ReceptionDashboard() {
   const printRefundReceipt = async (refundId) => {
     try {
       const { data } = await clinicalApi.receptionHisRefundReceipt(refundId);
-      window.open(URL.createObjectURL(data), '_blank');
+      const blob = data instanceof Blob ? data : new Blob([data], { type: 'application/pdf' });
+      const typed = blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
+      const url = URL.createObjectURL(typed);
+      window.open(url, '_blank');
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch {
       setError('Impossible d’imprimer le reçu de remboursement.');
     }

@@ -112,11 +112,15 @@ export default function DoctorClinicalDashboard() {
   const [history, setHistory] = useState([]);
   const [serviceRequests, setServiceRequests] = useState([]);
 
-  const [catalog, setCatalog] = useState({ specialties: [], imaging: [], lab_tests: [] });
+  const [catalog, setCatalog] = useState({ specialties: [], imaging: [], lab_tests: [], surgical_acts: [] });
 
   // Lab request
   const [labSearch, setLabSearch] = useState('');
   const [selectedLabs, setSelectedLabs] = useState([]);
+
+  // Surgical acts
+  const [surgicalSearch, setSurgicalSearch] = useState('');
+  const [selectedSurgicalActs, setSelectedSurgicalActs] = useState([]);
 
   // Imaging request
   const [imagingForm, setImagingForm] = useState({
@@ -159,7 +163,7 @@ export default function DoctorClinicalDashboard() {
     loadDashboard();
     clinicalApi
       .doctorCatalog()
-      .then(({ data }) => setCatalog(data || { specialties: [], imaging: [], lab_tests: [] }))
+      .then(({ data }) => setCatalog(data || { specialties: [], imaging: [], lab_tests: [], surgical_acts: [] }))
       .catch(() => {});
   }, [loadDashboard]);
 
@@ -331,6 +335,43 @@ export default function DoctorClinicalDashboard() {
         ? prev.filter((t) => t.code !== test.code)
         : [...prev, test]
     );
+  };
+
+  const toggleSurgicalAct = (act) => {
+    setSelectedSurgicalActs((prev) =>
+      prev.find((a) => a.code === act.code)
+        ? prev.filter((a) => a.code !== act.code)
+        : [...prev, act]
+    );
+  };
+
+  const sendSurgicalRequest = async () => {
+    if (!consultation) return;
+    if (selectedSurgicalActs.length === 0) {
+      setError('Sélectionnez au moins un acte chirurgical.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      for (const act of selectedSurgicalActs) {
+        await clinicalApi.doctorCreateServiceRequest({
+          patient_id: consultation.patient_id,
+          service_category: 'surgery',
+          service_name: `${act.code} — ${act.label}`.slice(0, 255),
+          catalog_code: act.code,
+        });
+      }
+      setMessage(`${selectedSurgicalActs.length} acte(s) chirurgical(aux) demandé(s).`);
+      setSelectedSurgicalActs([]);
+      setSurgicalSearch('');
+      refreshServiceRequests();
+      loadDashboard();
+    } catch (err) {
+      setError(formatApiError(err, 'Demande chirurgicale impossible'));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const sendLabRequest = async () => {
@@ -582,6 +623,17 @@ export default function DoctorClinicalDashboard() {
     return filtered.slice(0, 80);
   })();
 
+  const surgicalResults = (() => {
+    const acts = catalog.surgical_acts || [];
+    const q = surgicalSearch.trim().toLowerCase();
+    if (!q) return acts;
+    return acts.filter(
+      (a) =>
+        (a.label || '').toLowerCase().includes(q) ||
+        (a.code || '').toLowerCase().includes(q)
+    );
+  })();
+
   return (
     <div className="clinical-page reception-his">
       <header className="reception-his-header">
@@ -742,8 +794,11 @@ export default function DoctorClinicalDashboard() {
                     </p>
                     <div className="doctor-vitals-grid">
                       <div><span>T°</span><strong>{nurseAssessment.temperature_c ?? '—'} °C</strong></div>
+                      <div><span>Pouls / FC</span><strong>{nurseAssessment.heart_rate || '—'}</strong></div>
+                      <div><span>SpO2</span><strong>{nurseAssessment.spo2_percent != null ? `${nurseAssessment.spo2_percent} %` : '—'}</strong></div>
                       <div><span>TA</span><strong>{nurseAssessment.bp_systolic || '—'}/{nurseAssessment.bp_diastolic || '—'}</strong></div>
-                      <div><span>FC</span><strong>{nurseAssessment.heart_rate || '—'}</strong></div>
+                      <div><span>PB</span><strong>{nurseAssessment.muac_cm != null ? `${nurseAssessment.muac_cm} cm` : '—'}</strong></div>
+                      <div><span>PC</span><strong>{nurseAssessment.head_circumference_cm != null ? `${nurseAssessment.head_circumference_cm} cm` : '—'}</strong></div>
                       <div><span>FR</span><strong>{nurseAssessment.respiratory_rate || '—'}</strong></div>
                       <div><span>Poids</span><strong>{nurseAssessment.weight_kg ?? '—'} kg</strong></div>
                       <div><span>Taille</span><strong>{nurseAssessment.height_cm ?? '—'} cm</strong></div>
@@ -1003,6 +1058,68 @@ export default function DoctorClinicalDashboard() {
                       Effacer le formulaire
                     </button>
                   </div>
+                </div>
+
+                {/* Actes chirurgicaux */}
+                <div className="doctor-service-block">
+                  <h4>Actes chirurgicaux — table avec codes</h4>
+                  <input
+                    className="doctor-service-search"
+                    value={surgicalSearch}
+                    onChange={(e) => setSurgicalSearch(e.target.value)}
+                    placeholder="Rechercher un acte (code ou libellé)…"
+                    aria-label="Rechercher acte chirurgical"
+                  />
+                  {(catalog.surgical_acts || []).length === 0 ? (
+                    <p className="clinical-hint">Catalogue des actes chirurgicaux indisponible.</p>
+                  ) : (
+                    <div className="lab-his-results-wrap">
+                      <table className="lab-his-queue-table">
+                        <thead>
+                          <tr>
+                            <th aria-label="Sélection" />
+                            <th>Code</th>
+                            <th>Acte</th>
+                            <th>Tarif (GNF)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {surgicalResults.map((act) => (
+                            <tr key={act.code}>
+                              <td>
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(selectedSurgicalActs.find((a) => a.code === act.code))}
+                                  onChange={() => toggleSurgicalAct(act)}
+                                  aria-label={`Sélectionner ${act.label}`}
+                                />
+                              </td>
+                              <td><code>{act.code}</code></td>
+                              <td>{act.label}</td>
+                              <td>{Number(act.price_gnf || 0).toLocaleString('fr-FR')}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {surgicalSearch.trim() && surgicalResults.length === 0 && (
+                    <p className="clinical-hint">Aucun acte ne correspond à « {surgicalSearch} ».</p>
+                  )}
+                  {selectedSurgicalActs.length > 0 && (
+                    <p className="clinical-hint">
+                      Sélectionnés ({selectedSurgicalActs.length}) :{' '}
+                      {selectedSurgicalActs.map((a) => `${a.code} — ${a.label}`).join(', ')}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    className="clinical-btn"
+                    onClick={sendSurgicalRequest}
+                    disabled={busy || selectedSurgicalActs.length === 0}
+                  >
+                    Demander le(s) acte(s) chirurgical(aux)
+                  </button>
                 </div>
 
                 {/* Hospitalisation */}

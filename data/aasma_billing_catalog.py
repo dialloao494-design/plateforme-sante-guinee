@@ -126,6 +126,8 @@ IMAGING_EXAMINATIONS = [
     {"code": "mri", "label": "IRM (MRI)", "modality": "mri", "price_gnf": 750_000},
     {"code": "mammography", "label": "Mammographie", "modality": "mammography", "price_gnf": 250_000},
     {"code": "dental_panoramic", "label": "Panoramique dentaire", "modality": "dental_panoramic", "price_gnf": 180_000},
+    # Requested clinic examination / care line (nutrition parentérale totale).
+    {"code": "tpn", "label": "TPN (nutrition parentérale totale)", "modality": "other", "price_gnf": 500_000},
 ]
 
 # Nursing / care prestations from clinic tariff sheet + ambulance
@@ -135,6 +137,7 @@ SERVICE_PRESTATIONS = [
     {"code": "small_dressing", "label": "Petit pansement", "price_gnf": 30_000},
     {"code": "large_dressing", "label": "Grand pansement", "price_gnf": 80_000},
     {"code": "pediatric_emergency_care", "label": "Soins d'urgence pédiatrie", "price_gnf": 250_000},
+    {"code": "tpn", "label": "TPN (nutrition parentérale totale)", "price_gnf": 500_000},
     {"code": "medical_transport_ambulance", "label": "Transport médical / Ambulance", "price_gnf": 0},
 ]
 

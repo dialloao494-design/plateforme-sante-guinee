@@ -217,75 +217,101 @@
   color: #1e293b;
 }
 
-/* —— Autorisation de sortie —— */
+/* —— Autorisation de sortie (must fit one A4 page) —— */
 .print-discharge-auth {
   max-width: 210mm;
+  max-height: 277mm;
   margin: 0 auto;
-  padding: 0.5rem 0.75rem 1rem;
+  padding: 0.25rem 0.5rem 0.35rem;
   color: #0f172a;
-  font-size: 10.5pt;
-  line-height: 1.35;
+  font-size: 9.5pt;
+  line-height: 1.22;
+  box-sizing: border-box;
+  overflow: hidden;
+  page-break-inside: avoid;
+  page-break-after: avoid;
+}
+
+.print-discharge-auth .print-clinic-header--compact {
+  margin-bottom: 0.2rem;
+  padding-bottom: 0.1rem;
+}
+
+.print-discharge-auth .print-clinic-header--compact .print-clinic-header__logo {
+  width: 56px;
+  max-width: 56px;
+}
+
+.print-discharge-auth .print-clinic-header--compact .print-clinic-header__doc-title {
+  font-size: 10pt;
+  margin: 0.1rem 0 0.15rem;
 }
 
 .print-discharge-auth__meta {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.25rem 1rem;
-  margin: 0.75rem 0 1rem;
+  gap: 0.1rem 0.75rem;
+  margin: 0.35rem 0 0.4rem;
 }
 
 .print-discharge-auth__meta p {
-  margin: 0.15rem 0;
+  margin: 0.08rem 0;
 }
 
 .print-discharge-auth__section {
-  margin: 0.7rem 0;
-  padding-top: 0.35rem;
+  margin: 0.3rem 0;
+  padding-top: 0.2rem;
   border-top: 1px solid #e2e8f0;
 }
 
 .print-discharge-auth__section h2 {
-  margin: 0 0 0.35rem;
-  font-size: 11pt;
+  margin: 0 0 0.15rem;
+  font-size: 9.5pt;
   color: #134e4a;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
 .print-discharge-auth__section p {
-  margin: 0.25rem 0;
+  margin: 0.12rem 0;
 }
 
 .print-discharge-auth__motifs {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.35rem 1.25rem;
+  gap: 0.1rem 0.85rem;
+}
+
+.print-discharge-auth__motifs p {
+  margin: 0.08rem 0;
 }
 
 .print-discharge-auth__notes {
   white-space: pre-wrap;
-  margin-top: 0.35rem;
+  margin-top: 0.15rem;
 }
 
 .print-discharge-auth__signatures {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
-  padding-top: 0.75rem;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+  padding-top: 0.35rem;
   border-top: 1px solid #cbd5e1;
 }
 
 .print-discharge-auth__signatures p {
-  margin: 0.2rem 0;
-  min-height: 1.1em;
+  margin: 0.1rem 0;
+  min-height: 0.95em;
+  font-size: 8.5pt;
 }
 
 .print-discharge-auth__stamp {
-  margin-top: 0.75rem;
+  margin-top: 0.35rem;
   font-weight: 700;
   text-align: center;
   color: #134e4a;
+  font-size: 9pt;
 }
 
 @media print {
@@ -314,6 +340,11 @@
   .print-discharge-auth__section,
   .print-discharge-auth__signatures {
     page-break-inside: avoid;
+  }
+
+  .print-discharge-auth {
+    max-height: 277mm;
+    overflow: hidden;
   }
 
   .doctor-discharge-print-root {

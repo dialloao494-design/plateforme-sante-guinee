@@ -3,7 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api.js';
 import { clearClientAuth, setAuthSessionReady } from '../services/httpClient.js';
 import { invalidateCache } from '../utils/apiCache.js';
-import { touchSessionActivity, getAuthItem, setAuthItem, removeAuthItem, setAuthToken, getAuthToken, clearLegacySharedAuth } from '../utils/authStorage.js';
+import {
+  touchSessionActivity,
+  getAuthItem,
+  setAuthItem,
+  removeAuthItem,
+  setAuthToken,
+  getAuthToken,
+  setRefreshToken,
+  clearLegacySharedAuth,
+} from '../utils/authStorage.js';
 import { CACHE_TTL, getCached, setCached, buildCacheKey } from '../utils/apiCache.js';
 import {
   AUTH_BOOTSTRAP_TIMEOUT_MS,
@@ -225,6 +234,9 @@ export const AuthProvider = ({ children }) => {
       invalidateCache();
       invalidateCache('/auth/me');
       setAuthToken(access_token);
+      if (loginPayload?.refresh_token) {
+        setRefreshToken(loginPayload.refresh_token);
+      }
       clearLegacySharedAuth();
       authDebug('applyLoginToken: token stored', Boolean(access_token));
 

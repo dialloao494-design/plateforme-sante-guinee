@@ -26,6 +26,9 @@ class NurseAssessmentCreate(BaseModel):
     bp_diastolic: Optional[int] = Field(None, ge=20, le=200)
     heart_rate: Optional[int] = Field(None, ge=20, le=250)
     respiratory_rate: Optional[int] = Field(None, ge=5, le=60)
+    spo2_percent: Optional[float] = Field(None, ge=50.0, le=100.0)
+    muac_cm: Optional[float] = Field(None, ge=5.0, le=60.0)  # PB
+    head_circumference_cm: Optional[float] = Field(None, ge=20.0, le=70.0)  # PC
     height_cm: Optional[float] = Field(None, ge=30.0, le=250.0)
     weight_kg: Optional[float] = Field(None, ge=0.5, le=500.0)
     vitals_observations: Optional[str] = Field(None, max_length=5000)
@@ -47,6 +50,9 @@ class NurseAssessmentCreate(BaseModel):
         "bp_diastolic",
         "heart_rate",
         "respiratory_rate",
+        "spo2_percent",
+        "muac_cm",
+        "head_circumference_cm",
         "height_cm",
         "weight_kg",
         mode="before",
@@ -82,6 +88,9 @@ class NurseAssessmentResponse(BaseModel):
     bp_diastolic: Optional[int] = None
     heart_rate: Optional[int] = None
     respiratory_rate: Optional[int] = None
+    spo2_percent: Optional[float] = None
+    muac_cm: Optional[float] = None
+    head_circumference_cm: Optional[float] = None
     height_cm: Optional[float] = None
     weight_kg: Optional[float] = None
     bmi: Optional[float] = None

@@ -87,7 +87,13 @@ const ensureNginxApiPath = (url = '') => {
   return `/api${path}`;
 };
 
-import { clearAllClientStorage, getAuthToken } from '../utils/authStorage.js';
+import {
+  clearAllClientStorage,
+  getAuthToken,
+  getRefreshToken,
+  setAuthToken,
+  setRefreshToken,
+} from '../utils/authStorage.js';
 import { invalidateCache } from '../utils/apiCache.js';
 
 // Resolve API base URL from environment variable
@@ -301,11 +307,41 @@ httpClient.interceptors.response.use(
       console.error(`[HTTP ${statusCode}] ${url}:`, message);
     }
 
-    if (error?.response?.status === 401) {
+    if (error?.response?.status === 401 && config && !config.__authRefreshAttempt) {
       const sentAuth = String(config?.headers?.Authorization || '');
       const currentToken = getAuthToken();
-      const stillOurSession =
-        currentToken && sentAuth === `Bearer ${currentToken}`;
+      const stillOurSession = currentToken && sentAuth === `Bearer ${currentToken}`;
+      const refreshToken = getRefreshToken();
+      const canRefresh =
+        stillOurSession &&
+        authSessionReady &&
+        refreshToken &&
+        !String(url).includes('/auth/refresh') &&
+        !String(url).includes('/auth/login');
+
+      if (canRefresh) {
+        try {
+          config.__authRefreshAttempt = true;
+          const refreshed = await httpClient.post(
+            '/auth/refresh',
+            { refresh_token: refreshToken },
+            { __skipAuthRefresh: true, __authRefreshAttempt: true }
+          );
+          const nextAccess = refreshed?.data?.access_token;
+          const nextRefresh = refreshed?.data?.refresh_token;
+          if (nextAccess) {
+            setAuthToken(nextAccess);
+            if (nextRefresh) setRefreshToken(nextRefresh);
+            syncAuthHeader();
+            config.headers = config.headers || {};
+            config.headers.Authorization = `Bearer ${nextAccess}`;
+            return httpClient(config);
+          }
+        } catch {
+          /* fall through to logout */
+        }
+      }
+
       if (stillOurSession && authSessionReady) {
         if (import.meta.env.DEV) {
           console.warn(`[HTTP ${statusCode}] Clearing tab session and redirecting to login`);

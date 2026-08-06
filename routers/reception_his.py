@@ -588,11 +588,18 @@ def print_receipt(
     from services.pdf_service import invoice_pdf as build_invoice_pdf, printed_by_label
 
     patient_name = (
-        f"{invoice.patient.first_name} {invoice.patient.last_name}".strip() if invoice.patient else "—"
+        f"{(invoice.patient.first_name or '')} {(invoice.patient.last_name or '')}".strip()
+        if invoice.patient
+        else ""
     )
+    # Prefer formal dossier number; never leave blank when patient exists.
+    from services.reception_his_service import ReceptionHisService as _RHS
+
     patient_file = ""
     if invoice.patient:
-        patient_file = invoice.patient.patient_number or str(invoice.patient.id)
+        patient_file = (invoice.patient.patient_number or "").strip()
+        if not patient_file:
+            patient_file = _RHS._patient_number(clinic.id, invoice.patient.id)
     items = [
         {
             "description": i.description,
@@ -620,8 +627,32 @@ def print_receipt(
     ]
     subtotal = int(getattr(invoice, "subtotal_amount_gnf", None) or invoice.total_amount_gnf or 0)
     now = datetime.now()
+    issued = getattr(invoice, "issued_at", None)
+    if issued is not None:
+        try:
+            invoice_date = issued.strftime("%d/%m/%Y")
+            invoice_time = issued.strftime("%H:%M")
+        except Exception:
+            invoice_date = now.strftime("%d/%m/%Y")
+            invoice_time = now.strftime("%H:%M")
+    else:
+        invoice_date = now.strftime("%d/%m/%Y")
+        invoice_time = now.strftime("%H:%M")
+    printer_label = printed_by_label(current_user)
+    # Cashier = last payment recorder, else invoice creator, else printer.
+    cashier_label = printer_label
+    payments = list(invoice.payments or [])
+    pay_user_id = None
+    if payments:
+        pay_user_id = getattr(payments[-1], "recorded_by_user_id", None)
+    if not pay_user_id:
+        pay_user_id = getattr(invoice, "created_by_user_id", None)
+    if pay_user_id:
+        pay_user = db.query(User).filter(User.id == int(pay_user_id)).first()
+        if pay_user:
+            cashier_label = printed_by_label(pay_user)
     pdf_bytes = build_invoice_pdf(
-        invoice.invoice_number,
+        invoice.invoice_number or "",
         patient_name,
         items,
         subtotal=subtotal,
@@ -631,10 +662,13 @@ def print_receipt(
         paid=invoice.paid_amount_gnf,
         payment_methods=methods,
         payment_details=payment_details,
-        printed_by=printed_by_label(current_user),
+        printed_by=printer_label,
         printed_date=now.strftime("%d/%m/%Y"),
         printed_time=now.strftime("%H:%M"),
         patient_file_number=patient_file,
+        invoice_date=invoice_date,
+        invoice_time=invoice_time,
+        cashier=cashier_label,
     )
     return Response(
         content=pdf_bytes,
