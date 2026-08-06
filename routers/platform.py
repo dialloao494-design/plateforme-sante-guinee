@@ -180,8 +180,53 @@ def reset_clinic_staff_password(
     user.hashed_password = hash_password(body.new_password)
     user.session_version = int(user.session_version or 0) + 1
     user.must_change_password = False
+    # Admin reset must clear lockout so clinic staff can sign in immediately.
+    if hasattr(user, "failed_login_attempts"):
+        user.failed_login_attempts = 0
+    if hasattr(user, "locked_until"):
+        user.locked_until = None
     db.commit()
     return {"id": user.id, "email": user.email, "reset": True}
+
+
+@router.post("/clinics/{clinic_id}/staff/{user_id}/unlock")
+def unlock_clinic_staff(
+    clinic_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_platform_admin),
+):
+    """Clear login lockout without changing the password."""
+    user = (
+        db.query(models.User)
+        .filter(
+            models.User.id == user_id,
+            or_(
+                models.User.clinic_id == clinic_id,
+                models.User.id.in_(
+                    db.query(models.ClinicStaff.user_id).filter(
+                        models.ClinicStaff.clinic_id == clinic_id,
+                        models.ClinicStaff.is_active.is_(True),
+                    )
+                ),
+            ),
+        )
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    if hasattr(user, "failed_login_attempts"):
+        user.failed_login_attempts = 0
+    if hasattr(user, "locked_until"):
+        user.locked_until = None
+    db.commit()
+    return {
+        "id": user.id,
+        "email": user.email,
+        "unlocked": True,
+        "failed_login_attempts": int(getattr(user, "failed_login_attempts", 0) or 0),
+        "locked_until": getattr(user, "locked_until", None),
+    }
 
 
 @router.get("/clinics", response_model=List[ClinicResponse])
