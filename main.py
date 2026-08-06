@@ -1,4 +1,5 @@
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 
@@ -33,6 +34,15 @@ configure_logging(level=_settings.log_level, log_format=_settings.log_format)
 init_sentry()
 logger = logging.getLogger(__name__)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan — replaces deprecated on_event startup/shutdown."""
+    # Resolved at runtime after module load (see _run_schema_and_seed_startup below).
+    _run_schema_and_seed_startup()
+    yield
+    logger.info("API shutting down...")
+
+
 app = FastAPI(
     title="Healthcare Platform API",
     description="Comprehensive healthcare appointment and payment API",
@@ -40,6 +50,7 @@ app = FastAPI(
     docs_url="/docs" if _settings.docs_enabled else None,
     redoc_url="/redoc" if _settings.docs_enabled else None,
     openapi_url="/openapi.json" if _settings.docs_enabled else None,
+    lifespan=lifespan,
 )
 
 # CORS — applied before routers are included.
@@ -87,7 +98,14 @@ _is_deployed = _settings.is_deployed
 if _is_deployed:
     cors_origin_regex = None
     cors_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-    cors_headers = ["Authorization", "Content-Type", "Accept"]
+    cors_headers = [
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "X-CSRF-Token",
+        "X-Client-Request-Id",
+        "X-Record-Version",
+    ]
 else:
     from services.network_dev import TUNNEL_ORIGIN_REGEX
 
@@ -110,6 +128,11 @@ if cors_origin_regex:
     _cors_kwargs["allow_origin_regex"] = cors_origin_regex
 app.add_middleware(CORSMiddleware, **_cors_kwargs)
 
+# Replay-safe clinical mutations (offline sync / ambiguous network retries).
+from core.client_request_idempotency_middleware import ClientRequestIdempotencyMiddleware
+
+app.add_middleware(ClientRequestIdempotencyMiddleware)
+
 # Security Wave 6 / Wave 1 — rate-limit + security headers middleware
 # Fail loud in production/staging if middleware cannot attach.
 try:
@@ -127,6 +150,13 @@ except Exception as _mw_exc:  # pragma: no cover
             f"Security middleware (SlowAPI/headers) must attach in deployed environments: {_mw_exc}"
         ) from _mw_exc
 
+
+
+@app.middleware("http")
+async def csrf_protection(request, call_next):
+    from core.csrf import csrf_middleware
+
+    return await csrf_middleware(request, call_next)
 
 
 @app.middleware("http")
@@ -563,14 +593,13 @@ def root():
 # APP LIFECYCLE EVENTS
 # ==========================================
 
-@app.on_event("startup")
-async def startup_event():
-    """Run on app startup"""
+def _run_schema_and_seed_startup() -> None:
+    """Initialize schema (dev) or verify migrations (production) and optional seeds."""
     try:
         from database import engine, Base
         # Import all model modules so their tables are registered on Base
         import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message, models.notification_event, models.attachment_access_log, models.clinical_note, models.consultation_summary, models.patient_document, models.clinical_audit_log
-        import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.clinic_charge_payment, models.medical_history, models.hospitalization, models.clinical_visit, models.invoice, models.discharge, models.imaging, models.appointment_reminder, models.pharmacy_inventory, models.password_reset_token, models.email_verification_token, models.visit_workflow, models.nutrition, models.immunization, models.nursing_care, models.nurse_assessment, models.clinic_node_ops  # noqa: F401
+        import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.clinic_charge_payment, models.medical_history, models.hospitalization, models.clinical_visit, models.invoice, models.discharge, models.imaging, models.appointment_reminder, models.pharmacy_inventory, models.password_reset_token, models.email_verification_token, models.visit_workflow, models.nutrition, models.immunization, models.nursing_care, models.nurse_assessment, models.clinic_node_ops, models.api_idempotency  # noqa: F401
 
         # Local/test environments may bootstrap an empty disposable database.
         # Deployed environments must be controlled by versioned migrations only.
@@ -612,36 +641,41 @@ async def startup_event():
         )
 
         run_alembic_upgrade_head(fail_closed=_settings.is_deployed)
-        ensure_user_session_security_columns(engine)
 
-        ensure_doctor_geolocation_columns(engine)
-        ensure_message_attachment_columns(engine)
-        ensure_attachment_access_log_table(engine)
-        ensure_patient_dossier_schema(engine)
-        ensure_clinic_charges_table(engine)
-        ensure_clinical_audit_clinic_id(engine)
-        ensure_clinical_audit_patient_nullable(engine)
-        ensure_medical_history_schema(engine)
-        ensure_hospitalization_schema(engine)
-        ensure_discharge_schema(engine)
-        ensure_radiology_schema(engine)
-        ensure_reminders_schema(engine)
-        ensure_pharmacy_inventory_schema(engine)
-        ensure_clinic_charge_payments_schema(engine)
-        ensure_patient_user_id_unique(engine)
-        ensure_single_platform_owner_index(engine)
-        ensure_user_roles_check_constraint(engine)
-        normalize_legacy_user_roles(engine)
-        ensure_email_verification_schema(engine)
-        ensure_must_change_password_schema(engine)
-        ensure_clinical_modules_schema(engine)
-        ensure_patient_intake_fields(engine)
-        ensure_doctor_medicine_deliveries_table(engine)
-        ensure_clinic_lab_tests_table(engine)
-        ensure_reception_his_schema(engine)
-        ensure_nurse_assessment_schema(engine)
-        ensure_lab_result_reference_range_text(engine)
-        ensure_clinic_node_ops_schema(engine)
+        # Production/deployed: Alembic is the sole schema authority — no runtime DDL.
+        # Development/test: keep ensure_* helpers for disposable local databases.
+        if _settings.is_deployed:
+            logger.info("Deployed mode: skipping runtime ensure_* schema mutations (Alembic-only).")
+        else:
+            ensure_user_session_security_columns(engine)
+            ensure_doctor_geolocation_columns(engine)
+            ensure_message_attachment_columns(engine)
+            ensure_attachment_access_log_table(engine)
+            ensure_patient_dossier_schema(engine)
+            ensure_clinic_charges_table(engine)
+            ensure_clinical_audit_clinic_id(engine)
+            ensure_clinical_audit_patient_nullable(engine)
+            ensure_medical_history_schema(engine)
+            ensure_hospitalization_schema(engine)
+            ensure_discharge_schema(engine)
+            ensure_radiology_schema(engine)
+            ensure_reminders_schema(engine)
+            ensure_pharmacy_inventory_schema(engine)
+            ensure_clinic_charge_payments_schema(engine)
+            ensure_patient_user_id_unique(engine)
+            ensure_single_platform_owner_index(engine)
+            ensure_user_roles_check_constraint(engine)
+            normalize_legacy_user_roles(engine)
+            ensure_email_verification_schema(engine)
+            ensure_must_change_password_schema(engine)
+            ensure_clinical_modules_schema(engine)
+            ensure_patient_intake_fields(engine)
+            ensure_doctor_medicine_deliveries_table(engine)
+            ensure_clinic_lab_tests_table(engine)
+            ensure_reception_his_schema(engine)
+            ensure_nurse_assessment_schema(engine)
+            ensure_lab_result_reference_range_text(engine)
+            ensure_clinic_node_ops_schema(engine)
 
         try:
             from services.clinic_node_sync_hooks import register_clinic_node_sync_hooks
@@ -810,12 +844,6 @@ async def startup_event():
         )
         logger.info("LAN QA — phone frontend: %s", urls["frontend"])
         logger.info("LAN QA — API: %s", urls["backend"])
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Run on app shutdown"""
-    logger.info("API shutting down...")
 
 
 # ==========================================

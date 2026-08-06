@@ -1,0 +1,25 @@
+{
+  "name": "Plateforme Santé — Guinée",
+  "short_name": "Santé GN",
+  "description": "CIS clinique et télésanté — mode hors ligne pour cliniques à connexion instable",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0d9488",
+  "lang": "fr",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

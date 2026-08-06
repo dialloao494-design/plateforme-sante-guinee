@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 import models
+from core.auth_cookie_config import ACCESS_COOKIE_NAME, CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME
 from core.password_policy import validate_password
 from core.rbac import ROLE_PERMISSIONS, Permission, has_permission
 from core.roles import ALL_ROLES, effective_role
@@ -67,6 +68,48 @@ def test_login_issues_refresh_and_short_access_ttl(client, admin_user):
     assert "tv" in payload or payload.get("tv") == 0
 
 
+def test_login_sets_httponly_auth_cookies_and_readable_csrf(client, admin_user):
+    r = client.post(
+        "/auth/login-json",
+        json={"email": admin_user.email, "password": "AdminPass12!"},
+    )
+    assert r.status_code == 200, r.text
+    set_cookie = r.headers.get("set-cookie", "")
+    assert f"{ACCESS_COOKIE_NAME}=" in set_cookie
+    assert f"{REFRESH_COOKIE_NAME}=" in set_cookie
+    assert f"{CSRF_COOKIE_NAME}=" in set_cookie
+    assert f"{ACCESS_COOKIE_NAME}=" in set_cookie and "HttpOnly" in set_cookie
+    assert r.cookies.get(ACCESS_COOKIE_NAME)
+    assert r.cookies.get(REFRESH_COOKIE_NAME)
+    assert r.cookies.get(CSRF_COOKIE_NAME)
+
+
+def test_cookie_auth_me_and_csrf_required_for_mutations(client, admin_user):
+    login = client.post(
+        "/auth/login-json",
+        json={"email": admin_user.email, "password": "AdminPass12!"},
+    )
+    assert login.status_code == 200, login.text
+
+    me = client.get("/auth/me")
+    assert me.status_code == 200, me.text
+    assert me.json()["email"] == admin_user.email
+
+    blocked = client.post(
+        "/auth/change-password",
+        json={"current_password": "wrong-password", "new_password": "NewSecure12!"},
+    )
+    assert blocked.status_code == 403
+
+    csrf = client.cookies.get(CSRF_COOKIE_NAME)
+    allowed = client.post(
+        "/auth/change-password",
+        json={"current_password": "wrong-password", "new_password": "NewSecure12!"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert allowed.status_code == 400
+
+
 def test_refresh_rotates_and_reuse_revokes(client, admin_user, db_session):
     login = client.post(
         "/auth/login-json",
@@ -85,6 +128,22 @@ def test_refresh_rotates_and_reuse_revokes(client, admin_user, db_session):
     assert reuse2.status_code == 401
 
 
+def test_refresh_accepts_cookie_and_rotates_cookie(client, admin_user):
+    login = client.post(
+        "/auth/login-json",
+        json={"email": admin_user.email, "password": "AdminPass12!"},
+    )
+    assert login.status_code == 200, login.text
+    refresh1 = client.cookies.get(REFRESH_COOKIE_NAME)
+
+    refreshed = client.post("/auth/refresh", json={})
+    assert refreshed.status_code == 200, refreshed.text
+    refresh2 = refreshed.cookies.get(REFRESH_COOKIE_NAME)
+    assert refresh2
+    assert refresh2 != refresh1
+    assert client.get("/auth/me").status_code == 200
+
+
 def test_logout_denylists_access_token(client, admin_user):
     login = client.post(
         "/auth/login-json",
@@ -98,6 +157,24 @@ def test_logout_denylists_access_token(client, admin_user):
     assert out.status_code == 200
     me2 = client.get("/auth/me", headers=_headers(access))
     assert me2.status_code == 401
+
+
+def test_cookie_logout_clears_cookies_and_invalidates_session(client, admin_user):
+    login = client.post(
+        "/auth/login-json",
+        json={"email": admin_user.email, "password": "AdminPass12!"},
+    )
+    assert login.status_code == 200, login.text
+    assert client.get("/auth/me").status_code == 200
+
+    csrf = client.cookies.get(CSRF_COOKIE_NAME)
+    out = client.post("/auth/logout", headers={"X-CSRF-Token": csrf})
+    assert out.status_code == 200, out.text
+    set_cookie = out.headers.get("set-cookie", "")
+    assert f"{ACCESS_COOKIE_NAME}=" in set_cookie
+    assert f"{REFRESH_COOKIE_NAME}=" in set_cookie
+    assert f"{CSRF_COOKIE_NAME}=" in set_cookie
+    assert client.get("/auth/me").status_code == 401
 
 
 def test_must_change_password_blocks_clinical_api(client, db_session, admin_user):

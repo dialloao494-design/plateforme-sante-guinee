@@ -87,7 +87,7 @@ const ensureNginxApiPath = (url = '') => {
   return `/api${path}`;
 };
 
-import { clearAllClientStorage, getAuthToken } from '../utils/authStorage.js';
+import { clearAllClientStorage } from '../utils/authStorage.js';
 import { invalidateCache } from '../utils/apiCache.js';
 
 // Resolve API base URL from environment variable
@@ -173,11 +173,56 @@ export function clearClientAuth() {
   }
   invalidateCache('/auth/me');
   clearAllClientStorage();
-  syncAuthHeader();
 }
 
 const isPublicRequest = (url = '') => {
   return PUBLIC_PATHS.some((path) => String(url).includes(path));
+};
+
+const MUTATING_METHODS = new Set(['post', 'put', 'patch', 'delete']);
+
+const getCookieValue = (name) => {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  const prefix = `${name}=`;
+  const part = document.cookie
+    .split(';')
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(prefix));
+  return part ? decodeURIComponent(part.slice(prefix.length)) : null;
+};
+
+export const getCsrfToken = () => getCookieValue('sg_csrf');
+
+const setConfigHeader = (headers, key, value) => {
+  if (typeof headers.set === 'function') {
+    headers.set(key, value);
+  } else {
+    headers[key] = value;
+  }
+};
+
+const deleteConfigHeader = (headers, key) => {
+  if (!headers) {
+    return;
+  }
+  if (typeof headers.delete === 'function') {
+    headers.delete(key);
+  } else {
+    delete headers[key];
+  }
+};
+
+const attachCsrfHeader = (config) => {
+  const method = String(config?.method || 'get').toLowerCase();
+  if (!MUTATING_METHODS.has(method)) {
+    return;
+  }
+  const csrfToken = getCsrfToken();
+  if (csrfToken) {
+    setConfigHeader(config.headers, 'X-CSRF-Token', csrfToken);
+  }
 };
 
 const redirectToLogin = () => {
@@ -189,25 +234,12 @@ const redirectToLogin = () => {
 
 const httpClient = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: false,
+  withCredentials: true,
   timeout: 60_000,
 });
 
-const syncAuthHeader = () => {
-  const token = getAuthToken();
-  if (token) {
-    httpClient.defaults.headers.common.Authorization = `Bearer ${token}`;
-  } else if (httpClient.defaults.headers.common?.Authorization) {
-    delete httpClient.defaults.headers.common.Authorization;
-  }
-};
-
-syncAuthHeader();
-
 httpClient.interceptors.request.use(
   (config) => {
-    syncAuthHeader();
-
     const runtimeBase = config.baseURL || httpClient.defaults.baseURL || API_BASE_URL;
     if (usesNginxApiPrefix(runtimeBase) && typeof config.url === 'string') {
       config.url = ensureNginxApiPath(config.url);
@@ -221,25 +253,25 @@ httpClient.interceptors.request.use(
       config.url = config.url.replace(/^http:\/\//i, 'https://');
     }
 
-    const token = getAuthToken();
+    config.withCredentials = true;
     config.headers = config.headers || {};
+    deleteConfigHeader(config.headers, 'Authorization');
+    attachCsrfHeader(config);
 
-    if (token) {
-      if (typeof config.headers.set === 'function') {
-        config.headers.set('Authorization', `Bearer ${token}`);
-      } else {
-        config.headers.Authorization = `Bearer ${token}`;
+    // Attach a stable client request id so network retries / offline replay are
+    // server-idempotent for mutating clinical calls.
+    const method = String(config.method || 'get').toLowerCase();
+    if (['post', 'put', 'patch', 'delete'].includes(method)) {
+      const existing =
+        config.headers['X-Client-Request-Id'] ||
+        config.headers['x-client-request-id'];
+      if (!existing) {
+        const id =
+          typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `cr_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+        setConfigHeader(config.headers, 'X-Client-Request-Id', id);
       }
-      return config;
-    }
-
-    delete config.headers.Authorization;
-
-    if (!isPublicRequest(config.url)) {
-      if (import.meta.env.DEV) {
-        console.warn(`[HTTP] Protected request without token: ${config.url}`);
-      }
-      return Promise.reject(new Error('Missing authentication token'));
     }
 
     return config;
@@ -263,11 +295,18 @@ httpClient.interceptors.response.use(
       console.error(`[HTTP] Timeout after ${config?.timeout || httpClient.defaults.timeout}ms: ${method.toUpperCase()} ${url}`);
     }
 
+    const hasClientRequestId = Boolean(
+      config?.headers?.['X-Client-Request-Id'] ||
+        config?.headers?.['x-client-request-id']
+    );
+    // Only auto-retry mutating calls when a client request id is present so the
+    // server can dedupe ambiguous network failures.
     const retryableMutation =
       Boolean(config) &&
       ['post', 'patch', 'put'].includes(method) &&
       statusCode !== 401 &&
-      isNetwork;
+      isNetwork &&
+      hasClientRequestId;
 
     if (retryableMutation) {
       const attempt = Number(config.__networkRetry || 0);
@@ -301,14 +340,28 @@ httpClient.interceptors.response.use(
       console.error(`[HTTP ${statusCode}] ${url}:`, message);
     }
 
-    if (error?.response?.status === 401) {
-      const sentAuth = String(config?.headers?.Authorization || '');
-      const currentToken = getAuthToken();
-      const stillOurSession =
-        currentToken && sentAuth === `Bearer ${currentToken}`;
-      if (stillOurSession && authSessionReady) {
+    if (statusCode === 401 && config && !config.__skipAuthRefresh) {
+      const authUrl = String(url);
+      const canRefresh =
+        authSessionReady &&
+        !config.__authRefreshAttempt &&
+        !isPublicRequest(authUrl) &&
+        !authUrl.includes('/auth/refresh') &&
+        !authUrl.includes('/auth/logout');
+
+      if (canRefresh) {
+        try {
+          config.__authRefreshAttempt = true;
+          await httpClient.post('/auth/refresh', {}, { __skipAuthRefresh: true });
+          return httpClient(config);
+        } catch {
+          /* fall through to logout below */
+        }
+      }
+
+      if (authSessionReady && !isPublicRequest(authUrl)) {
         if (import.meta.env.DEV) {
-          console.warn(`[HTTP ${statusCode}] Clearing tab session and redirecting to login`);
+          console.warn(`[HTTP ${statusCode}] Clearing browser session and redirecting to login`);
         }
         clearClientAuth();
         redirectToLogin();

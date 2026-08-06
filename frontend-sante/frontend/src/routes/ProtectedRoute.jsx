@@ -5,7 +5,6 @@ import { getRoleHomePath } from '../utils/rolePaths.js';
 import { userHasRole } from '../utils/roleAccess.js';
 import { userNeedsClinicAssignment } from '../utils/clinicAccess.js';
 import { PROFILE_GATE_TIMEOUT_MS, logAuthSessionFailure } from '../utils/authSession.js';
-import { getAuthToken } from '../utils/authStorage.js';
 
 function SessionGate({ label = 'Vérification de la session…' }) {
   return (
@@ -74,13 +73,12 @@ function ProfileBootstrapGate({ authInitError, onRetry, authLoading }) {
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { authLoading, user, authInitError, retrySessionBootstrap } = useAuth();
   const location = useLocation();
-  const token = getAuthToken();
 
   if (authLoading) {
     return <SessionGate />;
   }
 
-  if (!token) {
+  if (!user && !authInitError) {
     return <Navigate to="/login" replace />;
   }
 

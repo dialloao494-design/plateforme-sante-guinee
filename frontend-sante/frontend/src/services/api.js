@@ -38,13 +38,25 @@ export const getAuthenticatedUser = async (opts = {}) => {
 export const authAPI = {
   login,
   me: (opts) => getAuthenticatedUser(opts),
-  logout: () => httpClient.post('/auth/logout'),
-  signup: (userData) => httpClient.post('/auth/register', userData),
-  changePassword: (currentPassword, newPassword) =>
-    httpClient.post('/auth/change-password', {
+  refresh: async () => {
+    const { data } = await httpClient.post('/auth/refresh', {});
+    return data;
+  },
+  logout: async () => {
+    const { data } = await httpClient.post('/auth/logout');
+    return data;
+  },
+  signup: async (userData) => {
+    const { data } = await httpClient.post('/auth/register', userData);
+    return data;
+  },
+  changePassword: async (currentPassword, newPassword) => {
+    const { data } = await httpClient.post('/auth/change-password', {
       current_password: currentPassword,
       new_password: newPassword,
-    }),
+    });
+    return data;
+  },
   forgotPassword: (email) =>
     httpClient.post('/auth/forgot-password', { email: String(email || '').trim().toLowerCase() }),
   resetPassword: (token, newPassword) =>

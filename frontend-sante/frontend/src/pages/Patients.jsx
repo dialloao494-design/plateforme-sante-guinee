@@ -2,16 +2,25 @@ import { useMemo, useState } from 'react';
 import { usePatientContext } from '../contexts/PatientContext.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import PatientList from '../components/PatientList.jsx';
+import PatientAccountSelector from '../components/PatientAccountSelector.jsx';
 import './Patients.css';
+
+const ADMIN_ROLES = new Set(['admin', 'clinic_admin', 'platform_admin', 'platform_owner']);
 
 const Patients = () => {
   const { user } = useAuth();
   const { patients, loading, error, addPatient, updatePatient, deletePatient } = usePatientContext();
-  const [formData, setFormData] = useState({ firstName: '', lastName: '', age: '', gender: '', userId: '' });
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    age: '',
+    gender: '',
+    selectedAccount: null,
+  });
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState('');
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = ADMIN_ROLES.has(user?.role);
   const isDoctor = user?.role === 'doctor';
   const showForm = isAdmin || (isDoctor && editingId !== null);
 
@@ -27,15 +36,18 @@ const Patients = () => {
       if (editingId !== null) {
         await updatePatient(editingId, { firstName, lastName, age, gender });
       } else {
+        if (!formData.selectedAccount?.id) {
+          return;
+        }
         await addPatient({
           firstName,
           lastName,
           age,
           gender,
-          userId: formData.userId.trim(),
+          userId: formData.selectedAccount.id,
         });
       }
-      setFormData({ firstName: '', lastName: '', age: '', gender: '', userId: '' });
+      setFormData({ firstName: '', lastName: '', age: '', gender: '', selectedAccount: null });
       setEditingId(null);
     } catch {
       // Error is handled by the context and displayed in UI
@@ -49,13 +61,15 @@ const Patients = () => {
       lastName: patient.last_name || patient.name.split(' ').slice(1).join(' ') || '',
       age: String(patient.age || ''),
       gender: patient.gender || patient.condition || '',
-      userId: patient.user_id != null ? String(patient.user_id) : '',
+      selectedAccount: patient.user_id
+        ? { id: patient.user_id, email: patient.user_email || `compte #${patient.user_id}` }
+        : null,
     });
   };
 
   const handleCancel = () => {
     setEditingId(null);
-    setFormData({ firstName: '', lastName: '', age: '', gender: '', userId: '' });
+    setFormData({ firstName: '', lastName: '', age: '', gender: '', selectedAccount: null });
   };
 
   const filteredPatients = useMemo(() => {
@@ -86,13 +100,11 @@ const Patients = () => {
       {showForm && (
         <form className="patients-form" onSubmit={handleSubmit}>
           {isAdmin && editingId === null && (
-            <input
-              type="number"
-              min={1}
-              placeholder="ID compte patient (rôle patient, même clinique)"
-              value={formData.userId}
-              onChange={(e) => setFormData((prev) => ({ ...prev, userId: e.target.value }))}
-              title="Doit être un utilisateur actif avec le rôle patient, non déjà lié, de la même clinique"
+            <PatientAccountSelector
+              value={formData.selectedAccount}
+              onChange={(account) =>
+                setFormData((prev) => ({ ...prev, selectedAccount: account }))
+              }
             />
           )}
           <input
@@ -119,9 +131,11 @@ const Patients = () => {
             value={formData.gender}
             onChange={(e) => setFormData((prev) => ({ ...prev, gender: e.target.value }))}
           />
-          <button type="submit">{editingId !== null ? 'Mettre à jour' : 'Ajouter'}</button>
-          {(editingId !== null || (isAdmin && formData.firstName)) && (
-            <button type="button" className="btn btn-tertiary" onClick={handleCancel}>
+          <button type="submit">
+            {editingId !== null ? 'Mettre à jour' : 'Ajouter'}
+          </button>
+          {editingId !== null && (
+            <button type="button" onClick={handleCancel}>
               Annuler
             </button>
           )}
@@ -130,8 +144,8 @@ const Patients = () => {
 
       <PatientList
         patients={filteredPatients}
-        onDelete={isAdmin ? deletePatient : undefined}
         onEdit={isAdmin || isDoctor ? handleEdit : undefined}
+        onDelete={isAdmin ? deletePatient : undefined}
       />
     </div>
   );

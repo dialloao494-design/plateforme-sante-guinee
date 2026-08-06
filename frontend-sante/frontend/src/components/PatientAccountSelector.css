@@ -1,0 +1,94 @@
+.patient-account-selector {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 16rem;
+}
+
+.patient-account-selector__label {
+  font-size: 0.85rem;
+  color: #334155;
+}
+
+.patient-account-selector input[type='search'] {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.35rem;
+  background: #fff;
+}
+
+.patient-account-selector__selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.35rem;
+  background: #f8fafc;
+}
+
+.patient-account-selector__selected button,
+.patient-account-selector__list button {
+  border: 0;
+  background: transparent;
+  color: #0f766e;
+  cursor: pointer;
+  font: inherit;
+}
+
+.patient-account-selector__list {
+  position: absolute;
+  top: calc(100% + 0.2rem);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  max-height: 14rem;
+  overflow: auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.35rem;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.patient-account-selector__list button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+  border-radius: 0.25rem;
+}
+
+.patient-account-selector__list button:hover,
+.patient-account-selector__list button:focus-visible {
+  background: #ecfeff;
+  outline: none;
+}
+
+.patient-account-selector__email {
+  color: #0f172a;
+}
+
+.patient-account-selector__meta {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.patient-account-selector__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.patient-account-selector__error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #b91c1c;
+}

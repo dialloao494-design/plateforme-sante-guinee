@@ -162,7 +162,7 @@ class PlatformOwnerSetupRequest(BaseModel):
 
 
 class Token(BaseModel):
-    access_token: str
+    access_token: Optional[str] = None
     token_type: str
     user_id: int
     user_role: str
@@ -171,12 +171,13 @@ class Token(BaseModel):
     must_change_password: bool = False
     refresh_token: Optional[str] = None
     expires_in: Optional[int] = None
+    csrf_token: Optional[str] = None
 
 
 class RefreshTokenRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    refresh_token: str
+    refresh_token: Optional[str] = None
 
 
 class LogoutRequest(BaseModel):
@@ -194,13 +195,14 @@ class RegisterResponse(BaseModel):
     email: str
     role: str
     doctor_id: Optional[int] = None
-    access_token: str
+    access_token: Optional[str] = None
     token_type: str
     user_id: int
     user_role: str
     refresh_token: Optional[str] = None
     must_change_password: bool = False
     expires_in: Optional[int] = None
+    csrf_token: Optional[str] = None
 
 
 class VerifyEmailRequest(BaseModel):
@@ -236,3 +238,4 @@ class UserResponse(BaseModel):
     email_verified: bool = False
     must_change_password: bool = False
     mfa_enabled: bool = False
+    csrf_token: Optional[str] = None

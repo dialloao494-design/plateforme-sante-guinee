@@ -236,4 +236,42 @@ def resolve_billing_catalog_item(catalog_code: str | None) -> dict | None:
                 "bucket": "surgery",
             }
 
+    # Laboratory — AASMA tariff sheet (authoritative prices).
+    try:
+        from data.aasma_lab_catalog import AASMA_LAB_CATALOG
+
+        for row in AASMA_LAB_CATALOG:
+            if row.get("code") == code:
+                return {
+                    "code": code,
+                    "label": row.get("name") or code,
+                    "price_gnf": int(row.get("price_gnf") or 0),
+                    "charge_type": "lab",
+                    "bucket": "laboratory",
+                }
+    except Exception:
+        pass
+
+    # Legacy short lab codes (NFS, GLY, …) — map onto AASMA rows when possible.
+    try:
+        from data.lab_test_catalog import LAB_TEST_CATALOG
+        from data.aasma_lab_catalog import AASMA_LAB_CATALOG
+
+        legacy = next((r for r in LAB_TEST_CATALOG if r.get("code") == code), None)
+        if legacy:
+            needle = code.lower()
+            name_needle = (legacy.get("name") or "").lower()
+            for row in AASMA_LAB_CATALOG:
+                hay = f"{row.get('code', '')} {row.get('name', '')}".lower()
+                if needle in hay or (name_needle and name_needle[:12] in hay):
+                    return {
+                        "code": row["code"],
+                        "label": row.get("name") or legacy.get("name") or code,
+                        "price_gnf": int(row.get("price_gnf") or 0),
+                        "charge_type": "lab",
+                        "bucket": "laboratory",
+                    }
+    except Exception:
+        pass
+
     return None

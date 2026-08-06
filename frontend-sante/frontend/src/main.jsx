@@ -8,7 +8,11 @@ import RouteErrorBoundary from './components/RouteErrorBoundary.jsx'
 import { PatientProvider } from './contexts/PatientContext.jsx'
 import { AppointmentProvider } from './contexts/AppointmentContext.jsx'
 import { AuthProvider } from './contexts/AuthContext.jsx'
+import httpClient from './services/httpClient.js'
+import { initOfflineSupport } from './offline/register.js'
 import 'react-toastify/dist/ReactToastify.css'
+
+initOfflineSupport(httpClient)
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

@@ -72,14 +72,15 @@ export const PatientProvider = ({ children }) => {
   }, [user, authLoading]);
 
   const addPatient = async ({ firstName, lastName, age, gender, userId }) => {
-    if (user?.role !== 'admin') {
+    const adminRoles = new Set(['admin', 'clinic_admin', 'platform_admin', 'platform_owner']);
+    if (!adminRoles.has(user?.role)) {
       const errMsg = 'Seuls les administrateurs peuvent créer un dossier patient.';
       setError(errMsg);
       throw new Error(errMsg);
     }
     const uid = Number(userId);
     if (!Number.isInteger(uid) || uid < 1) {
-      const errMsg = "L'identifiant utilisateur du compte (user ID) est requis pour créer un patient.";
+      const errMsg = 'Sélectionnez un compte patient dans la liste de recherche.';
       setError(errMsg);
       throw new Error(errMsg);
     }

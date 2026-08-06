@@ -26,6 +26,8 @@ class Permission(str, Enum):
     BILLING_READ = "billing.read"
     BILLING_PAY = "billing.pay"
     BILLING_REVENUE = "billing.revenue"
+    BILLING_OVERRIDE = "billing.override"
+    BILLING_FREE_TEXT = "billing.free_text"
     ADMIN_CLINIC = "admin.clinic"
     ADMIN_STAFF = "admin.staff"
     ADMIN_AUDIT = "admin.audit"
@@ -146,6 +148,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.ADMIN_AUDIT,
             Permission.ADMIN_BACKUP,
             Permission.BILLING_REVENUE,
+            Permission.BILLING_OVERRIDE,
+            Permission.BILLING_FREE_TEXT,
             Permission.CLINIC_OPERATIONS,
             Permission.ADMISSION_MANAGE,
             Permission.ADMISSION_BEDS,
@@ -162,6 +166,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.ADMIN_AUDIT,
             Permission.ADMIN_BACKUP,
             Permission.BILLING_REVENUE,
+            Permission.BILLING_OVERRIDE,
+            Permission.BILLING_FREE_TEXT,
             Permission.CLINIC_OPERATIONS,
             Permission.ADMISSION_MANAGE,
             Permission.ADMISSION_BEDS,
@@ -178,6 +184,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.ADMIN_AUDIT,
             Permission.ADMIN_BACKUP,
             Permission.BILLING_REVENUE,
+            Permission.BILLING_OVERRIDE,
+            Permission.BILLING_FREE_TEXT,
             Permission.CLINIC_OPERATIONS,
             Permission.ADMISSION_MANAGE,
             Permission.ADMISSION_BEDS,
@@ -203,6 +211,8 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
             Permission.ADMIN_AUDIT,
             Permission.ADMIN_BACKUP,
             Permission.BILLING_REVENUE,
+            Permission.BILLING_OVERRIDE,
+            Permission.BILLING_FREE_TEXT,
             Permission.CLINIC_OPERATIONS,
             Permission.ADMISSION_MANAGE,
             Permission.ADMISSION_BEDS,
@@ -242,6 +252,9 @@ CLINIC_OPS_ROLES = (
 BILLING_READ_ROLES = ("receptionist", "cashier", "clinic_admin", "admin", "platform_admin", "platform_owner")
 BILLING_PAY_ROLES = ("receptionist", "cashier")
 BILLING_REVENUE_ROLES = ("clinic_admin", "admin", "platform_admin", "platform_owner", "receptionist", "cashier")
+# Negotiated catalog prices and free-text (non-catalog) charges — never receptionist/cashier.
+BILLING_OVERRIDE_ROLES = ("clinic_admin", "admin", "platform_admin", "platform_owner")
+BILLING_FREE_TEXT_ROLES = BILLING_OVERRIDE_ROLES
 LAB_QUEUE_ROLES = LAB_ROLES + CLINIC_ADMIN_ROLES
 PHARMACY_QUEUE_ROLES = PHARMACY_ROLES + CLINIC_ADMIN_ROLES
 

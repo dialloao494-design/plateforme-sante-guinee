@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -76,6 +76,7 @@ def platform_setup_status(db: Session = Depends(get_db)):
 def complete_platform_owner_setup(
     registration: PlatformOwnerSetupRequest,
     request: Request,
+    response: Response,
     db: Session = Depends(get_db),
     _: None = Depends(enforce_setup_rate_limit),
 ):
@@ -134,4 +135,4 @@ def complete_platform_owner_setup(
 
     owner = provisioned.user
     logger.info("Platform owner created via setup page id=%s email=%s", owner.id, owner.email)
-    return create_token_response(db, owner, request=request)
+    return create_token_response(db, owner, request=request, response=response)

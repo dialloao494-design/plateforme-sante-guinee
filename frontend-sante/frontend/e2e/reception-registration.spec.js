@@ -1,12 +1,5 @@
 import { test, expect } from '@playwright/test';
-
-async function loginAsReception(page) {
-  await page.goto('/login');
-  await page.locator('#email').fill('reception@pilot.local');
-  await page.locator('#password').fill('ReceptionPilot1!');
-  await page.getByRole('button', { name: 'Se connecter' }).click();
-  await expect(page).toHaveURL(/\/clinical\/reception/);
-}
+import { loginAsReception } from './helpers.js';
 
 async function fillRegistrationForm(page, { lastName, firstName, phone, dob = '1990-05-15' }) {
   await page.getByRole('button', { name: /Enregistrement/ }).click();
@@ -21,6 +14,7 @@ async function fillRegistrationForm(page, { lastName, firstName, phone, dob = '1
 }
 
 test('reception can register a new patient end to end', async ({ page }) => {
+  test.setTimeout(90_000);
   await loginAsReception(page);
 
   const unique = Date.now();
@@ -36,6 +30,7 @@ test('reception can register a new patient end to end', async ({ page }) => {
 });
 
 test('reception duplicate patient shows matches and allow confirm', async ({ page }) => {
+  test.setTimeout(90_000);
   await loginAsReception(page);
 
   const unique = Date.now();

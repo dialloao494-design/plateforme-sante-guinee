@@ -8,6 +8,7 @@ import { logAuthSessionFailure } from './utils/authSession.js';
 import { ToastContainer } from 'react-toastify';
 import { getShellContext } from './utils/appShellMeta.js';
 import { portalLabel } from './utils/portalAccess.js';
+import OfflineStatusIndicator from './components/OfflineStatusIndicator.jsx';
 import './AppLayout.css';
 
 const PUBLIC_PATHS = new Set(['/', '/login', '/signup']);
@@ -89,6 +90,7 @@ function App() {
           toastClassName="app-toast"
           className="app-toast-container"
         />
+        <OfflineStatusIndicator />
       </>
     );
   }
@@ -156,6 +158,7 @@ function App() {
         toastClassName="app-toast"
         className="app-toast-container"
       />
+      <OfflineStatusIndicator />
     </div>
   );
 }

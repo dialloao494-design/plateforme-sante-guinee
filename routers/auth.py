@@ -3,7 +3,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from core.limiter import limiter, login_rate_limit, register_rate_limit, forgot_password_rate_limit
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -30,6 +30,7 @@ from schemas.user import (
 from security import (
     get_current_user,
     get_current_user_or_none,
+    get_access_token_from_request,
     hash_password,
     verify_password,
     create_access_token,
@@ -70,6 +71,8 @@ from services.mfa_service import (
     user_needs_mfa_challenge,
     mfa_required_for_user,
 )
+from core.auth_cookie_config import REFRESH_COOKIE_NAME
+from services.auth_cookies import clear_auth_cookies, ensure_csrf_cookie, set_auth_cookies
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -97,7 +100,12 @@ def _enforce_mfa_on_login(user: User, mfa_code: str | None) -> None:
 
 @router.post("/register", response_model=RegisterResponse, status_code=201)
 @limiter.limit(register_rate_limit())
-def register(request: Request, user: PublicRegistration, db: Session = Depends(get_db)):
+def register(
+    request: Request,
+    response: Response,
+    user: PublicRegistration,
+    db: Session = Depends(get_db),
+):
     """
     Public self-service registration (patient or doctor only).
     Returns a session token so the user can log in immediately after signup.
@@ -135,7 +143,7 @@ def register(request: Request, user: PublicRegistration, db: Session = Depends(g
             detail="Erreur lors de la création du compte. Réessayez ou contactez le support.",
         )
 
-    token_data = create_token_response(db, new_user, request=request)
+    token_data = create_token_response(db, new_user, request=request, response=response)
     return RegisterResponse(
         id=new_user.id,
         email=new_user.email,
@@ -148,6 +156,7 @@ def register(request: Request, user: PublicRegistration, db: Session = Depends(g
         refresh_token=token_data.get("refresh_token"),
         must_change_password=token_data.get("must_change_password", False),
         expires_in=token_data.get("expires_in"),
+        csrf_token=token_data.get("csrf_token"),
     )
 
 
@@ -198,8 +207,17 @@ def authenticate_user(email: str, password: str, db: Session, attempt_limit: int
     return db_user
 
 
-def create_token_response(db: Session, user: User, *, request: Request | None = None):
-    """Create access + refresh token response for authenticated user."""
+def _json_tokens_enabled() -> bool:
+    override = os.getenv("AUTH_JSON_TOKENS")
+    if override is not None:
+        return override.strip().lower() in {"1", "true", "yes", "on"}
+    return (os.getenv("ENVIRONMENT") or "development").strip().lower() not in {
+        "production",
+        "staging",
+    }
+
+
+def _create_access_token_for_user(user: User) -> tuple[str, str]:
     canonical_role = effective_role(user.role)
     token_version = int(getattr(user, "token_version", 0) or 0)
     access_token = create_access_token(
@@ -212,13 +230,21 @@ def create_token_response(db: Session, user: User, *, request: Request | None = 
             "tv": token_version,
         }
     )
-    ua, ip = client_meta(request) if request is not None else (None, None)
-    refresh_raw, _ = issue_refresh_token(
-        db, user=user, user_agent=ua, ip_address=ip
-    )
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_raw,
+    return access_token, canonical_role
+
+
+def _token_response_payload(
+    *,
+    user: User,
+    access_token: str,
+    refresh_token: str,
+    canonical_role: str,
+    csrf_token: str | None = None,
+) -> dict:
+    include_secret_tokens = _json_tokens_enabled()
+    payload = {
+        "access_token": access_token if include_secret_tokens else None,
+        "refresh_token": refresh_token if include_secret_tokens else None,
         "token_type": "bearer",
         "user_id": user.id,
         "user_role": canonical_role,
@@ -226,13 +252,47 @@ def create_token_response(db: Session, user: User, *, request: Request | None = 
         "email": user.email,
         "must_change_password": bool(getattr(user, "must_change_password", False)),
         "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "csrf_token": csrf_token,
     }
+    return payload
+
+
+def create_token_response(
+    db: Session,
+    user: User,
+    *,
+    request: Request | None = None,
+    response: Response | None = None,
+):
+    """Create access + refresh session and attach browser auth cookies when possible."""
+    access_token, canonical_role = _create_access_token_for_user(user)
+    ua, ip = client_meta(request) if request is not None else (None, None)
+    refresh_raw, _ = issue_refresh_token(
+        db, user=user, user_agent=ua, ip_address=ip
+    )
+    csrf_token = None
+    if response is not None:
+        csrf_token = set_auth_cookies(
+            response,
+            access_token=access_token,
+            refresh_token=refresh_raw,
+            access_max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            request=request,
+        )
+    return _token_response_payload(
+        user=user,
+        access_token=access_token,
+        refresh_token=refresh_raw,
+        canonical_role=canonical_role,
+        csrf_token=csrf_token,
+    )
 
 
 @router.post("/login", response_model=Token)
 @limiter.limit(login_rate_limit())
 def login(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
@@ -250,13 +310,14 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     _enforce_mfa_on_login(user, None)
-    return create_token_response(db, user, request=request)
+    return create_token_response(db, user, request=request, response=response)
 
 
 @router.post("/login-json", response_model=Token)
 @limiter.limit(login_rate_limit())
 def login_json(
     request: Request,
+    response: Response,
     credentials: UserLogin,
     db: Session = Depends(get_db),
 ):
@@ -274,52 +335,54 @@ def login_json(
             headers={"WWW-Authenticate": "Bearer"},
         )
     _enforce_mfa_on_login(user, credentials.mfa_code)
-    return create_token_response(db, user, request=request)
+    return create_token_response(db, user, request=request, response=response)
 
 
 @router.post("/refresh", response_model=Token)
 @limiter.limit(login_rate_limit())
 def refresh_session(
     request: Request,
-    body: RefreshTokenRequest,
+    response: Response,
+    body: RefreshTokenRequest | None = None,
     db: Session = Depends(get_db),
 ):
     """Rotate refresh token and issue a new access token."""
+    raw_refresh = (body.refresh_token if body else None) or request.cookies.get(REFRESH_COOKIE_NAME)
+    if not raw_refresh:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    ua, ip = client_meta(request)
     user, new_refresh, _ = rotate_refresh_token(
         db,
-        raw_token=body.refresh_token,
-        user_agent=client_meta(request)[0],
-        ip_address=client_meta(request)[1],
+        raw_token=raw_refresh,
+        user_agent=ua,
+        ip_address=ip,
     )
     # Issue access only (reuse rotated refresh already created)
-    canonical_role = effective_role(user.role)
-    token_version = int(getattr(user, "token_version", 0) or 0)
-    access_token = create_access_token(
-        data={
-            "sub": user.email,
-            "user_id": user.id,
-            "user_role": canonical_role,
-            "role": canonical_role,
-            "session_version": int(getattr(user, "session_version", 0) or 0),
-            "tv": token_version,
-        }
+    access_token, canonical_role = _create_access_token_for_user(user)
+    csrf_token = set_auth_cookies(
+        response,
+        access_token=access_token,
+        refresh_token=new_refresh,
+        access_max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        request=request,
     )
-    return {
-        "access_token": access_token,
-        "refresh_token": new_refresh,
-        "token_type": "bearer",
-        "user_id": user.id,
-        "user_role": canonical_role,
-        "role": canonical_role,
-        "email": user.email,
-        "must_change_password": bool(getattr(user, "must_change_password", False)),
-        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    }
+    return _token_response_payload(
+        user=user,
+        access_token=access_token,
+        refresh_token=new_refresh,
+        canonical_role=canonical_role,
+        csrf_token=csrf_token,
+    )
 
 
 @router.post("/logout")
 def logout(
     request: Request,
+    response: Response,
     body: LogoutRequest | None = None,
     token: str | None = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
@@ -327,9 +390,9 @@ def logout(
 ):
     """
     Server-side logout: revoke refresh family and denylist current access jti.
-    Accepts optional refresh_token in body; also works with Bearer access token only.
+    Accepts optional refresh_token in body/cookie; also works with Bearer access token only.
     """
-    refresh = (body.refresh_token if body else None) or None
+    refresh = (body.refresh_token if body else None) or request.cookies.get(REFRESH_COOKIE_NAME)
     if refresh:
         revoke_refresh_token(db, raw_token=refresh)
     elif current_user is not None:
@@ -340,9 +403,10 @@ def logout(
         db.add(current_user)
         db.commit()
 
-    if token:
+    access_token = get_access_token_from_request(request, token)
+    if access_token:
         try:
-            payload = decode_access_token(token)
+            payload = decode_access_token(access_token)
             jti = payload.get("jti")
             exp = payload.get("exp")
             expires_at = (
@@ -360,6 +424,7 @@ def logout(
         except Exception:
             logger.debug("Logout denylist skipped: invalid access token", exc_info=True)
 
+    clear_auth_cookies(response, request=request)
     return {"message": "Logged out"}
 
 
@@ -424,13 +489,21 @@ def build_user_response(db: Session, user: User) -> dict:
 
 
 @router.get("/me", response_model=UserResponse)
-def read_current_user(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return build_user_response(db, current_user)
+def read_current_user(
+    request: Request,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    payload = build_user_response(db, current_user)
+    payload["csrf_token"] = ensure_csrf_cookie(response, request)
+    return payload
 
 
 @router.post("/change-password")
 def change_password(
     request: Request,
+    response: Response,
     body: ChangePasswordRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -457,9 +530,10 @@ def change_password(
     db.commit()
     db.refresh(current_user)
 
-    if token:
+    access_token = get_access_token_from_request(request, token)
+    if access_token:
         try:
-            payload = decode_access_token(token)
+            payload = decode_access_token(access_token)
             jti = payload.get("jti")
             exp = payload.get("exp")
             expires_at = (
@@ -478,7 +552,7 @@ def change_password(
             pass
 
     # Issue fresh session so the client can continue without re-login friction
-    fresh = create_token_response(db, current_user, request=request)
+    fresh = create_token_response(db, current_user, request=request, response=response)
     logger.info("Password changed for user id=%s", current_user.id)
     return {
         "message": "Mot de passe mis à jour",
