@@ -39,6 +39,7 @@ export const authAPI = {
   login,
   me: (opts) => getAuthenticatedUser(opts),
   logout: () => httpClient.post('/auth/logout'),
+  refresh: (refreshToken) => httpClient.post('/auth/refresh', { refresh_token: refreshToken }),
   signup: (userData) => httpClient.post('/auth/register', userData),
   changePassword: (currentPassword, newPassword) =>
     httpClient.post('/auth/change-password', {

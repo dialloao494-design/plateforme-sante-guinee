@@ -921,7 +921,11 @@ def doctor_catalog(
 ):
     assert_role(current_user, (*DOCTOR_ROLES, *ADMIN_ROLES))
     clinic = resolve_clinic_for_user(db, current_user)
-    from data.aasma_billing_catalog import IMAGING_EXAMINATIONS, SPECIALIZED_SPECIALTIES
+    from data.aasma_billing_catalog import (
+        IMAGING_EXAMINATIONS,
+        SPECIALIZED_SPECIALTIES,
+        SURGICAL_ACTS,
+    )
 
     lab_tests: list[dict] = []
     try:
@@ -958,6 +962,7 @@ def doctor_catalog(
         "specialties": SPECIALIZED_SPECIALTIES,
         "imaging": IMAGING_EXAMINATIONS,
         "lab_tests": lab_tests,
+        "surgical_acts": SURGICAL_ACTS,
     }
 
 

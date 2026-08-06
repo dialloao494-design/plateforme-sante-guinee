@@ -26,6 +26,9 @@ class NurseAssessment(Base):
     bp_diastolic = Column(Integer, nullable=True)
     heart_rate = Column(Integer, nullable=True)
     respiratory_rate = Column(Integer, nullable=True)
+    spo2_percent = Column(Float, nullable=True)
+    muac_cm = Column(Float, nullable=True)  # PB — périmètre brachial
+    head_circumference_cm = Column(Float, nullable=True)  # PC — périmètre crânien
     height_cm = Column(Float, nullable=True)
     weight_kg = Column(Float, nullable=True)
     bmi = Column(Float, nullable=True)

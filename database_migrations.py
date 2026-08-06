@@ -1588,6 +1588,9 @@ def ensure_nurse_assessment_schema(engine: Engine) -> None:
                 bp_diastolic INTEGER,
                 heart_rate INTEGER,
                 respiratory_rate INTEGER,
+                spo2_percent {float_type},
+                muac_cm {float_type},
+                head_circumference_cm {float_type},
                 height_cm {float_type},
                 weight_kg {float_type},
                 bmi {float_type},
@@ -1618,6 +1621,9 @@ def ensure_nurse_assessment_schema(engine: Engine) -> None:
         for col, col_type in (
             ("hospitalized_daily_vitals", "TEXT"),
             ("prescription", "TEXT"),
+            ("spo2_percent", float_type),
+            ("muac_cm", float_type),
+            ("head_circumference_cm", float_type),
         ):
             if col not in cols:
                 try:

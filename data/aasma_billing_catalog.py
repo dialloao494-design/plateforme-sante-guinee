@@ -126,6 +126,8 @@ IMAGING_EXAMINATIONS = [
     {"code": "mri", "label": "IRM (MRI)", "modality": "mri", "price_gnf": 750_000},
     {"code": "mammography", "label": "Mammographie", "modality": "mammography", "price_gnf": 250_000},
     {"code": "dental_panoramic", "label": "Panoramique dentaire", "modality": "dental_panoramic", "price_gnf": 180_000},
+    # Requested clinic examination / care line (nutrition parentérale totale).
+    {"code": "tpn", "label": "TPN (nutrition parentérale totale)", "modality": "other", "price_gnf": 500_000},
 ]
 
 # Nursing / care prestations from clinic tariff sheet + ambulance
@@ -135,21 +137,23 @@ SERVICE_PRESTATIONS = [
     {"code": "small_dressing", "label": "Petit pansement", "price_gnf": 30_000},
     {"code": "large_dressing", "label": "Grand pansement", "price_gnf": 80_000},
     {"code": "pediatric_emergency_care", "label": "Soins d'urgence pédiatrie", "price_gnf": 250_000},
+    {"code": "tpn", "label": "TPN (nutrition parentérale totale)", "price_gnf": 500_000},
     {"code": "medical_transport_ambulance", "label": "Transport médical / Ambulance", "price_gnf": 0},
 ]
 
-# Surgical acts available in reception service requests / billing
+# Surgical acts available in reception / doctor service requests / billing.
+# clinic_code = code clinique AASMA affiché (ex. QAASMA-PP pour Parage).
 SURGICAL_ACTS = [
-    {"code": "suture_simple", "label": "Suture simple", "price_gnf": 150_000},
-    {"code": "suture_complex", "label": "Suture complexe", "price_gnf": 300_000},
-    {"code": "abscess_drainage", "label": "Drainage d'abcès", "price_gnf": 200_000},
-    {"code": "circumcision", "label": "Circoncision", "price_gnf": 250_000},
-    {"code": "hernia_repair", "label": "Cure de hernie", "price_gnf": 800_000},
-    {"code": "appendectomy", "label": "Appendicectomie", "price_gnf": 1_200_000},
-    {"code": "cesarean", "label": "Césarienne", "price_gnf": 1_500_000},
-    {"code": "wound_debridement", "label": "Parage / débridement", "price_gnf": 250_000},
-    {"code": "minor_surgery", "label": "Petite chirurgie", "price_gnf": 350_000},
-    {"code": "exploration_laparo", "label": "Exploration chirurgicale", "price_gnf": 1_000_000},
+    {"code": "suture_simple", "clinic_code": "QAASMA-SS", "label": "Suture simple", "price_gnf": 150_000},
+    {"code": "suture_complex", "clinic_code": "QAASMA-SC", "label": "Suture complexe", "price_gnf": 300_000},
+    {"code": "abscess_drainage", "clinic_code": "QAASMA-DA", "label": "Drainage d'abcès", "price_gnf": 200_000},
+    {"code": "circumcision", "clinic_code": "QAASMA-CI", "label": "Circoncision", "price_gnf": 250_000},
+    {"code": "hernia_repair", "clinic_code": "QAASMA-CH", "label": "Cure de hernie", "price_gnf": 800_000},
+    {"code": "appendectomy", "clinic_code": "QAASMA-AP", "label": "Appendicectomie", "price_gnf": 1_200_000},
+    {"code": "cesarean", "clinic_code": "QAASMA-CS", "label": "Césarienne", "price_gnf": 1_500_000},
+    {"code": "wound_debridement", "clinic_code": "QAASMA-PP", "label": "Parage", "price_gnf": 250_000},
+    {"code": "minor_surgery", "clinic_code": "QAASMA-PC", "label": "Petite chirurgie", "price_gnf": 350_000},
+    {"code": "exploration_laparo", "clinic_code": "QAASMA-EX", "label": "Exploration chirurgicale", "price_gnf": 1_000_000},
 ]
 
 BILLING_DEPARTMENTS = [
@@ -227,9 +231,10 @@ def resolve_billing_catalog_item(catalog_code: str | None) -> dict | None:
             }
 
     for row in SURGICAL_ACTS:
-        if row.get("code") == code:
+        if row.get("code") == code or row.get("clinic_code") == code:
             return {
-                "code": code,
+                "code": row["code"],
+                "clinic_code": row.get("clinic_code") or row["code"],
                 "label": row["label"],
                 "price_gnf": int(row.get("price_gnf") or 0),
                 "charge_type": "procedure",

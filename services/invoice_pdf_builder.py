@@ -118,6 +118,9 @@ def build_hospital_invoice_pdf(
     printed_by: str = "",
     printed_date: str = "",
     printed_time: str = "",
+    invoice_date: str = "",
+    invoice_time: str = "",
+    cashier: str = "",
     document_title: str = "FACTURE",
 ) -> bytes:
     remaining = max(0, int(total) - int(paid))
@@ -139,15 +142,19 @@ def build_hospital_invoice_pdf(
     story.append(Spacer(1, 4))
 
     # Meta block
+    # Header shows invoice identity + cashier; footer carries print provenance.
+    display_date = (invoice_date or printed_date or "").strip()
+    display_time = (invoice_time or printed_time or "").strip()
+    display_cashier = (cashier or printed_by or "").strip()
     meta_left = [
-        f"<b>N° facture :</b> {invoice_number or '—'}",
-        f"<b>Patient :</b> {patient_name or '—'}",
-        f"<b>N° dossier :</b> {patient_file_number or '—'}",
+        f"<b>N° facture :</b> {(invoice_number or '').strip() or '—'}",
+        f"<b>Patient :</b> {(patient_name or '').strip() or '—'}",
+        f"<b>N° dossier :</b> {(patient_file_number or '').strip() or '—'}",
     ]
     meta_right = [
-        f"<b>Date :</b> {printed_date or '—'}",
-        f"<b>Heure :</b> {printed_time or '—'}",
-        f"<b>Caissier :</b> {printed_by or '—'}",
+        f"<b>Date :</b> {display_date or '—'}",
+        f"<b>Heure :</b> {display_time or '—'}",
+        f"<b>Caissier :</b> {display_cashier or '—'}",
     ]
     meta_table = Table(
         [

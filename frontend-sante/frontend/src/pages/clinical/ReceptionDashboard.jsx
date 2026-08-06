@@ -252,12 +252,24 @@ const formatDateTime = (value) => {
 
 const calcAge = (dob) => {
   if (!dob) return '';
-  const b = new Date(dob);
-  if (Number.isNaN(b.getTime())) return '';
+  // Parse YYYY-MM-DD as local calendar date to avoid UTC off-by-one on mobile browsers.
+  const raw = String(dob).trim().slice(0, 10);
+  const parts = raw.split('-').map((x) => Number(x));
+  let year;
+  let month;
+  let day;
+  if (parts.length === 3 && parts.every((n) => Number.isFinite(n) && n > 0)) {
+    [year, month, day] = parts;
+  } else {
+    const b = new Date(dob);
+    if (Number.isNaN(b.getTime())) return '';
+    year = b.getFullYear();
+    month = b.getMonth() + 1;
+    day = b.getDate();
+  }
   const n = new Date();
-  let age = n.getFullYear() - b.getFullYear();
-  const m = n.getMonth() - b.getMonth();
-  if (m < 0 || (m === 0 && n.getDate() < b.getDate())) age -= 1;
+  let age = n.getFullYear() - year;
+  if (n.getMonth() + 1 < month || (n.getMonth() + 1 === month && n.getDate() < day)) age -= 1;
   return age >= 0 ? age : '';
 };
 
@@ -1280,7 +1292,20 @@ export default function ReceptionDashboard() {
   const printInvoiceReceipt = async (invoiceId) => {
     try {
       const { data } = await clinicalApi.receptionHisInvoiceReceipt(invoiceId);
-      window.open(URL.createObjectURL(data), '_blank');
+      // Force application/pdf so browsers never render an empty/error blob tab.
+      const blob = data instanceof Blob ? data : new Blob([data], { type: 'application/pdf' });
+      const typed = blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
+      const url = URL.createObjectURL(typed);
+      const opened = window.open(url, '_blank');
+      if (!opened) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `facture-${invoiceId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch {
       setError('Impossible d’imprimer le reçu.');
     }
@@ -1289,7 +1314,11 @@ export default function ReceptionDashboard() {
   const printRefundReceipt = async (refundId) => {
     try {
       const { data } = await clinicalApi.receptionHisRefundReceipt(refundId);
-      window.open(URL.createObjectURL(data), '_blank');
+      const blob = data instanceof Blob ? data : new Blob([data], { type: 'application/pdf' });
+      const typed = blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
+      const url = URL.createObjectURL(typed);
+      window.open(url, '_blank');
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch {
       setError('Impossible d’imprimer le reçu de remboursement.');
     }
@@ -1442,7 +1471,10 @@ export default function ReceptionDashboard() {
     const q = serviceRequestExamSearchQ.trim().toLowerCase();
     if (!q) return surgicalActs;
     return surgicalActs.filter(
-      (act) => String(act.label || '').toLowerCase().includes(q) || String(act.code || '').toLowerCase().includes(q)
+      (act) =>
+        String(act.label || '').toLowerCase().includes(q) ||
+        String(act.code || '').toLowerCase().includes(q) ||
+        String(act.clinic_code || '').toLowerCase().includes(q)
     );
   }, [surgicalActs, serviceRequestExamSearchQ]);
 
@@ -1714,8 +1746,19 @@ export default function ReceptionDashboard() {
                       const age = calcAge(dob);
                       updateReg({
                         date_of_birth: dob,
-                        age_years: age !== '' ? String(age) : regForm.age_years,
+                        age_years: age !== '' ? String(age) : '',
                       });
+                    }}
+                    onInput={(e) => {
+                      // Some mobile WebViews fire input before change — keep age in sync.
+                      const dob = e.target.value;
+                      const age = calcAge(dob);
+                      if (dob) {
+                        updateReg({
+                          date_of_birth: dob,
+                          age_years: age !== '' ? String(age) : '',
+                        });
+                      }
                     }}
                   />
                 )}
@@ -2832,26 +2875,46 @@ export default function ReceptionDashboard() {
                       type="search"
                       value={serviceRequestExamSearchQ}
                       onChange={(e) => setServiceRequestExamSearchQ(e.target.value)}
-                      placeholder="Suture, césarienne, hernie…"
+                      placeholder="Suture, parage, QAASMA-PP…"
                       disabled={!selectedPatient}
                     />
                   </label>
-                  <div className="reception-his-service-options">
-                    {filteredSurgicalActs.map((act) => (
-                      <button
-                        key={act.code}
-                        type="button"
-                        className="clinical-btn clinical-btn--secondary"
-                        onClick={() => chooseServiceRequest('surgery', act.label, {
-                          catalog_code: act.code,
-                          charge_type: 'procedure',
-                          unit_price_gnf: act.price_gnf || 0,
-                        })}
-                        disabled={!selectedPatient}
-                      >
-                        {act.label} · {formatGNF(act.price_gnf || 0)}
-                      </button>
-                    ))}
+                  <div className="lab-his-results-wrap">
+                    <table className="lab-his-queue-table">
+                      <thead>
+                        <tr>
+                          <th>N°</th>
+                          <th>Acte chirurgical</th>
+                          <th>Code</th>
+                          <th>Tarif</th>
+                          <th aria-label="Actions" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredSurgicalActs.map((act, idx) => (
+                          <tr key={act.code}>
+                            <td>{idx + 1}</td>
+                            <td>{act.label}</td>
+                            <td><code>{act.clinic_code || act.code}</code></td>
+                            <td>{formatGNF(act.price_gnf || 0)}</td>
+                            <td>
+                              <button
+                                type="button"
+                                className="clinical-btn clinical-btn--secondary"
+                                onClick={() => chooseServiceRequest('surgery', act.label, {
+                                  catalog_code: act.code,
+                                  charge_type: 'procedure',
+                                  unit_price_gnf: act.price_gnf || 0,
+                                })}
+                                disabled={!selectedPatient}
+                              >
+                                Sélectionner
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                   {filteredSurgicalActs.length === 0 && (
                     <p className="clinical-hint">Aucun acte chirurgical trouvé.</p>

@@ -35,7 +35,37 @@ TEST_NAME_PATTERNS = (
     r"^Recep\d+",
     r"^Form\d+",
     r"^Test\d+",
+    # Deploy / isolation / auth probe names used in CI and field scripts
+    r"^Deploy",
+    r"DeployIso",
+    r"^AuthSess",
+    r"SubTest",
+    r"^Deplay",
+    r"^Iso$",
+    r"^Alpha$",  # first-name used by Alpha clinic synthetic patients
+    r"^Proof",
+    r"^Prod\d",
+    r"^Audit",
+    r"^Clean",
+    r"^Migrate",
+    r"^SharedDb",
+    r"^LabFlow",
+    r"^Dbg",
+    r"^Dup",
+    r"^Big$",
+    r"^Cap$",
+    r"^CHECK",
+    r"^Delay$",
+    r"^DBPROOF",
+    r"^CLEANEE",
+    r"^Patient$",  # "Patient Auditxxxx"
+    r"^ZDSDFT",
+    r"^EGGE",
 )
+
+# Synthetic surname suffixes like Diallo-61b233 / Bah-f47b / Conde-42ef
+HEX_SUFFIX_NAME = re.compile(r"-[0-9a-f]{3,8}$", re.I)
+PURE_HEX_NAME = re.compile(r"^[0-9a-f]{6,}$", re.I)
 
 
 def is_test_patient_name(first_name: str | None, last_name: str | None) -> bool:
@@ -44,16 +74,20 @@ def is_test_patient_name(first_name: str | None, last_name: str | None) -> bool:
     for pat in TEST_NAME_PATTERNS:
         if re.search(pat, last, re.I) or re.search(pat, first, re.I):
             return True
+    if HEX_SUFFIX_NAME.search(last) or PURE_HEX_NAME.fullmatch(last) or PURE_HEX_NAME.fullmatch(first):
+        return True
+    # Tiny garbage entries used in field probes
+    if first.lower() in {"a", "x", "m", "c"} and len(last) <= 8:
+        return True
     return False
 
 
 def list_demo_patients(db: Session, clinic_id: int) -> list[models.Patient]:
+    # Include archived rows: prior soft-archive attempts left synthetic patients
+    # hidden from clinical UIs but still occupying the clinic database.
     patients = (
         db.query(models.Patient)
-        .filter(
-            models.Patient.clinic_id == clinic_id,
-            models.Patient.is_archived.is_(False),
-        )
+        .filter(models.Patient.clinic_id == clinic_id)
         .order_by(models.Patient.id)
         .all()
     )
@@ -134,18 +168,20 @@ def purge_patient(db: Session, patient_id: int) -> dict[str, int]:
     )
     _delete(db, models.ClinicalNote, "clinical_notes", counts, models.ClinicalNote.patient_id == patient_id)
 
-    # --- Billing ---
+    # --- Billing (detach charge→invoice FKs before deleting invoices) ---
     invoice_ids = [row[0] for row in db.query(models.Invoice.id).filter(models.Invoice.patient_id == patient_id).all()]
-    if invoice_ids:
-        _delete(db, models.PaymentRecord, "payment_records", counts, models.PaymentRecord.invoice_id.in_(invoice_ids))
-        _delete(db, models.InvoiceItem, "invoice_items", counts, models.InvoiceItem.invoice_id.in_(invoice_ids))
-        _delete(db, models.ClinicRefund, "refunds", counts, models.ClinicRefund.invoice_id.in_(invoice_ids))
-        _delete(db, models.Invoice, "invoices", counts, models.Invoice.id.in_(invoice_ids))
-    _delete(db, models.ClinicRefund, "refunds", counts, models.ClinicRefund.patient_id == patient_id)
-
     charge_ids = [
         row[0] for row in db.query(models.ClinicCharge.id).filter(models.ClinicCharge.patient_id == patient_id).all()
     ]
+    if invoice_ids:
+        # Charges may reference invoices even when charge.patient_id differs.
+        linked_charge_ids = [
+            row[0]
+            for row in db.query(models.ClinicCharge.id)
+            .filter(models.ClinicCharge.invoice_id.in_(invoice_ids))
+            .all()
+        ]
+        charge_ids = list(set(charge_ids) | set(linked_charge_ids))
     if charge_ids:
         _delete(
             db,
@@ -155,6 +191,16 @@ def purge_patient(db: Session, patient_id: int) -> dict[str, int]:
             models.ClinicChargePayment.charge_id.in_(charge_ids),
         )
         _delete(db, models.ClinicCharge, "charges", counts, models.ClinicCharge.id.in_(charge_ids))
+    if invoice_ids:
+        # Safety: null any remaining charge links before invoice delete.
+        db.query(models.ClinicCharge).filter(models.ClinicCharge.invoice_id.in_(invoice_ids)).update(
+            {models.ClinicCharge.invoice_id: None}, synchronize_session=False
+        )
+        _delete(db, models.PaymentRecord, "payment_records", counts, models.PaymentRecord.invoice_id.in_(invoice_ids))
+        _delete(db, models.InvoiceItem, "invoice_items", counts, models.InvoiceItem.invoice_id.in_(invoice_ids))
+        _delete(db, models.ClinicRefund, "refunds", counts, models.ClinicRefund.invoice_id.in_(invoice_ids))
+        _delete(db, models.Invoice, "invoices", counts, models.Invoice.id.in_(invoice_ids))
+    _delete(db, models.ClinicRefund, "refunds", counts, models.ClinicRefund.patient_id == patient_id)
 
     # --- Hospitalization / visits / workflows (FK-safe order) ---
     wf_ids = [

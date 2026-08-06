@@ -238,16 +238,8 @@ def delete_patient(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     _assert_admin_patient_clinic_scope(db, current_user, patient)
-    has_clinical = (
-        db.query(models.ClinicalConsultation)
-        .filter(models.ClinicalConsultation.patient_id == patient_id)
-        .first()
-    )
-    if has_clinical:
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot delete patient with clinical history. Archive only.",
-        )
+    # Soft-archive always (including patients with clinical history).
+    # Hard purge of synthetic demo patients is done via platform cleanup.
     patient.is_archived = True
     patient.archived_at = datetime.utcnow()
     db.commit()

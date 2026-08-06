@@ -13,6 +13,9 @@ const EMPTY_FORM = {
   bp_diastolic: '',
   heart_rate: '',
   respiratory_rate: '',
+  spo2_percent: '',
+  muac_cm: '',
+  head_circumference_cm: '',
   height_cm: '',
   weight_kg: '',
   vitals_observations: '',
@@ -30,12 +33,23 @@ const EMPTY_FORM = {
 
 const calcAge = (dob) => {
   if (!dob) return '';
-  const b = new Date(dob);
-  if (Number.isNaN(b.getTime())) return '';
+  const raw = String(dob).trim().slice(0, 10);
+  const parts = raw.split('-').map((x) => Number(x));
+  let year;
+  let month;
+  let day;
+  if (parts.length === 3 && parts.every((n) => Number.isFinite(n) && n > 0)) {
+    [year, month, day] = parts;
+  } else {
+    const b = new Date(dob);
+    if (Number.isNaN(b.getTime())) return '';
+    year = b.getFullYear();
+    month = b.getMonth() + 1;
+    day = b.getDate();
+  }
   const n = new Date();
-  let age = n.getFullYear() - b.getFullYear();
-  const m = n.getMonth() - b.getMonth();
-  if (m < 0 || (m === 0 && n.getDate() < b.getDate())) age -= 1;
+  let age = n.getFullYear() - year;
+  if (n.getMonth() + 1 < month || (n.getMonth() + 1 === month && n.getDate() < day)) age -= 1;
   return age >= 0 ? String(age) : '';
 };
 
@@ -265,6 +279,9 @@ export default function NurseDashboard() {
         bp_diastolic: numOrNull(form.bp_diastolic),
         heart_rate: numOrNull(form.heart_rate),
         respiratory_rate: numOrNull(form.respiratory_rate),
+        spo2_percent: numOrNull(form.spo2_percent),
+        muac_cm: numOrNull(form.muac_cm),
+        head_circumference_cm: numOrNull(form.head_circumference_cm),
         height_cm: numOrNull(form.height_cm),
         weight_kg: numOrNull(form.weight_kg),
         vitals_observations: form.vitals_observations || null,
@@ -279,13 +296,11 @@ export default function NurseDashboard() {
         prescription: form.prescription || null,
         nurse_notes: form.nurse_notes || null,
       });
-      setMessage('Évaluation infirmière enregistrée — visible par le médecin.');
+      setMessage('Évaluation infirmière enregistrée — visible par le médecin. Historique actualisé.');
       setForm(EMPTY_FORM);
-      setSelectedPatient(null);
-      setPatientAssessments([]);
-      setShowPatientHistory(false);
-      setSearchQ('');
-      setSearchResults([]);
+      // Keep patient selected so history remains available after save.
+      setShowPatientHistory(true);
+      await loadPatientHistory(selectedPatient.id);
       loadDashboard();
     } catch (err) {
       setError(formatApiError(err, 'Enregistrement impossible'));
@@ -483,6 +498,118 @@ export default function NurseDashboard() {
           </fieldset>
 
           <fieldset>
+            <legend>Signes vitaux</legend>
+            <div className="reception-his-form-row reception-his-form-row--4">
+              <label>
+                Température (°C)
+                <input
+                  type="number"
+                  step="0.1"
+                  min="30"
+                  max="45"
+                  value={form.temperature_c}
+                  onChange={(e) => updateForm({ temperature_c: e.target.value })}
+                />
+              </label>
+              <label>
+                Pouls / FC (batt/min)
+                <input
+                  type="number"
+                  value={form.heart_rate}
+                  onChange={(e) => updateForm({ heart_rate: e.target.value })}
+                />
+              </label>
+              <label>
+                SpO2 (%)
+                <input
+                  type="number"
+                  step="0.1"
+                  min="50"
+                  max="100"
+                  value={form.spo2_percent}
+                  onChange={(e) => updateForm({ spo2_percent: e.target.value })}
+                />
+              </label>
+              <label>
+                Tension artérielle (mmHg)
+                <div className="nurse-his-bp-pair">
+                  <input
+                    type="number"
+                    placeholder="Syst."
+                    value={form.bp_systolic}
+                    onChange={(e) => updateForm({ bp_systolic: e.target.value })}
+                  />
+                  <span>/</span>
+                  <input
+                    type="number"
+                    placeholder="Diast."
+                    value={form.bp_diastolic}
+                    onChange={(e) => updateForm({ bp_diastolic: e.target.value })}
+                  />
+                </div>
+              </label>
+              <label>
+                PB — périmètre brachial (cm)
+                <input
+                  type="number"
+                  step="0.1"
+                  min="5"
+                  max="60"
+                  value={form.muac_cm}
+                  onChange={(e) => updateForm({ muac_cm: e.target.value })}
+                />
+              </label>
+              <label>
+                PC — périmètre crânien (cm)
+                <input
+                  type="number"
+                  step="0.1"
+                  min="20"
+                  max="70"
+                  value={form.head_circumference_cm}
+                  onChange={(e) => updateForm({ head_circumference_cm: e.target.value })}
+                />
+              </label>
+              <label>
+                Fréquence respiratoire (resp/min)
+                <input
+                  type="number"
+                  value={form.respiratory_rate}
+                  onChange={(e) => updateForm({ respiratory_rate: e.target.value })}
+                />
+              </label>
+              <label>
+                Taille (cm)
+                <input
+                  type="number"
+                  step="0.1"
+                  value={form.height_cm}
+                  onChange={(e) => updateForm({ height_cm: e.target.value })}
+                />
+              </label>
+              <label>
+                Poids (kg)
+                <input
+                  type="number"
+                  step="0.1"
+                  value={form.weight_kg}
+                  onChange={(e) => updateForm({ weight_kg: e.target.value })}
+                />
+              </label>
+              <label>
+                IMC (calculé)
+                <ReadOnlyDisplay value={bmi} />
+              </label>
+            </div>
+            <TextAreaField
+              label="Observations générales"
+              rows={3}
+              value={form.vitals_observations}
+              onChange={(e) => updateForm({ vitals_observations: e.target.value })}
+            />
+          </fieldset>
+
+          <fieldset>
             <legend>Motif de consultation</legend>
             <TextAreaField
               label=""
@@ -537,16 +664,6 @@ export default function NurseDashboard() {
           </fieldset>
 
           <fieldset>
-            <legend>Signes vitaux des patients hospitalisés (soins quotidiens)</legend>
-            <TextAreaField
-              label="Signes vitaux des patients hospitalisés (soins quotidiens)"
-              rows={3}
-              value={form.hospitalized_daily_vitals}
-              onChange={(e) => updateForm({ hospitalized_daily_vitals: e.target.value })}
-            />
-          </fieldset>
-
-          <fieldset>
             <legend>Prescription</legend>
             <TextAreaField
               label="Prescription"
@@ -557,81 +674,12 @@ export default function NurseDashboard() {
           </fieldset>
 
           <fieldset>
-            <legend>Signes vitaux</legend>
-            <div className="reception-his-form-row reception-his-form-row--4">
-              <label>
-                Température (°C)
-                <input
-                  type="number"
-                  step="0.1"
-                  min="30"
-                  max="45"
-                  value={form.temperature_c}
-                  onChange={(e) => updateForm({ temperature_c: e.target.value })}
-                />
-              </label>
-              <label>
-                Tension artérielle (mmHg)
-                <div className="nurse-his-bp-pair">
-                  <input
-                    type="number"
-                    placeholder="Syst."
-                    value={form.bp_systolic}
-                    onChange={(e) => updateForm({ bp_systolic: e.target.value })}
-                  />
-                  <span>/</span>
-                  <input
-                    type="number"
-                    placeholder="Diast."
-                    value={form.bp_diastolic}
-                    onChange={(e) => updateForm({ bp_diastolic: e.target.value })}
-                  />
-                </div>
-              </label>
-              <label>
-                Fréquence cardiaque (batt/min)
-                <input
-                  type="number"
-                  value={form.heart_rate}
-                  onChange={(e) => updateForm({ heart_rate: e.target.value })}
-                />
-              </label>
-              <label>
-                Fréquence respiratoire (resp/min)
-                <input
-                  type="number"
-                  value={form.respiratory_rate}
-                  onChange={(e) => updateForm({ respiratory_rate: e.target.value })}
-                />
-              </label>
-              <label>
-                Taille (cm)
-                <input
-                  type="number"
-                  step="0.1"
-                  value={form.height_cm}
-                  onChange={(e) => updateForm({ height_cm: e.target.value })}
-                />
-              </label>
-              <label>
-                Poids (kg)
-                <input
-                  type="number"
-                  step="0.1"
-                  value={form.weight_kg}
-                  onChange={(e) => updateForm({ weight_kg: e.target.value })}
-                />
-              </label>
-              <label>
-                IMC (calculé)
-                <ReadOnlyDisplay value={bmi} />
-              </label>
-            </div>
+            <legend>Signes vitaux des patients hospitalisés (soins quotidiens)</legend>
             <TextAreaField
-              label="Observations générales"
+              label="Signes vitaux des patients hospitalisés (soins quotidiens)"
               rows={3}
-              value={form.vitals_observations}
-              onChange={(e) => updateForm({ vitals_observations: e.target.value })}
+              value={form.hospitalized_daily_vitals}
+              onChange={(e) => updateForm({ hospitalized_daily_vitals: e.target.value })}
             />
           </fieldset>
 
@@ -689,12 +737,17 @@ export default function NurseDashboard() {
                       {formatDateTime(row.recorded_at)}
                     </p>
                     <dl>
-                      <div><dt>Motif</dt><dd>{row.reason_for_consultation || '—'}</dd></div>
-                      <div><dt>TA</dt><dd>{row.bp_systolic || '—'}/{row.bp_diastolic || '—'}</dd></div>
                       <div><dt>Température</dt><dd>{row.temperature_c ?? '—'} °C</dd></div>
+                      <div><dt>Pouls / FC</dt><dd>{row.heart_rate ?? '—'}</dd></div>
+                      <div><dt>SpO2</dt><dd>{row.spo2_percent != null ? `${row.spo2_percent} %` : '—'}</dd></div>
+                      <div><dt>TA</dt><dd>{row.bp_systolic || '—'}/{row.bp_diastolic || '—'}</dd></div>
+                      <div><dt>PB</dt><dd>{row.muac_cm != null ? `${row.muac_cm} cm` : '—'}</dd></div>
+                      <div><dt>PC</dt><dd>{row.head_circumference_cm != null ? `${row.head_circumference_cm} cm` : '—'}</dd></div>
+                      <div><dt>Motif</dt><dd>{row.reason_for_consultation || '—'}</dd></div>
                       <div><dt>Allergies</dt><dd>{row.allergies || '—'}</dd></div>
                       <div><dt>Traitements en cours</dt><dd>{row.current_treatments || '—'}</dd></div>
                       <div><dt>Ordonnance</dt><dd>{row.prescription || '—'}</dd></div>
+                      <div><dt>SV hospitalisés</dt><dd>{row.hospitalized_daily_vitals || '—'}</dd></div>
                       <div><dt>Notes infirmières</dt><dd>{row.nurse_notes || '—'}</dd></div>
                     </dl>
                   </article>

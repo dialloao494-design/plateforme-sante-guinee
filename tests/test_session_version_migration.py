@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_single_alembic_head():
     script = ScriptDirectory.from_config(Config(str(ROOT / "alembic.ini")))
     heads = script.get_heads()
-    assert heads == ["20260802_0026_service_request_billing_integrity"], heads
+    assert heads == ["20260806_0027_nurse_vitals_spo2_pb_pc"], heads
 
 
 def test_upgrade_0025_recovers_missing_session_version_on_stamped_db(tmp_path):
@@ -94,7 +94,7 @@ def test_upgrade_0025_recovers_missing_session_version_on_stamped_db(tmp_path):
         rows = conn.execute(
             text("SELECT id, email, session_version, token_version, role FROM users ORDER BY id")
         ).fetchall()
-    assert version == "20260802_0026_service_request_billing_integrity"
+    assert version == "20260806_0027_nurse_vitals_spo2_pb_pc"
     assert len(rows) == 2
     assert rows[0].email == "owner@clinic.test"
     assert rows[0].session_version == 0
