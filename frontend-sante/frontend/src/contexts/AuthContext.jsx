@@ -88,9 +88,14 @@ export const AuthProvider = ({ children }) => {
       /failed to fetch|network error|network|econnrefused|connection refused|timeout|405 not allowed|nginx/.test(detail) ||
       (!status && /login failed|network error/i.test(String(err?.message || '')))
     ) {
-      return import.meta.env.PROD
-        ? 'Impossible de joindre le serveur. Réessayez dans un instant.'
-        : 'Impossible de joindre l’API. Vérifiez que le backend tourne sur http://127.0.0.1:8000.';
+      if (import.meta.env.PROD) {
+        const host = typeof window !== 'undefined' ? String(window.location.hostname || '') : '';
+        if (/seven-rust-94\.vercel\.app$/i.test(host)) {
+          return 'Ancien lien désactivé. Ouvrez https://plateforme-sante-guinee.vercel.app pour vous connecter.';
+        }
+        return 'Impossible de joindre le serveur. Réessayez dans un instant. Vérifiez que vous utilisez https://plateforme-sante-guinee.vercel.app';
+      }
+      return 'Impossible de joindre l’API. Vérifiez que le backend tourne sur http://127.0.0.1:8000.';
     }
 
     if (/missing authentication token/.test(detail)) {
