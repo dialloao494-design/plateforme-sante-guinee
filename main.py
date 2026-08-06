@@ -98,7 +98,14 @@ _is_deployed = _settings.is_deployed
 if _is_deployed:
     cors_origin_regex = None
     cors_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-    cors_headers = ["Authorization", "Content-Type", "Accept", "X-CSRF-Token"]
+    cors_headers = [
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "X-CSRF-Token",
+        "X-Client-Request-Id",
+        "X-Record-Version",
+    ]
 else:
     from services.network_dev import TUNNEL_ORIGIN_REGEX
 
@@ -120,6 +127,11 @@ _cors_kwargs = dict(
 if cors_origin_regex:
     _cors_kwargs["allow_origin_regex"] = cors_origin_regex
 app.add_middleware(CORSMiddleware, **_cors_kwargs)
+
+# Replay-safe clinical mutations (offline sync / ambiguous network retries).
+from core.client_request_idempotency_middleware import ClientRequestIdempotencyMiddleware
+
+app.add_middleware(ClientRequestIdempotencyMiddleware)
 
 # Security Wave 6 / Wave 1 — rate-limit + security headers middleware
 # Fail loud in production/staging if middleware cannot attach.
@@ -587,7 +599,7 @@ def _run_schema_and_seed_startup() -> None:
         from database import engine, Base
         # Import all model modules so their tables are registered on Base
         import models.user, models.patient, models.doctor, models.rendezvous, models.payment, models.availability, models.message, models.notification_event, models.attachment_access_log, models.clinical_note, models.consultation_summary, models.patient_document, models.clinical_audit_log
-        import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.clinic_charge_payment, models.medical_history, models.hospitalization, models.clinical_visit, models.invoice, models.discharge, models.imaging, models.appointment_reminder, models.pharmacy_inventory, models.password_reset_token, models.email_verification_token, models.visit_workflow, models.nutrition, models.immunization, models.nursing_care, models.nurse_assessment, models.clinic_node_ops  # noqa: F401
+        import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.clinic_charge_payment, models.medical_history, models.hospitalization, models.clinical_visit, models.invoice, models.discharge, models.imaging, models.appointment_reminder, models.pharmacy_inventory, models.password_reset_token, models.email_verification_token, models.visit_workflow, models.nutrition, models.immunization, models.nursing_care, models.nurse_assessment, models.clinic_node_ops, models.api_idempotency  # noqa: F401
 
         # Local/test environments may bootstrap an empty disposable database.
         # Deployed environments must be controlled by versioned migrations only.

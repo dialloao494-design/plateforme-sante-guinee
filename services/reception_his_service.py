@@ -587,11 +587,16 @@ class ReceptionHisService:
 
         subtotal = sum(int(l["amount_gnf"]) for l in line_payloads)
         exemption_percent = float(payload.exemption_percent or 0)
-        if exemption_percent > 0 and not (getattr(payload, "exemption_reason", None) or "").strip():
-            raise HTTPException(
-                status_code=400,
-                detail="exemption_reason est requis lorsque exemption_percent > 0",
-            )
+        if exemption_percent > 0:
+            from core.rbac import Permission, assert_permission
+
+            # Invoice write-offs / exemptions are privileged — never receptionist/cashier self-serve.
+            assert_permission(actor, Permission.BILLING_OVERRIDE)
+            if not (getattr(payload, "exemption_reason", None) or "").strip():
+                raise HTTPException(
+                    status_code=400,
+                    detail="exemption_reason est requis lorsque exemption_percent > 0",
+                )
         exemption_amount = int(subtotal * exemption_percent / 100)
         net_total = max(0, subtotal - exemption_amount)
 

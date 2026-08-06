@@ -258,6 +258,22 @@ httpClient.interceptors.request.use(
     deleteConfigHeader(config.headers, 'Authorization');
     attachCsrfHeader(config);
 
+    // Attach a stable client request id so network retries / offline replay are
+    // server-idempotent for mutating clinical calls.
+    const method = String(config.method || 'get').toLowerCase();
+    if (['post', 'put', 'patch', 'delete'].includes(method)) {
+      const existing =
+        config.headers['X-Client-Request-Id'] ||
+        config.headers['x-client-request-id'];
+      if (!existing) {
+        const id =
+          typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `cr_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+        setConfigHeader(config.headers, 'X-Client-Request-Id', id);
+      }
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -279,11 +295,18 @@ httpClient.interceptors.response.use(
       console.error(`[HTTP] Timeout after ${config?.timeout || httpClient.defaults.timeout}ms: ${method.toUpperCase()} ${url}`);
     }
 
+    const hasClientRequestId = Boolean(
+      config?.headers?.['X-Client-Request-Id'] ||
+        config?.headers?.['x-client-request-id']
+    );
+    // Only auto-retry mutating calls when a client request id is present so the
+    // server can dedupe ambiguous network failures.
     const retryableMutation =
       Boolean(config) &&
       ['post', 'patch', 'put'].includes(method) &&
       statusCode !== 401 &&
-      isNetwork;
+      isNetwork &&
+      hasClientRequestId;
 
     if (retryableMutation) {
       const attempt = Number(config.__networkRetry || 0);

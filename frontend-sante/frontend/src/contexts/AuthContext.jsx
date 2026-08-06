@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api.js';
-import { clearClientAuth, setAuthSessionReady } from '../services/httpClient.js';
+import httpClient, { clearClientAuth, setAuthSessionReady } from '../services/httpClient.js';
 import { invalidateCache } from '../utils/apiCache.js';
 import { touchSessionActivity, getAuthItem, setAuthItem, removeAuthItem, clearLegacySharedAuth } from '../utils/authStorage.js';
 import { CACHE_TTL, getCached, setCached, buildCacheKey } from '../utils/apiCache.js';
@@ -13,6 +13,7 @@ import {
 } from '../utils/authSession.js';
 import { useSessionTimeout } from '../hooks/useSessionTimeout.js';
 import SessionTimeoutModal from '../components/SessionTimeoutModal.jsx';
+import { startAutoSync, stopAutoSync } from '../offline/sync.js';
 
 const AUTH_PROFILE_STORAGE_KEY = 'sg_auth_profile';
 
@@ -123,6 +124,8 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const logout = useCallback(() => {
+    // Stop offline replay before clearing identity-bound IndexedDB/PHI caches.
+    stopAutoSync();
     // Clear React state immediately; the logout request clears HttpOnly cookies server-side.
     void authAPI.logout().catch(() => {}).finally(() => clearClientAuth());
     clearPasswordResetFlags();
@@ -176,8 +179,8 @@ export const AuthProvider = ({ children }) => {
     setAuthLoading(true);
 
     try {
-      // Anonymous first paint: do not attempt refresh (avoids extra remount churn).
-      const data = await fetchCurrentUser({ allowRefresh: false });
+      // Use refresh when the short-lived access cookie expired but refresh is still valid.
+      const data = await fetchCurrentUser({ allowRefresh: true });
       if (!data) {
         throw new Error('Profil utilisateur vide');
       }
@@ -185,11 +188,13 @@ export const AuthProvider = ({ children }) => {
       setUser(normalizedUser);
       setAuthInitError(null);
       clearLegacySharedAuth();
+      startAutoSync(httpClient);
     } catch (err) {
       logAuthSessionFailure('bootstrap', err);
       const status = err?.response?.status;
       if (status === 401 || status === 403) {
         // Quiet anonymous session — no cookies yet.
+        stopAutoSync();
         setUser(null);
         setAuthInitError(null);
       } else {
@@ -228,6 +233,7 @@ export const AuthProvider = ({ children }) => {
       }
       const normalizedUser = normalizeAndStoreUser(meResponse);
       setUser(normalizedUser);
+      startAutoSync(httpClient);
       authDebug('establishSession: user state set', normalizedUser?.role);
       return normalizedUser;
     },

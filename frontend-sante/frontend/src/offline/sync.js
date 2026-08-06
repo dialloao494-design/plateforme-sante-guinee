@@ -8,6 +8,7 @@ import {
 } from './outbox.js';
 import { detectAndRecordConflict } from './conflict.js';
 import { cacheGetResponse } from './cache.js';
+import { readOfflineOwnerScope } from './sessionScope.js';
 
 let flushing = false;
 let syncTimer = null;
@@ -56,9 +57,15 @@ function parseJson(raw, fallback = {}) {
 
 /**
  * Replay one outbox row against the API.
- * @returns {Promise<'synced' | 'failed' | 'conflict'>}
+ * @returns {Promise<'synced' | 'failed' | 'conflict' | 'skipped'>}
  */
 export async function replayOutboxItem(item, client) {
+  const scope = readOfflineOwnerScope();
+  if (!item.owner_key || item.owner_key !== scope.ownerKey || !scope.userId) {
+    // Never replay another user's queued PHI mutation with the current cookies.
+    return 'skipped';
+  }
+
   const payload = parseJson(item.payload_json);
   const params = parseJson(item.params_json, null);
   const headers = {
@@ -118,14 +125,20 @@ export async function flushOutbox(client = httpClientRef) {
   let conflicts = 0;
 
   try {
-    const pending = await getPendingOutbox(25);
+    const scope = readOfflineOwnerScope();
+    if (!scope.userId) {
+      return { synced: 0, failed: 0, conflicts: 0, skipped: true };
+    }
+    const pending = await getPendingOutbox(25, { ownerKey: scope.ownerKey });
     for (const item of pending) {
       await markOutboxInFlight(item.id);
       try {
         const result = await replayOutboxItem(item, client);
         if (result === 'synced') synced += 1;
         else if (result === 'conflict') conflicts += 1;
-        else failed += 1;
+        else if (result === 'skipped') {
+          await markOutboxFailed(item.id, new Error('owner mismatch'), 12);
+        } else failed += 1;
       } catch (error) {
         const attempt = Number(item.attempt_count || 0) + 1;
         if (isNetworkError(error)) {

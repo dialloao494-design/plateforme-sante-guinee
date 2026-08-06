@@ -113,7 +113,7 @@ export function touchSessionActivity() {
   setAuthItem('session_last_activity', String(Date.now()));
 }
 
-/** Clear auth for the current tab only. */
+/** Clear auth for the current tab only, plus offline PHI stores. */
 export function clearAllClientStorage() {
   if (typeof window === 'undefined') {
     return;
@@ -122,4 +122,8 @@ export function clearAllClientStorage() {
     removeAuthItem(key);
   }
   invalidateCache();
+  // Best-effort async purge — do not block logout UX.
+  void import('../offline/db.js')
+    .then(({ purgeOfflinePrivacyState }) => purgeOfflinePrivacyState())
+    .catch(() => {});
 }

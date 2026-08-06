@@ -1,5 +1,6 @@
 import { offlineDb } from './db.js';
 import { classifyRequest } from './entityTypes.js';
+import { readOfflineOwnerScope } from './sessionScope.js';
 
 export const OUTBOX_STATUS = {
   PENDING: 'pending',
@@ -71,9 +72,13 @@ export async function enqueueMutation({
 
   const optimistic = buildOptimisticResponse(data, type);
   const now = Date.now();
+  const scope = readOfflineOwnerScope();
 
   await offlineDb.outbox.add({
     client_request_id: reqId,
+    owner_key: scope.ownerKey,
+    user_id: scope.userId,
+    clinic_id: scope.clinicId,
     entity_type: type,
     operation: op,
     method: String(method).toUpperCase(),
@@ -94,14 +99,20 @@ export async function enqueueMutation({
   return { client_request_id: reqId, optimistic };
 }
 
-export async function getPendingOutbox(limit = 50) {
+export async function getPendingOutbox(limit = 50, { ownerKey } = {}) {
   const now = Date.now();
+  const scope = ownerKey ? { ownerKey } : readOfflineOwnerScope();
   const rows = await offlineDb.outbox
     .where('status')
     .anyOf([OUTBOX_STATUS.PENDING, OUTBOX_STATUS.FAILED])
     .toArray();
   return rows
-    .filter((r) => !r.next_retry_at || r.next_retry_at <= now)
+    .filter((r) => {
+      if (r.owner_key && r.owner_key !== scope.ownerKey) return false;
+      // Legacy unscoped rows must never replay under another session.
+      if (!r.owner_key) return false;
+      return !r.next_retry_at || r.next_retry_at <= now;
+    })
     .sort((a, b) => a.created_at - b.created_at)
     .slice(0, limit);
 }

@@ -1,7 +1,7 @@
 import { enqueueMutation } from './outbox.js';
 import { cacheGetResponse, getCachedGet } from './cache.js';
 import { classifyRequest } from './entityTypes.js';
-import { bindHttpClient, cacheOnlineGet, flushOutbox, startAutoSync } from './sync.js';
+import { bindHttpClient, cacheOnlineGet, flushOutbox, startAutoSync, stopAutoSync } from './sync.js';
 
 let requestInterceptorId = null;
 let responseInterceptorId = null;
@@ -213,14 +213,17 @@ function hookBrowserConnectivity() {
   setOnlineStatus(navigator.onLine);
 }
 
-/** Bootstrap offline support: SW, interceptors, auto-sync. */
+/** Bootstrap offline support: SW, interceptors. Auto-sync starts after auth. */
 export async function initOfflineSupport(httpClient) {
   if (typeof window === 'undefined') return;
 
   hookBrowserConnectivity();
   attachOfflineInterceptors(httpClient);
-  startAutoSync(httpClient);
+  // Do not flush the outbox until AuthContext confirms an authenticated user.
+  // Callers should invoke startAutoSync(httpClient) after bootstrap succeeds.
   await registerServiceWorker();
 }
+
+export { startAutoSync, stopAutoSync };
 
 export { flushOutbox, cacheGetResponse, getCachedGet };

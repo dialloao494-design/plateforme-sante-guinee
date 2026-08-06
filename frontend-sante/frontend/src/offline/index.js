@@ -1,4 +1,14 @@
-export { offlineDb, getMeta, setMeta, DB_NAME, DB_VERSION } from './db.js';
+export {
+  offlineDb,
+  getMeta,
+  setMeta,
+  DB_NAME,
+  DB_VERSION,
+  purgeOfflinePrivacyState,
+  clearOfflineDatabase,
+  clearOfflineCacheStorage,
+  buildOwnerKey,
+} from './db.js';
 export {
   enqueueMutation,
   getPendingOutbox,
@@ -16,6 +26,7 @@ export {
   getLastSyncAt,
   onSyncStateChange,
 } from './sync.js';
+export { readOfflineOwnerScope } from './sessionScope.js';
 export {
   resolveLastWriteWins,
   mergeLastWriteWins,

@@ -10,9 +10,9 @@ from fastapi import Request, Response
 from core.auth_cookie_config import (
     ACCESS_COOKIE_NAME,
     AUTH_COOKIE_PATH,
-    AUTH_COOKIE_SAMESITE,
     CSRF_COOKIE_NAME,
     REFRESH_COOKIE_NAME,
+    resolve_auth_cookie_samesite,
 )
 from services.auth_session_service import REFRESH_TOKEN_EXPIRE_DAYS
 
@@ -25,6 +25,9 @@ def should_use_secure_cookies(request: Request | None = None) -> bool:
     override = os.getenv("AUTH_COOKIE_SECURE")
     if override is not None:
         return override.strip().lower() in {"1", "true", "yes", "on"}
+    # SameSite=None always requires Secure.
+    if resolve_auth_cookie_samesite() == "none":
+        return True
     if request is not None and request.url.scheme == "https":
         return True
     environment = (os.getenv("ENVIRONMENT") or "").strip().lower()
@@ -40,6 +43,9 @@ def _set_cookie(
     httponly: bool,
     secure: bool,
 ) -> None:
+    samesite = resolve_auth_cookie_samesite()
+    if samesite == "none":
+        secure = True
     response.set_cookie(
         key=key,
         value=value,
@@ -48,7 +54,7 @@ def _set_cookie(
         path=AUTH_COOKIE_PATH,
         secure=secure,
         httponly=httponly,
-        samesite=AUTH_COOKIE_SAMESITE,
+        samesite=samesite,
     )
 
 
@@ -109,11 +115,14 @@ def ensure_csrf_cookie(response: Response, request: Request | None = None) -> st
 
 def clear_auth_cookies(response: Response, request: Request | None = None) -> None:
     secure = should_use_secure_cookies(request)
+    samesite = resolve_auth_cookie_samesite()
+    if samesite == "none":
+        secure = True
     for name in (ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME, CSRF_COOKIE_NAME):
         response.delete_cookie(
             key=name,
             path=AUTH_COOKIE_PATH,
             secure=secure,
             httponly=name != CSRF_COOKIE_NAME,
-            samesite=AUTH_COOKIE_SAMESITE,
+            samesite=samesite,
         )

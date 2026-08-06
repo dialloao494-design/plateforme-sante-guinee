@@ -54,18 +54,9 @@ export default defineConfig(({ mode }) => {
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
           navigateFallback: '/index.html',
-          runtimeCaching: [
-            {
-              urlPattern: ({ url }) => url.pathname.startsWith('/clinical'),
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'clinical-api-cache',
-                networkTimeoutSeconds: 8,
-                expiration: { maxEntries: 120, maxAgeSeconds: 60 * 60 * 24 },
-                cacheableResponse: { statuses: [0, 200] },
-              },
-            },
-          ],
+          // Do not cache authenticated /clinical responses in the service worker:
+          // CacheStorage is not user/tenant-scoped and is not purged on logout.
+          runtimeCaching: [],
         },
         // Keep SW out of Vite dev / Playwright — autoUpdate remounts detach form inputs.
         devOptions: {
