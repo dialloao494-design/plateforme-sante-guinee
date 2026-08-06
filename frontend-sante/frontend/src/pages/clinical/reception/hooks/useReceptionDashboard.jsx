@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clinicalApi from '../../../../services/clinicalApi';
 import { useAuth } from '../../../../contexts/AuthContext.jsx';
 import { formatGNF } from '../../../../utils/appointmentPresentation.js';
-import { formatApiError, isDuplicatePatientError, getApiErrorDetailObject } from '../../../../utils/apiError.js';
+import { formatApiError } from '../../../../utils/apiError.js';
+import { resolveRegistrationConflict } from '../registrationConflict.js';
 import { SPECIALTY_OTHER_CODE } from '../../../../constants/clinicBranding.js';
 import { payerTypeLabel } from '../../../../constants/clinicBranding.js';
 import {
@@ -736,22 +737,10 @@ export function useReceptionDashboard() {
       await loadDashboard();
       return true;
     } catch (err) {
-      if (isDuplicatePatientError(err)) {
-        const detail = getApiErrorDetailObject(err);
-        const matches = Array.isArray(detail?.matches) ? detail.matches : [];
-        setDuplicateMatches(matches);
-        setPendingRegPayload({ ...payload, confirm_duplicate: true });
-        setError(
-          formatApiError(err, 'Un ou plusieurs patients similaires existent déjà')
-          + (matches.length
-            ? ' Vérifiez les dossiers ci-dessous, ouvrez un patient existant, ou confirmez qu’il s’agit bien d’un nouveau patient.'
-            : '')
-        );
-        return false;
-      }
-      setDuplicateMatches([]);
-      setPendingRegPayload(null);
-      setError(formatApiError(err, 'Enregistrement du patient impossible'));
+      const conflict = resolveRegistrationConflict(err, payload);
+      setDuplicateMatches(conflict.matches);
+      setPendingRegPayload(conflict.pendingPayload);
+      setError(conflict.message);
       return false;
     } finally {
       setLoading(false);
