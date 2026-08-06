@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clinicalApi from '../../../../services/clinicalApi';
 import { useAuth } from '../../../../contexts/AuthContext.jsx';
 import { formatGNF } from '../../../../utils/appointmentPresentation.js';
-import { formatApiError } from '../../../../utils/apiError.js';
+import { formatApiError, isDuplicatePatientError, getApiErrorDetailObject } from '../../../../utils/apiError.js';
 import { SPECIALTY_OTHER_CODE } from '../../../../constants/clinicBranding.js';
 import { payerTypeLabel } from '../../../../constants/clinicBranding.js';
 import {
@@ -60,6 +60,8 @@ export function useReceptionDashboard() {
   const [refunds, setRefunds] = useState([]);
 
   const [regForm, setRegForm] = useState(EMPTY_REG);
+  const [duplicateMatches, setDuplicateMatches] = useState([]);
+  const [pendingRegPayload, setPendingRegPayload] = useState(null);
   const [admissionForm, setAdmissionForm] = useState(EMPTY_ADMISSION);
   const [admissionImagingCode, setAdmissionImagingCode] = useState('');
   const [admissionLabSearchQ, setAdmissionLabSearchQ] = useState('');
@@ -662,22 +664,17 @@ export function useReceptionDashboard() {
     return null;
   };
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    setMessage('');
-    try {
-      const manualAge = regForm.age_years !== '' ? Number(regForm.age_years) : null;
-      const resolvedDob =
-        regForm.date_of_birth_precision === 'year' && regForm.birth_year.length === 4
-          ? `${regForm.birth_year}-01-01`
-          : (regForm.date_of_birth_precision === 'full' && regForm.date_of_birth ? regForm.date_of_birth : null);
-      if (!resolvedDob && (manualAge == null || !Number.isFinite(manualAge))) {
-        setError('Indiquez une date de naissance, une année de naissance ou saisissez l’âge du patient.');
-        return;
-      }
-      const payload = {
+  const buildRegistrationPayload = (confirmDuplicate = false) => {
+    const manualAge = regForm.age_years !== '' ? Number(regForm.age_years) : null;
+    const resolvedDob =
+      regForm.date_of_birth_precision === 'year' && regForm.birth_year.length === 4
+        ? `${regForm.birth_year}-01-01`
+        : (regForm.date_of_birth_precision === 'full' && regForm.date_of_birth ? regForm.date_of_birth : null);
+    if (!resolvedDob && (manualAge == null || !Number.isFinite(manualAge))) {
+      return { error: 'Indiquez une date de naissance, une année de naissance ou saisissez l’âge du patient.' };
+    }
+    return {
+      payload: {
         first_name: regForm.first_name.trim(),
         last_name: regForm.last_name.trim(),
         date_of_birth: resolvedDob,
@@ -718,19 +715,90 @@ export function useReceptionDashboard() {
           company_name: regForm.payer_type === 'company' ? regForm.company_name || undefined : undefined,
           notes: regForm.payer_notes || undefined,
         },
-      };
+        confirm_duplicate: Boolean(confirmDuplicate),
+      },
+    };
+  };
+
+  const submitRegistration = async (payload) => {
+    setLoading(true);
+    setError('');
+    setMessage('');
+    try {
       const { data } = await clinicalApi.receptionHisRegister(payload);
+      setDuplicateMatches([]);
+      setPendingRegPayload(null);
       setRegistrationPrintForm({ ...regForm });
       setRegisteredPatient(data || null);
       setRegForm({ ...EMPTY_REG, registration_date: todayStr });
       setMessage(`Patient enregistré · N° dossier patient ${data?.patient_number || '—'}`);
       if (data?.id) await selectPatient(data);
       await loadDashboard();
+      return true;
     } catch (err) {
+      if (isDuplicatePatientError(err)) {
+        const detail = getApiErrorDetailObject(err);
+        const matches = Array.isArray(detail?.matches) ? detail.matches : [];
+        setDuplicateMatches(matches);
+        setPendingRegPayload({ ...payload, confirm_duplicate: true });
+        setError(
+          formatApiError(err, 'Un ou plusieurs patients similaires existent déjà')
+          + (matches.length
+            ? ' Vérifiez les dossiers ci-dessous, ouvrez un patient existant, ou confirmez qu’il s’agit bien d’un nouveau patient.'
+            : '')
+        );
+        return false;
+      }
+      setDuplicateMatches([]);
+      setPendingRegPayload(null);
       setError(formatApiError(err, 'Enregistrement du patient impossible'));
+      return false;
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    const built = buildRegistrationPayload(false);
+    if (built.error) {
+      setError(built.error);
+      return;
+    }
+    await submitRegistration(built.payload);
+  };
+
+  const handleConfirmDuplicateRegister = async () => {
+    const payload = pendingRegPayload || buildRegistrationPayload(true).payload;
+    if (!payload) {
+      setError('Impossible de confirmer l’enregistrement. Resaisissez le formulaire.');
+      return;
+    }
+    await submitRegistration({ ...payload, confirm_duplicate: true });
+  };
+
+  const openExistingDuplicate = async (match) => {
+    if (!match?.id) return;
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await clinicalApi.receptionHisGetPatient(match.id);
+      setDuplicateMatches([]);
+      setPendingRegPayload(null);
+      await selectPatient(data || match);
+      setTab('admission');
+      setMessage(`Patient existant ouvert · N° dossier patient ${(data || match)?.patient_number || '—'}`);
+    } catch (err) {
+      setError(formatApiError(err, 'Ouverture du patient existant impossible'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearDuplicatePanel = () => {
+    setDuplicateMatches([]);
+    setPendingRegPayload(null);
+    setError('');
   };
 
   const handleAdmission = async (e) => {
@@ -1113,6 +1181,11 @@ export function useReceptionDashboard() {
     updateReg,
     setRegForm,
     handleRegister,
+    handleConfirmDuplicateRegister,
+    openExistingDuplicate,
+    clearDuplicatePanel,
+    duplicateMatches,
+    pendingRegPayload,
     onPhotoFile,
     printRegistrationSheet,
     lastAdmission,

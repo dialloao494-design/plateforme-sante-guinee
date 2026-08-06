@@ -11,6 +11,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "test:unit": "node --test src/utils/apiError.test.mjs",
     "test:e2e": "playwright test",
     "test:offline": "node --test tests/offline-pure.test.mjs tests/offline-outbox.test.mjs"
   },

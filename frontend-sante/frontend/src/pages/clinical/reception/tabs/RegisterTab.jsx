@@ -9,6 +9,11 @@ import {
 
 export default function RegisterTab({
   handleRegister,
+  handleConfirmDuplicateRegister,
+  openExistingDuplicate,
+  clearDuplicatePanel,
+  duplicateMatches = [],
+  pendingRegPayload,
   loading,
   onPhotoFile,
   printRegistrationSheet,
@@ -182,6 +187,67 @@ export default function RegisterTab({
               {regForm.payer_type === 'company' && <label>Nom de l’entreprise<input value={regForm.company_name} onChange={(e) => updateReg({ company_name: e.target.value })} /></label>}
               <label>Notes<textarea rows={2} value={regForm.payer_notes} onChange={(e) => updateReg({ payer_notes: e.target.value })} /></label>
             </div></fieldset>
+            {duplicateMatches.length > 0 && (
+              <div className="reception-his-duplicate-panel" role="alert" data-testid="duplicate-patient-panel">
+                <h3>Patients similaires détectés</h3>
+                <p>
+                  Un enregistrement avec le même téléphone ou le même nom + date de naissance existe déjà.
+                  Ouvrez le dossier existant, ou confirmez uniquement s’il s’agit d’un nouveau patient distinct.
+                </p>
+                <table className="lab-his-queue-table">
+                  <thead>
+                    <tr>
+                      <th>N° dossier</th>
+                      <th>Nom</th>
+                      <th>Téléphone</th>
+                      <th>Date de naissance</th>
+                      <th>Correspondance</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {duplicateMatches.map((match) => (
+                      <tr key={match.id}>
+                        <td>{match.patient_number || match.id}</td>
+                        <td>{match.last_name} {match.first_name}</td>
+                        <td>{match.phone || '—'}</td>
+                        <td>{match.date_of_birth || '—'}</td>
+                        <td>{(match.match_reasons || []).join(', ') || '—'}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="clinical-btn clinical-btn--secondary"
+                            onClick={() => openExistingDuplicate(match)}
+                            disabled={loading}
+                          >
+                            Ouvrir
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="reception-his-duplicate-actions">
+                  <button
+                    type="button"
+                    className="clinical-btn"
+                    data-testid="confirm-duplicate-register"
+                    onClick={handleConfirmDuplicateRegister}
+                    disabled={loading || !pendingRegPayload}
+                  >
+                    Confirmer nouvel enregistrement
+                  </button>
+                  <button
+                    type="button"
+                    className="clinical-btn clinical-btn--secondary"
+                    onClick={clearDuplicatePanel}
+                    disabled={loading}
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            )}
             <button type="submit" className="clinical-btn" disabled={loading}>Enregistrer le patient</button>
             {registeredPatient && (
               <button
@@ -199,6 +265,7 @@ export default function RegisterTab({
                 onClick={() => {
                   setRegisteredPatient(null);
                   setRegistrationPrintForm(null);
+                  clearDuplicatePanel?.();
                   setRegForm({ ...EMPTY_REG, registration_date: todayStr });
                   setMessage('');
                 }}

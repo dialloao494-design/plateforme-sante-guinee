@@ -34,19 +34,43 @@ export function humanizeApiError(text) {
   return trimmed;
 }
 
+export function getApiErrorDetail(err) {
+  return err?.response?.data?.detail;
+}
+
+/** Structured FastAPI detail objects (e.g. duplicate_patient 409). */
+export function getApiErrorDetailObject(err) {
+  const detail = getApiErrorDetail(err);
+  if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+    return detail;
+  }
+  return null;
+}
+
+export function isDuplicatePatientError(err) {
+  const detail = getApiErrorDetailObject(err);
+  return err?.response?.status === 409 && detail?.code === 'duplicate_patient';
+}
+
 export function isPermissionDeniedError(err) {
-  const detail = String(err?.response?.data?.detail || err?.message || '');
+  const detail = getApiErrorDetail(err);
+  const text =
+    typeof detail === 'string'
+      ? detail
+      : detail && typeof detail === 'object' && !Array.isArray(detail)
+        ? String(detail.message || detail.code || '')
+        : String(err?.message || '');
   return (
-    /^Requires one of roles:/i.test(detail) ||
-    /^Operation requires one of roles:/i.test(detail) ||
-    /^Permission denied:/i.test(detail)
+    /^Requires one of roles:/i.test(text) ||
+    /^Operation requires one of roles:/i.test(text) ||
+    /^Permission denied:/i.test(text)
   );
 }
 
 export function formatApiError(err, fallback = 'Une erreur est survenue.') {
   if (!err) return fallback;
 
-  const detail = err?.response?.data?.detail;
+  const detail = getApiErrorDetail(err);
   if (typeof detail === 'string' && detail.trim()) {
     return humanizeApiError(detail.trim());
   }
@@ -56,6 +80,16 @@ export function formatApiError(err, fallback = 'Une erreur est survenue.') {
         .map((item) => (typeof item === 'string' ? item : item?.msg || JSON.stringify(item)))
         .join(' · ')
     );
+  }
+  if (detail && typeof detail === 'object') {
+    const objectMessage =
+      (typeof detail.message === 'string' && detail.message.trim()) ||
+      (typeof detail.detail === 'string' && detail.detail.trim()) ||
+      (typeof detail.error === 'string' && detail.error.trim()) ||
+      '';
+    if (objectMessage) {
+      return humanizeApiError(objectMessage);
+    }
   }
 
   const msg = err?.response?.data?.message;
