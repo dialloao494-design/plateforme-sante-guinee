@@ -1,10 +1,11 @@
-/** Per-tab auth persistence for non-secret profile state only. */
+/** Per-tab auth persistence — sessionStorage isolates each browser tab. */
 
 import { invalidateCache } from './apiCache.js';
 
 export const AUTH_STORAGE_KEYS = [
   'token',
   'access_token',
+  'refresh_token',
   'user_role',
   'user_id',
   'must_change_password',
@@ -15,7 +16,7 @@ export const AUTH_STORAGE_KEYS = [
 ];
 
 const PROFILE_STORAGE_KEYS = AUTH_STORAGE_KEYS.filter(
-  (key) => key !== 'token' && key !== 'access_token'
+  (key) => key !== 'token' && key !== 'access_token' && key !== 'refresh_token'
 );
 
 function tabStore() {
@@ -39,7 +40,11 @@ function migrateLegacyAuthOnce() {
   if (!tab || !legacy) {
     return;
   }
-  for (const key of PROFILE_STORAGE_KEYS) {
+  const hasTabToken = tab.getItem('token') || tab.getItem('access_token');
+  if (hasTabToken) {
+    return;
+  }
+  for (const key of AUTH_STORAGE_KEYS) {
     try {
       const value = legacy.getItem(key);
       if (value != null) {
@@ -100,13 +105,43 @@ export function removeAuthItem(key) {
 }
 
 export function getAuthToken() {
-  return null;
+  return getAuthItem('token') || getAuthItem('access_token');
 }
 
 export function setAuthToken(token) {
-  void token;
-  removeAuthItem('token');
-  removeAuthItem('access_token');
+  if (!token) {
+    removeAuthItem('token');
+    removeAuthItem('access_token');
+    return;
+  }
+  setAuthItem('token', token);
+  setAuthItem('access_token', token);
+}
+
+export function getRefreshToken() {
+  return getAuthItem('refresh_token');
+}
+
+export function setRefreshToken(token) {
+  if (!token) {
+    removeAuthItem('refresh_token');
+    return;
+  }
+  setAuthItem('refresh_token', token);
+}
+
+/** Persist SPA bearer session tokens returned by login/refresh JSON. */
+export function persistSessionTokens(payload = {}) {
+  const access =
+    payload?.access_token || payload?.accessToken || payload?.token || null;
+  const refresh = payload?.refresh_token || payload?.refreshToken || null;
+  if (access) {
+    setAuthToken(access);
+  }
+  if (refresh) {
+    setRefreshToken(refresh);
+  }
+  return Boolean(access);
 }
 
 export function touchSessionActivity() {

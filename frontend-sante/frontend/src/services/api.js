@@ -39,7 +39,10 @@ export const authAPI = {
   login,
   me: (opts) => getAuthenticatedUser(opts),
   refresh: async () => {
-    const { data } = await httpClient.post('/auth/refresh', {});
+    const { getRefreshToken, persistSessionTokens } = await import('../utils/authStorage.js');
+    const body = getRefreshToken() ? { refresh_token: getRefreshToken() } : {};
+    const { data } = await httpClient.post('/auth/refresh', body);
+    persistSessionTokens(data || {});
     return data;
   },
   logout: async () => {

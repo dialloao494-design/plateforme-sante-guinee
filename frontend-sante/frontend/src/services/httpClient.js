@@ -87,7 +87,12 @@ const ensureNginxApiPath = (url = '') => {
   return `/api${path}`;
 };
 
-import { clearAllClientStorage } from '../utils/authStorage.js';
+import {
+  clearAllClientStorage,
+  getAuthToken,
+  getRefreshToken,
+  persistSessionTokens,
+} from '../utils/authStorage.js';
 import { invalidateCache } from '../utils/apiCache.js';
 
 // Resolve API base URL from environment variable
@@ -255,7 +260,14 @@ httpClient.interceptors.request.use(
 
     config.withCredentials = true;
     config.headers = config.headers || {};
-    deleteConfigHeader(config.headers, 'Authorization');
+    // Prefer SPA bearer token (required when Safari blocks cross-site cookies).
+    // Fall back to cookie session + CSRF when no bearer is stored.
+    const bearer = getAuthToken();
+    if (bearer && !isPublicRequest(config.url || '')) {
+      setConfigHeader(config.headers, 'Authorization', `Bearer ${bearer}`);
+    } else {
+      deleteConfigHeader(config.headers, 'Authorization');
+    }
     attachCsrfHeader(config);
 
     // Attach a stable client request id so network retries / offline replay are
@@ -352,7 +364,11 @@ httpClient.interceptors.response.use(
       if (canRefresh) {
         try {
           config.__authRefreshAttempt = true;
-          await httpClient.post('/auth/refresh', {}, { __skipAuthRefresh: true });
+          const refreshBody = getRefreshToken() ? { refresh_token: getRefreshToken() } : {};
+          const refreshed = await httpClient.post('/auth/refresh', refreshBody, {
+            __skipAuthRefresh: true,
+          });
+          persistSessionTokens(refreshed?.data || {});
           return httpClient(config);
         } catch {
           /* fall through to logout below */

@@ -3,7 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api.js';
 import httpClient, { clearClientAuth, setAuthSessionReady } from '../services/httpClient.js';
 import { invalidateCache } from '../utils/apiCache.js';
-import { touchSessionActivity, getAuthItem, setAuthItem, removeAuthItem, clearLegacySharedAuth } from '../utils/authStorage.js';
+import {
+  touchSessionActivity,
+  getAuthItem,
+  setAuthItem,
+  removeAuthItem,
+  clearLegacySharedAuth,
+  persistSessionTokens,
+} from '../utils/authStorage.js';
 import { CACHE_TTL, getCached, setCached, buildCacheKey } from '../utils/apiCache.js';
 import {
   AUTH_BOOTSTRAP_TIMEOUT_MS,
@@ -11,6 +18,7 @@ import {
   toBootstrapErrorMessage,
   withTimeout,
 } from '../utils/authSession.js';
+import { toUserFriendlyLoginMessage as loginErrorMessage } from '../utils/loginErrors.js';
 import { useSessionTimeout } from '../hooks/useSessionTimeout.js';
 import SessionTimeoutModal from '../components/SessionTimeoutModal.jsx';
 import { startAutoSync, stopAutoSync } from '../offline/sync.js';
@@ -73,32 +81,7 @@ export const AuthProvider = ({ children }) => {
     removeAuthItem('password_reset_required');
   };
 
-  const toUserFriendlyLoginMessage = (err) => {
-    const status = err?.response?.status;
-    const detail = String(err?.response?.data?.detail || err?.response?.data?.message || err?.message || '').toLowerCase();
-    const code = String(err?.code || '').toLowerCase();
-
-    if (status === 401 || status === 400) {
-      return 'Email ou mot de passe incorrect';
-    }
-
-    if (
-      code === 'err_network' ||
-      code === 'econnrefused' ||
-      /failed to fetch|network error|network|econnrefused|connection refused|timeout|405 not allowed|nginx/.test(detail) ||
-      (!status && /login failed|network error/i.test(String(err?.message || '')))
-    ) {
-      return import.meta.env.PROD
-        ? 'Impossible de joindre le serveur. Réessayez dans un instant.'
-        : 'Impossible de joindre l’API. Vérifiez que le backend tourne sur http://127.0.0.1:8000.';
-    }
-
-    if (/missing authentication token/.test(detail)) {
-      return 'Session non établie après connexion. Réessayez ou videz le cache du navigateur.';
-    }
-
-    return 'Une erreur est survenue, veuillez réessayer';
-  };
+  const toUserFriendlyLoginMessage = (err) => loginErrorMessage(err);
 
   const normalizeAndStoreUser = useCallback((data) => {
     if (!data) {
@@ -226,7 +209,23 @@ export const AuthProvider = ({ children }) => {
       invalidateCache('/auth/me');
       clearLegacySharedAuth();
 
-      const meResponse = await fetchCurrentUser();
+      // Cross-origin SPA (Vercel → Railway): Safari/iOS often blocks third-party
+      // cookies. Persist bearer tokens from JSON so /auth/me and PDF print work.
+      const storedBearer = persistSessionTokens(loginPayload || {});
+      authDebug('establishSession: bearer stored', storedBearer);
+
+      let meResponse;
+      try {
+        meResponse = await fetchCurrentUser({ allowRefresh: true });
+      } catch (err) {
+        if (!storedBearer) {
+          const wrapped = new Error('Missing authentication token');
+          wrapped.response = err?.response;
+          wrapped.code = err?.code;
+          throw wrapped;
+        }
+        throw err;
+      }
       authDebug('establishSession: /auth/me ok', meResponse?.email, meResponse?.role);
       if (!meResponse) {
         throw new Error('Profil utilisateur vide après connexion');

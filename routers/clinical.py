@@ -363,6 +363,10 @@ def reset_staff_password(
     user.session_version = int(getattr(user, "session_version", 0) or 0) + 1
     # Force the staff member to choose their own password on next login.
     user.must_change_password = True
+    if hasattr(user, "failed_login_attempts"):
+        user.failed_login_attempts = 0
+    if hasattr(user, "locked_until"):
+        user.locked_until = None
     db.commit()
     return {"id": user.id, "email": user.email, "reset": True, "must_change_password": True}
 

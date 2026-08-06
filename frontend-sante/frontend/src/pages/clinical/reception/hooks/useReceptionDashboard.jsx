@@ -994,8 +994,13 @@ export function useReceptionDashboard() {
     try {
       const { data } = await clinicalApi.receptionHisInvoiceReceipt(invoiceId);
       window.open(URL.createObjectURL(data), '_blank');
-    } catch {
-      setError('Impossible d’imprimer le reçu.');
+    } catch (err) {
+      const status = err?.response?.status;
+      setError(
+        status === 401 || status === 403
+          ? 'Session expirée : reconnectez-vous puis réessayez l’impression du reçu.'
+          : formatApiError(err, 'Impossible d’imprimer le reçu.')
+      );
     }
   };
 
@@ -1003,8 +1008,13 @@ export function useReceptionDashboard() {
     try {
       const { data } = await clinicalApi.receptionHisRefundReceipt(refundId);
       window.open(URL.createObjectURL(data), '_blank');
-    } catch {
-      setError('Impossible d’imprimer le reçu de remboursement.');
+    } catch (err) {
+      const status = err?.response?.status;
+      setError(
+        status === 401 || status === 403
+          ? 'Session expirée : reconnectez-vous puis réessayez l’impression du reçu.'
+          : formatApiError(err, 'Impossible d’imprimer le reçu de remboursement.')
+      );
     }
   };
 

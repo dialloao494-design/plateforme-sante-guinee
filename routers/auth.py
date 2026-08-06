@@ -208,13 +208,17 @@ def authenticate_user(email: str, password: str, db: Session, attempt_limit: int
 
 
 def _json_tokens_enabled() -> bool:
+    """Return bearer tokens in login/refresh JSON for SPA clients.
+
+    The production frontend (Vercel) and API (Railway) are cross-site. Safari/iOS
+    Intelligent Tracking Prevention blocks third-party cookies, so cookie-only
+    auth breaks clinic login and PDF printing. Always include tokens in JSON
+    unless AUTH_JSON_TOKENS is explicitly set to false.
+    """
     override = os.getenv("AUTH_JSON_TOKENS")
     if override is not None:
         return override.strip().lower() in {"1", "true", "yes", "on"}
-    return (os.getenv("ENVIRONMENT") or "development").strip().lower() not in {
-        "production",
-        "staging",
-    }
+    return True
 
 
 def _create_access_token_for_user(user: User) -> tuple[str, str]:
