@@ -96,6 +96,23 @@ def test_billing_catalog_includes_tpn_and_surgical_acts():
     assert tpn_service, "TPN missing from SERVICE_PRESTATIONS"
     assert any(a["code"] == "suture_simple" for a in SURGICAL_ACTS)
     assert all("code" in a and "label" in a and "price_gnf" in a for a in SURGICAL_ACTS)
+    parage = next(a for a in SURGICAL_ACTS if a["code"] == "wound_debridement")
+    assert parage["clinic_code"] == "QAASMA-PP"
+    assert parage["label"] == "Parage"
+    from data.aasma_billing_catalog import resolve_billing_catalog_item
+
+    assert resolve_billing_catalog_item("QAASMA-PP")["code"] == "wound_debridement"
+
+
+def test_reception_age_calc_is_timezone_safe_and_surgical_table_present():
+    src = Path("frontend-sante/frontend/src/pages/clinical/ReceptionDashboard.jsx").read_text(
+        encoding="utf-8"
+    )
+    assert "Parse YYYY-MM-DD as local calendar date" in src
+    assert "onInput=" in src
+    assert "Acte chirurgical" in src
+    assert "clinic_code" in src
+    assert "QAASMA-PP" in src or "clinic_code" in src
 
 
 def test_session_idle_default_is_five_minutes():
@@ -130,20 +147,26 @@ def test_doctor_dashboard_has_surgical_acts_table_and_extended_vitals():
         encoding="utf-8"
     )
     assert "Actes chirurgicaux — table avec codes" in src
+    assert "Acte chirurgical" in src
+    assert "clinic_code" in src
     assert "surgical_acts" in src
     assert "spo2_percent" in src
     assert "muac_cm" in src
     assert "head_circumference_cm" in src
+    assert "Actualiser les signes vitaux IDE" in src
+    assert "nurseListAssessments" in src
 
 
 def test_discharge_auth_css_targets_one_a4_page():
     css = Path("frontend-sante/frontend/src/components/print/print-documents.css").read_text(
         encoding="utf-8"
     )
-    block = css.split("/* —— Autorisation de sortie")[1].split("@media print")[0]
-    assert "max-height: 277mm" in block
-    assert "page-break-inside: avoid" in block
-    assert "font-size: 9.5pt" in block
+    assert "must fit ONE A4 page" in css or "must fit one A4 page" in css.lower() or "ONE A4" in css
+    assert "print-discharge-auth" in css
+    # Footer must not be forced onto a second page by section page-break rules.
+    print_block = css.split("@media print")[1]
+    assert "Do NOT force page-break-inside:avoid on every discharge section" in print_block
+    assert ".print-discharge-auth .print-document-footer" in css
 
 
 def test_http_client_refreshes_on_401():

@@ -33,12 +33,23 @@ const EMPTY_FORM = {
 
 const calcAge = (dob) => {
   if (!dob) return '';
-  const b = new Date(dob);
-  if (Number.isNaN(b.getTime())) return '';
+  const raw = String(dob).trim().slice(0, 10);
+  const parts = raw.split('-').map((x) => Number(x));
+  let year;
+  let month;
+  let day;
+  if (parts.length === 3 && parts.every((n) => Number.isFinite(n) && n > 0)) {
+    [year, month, day] = parts;
+  } else {
+    const b = new Date(dob);
+    if (Number.isNaN(b.getTime())) return '';
+    year = b.getFullYear();
+    month = b.getMonth() + 1;
+    day = b.getDate();
+  }
   const n = new Date();
-  let age = n.getFullYear() - b.getFullYear();
-  const m = n.getMonth() - b.getMonth();
-  if (m < 0 || (m === 0 && n.getDate() < b.getDate())) age -= 1;
+  let age = n.getFullYear() - year;
+  if (n.getMonth() + 1 < month || (n.getMonth() + 1 === month && n.getDate() < day)) age -= 1;
   return age >= 0 ? String(age) : '';
 };
 

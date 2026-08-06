@@ -251,13 +251,20 @@ export default function DoctorClinicalDashboard() {
       setSearchResults([]);
       setShowDischargePrint(false);
 
-      const [idRes, assessRes, histRes] = await Promise.allSettled([
+      const [idRes, assessRes, histListRes, histRes] = await Promise.allSettled([
         clinicalApi.doctorPatientIdentity(patientId),
         clinicalApi.nurseGetAssessment(patientId),
+        clinicalApi.nurseListAssessments(patientId),
         clinicalApi.doctorPatientConsultations(patientId),
       ]);
       if (idRes.status === 'fulfilled') setIdentity(idRes.value.data);
-      setNurseAssessment(assessRes.status === 'fulfilled' ? assessRes.value.data || null : null);
+      // Prefer latest nurse assessment so doctor always sees IDE vitals when recorded.
+      let latestNurse = assessRes.status === 'fulfilled' ? assessRes.value.data || null : null;
+      if (!latestNurse && histListRes.status === 'fulfilled') {
+        const rows = histListRes.value.data || [];
+        latestNurse = rows.length ? rows[0] : null;
+      }
+      setNurseAssessment(latestNurse);
       setHistory(histRes.status === 'fulfilled' ? histRes.value.data || [] : []);
       refreshServiceRequests(patientId);
       setMessage(`Consultation #${consult.id} ouverte`);
@@ -355,10 +362,11 @@ export default function DoctorClinicalDashboard() {
     setError('');
     try {
       for (const act of selectedSurgicalActs) {
+        const clinicCode = act.clinic_code || act.code;
         await clinicalApi.doctorCreateServiceRequest({
           patient_id: consultation.patient_id,
           service_category: 'surgery',
-          service_name: `${act.code} — ${act.label}`.slice(0, 255),
+          service_name: `${clinicCode} — ${act.label}`.slice(0, 255),
           catalog_code: act.code,
         });
       }
@@ -630,7 +638,8 @@ export default function DoctorClinicalDashboard() {
     return acts.filter(
       (a) =>
         (a.label || '').toLowerCase().includes(q) ||
-        (a.code || '').toLowerCase().includes(q)
+        (a.code || '').toLowerCase().includes(q) ||
+        (a.clinic_code || '').toLowerCase().includes(q)
     );
   })();
 
@@ -821,7 +830,32 @@ export default function DoctorClinicalDashboard() {
                     </p>
                   </>
                 ) : (
-                  <p className="clinical-hint">Aucune évaluation infirmière disponible.</p>
+                  <div>
+                    <p className="clinical-hint">Aucune évaluation infirmière disponible pour ce patient.</p>
+                    {consultation?.patient_id ? (
+                      <button
+                        type="button"
+                        className="clinical-btn secondary"
+                        disabled={busy}
+                        onClick={async () => {
+                          try {
+                            const [{ data: latest }, { data: rows }] = await Promise.all([
+                              clinicalApi.nurseGetAssessment(consultation.patient_id),
+                              clinicalApi.nurseListAssessments(consultation.patient_id),
+                            ]);
+                            setNurseAssessment(latest || (rows && rows[0]) || null);
+                            setMessage(latest || (rows && rows[0])
+                              ? 'Signes vitaux infirmiers actualisés.'
+                              : 'Toujours aucune évaluation IDE pour ce patient.');
+                          } catch (err) {
+                            setError(formatApiError(err, 'Impossible de charger les signes vitaux IDE'));
+                          }
+                        }}
+                      >
+                        Actualiser les signes vitaux IDE
+                      </button>
+                    ) : null}
+                  </div>
                 )}
               </div>
             </section>
@@ -1060,14 +1094,14 @@ export default function DoctorClinicalDashboard() {
                   </div>
                 </div>
 
-                {/* Actes chirurgicaux */}
+                {/* Actes chirurgicaux — tableau N° / Acte / code (demande clinique) */}
                 <div className="doctor-service-block">
                   <h4>Actes chirurgicaux — table avec codes</h4>
                   <input
                     className="doctor-service-search"
                     value={surgicalSearch}
                     onChange={(e) => setSurgicalSearch(e.target.value)}
-                    placeholder="Rechercher un acte (code ou libellé)…"
+                    placeholder="Rechercher un acte (Parage, QAASMA-PP…)…"
                     aria-label="Rechercher acte chirurgical"
                   />
                   {(catalog.surgical_acts || []).length === 0 ? (
@@ -1078,13 +1112,13 @@ export default function DoctorClinicalDashboard() {
                         <thead>
                           <tr>
                             <th aria-label="Sélection" />
+                            <th>N°</th>
+                            <th>Acte chirurgical</th>
                             <th>Code</th>
-                            <th>Acte</th>
-                            <th>Tarif (GNF)</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {surgicalResults.map((act) => (
+                          {surgicalResults.map((act, idx) => (
                             <tr key={act.code}>
                               <td>
                                 <input
@@ -1094,9 +1128,9 @@ export default function DoctorClinicalDashboard() {
                                   aria-label={`Sélectionner ${act.label}`}
                                 />
                               </td>
-                              <td><code>{act.code}</code></td>
+                              <td>{idx + 1}</td>
                               <td>{act.label}</td>
-                              <td>{Number(act.price_gnf || 0).toLocaleString('fr-FR')}</td>
+                              <td><code>{act.clinic_code || act.code}</code></td>
                             </tr>
                           ))}
                         </tbody>
@@ -1109,7 +1143,7 @@ export default function DoctorClinicalDashboard() {
                   {selectedSurgicalActs.length > 0 && (
                     <p className="clinical-hint">
                       Sélectionnés ({selectedSurgicalActs.length}) :{' '}
-                      {selectedSurgicalActs.map((a) => `${a.code} — ${a.label}`).join(', ')}
+                      {selectedSurgicalActs.map((a) => `${a.clinic_code || a.code} — ${a.label}`).join(', ')}
                     </p>
                   )}
                   <button
