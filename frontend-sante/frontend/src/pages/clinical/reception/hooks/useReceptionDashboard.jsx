@@ -22,7 +22,6 @@ import {
   SERVICE_REQUEST_DEPARTMENTS,
   SERVICE_REQUEST_STATUSES,
   TABS,
-  todayStr,
   emptyPaymentLine,
 } from '../constants.js';
 import {
@@ -34,6 +33,10 @@ import {
 import SpecialtyPicker from '../components/SpecialtyPicker.jsx';
 import { useBillingCatalogFilters } from './useBillingCatalogFilters.js';
 import { buildInvoiceItemPayload } from './buildInvoiceItemPayload.js';
+import {
+  isCompleteRegistrationResponse,
+  REGISTRATION_INCOMPLETE_MESSAGE,
+} from '../registrationSuccess.js';
 export function useReceptionDashboard() {
   const { user } = useAuth();
   const searchRef = useRef(null);
@@ -171,6 +174,7 @@ export function useReceptionDashboard() {
       quantity: 1,
       unit_price_gnf: price,
       catalog_code: code !== SPECIALTY_OTHER_CODE ? code : undefined,
+      price_variant: code !== SPECIALTY_OTHER_CODE ? 'specialized' : undefined,
     });
     updateBilling({ department: 'Consultation spécialisée' });
     syncSpecialtyCode('');
@@ -185,12 +189,18 @@ export function useReceptionDashboard() {
     const svc = (billingCatalog?.consultation_services || []).find((c) => c.code === 'emergency_consultation');
     const price = Number(spec?.emergency_price_gnf ?? svc?.price_gnf ?? 150000);
     const desc = label ? `Consultation d'urgences — ${label}` : (svc?.label || "Consultation d'urgences");
+    // Always send a catalog code: specialty code + emergency variant, or generic emergency.
+    const catalogCode =
+      code && code !== SPECIALTY_OTHER_CODE
+        ? code
+        : (svc?.code || 'emergency_consultation');
     addBillingLine({
       charge_type: svc?.charge_type || 'consultation',
       description: desc,
       quantity: 1,
       unit_price_gnf: price,
-      catalog_code: code && code !== SPECIALTY_OTHER_CODE ? code : undefined,
+      catalog_code: catalogCode,
+      price_variant: 'emergency',
     });
     updateBilling({ department: "Consultation urgences" });
     setError('');
@@ -727,12 +737,19 @@ export function useReceptionDashboard() {
     setMessage('');
     try {
       const { data } = await clinicalApi.receptionHisRegister(payload);
+      // Offline/optimistic queue returns 202 without a real dossier number — never
+      // present that as a successful registration (clinic sees "data taken, no ID").
+      if (!isCompleteRegistrationResponse(data)) {
+        setError(REGISTRATION_INCOMPLETE_MESSAGE);
+        return false;
+      }
       setDuplicateMatches([]);
       setPendingRegPayload(null);
       setRegistrationPrintForm({ ...regForm });
-      setRegisteredPatient(data || null);
-      setRegForm({ ...EMPTY_REG, registration_date: todayStr });
-      setMessage(`Patient enregistré · N° dossier patient ${data?.patient_number || '—'}`);
+      setRegisteredPatient(data);
+      // Keep identity fields filled so staff can see name + generated ID together.
+      // Form clears only via « Nouvel enregistrement ».
+      setMessage(`Patient enregistré · N° dossier patient ${data.patient_number}`);
       if (data?.id) await selectPatient(data);
       await loadDashboard();
       return true;

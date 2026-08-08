@@ -177,14 +177,26 @@ def _charge_type_for_catalog_bucket(bucket: str) -> str:
     return mapping.get(bucket, "procedure")
 
 
-def resolve_billing_catalog_item(catalog_code: str | None) -> dict | None:
+def resolve_billing_catalog_item(
+    catalog_code: str | None,
+    *,
+    price_variant: str | None = None,
+) -> dict | None:
     """Resolve an authoritative AASMA catalog row by code.
 
     Returns dict with keys: code, label, price_gnf, charge_type, bucket.
+
+    ``price_variant`` selects specialized vs emergency tariffs for specialty codes:
+    - ``None`` / ``"specialized"`` → Consultation spécialisée + price_gnf
+    - ``"emergency"`` → Consultation d'urgences + emergency_price_gnf
     """
     code = (catalog_code or "").strip()
     if not code:
         return None
+
+    variant = (price_variant or "").strip().lower() or None
+    if variant not in (None, "specialized", "emergency"):
+        variant = None
 
     for row in CONSULTATION_SERVICES:
         if row.get("code") == code:
@@ -198,12 +210,32 @@ def resolve_billing_catalog_item(catalog_code: str | None) -> dict | None:
 
     for row in SPECIALIZED_SPECIALTIES:
         if row.get("code") == code:
+            if variant == "emergency":
+                return {
+                    "code": code,
+                    "label": f"Consultation d'urgences — {row['label']}",
+                    "price_gnf": int(
+                        row.get("emergency_price_gnf")
+                        or next(
+                            (
+                                c.get("price_gnf")
+                                for c in CONSULTATION_SERVICES
+                                if c.get("code") == "emergency_consultation"
+                            ),
+                            150_000,
+                        )
+                    ),
+                    "charge_type": "consultation",
+                    "bucket": "specialty",
+                    "price_variant": "emergency",
+                }
             return {
                 "code": code,
                 "label": f"Consultation spécialisée — {row['label']}",
                 "price_gnf": int(row.get("price_gnf") or 0),
                 "charge_type": "consultation",
                 "bucket": "specialty",
+                "price_variant": "specialized",
             }
 
     for row in IMAGING_EXAMINATIONS:

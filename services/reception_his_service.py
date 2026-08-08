@@ -229,8 +229,9 @@ class ReceptionHisService:
             registration_date=payload.registration_date,
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        # Single commit: flush to allocate id, assign dossier number, then commit once
+        # so a patient is never persisted without patient_number.
+        db.flush()
         patient.patient_number = _patient_number(clinic_id, patient.id)
         db.commit()
         db.refresh(patient)
@@ -484,7 +485,16 @@ class ReceptionHisService:
         price_audit = None
 
         if catalog_code:
-            cat = resolve_billing_catalog_item(catalog_code)
+            price_variant = (getattr(row, "price_variant", None) or "").strip().lower() or None
+            # Infer emergency pricing when the client description clearly says urgences
+            # but price_variant was omitted (older frontends / partial payloads).
+            if price_variant not in ("specialized", "emergency"):
+                desc_l = description.lower()
+                if "urgence" in desc_l or "urgences" in desc_l:
+                    price_variant = "emergency"
+                else:
+                    price_variant = None
+            cat = resolve_billing_catalog_item(catalog_code, price_variant=price_variant)
             if not cat:
                 raise HTTPException(status_code=400, detail=f"Code catalogue inconnu: {catalog_code}")
             description = cat["label"]
@@ -504,6 +514,7 @@ class ReceptionHisService:
                     "catalog_price_gnf": catalog_price,
                     "negotiated_price_gnf": unit,
                     "reason": override_reason,
+                    "price_variant": cat.get("price_variant"),
                 }
             else:
                 unit = catalog_price

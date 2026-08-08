@@ -240,6 +240,8 @@ class ReceptionInvoiceLineItem(BaseModel):
     # DSR number (e.g. DSR-017-000044) when billing a service request.
     source_ref: Optional[str] = None
     catalog_code: Optional[str] = Field(None, max_length=64)
+    # Distinguishes specialized vs emergency tariffs when catalog_code is a specialty.
+    price_variant: Optional[Literal["specialized", "emergency"]] = None
     price_override_reason: Optional[str] = Field(None, max_length=255)
 
 

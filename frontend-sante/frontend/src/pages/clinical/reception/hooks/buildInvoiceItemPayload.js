@@ -1,6 +1,7 @@
 /**
  * Build a server-safe invoice line payload.
  * Catalog lines omit unit_price_gnf unless an explicit override reason is provided.
+ * Specialty lines must send price_variant so emergency ≠ specialized tariffs.
  */
 export function buildInvoiceItemPayload(line) {
   const payload = {
@@ -15,6 +16,10 @@ export function buildInvoiceItemPayload(line) {
   }
   if (line.source_ref) {
     payload.source_ref = line.source_ref;
+  }
+  const variant = (line.price_variant || '').trim().toLowerCase();
+  if (variant === 'emergency' || variant === 'specialized') {
+    payload.price_variant = variant;
   }
 
   const overrideReason = (line.price_override_reason || '').trim();

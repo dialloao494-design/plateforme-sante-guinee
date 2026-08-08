@@ -24,9 +24,11 @@ test('reception can register a new patient end to end', async ({ page }) => {
     phone: `622${String(unique).slice(-6)}`,
   });
 
-  await page.getByRole('button', { name: 'Enregistrer le patient' }).click();
+  await page.getByTestId('reception-register-submit').click();
 
-  await expect(page.getByText(/Patient enregistré · N° dossier patient/)).toBeVisible();
+  await expect(page.getByText(/Patient enregistré · N° dossier patient PAT-/i)).toBeVisible();
+  await expect(page.getByTestId('reception-patient-number')).toContainText(/PAT-\d{3}-\d{6}/);
+  await expect(page.getByTestId('reception-registration-success')).toBeVisible();
 });
 
 test('reception duplicate patient shows matches and allow confirm', async ({ page }) => {
@@ -42,17 +44,17 @@ test('reception duplicate patient shows matches and allow confirm', async ({ pag
   };
 
   await fillRegistrationForm(page, shared);
-  await page.getByRole('button', { name: 'Enregistrer le patient' }).click();
-  await expect(page.getByText(/Patient enregistré · N° dossier patient/)).toBeVisible();
+  await page.getByTestId('reception-register-submit').click();
+  await expect(page.getByTestId('reception-patient-number')).toContainText(/PAT-\d{3}-\d{6}/);
 
   await page.getByRole('button', { name: 'Nouvel enregistrement' }).click();
   await fillRegistrationForm(page, shared);
-  await page.getByRole('button', { name: 'Enregistrer le patient' }).click();
+  await page.getByTestId('reception-register-submit').click();
 
   await expect(page.getByTestId('duplicate-patient-panel')).toBeVisible();
-  await expect(page.getByText(/patients similaires/i)).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Patients similaires détectés/i })).toBeVisible();
   await expect(page.getByText(/Request failed with status code 409/i)).toHaveCount(0);
 
   await page.getByTestId('confirm-duplicate-register').click();
-  await expect(page.getByText(/Patient enregistré · N° dossier patient/)).toBeVisible();
+  await expect(page.getByTestId('reception-patient-number')).toContainText(/PAT-\d{3}-\d{6}/);
 });
