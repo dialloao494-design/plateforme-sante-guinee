@@ -30,11 +30,19 @@ export default function RegisterTab({
           <form className="clinical-card reception-his-form-sheet" onSubmit={handleRegister}>
             <h2>Enregistrement patient</h2>
             <GeneratedIdBanner label="N° dossier patient généré" value={registeredPatient?.patient_number} />
-            {registeredPatient && (
-              <div className="reception-his-qr-block">
+            {registeredPatient?.patient_number && (
+              <div
+                className="reception-his-qr-block"
+                data-testid="reception-registration-success"
+              >
                 <div>
-                  <p><strong>N° dossier patient :</strong> {registeredPatient.patient_number || '—'}</p>
+                  <p data-testid="reception-patient-number">
+                    <strong>N° dossier patient :</strong> {registeredPatient.patient_number}
+                  </p>
                   <p><strong>QR :</strong> {registeredPatient.qr_token || '—'}</p>
+                  <p className="clinical-hint">
+                    Identifiant généré. Utilisez « Nouvel enregistrement » pour saisir un autre patient.
+                  </p>
                 </div>
                 {registeredPatient.qr_token && <img src={qrImageUrl(registeredPatient.qr_token)} alt="QR patient" width={140} height={140} />}
               </div>
@@ -248,7 +256,14 @@ export default function RegisterTab({
                 </div>
               </div>
             )}
-            <button type="submit" className="clinical-btn" disabled={loading}>Enregistrer le patient</button>
+            <button
+              type="submit"
+              className="clinical-btn"
+              disabled={loading || Boolean(registeredPatient?.patient_number)}
+              data-testid="reception-register-submit"
+            >
+              Enregistrer le patient
+            </button>
             {registeredPatient && (
               <button
                 type="button"
