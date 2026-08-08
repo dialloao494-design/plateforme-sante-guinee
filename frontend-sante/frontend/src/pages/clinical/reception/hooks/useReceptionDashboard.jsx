@@ -22,7 +22,6 @@ import {
   SERVICE_REQUEST_DEPARTMENTS,
   SERVICE_REQUEST_STATUSES,
   TABS,
-  todayStr,
   emptyPaymentLine,
 } from '../constants.js';
 import {
