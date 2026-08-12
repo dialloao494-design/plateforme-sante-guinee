@@ -144,7 +144,8 @@ const ROLE_MATRIX = [
     label: 'PEV / Vaccination',
     roleKey: 'pev',
     dashboardTestId: 'pev-dashboard',
-    heading: /PEV \/ Vaccination/,
+    // Page title is h1; nav may also expose a PEV heading — scope to level 1.
+    heading: { name: /PEV \/ Vaccination/, level: 1 },
     route: '/clinical/pev',
     buttons: [{ testId: 'pev-tab-record', label: 'Enregistrement tab' }],
   },
@@ -192,7 +193,10 @@ for (const entry of ROLE_MATRIX) {
     await expect(page).toHaveURL(new RegExp(entry.route.replace(/\//g, '\\/')));
 
     await expect(page.getByTestId(entry.dashboardTestId)).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByRole('heading', { name: entry.heading })).toBeVisible();
+    const headingOpts = entry.heading && typeof entry.heading === 'object' && !(entry.heading instanceof RegExp)
+      ? entry.heading
+      : { name: entry.heading };
+    await expect(page.getByRole('heading', headingOpts)).toBeVisible();
 
     for (const btn of entry.buttons) {
       if (typeof btn.prepare === 'function') {
