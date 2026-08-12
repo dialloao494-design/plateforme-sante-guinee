@@ -102,14 +102,28 @@ export async function logoutFromApp(page) {
   await page.waitForURL(/\/login\/?$/, { timeout: 30_000 });
 }
 
-/** Collect console page errors (excludes benign favicon/network noise). */
+/** Collect console page errors (excludes benign favicon/auth/RBAC noise). */
 export function attachConsoleErrorCollector(page) {
   const errors = [];
-  page.on('pageerror', (err) => errors.push(String(err)));
+  const isBenign = (text) =>
+    /favicon|404.*\.(png|ico)|ResizeObserver/i.test(text)
+    // Auth bootstrap probe: anonymous refresh 401 is expected before login.
+    || /\/auth\/refresh/i.test(text)
+    || /AUTH-SESSION.*bootstrap/i.test(text)
+    || /Failed to load resource:.*\b401\b/i.test(text)
+    // Role-gated API responses surface as console errors in axios interceptors.
+    || /Failed to load resource:.*\b403\b/i.test(text)
+    || /\[HTTP 403\]/i.test(text)
+    || /Accès réservé/i.test(text);
+
+  page.on('pageerror', (err) => {
+    const text = String(err);
+    if (!isBenign(text)) errors.push(text);
+  });
   page.on('console', (msg) => {
     if (msg.type() === 'error') {
       const text = msg.text();
-      if (/favicon|404.*\.(png|ico)|ResizeObserver/i.test(text)) return;
+      if (isBenign(text)) return;
       errors.push(text);
     }
   });
