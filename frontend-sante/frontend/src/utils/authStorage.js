@@ -37,7 +37,7 @@ let legacyMigrated = false;
 export function isSameOriginApi() {
   try {
     const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
-    const fromProcess = (typeof process !== 'undefined' && process.env) || {};
+    const fromProcess = (typeof globalThis !== 'undefined' && globalThis.process && globalThis.process.env) || {};
     const same =
       env.VITE_SAME_ORIGIN_API
       || fromProcess.VITE_SAME_ORIGIN_API

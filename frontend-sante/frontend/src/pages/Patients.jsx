@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { usePatientContext } from '../contexts/PatientContext.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import PatientList from '../components/PatientList.jsx';

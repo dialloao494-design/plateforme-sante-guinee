@@ -15,9 +15,9 @@ from sqlalchemy import create_engine, inspect, text
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_single_alembic_head_still_0027():
+def test_single_alembic_head_still_0028():
     script = ScriptDirectory.from_config(Config(str(ROOT / "alembic.ini")))
-    assert script.get_heads() == ["20260806_0027_api_client_idempotency"]
+    assert script.get_heads() == ["20260812_0028_patient_number_integrity"]
 
 
 def test_upgrade_from_0016_with_existing_0017_tables(tmp_path):
@@ -171,7 +171,7 @@ def test_upgrade_from_0016_with_existing_0017_tables(tmp_path):
         rev = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
         role = conn.execute(text("SELECT role FROM users WHERE id = 1")).scalar()
         user_count = conn.execute(text("SELECT COUNT(*) FROM users")).scalar()
-    assert rev == "20260806_0027_api_client_idempotency"
+    assert rev == "20260812_0028_patient_number_integrity"
     assert role == "nurse"
     assert user_count == 1
     engine.dispose()

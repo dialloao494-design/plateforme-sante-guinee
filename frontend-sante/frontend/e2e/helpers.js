@@ -1,51 +1,52 @@
+/* eslint-env node */
 /** Shared Playwright helpers for stable login against cookie-auth SPA. */
 
 /** @typedef {{ email: string, password: string, homePath: RegExp, skipReason?: string }} RoleCredential */
 
 export const ROLE_CREDENTIALS = {
   reception: {
-    email: process.env.E2E_RECEPTION_EMAIL || 'reception@pilot.local',
-    password: process.env.E2E_RECEPTION_PASSWORD || 'ReceptionPilot1!',
+    email: (globalThis.process?.env || {}).E2E_RECEPTION_EMAIL || 'reception@pilot.local',
+    password: (globalThis.process?.env || {}).E2E_RECEPTION_PASSWORD || 'ReceptionPilot1!',
     homePath: /\/clinical\/reception/,
   },
   cashier: {
-    email: process.env.E2E_CASHIER_EMAIL || 'cashier@pilot.local',
-    password: process.env.E2E_CASHIER_PASSWORD || 'CashierPilot1!',
+    email: (globalThis.process?.env || {}).E2E_CASHIER_EMAIL || 'cashier@pilot.local',
+    password: (globalThis.process?.env || {}).E2E_CASHIER_PASSWORD || 'CashierPilot1!',
     homePath: /\/clinical\/reception/,
   },
   doctor: {
-    email: process.env.E2E_DOCTOR_EMAIL || 'dr.pilot@pilot.local',
-    password: process.env.E2E_DOCTOR_PASSWORD || 'DoctorPilot1!',
+    email: (globalThis.process?.env || {}).E2E_DOCTOR_EMAIL || 'dr.pilot@pilot.local',
+    password: (globalThis.process?.env || {}).E2E_DOCTOR_PASSWORD || 'DoctorPilot1!',
     homePath: /\/clinical\/doctor/,
   },
   lab: {
-    email: process.env.E2E_LAB_EMAIL || 'lab@pilot.local',
-    password: process.env.E2E_LAB_PASSWORD || 'LabPilot123!',
+    email: (globalThis.process?.env || {}).E2E_LAB_EMAIL || 'lab@pilot.local',
+    password: (globalThis.process?.env || {}).E2E_LAB_PASSWORD || 'LabPilot123!',
     homePath: /\/clinical\/lab/,
   },
   pharmacy: {
-    email: process.env.E2E_PHARMACY_EMAIL || 'pharmacy@pilot.local',
-    password: process.env.E2E_PHARMACY_PASSWORD || 'PharmacyPilot1!',
+    email: (globalThis.process?.env || {}).E2E_PHARMACY_EMAIL || 'pharmacy@pilot.local',
+    password: (globalThis.process?.env || {}).E2E_PHARMACY_PASSWORD || 'PharmacyPilot1!',
     homePath: /\/clinical\/pharmacy/,
   },
   nurse: {
-    email: process.env.E2E_NURSE_EMAIL || 'nurse@pilot.local',
-    password: process.env.E2E_NURSE_PASSWORD || 'NursePilot1!',
+    email: (globalThis.process?.env || {}).E2E_NURSE_EMAIL || 'nurse@pilot.local',
+    password: (globalThis.process?.env || {}).E2E_NURSE_PASSWORD || 'NursePilot1!',
     homePath: /\/clinical\/nurse/,
   },
   nutrition: {
-    email: process.env.E2E_NUTRITION_EMAIL || 'nutrition@pilot.local',
-    password: process.env.E2E_NUTRITION_PASSWORD || 'NutritionPilot1!',
+    email: (globalThis.process?.env || {}).E2E_NUTRITION_EMAIL || 'nutrition@pilot.local',
+    password: (globalThis.process?.env || {}).E2E_NUTRITION_PASSWORD || 'NutritionPilot1!',
     homePath: /\/clinical\/nutrition/,
   },
   pev: {
-    email: process.env.E2E_PEV_EMAIL || 'pev@pilot.local',
-    password: process.env.E2E_PEV_PASSWORD || 'PevPilot1!',
+    email: (globalThis.process?.env || {}).E2E_PEV_EMAIL || 'pev@pilot.local',
+    password: (globalThis.process?.env || {}).E2E_PEV_PASSWORD || 'PevPilot1!',
     homePath: /\/clinical\/pev/,
   },
   admin: {
-    email: process.env.E2E_ADMIN_EMAIL || 'admin@pilot.local',
-    password: process.env.E2E_ADMIN_PASSWORD || 'AdminPilot1!',
+    email: (globalThis.process?.env || {}).E2E_ADMIN_EMAIL || 'admin@pilot.local',
+    password: (globalThis.process?.env || {}).E2E_ADMIN_PASSWORD || 'AdminPilot1!',
     homePath: /\/clinical\/admin/,
   },
 };
