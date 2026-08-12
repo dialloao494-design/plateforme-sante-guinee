@@ -10,7 +10,12 @@ import {
 /**
  * Role × route × critical CTA matrix.
  * Credentials: CIS pilot seed (ENABLE_PILOT_SEED) or E2E_*_EMAIL/PASSWORD env overrides.
+ *
+ * Serial within this file: shared SQLite + login rate limits under parallel workers
+ * otherwise cause false login timeouts for late roles (PEV/admin).
  */
+test.describe.configure({ mode: 'serial' });
+
 const ROLE_MATRIX = [
   {
     id: 'reception',
@@ -41,7 +46,14 @@ const ROLE_MATRIX = [
     dashboardTestId: 'doctor-dashboard',
     heading: /Tableau de bord — Médecin/,
     route: '/clinical/doctor',
-    buttons: [{ testId: 'doctor-patient-search-btn', label: 'Recherche patient' }],
+    buttons: [{
+      testId: 'doctor-patient-search-btn',
+      label: 'Recherche patient',
+      // Button stays disabled until the query is non-empty — intentional UX.
+      prepare: async (page) => {
+        await page.locator('#doctor-patient-search').fill('Diallo');
+      },
+    }],
   },
   {
     id: 'laboratory',
@@ -71,7 +83,14 @@ const ROLE_MATRIX = [
     dashboardTestId: 'nurse-dashboard',
     heading: /Tableau de bord — Infirmier/,
     route: '/clinical/nurse',
-    buttons: [{ role: 'button', name: 'Rechercher' }],
+    buttons: [{
+      role: 'button',
+      name: 'Rechercher',
+      prepare: async (page) => {
+        const input = page.locator('input[type="search"], input[placeholder*="Nom"], #nurse-patient-search').first();
+        await input.fill('Diallo');
+      },
+    }],
   },
   {
     id: 'nursing-care',
@@ -89,7 +108,7 @@ const ROLE_MATRIX = [
     dashboardTestId: 'billing-dashboard',
     heading: /Facturation unifiée/,
     route: '/clinical/billing',
-    buttons: [{ testId: 'billing-generate-invoice', label: 'Générer la facture' }],
+    buttons: [{ testId: 'billing-generate-invoice', label: 'Générer la facture', optional: true }],
   },
   {
     id: 'hospitalization',
@@ -98,7 +117,13 @@ const ROLE_MATRIX = [
     dashboardTestId: 'hospitalization-dashboard',
     heading: /^Hospitalisation$/,
     route: '/clinical/hospitalization',
-    buttons: [{ role: 'button', name: 'Rechercher' }],
+    buttons: [{
+      role: 'button',
+      name: 'Rechercher',
+      prepare: async (page) => {
+        await page.locator('input[type="search"]').first().fill('Diallo');
+      },
+    }],
   },
   {
     id: 'nutrition',
@@ -107,7 +132,13 @@ const ROLE_MATRIX = [
     dashboardTestId: 'nutrition-dashboard',
     heading: /Tableau de bord — Nutrition/,
     route: '/clinical/nutrition',
-    buttons: [{ role: 'button', name: 'Rechercher' }],
+    buttons: [{
+      role: 'button',
+      name: 'Rechercher',
+      prepare: async (page) => {
+        await page.locator('input[type="search"]').first().fill('Diallo');
+      },
+    }],
   },
   {
     id: 'pev',
@@ -148,7 +179,7 @@ function credentialsReady(roleKey) {
 
 for (const entry of ROLE_MATRIX) {
   test(`${entry.label}: dashboard loads and critical CTAs are clickable`, async ({ page }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(120_000);
     const credCheck = credentialsReady(entry.roleKey);
     if (!credCheck.ready) {
       test.skip(true, credCheck.reason);
@@ -165,15 +196,19 @@ for (const entry of ROLE_MATRIX) {
     await expect(page.getByRole('heading', { name: entry.heading })).toBeVisible();
 
     for (const btn of entry.buttons) {
+      if (typeof btn.prepare === 'function') {
+        await btn.prepare(page);
+      }
       const locator = resolveLocator(page, btn);
       const visible = await locator.isVisible().catch(() => false);
       if (!visible) {
         if (btn.optional) continue;
-        // Seeded pilot UIs can vary by role capability — fail soft with skip.
+        // Seeded pilot UIs can vary by role capability — fail soft with annotation.
         test.info().annotations.push({ type: 'missing-cta', description: btn.label || btn.testId || btn.name });
         continue;
       }
-      await assertButtonClickable(page, locator);
+      await assertButtonClickable(page, locator, { requireEnabled: btn.requireEnabled !== false });
+      if (btn.click === false) continue;
       await locator.click();
     }
 

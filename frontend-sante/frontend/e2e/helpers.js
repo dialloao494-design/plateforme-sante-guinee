@@ -70,8 +70,27 @@ export async function loginWithCredentials(page, { email, password, homePath }) 
   await page.locator('#email').fill(email);
   await page.locator('#password').fill(password);
   await page.getByRole('button', { name: 'Se connecter' }).click();
+
+  // Leave /login first so rate-limit / bad-password failures surface clearly.
+  try {
+    await page.waitForURL((url) => !/\/login\/?$/.test(url.pathname), { timeout: 45_000 });
+  } catch {
+    const alert = await page
+      .locator('[role="alert"], .login-error, .login-form .error, .form-error')
+      .first()
+      .textContent()
+      .catch(() => '');
+    throw new Error(
+      `Login failed for ${email}: still on login page. url=${page.url()} alert=${(alert || '').trim()}`,
+    );
+  }
+
+  if (/\/account\/password/.test(page.url())) {
+    throw new Error(`Login for ${email} forced password change (pilot seed must clear must_change_password)`);
+  }
+
   if (homePath) {
-    await page.waitForURL(homePath, { timeout: 45_000 });
+    await page.waitForURL(homePath, { timeout: 30_000 });
   }
 }
 
@@ -107,8 +126,10 @@ export function attachConsoleErrorCollector(page) {
   const errors = [];
   const isBenign = (text) =>
     /favicon|404.*\.(png|ico)|ResizeObserver/i.test(text)
-    // Auth bootstrap probe: anonymous refresh 401 is expected before login.
+    // Auth bootstrap probe: anonymous refresh/me 401 is expected before cookies settle.
     || /\/auth\/refresh/i.test(text)
+    || /\/auth\/me/i.test(text)
+    || /\[HTTP 401\]\s*\/auth\//i.test(text)
     || /AUTH-SESSION.*bootstrap/i.test(text)
     || /Failed to load resource:.*\b401\b/i.test(text)
     // Role-gated API responses surface as console errors in axios interceptors.
@@ -139,11 +160,16 @@ export function attachConsoleErrorCollector(page) {
   };
 }
 
-/** @param {import('@playwright/test').Page} page */
-export async function assertButtonClickable(page, locator) {
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').Locator} locator
+ * @param {{ requireEnabled?: boolean }} [opts]
+ */
+export async function assertButtonClickable(page, locator, opts = {}) {
+  const requireEnabled = opts.requireEnabled !== false;
   await locator.waitFor({ state: 'visible', timeout: 15_000 });
   await locator.scrollIntoViewIfNeeded();
-  if (await locator.isDisabled()) {
+  if (requireEnabled && (await locator.isDisabled())) {
     throw new Error(`Expected enabled button: ${await locator.innerText().catch(() => 'button')}`);
   }
 }
