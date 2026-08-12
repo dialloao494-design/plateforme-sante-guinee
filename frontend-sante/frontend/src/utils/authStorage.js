@@ -19,6 +19,15 @@ const PROFILE_STORAGE_KEYS = AUTH_STORAGE_KEYS.filter(
   (key) => key !== 'token' && key !== 'access_token' && key !== 'refresh_token'
 );
 
+export function isSameOriginApi() {
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    const e = import.meta.env;
+    if (e.VITE_SAME_ORIGIN_API === 'true' || e.VITE_USE_RELATIVE_API === 'true') return true;
+    if ((e.VITE_API_URL || '').trim() === '/api') return true;
+  }
+  return false;
+}
+
 function tabStore() {
   return typeof window !== 'undefined' ? sessionStorage : null;
 }

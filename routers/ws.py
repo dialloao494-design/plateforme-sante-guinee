@@ -1,87 +1,65 @@
-"""
-WebSocket endpoints — connectivity probe and authenticated live channel.
-
-Clients connect via nginx: wss://<domain>/api/ws/<path>
-"""
-
+"""WebSocket endpoints."""
 from __future__ import annotations
-
-import asyncio
-import json
-import logging
-
+import asyncio, json, logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from jose import JWTError, jwt
-
-from security import ALGORITHM, SECRET_KEY
-
+from core.auth_cookie_config import ACCESS_COOKIE_NAME
+from security import decode_access_token
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/ws", tags=["WebSocket"])
+AUTH_TIMEOUT = 5.0
+HB_TIMEOUT = 55.0
 
-
-def _decode_ws_token(token: str | None) -> dict | None:
-    if not token or not SECRET_KEY:
-        return None
+def _decode(token):
+    if not token: return None
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        if payload.get("user_id") is None:
-            return None
-        return payload
-    except JWTError:
+        p = decode_access_token(token)
+        return p if p.get("user_id") is not None else None
+    except Exception:
         return None
 
+async def _auth_msg(ws):
+    await ws.accept()
+    try:
+        await ws.send_json({"type": "auth_required"})
+        raw = await asyncio.wait_for(ws.receive_text(), timeout=AUTH_TIMEOUT)
+    except Exception:
+        await ws.close(code=4401); return None
+    try: msg = json.loads(raw)
+    except json.JSONDecodeError:
+        await ws.close(code=4401); return None
+    if msg.get("type") != "auth": await ws.close(code=4401); return None
+    p = _decode((msg.get("token") or "").strip())
+    if not p: await ws.close(code=4401)
+    return p
 
 @router.websocket("/health")
-async def ws_health(websocket: WebSocket):
-    """Public ping/pong — validates nginx WebSocket proxy without auth."""
-    await websocket.accept()
+async def ws_health(ws: WebSocket):
+    await ws.accept()
     try:
-        await websocket.send_json({"type": "ready", "service": "plateforme-sante-api"})
+        await ws.send_json({"type": "ready", "service": "plateforme-sante-api"})
         while True:
-            raw = await websocket.receive_text()
-            if raw.strip().lower() in ("ping", '{"type":"ping"}'):
-                await websocket.send_json({"type": "pong"})
-            else:
-                await websocket.send_json({"type": "echo", "received": raw[:200]})
-    except WebSocketDisconnect:
-        pass
-    except Exception as exc:
-        logger.warning("WS health closed: %s", exc)
-
+            raw = await ws.receive_text()
+            await ws.send_json({"type": "pong"} if raw.strip().lower() in ("ping", '{"type":"ping"}') else {"type": "echo", "received": raw[:200]})
+    except WebSocketDisconnect: pass
 
 @router.websocket("/live")
-async def ws_live(websocket: WebSocket):
-    """
-    Authenticated channel for future real-time notifications.
-    Pass JWT as query: /api/ws/live?token=<access_token>
-    """
-    token = websocket.query_params.get("token")
-    payload = _decode_ws_token(token)
-    if not payload:
-        await websocket.close(code=4401)
-        return
-
-    await websocket.accept()
-    user_id = payload.get("user_id")
+async def ws_live(ws: WebSocket):
+    if ws.query_params.get("token"):
+        logger.warning("WS query token rejected"); await ws.close(code=4401); return
+    cookie = _decode((ws.cookies.get(ACCESS_COOKIE_NAME) or "").strip() or None)
+    if cookie:
+        await ws.accept(); payload = cookie
+    else:
+        payload = await _auth_msg(ws)
+        if not payload: return
+    uid = payload.get("user_id")
     try:
-        await websocket.send_json(
-            {"type": "connected", "user_id": user_id, "message": "live channel ready"}
-        )
+        await ws.send_json({"type": "connected", "user_id": uid, "message": "live channel ready"})
         while True:
-            try:
-                raw = await asyncio.wait_for(websocket.receive_text(), timeout=55.0)
+            try: raw = await asyncio.wait_for(ws.receive_text(), timeout=HB_TIMEOUT)
             except asyncio.TimeoutError:
-                await websocket.send_json({"type": "heartbeat"})
-                continue
-            try:
-                msg = json.loads(raw)
-            except json.JSONDecodeError:
-                msg = {"type": "unknown", "raw": raw[:100]}
-            if msg.get("type") == "ping":
-                await websocket.send_json({"type": "pong", "user_id": user_id})
-            else:
-                await websocket.send_json({"type": "ack", "received": msg.get("type", "message")})
-    except WebSocketDisconnect:
-        pass
-    except Exception as exc:
-        logger.warning("WS live closed user_id=%s: %s", user_id, exc)
+                await ws.send_json({"type": "heartbeat"}); continue
+            try: msg = json.loads(raw)
+            except json.JSONDecodeError: msg = {"type": "unknown"}
+            await ws.send_json({"type": "pong", "user_id": uid} if msg.get("type") == "ping" else {"type": "ack", "received": msg.get("type", "message")})
+    except WebSocketDisconnect: pass

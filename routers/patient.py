@@ -1,13 +1,14 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 from typing import List
 import models
 import schemas
 from database import get_db
+from core.patient_ownership_policy import PatientOwnershipPolicy
 from core.roles import PLATFORM_SCOPE_ROLES, user_has_any_role
-from core.tenant import is_platform_admin, user_clinic_id, assert_patient_in_clinic
+from core.tenant import is_platform_admin, user_clinic_id
 from security import get_current_admin, require_roles
 from services.patient_record_service import PatientRecordService
 
@@ -46,16 +47,60 @@ def _assert_doctor_can_access_patient(db: Session, current_user, patient_id: int
         )
 
 
-def _assert_admin_patient_clinic_scope(db: Session, current_user, patient: models.Patient) -> None:
-    """Clinic admins may only mutate patients in their clinic; platform may break glass."""
-    if is_platform_admin(current_user):
-        return
-    cid = user_clinic_id(current_user, db)
-    if cid is None:
+@router.get("/account-candidates")
+def search_patient_account_candidates(
+    q: str = Query("", min_length=0, max_length=120),
+    limit: int = Query(20, ge=1, le=50),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_admin),
+):
+    """
+    Search patient-role accounts in the administrator's clinic for safe linking.
+
+    Returns identity fields (never passwords) so staff can confirm the right
+    account instead of typing a raw numeric user id.
+    """
+    clinic_id = None if is_platform_admin(current_user) else user_clinic_id(current_user, db)
+    if not is_platform_admin(current_user) and clinic_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
-    # Fail closed: unscoped/legacy patients (clinic_id NULL) are not mutable by clinic admins.
-    if patient.clinic_id is None or patient.clinic_id != cid:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
+
+    query = db.query(models.User).filter(models.User.role == "patient", models.User.is_active.is_(True))
+    if clinic_id is not None:
+        query = query.filter(models.User.clinic_id == clinic_id)
+
+    term = (q or "").strip()
+    if term:
+        like = f"%{term}%"
+        # Match email; numeric terms also match id for recovery workflows.
+        if term.isdigit():
+            query = query.filter(
+                (models.User.email.ilike(like)) | (models.User.id == int(term))
+            )
+        else:
+            query = query.filter(models.User.email.ilike(like))
+
+    # Prefer accounts not already linked to a patient record.
+    linked_ids = {
+        row[0]
+        for row in db.query(models.Patient.user_id)
+        .filter(models.Patient.user_id.isnot(None))
+        .all()
+    }
+    users = query.order_by(models.User.id.desc()).limit(limit * 3).all()
+    results = []
+    for user in users:
+        already_linked = user.id in linked_ids
+        results.append(
+            {
+                "id": user.id,
+                "email": user.email,
+                "clinic_id": user.clinic_id,
+                "already_linked": already_linked,
+            }
+        )
+        if len(results) >= limit:
+            break
+    return results
 
 
 def _validate_patient_user_link(
@@ -109,18 +154,31 @@ def create_patient(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_admin),
 ):
-    clinic_id = None if is_platform_admin(current_user) else user_clinic_id(current_user, db)
-    if not is_platform_admin(current_user) and clinic_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Permission denied",
+    clinic_id = PatientOwnershipPolicy.resolve_create_clinic_id(db, current_user)
+
+    linked_user_id = patient.user_id
+    if linked_user_id is not None:
+        PatientOwnershipPolicy.assert_linked_user_for_clinic(
+            db,
+            user_id=linked_user_id,
+            clinic_id=clinic_id,
+            current_user=current_user,
         )
-    linked_user_id = _validate_patient_user_link(
-        db,
-        user_id=patient.user_id,
-        clinic_id=clinic_id,
-        allow_platform=is_platform_admin(current_user),
-    )
+        existing = (
+            db.query(models.Patient).filter(models.Patient.user_id == linked_user_id).first()
+        )
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A patient record is already linked to this account",
+            )
+    elif not is_platform_admin(current_user):
+        # Clinic admins must select a verified account — raw/missing links are unsafe.
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Patient account selection is required",
+        )
+
     new_patient = models.Patient(
         user_id=linked_user_id,
         first_name=patient.first_name,
@@ -256,6 +314,7 @@ def get_my_patient_profile(
             last_name=f"User{current_user.id}",
             age=0,
             gender="unknown",
+            clinic_id=current_user.clinic_id,
         )
         db.add(patient)
         db.commit()
@@ -304,7 +363,7 @@ def delete_patient(
     patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
-    _assert_admin_patient_clinic_scope(db, current_user, patient)
+    PatientOwnershipPolicy.assert_can_mutate_patient(db, current_user, patient)
     has_clinical = (
         db.query(models.ClinicalConsultation)
         .filter(models.ClinicalConsultation.patient_id == patient_id)
@@ -339,27 +398,20 @@ def update_patient(
         patient.age = patient_update.age
         patient.gender = patient_update.gender
     else:
-        _assert_admin_patient_clinic_scope(db, current_user, patient)
+        PatientOwnershipPolicy.assert_can_mutate_patient(db, current_user, patient)
         # Do not allow arbitrary user_id mass-assignment (account hijack / cross-tenant link).
-        # Keep existing patient.user_id unless platform explicitly clears/relinks via dedicated flow.
         patient.first_name = patient_update.first_name
         patient.last_name = patient_update.last_name
         patient.age = patient_update.age
         patient.gender = patient_update.gender
         if patient_update.user_id is not None and patient_update.user_id != patient.user_id:
-            from core.roles import PLATFORM_SCOPE_ROLES, user_has_any_role
-
-            if not user_has_any_role(current_user.role, PLATFORM_SCOPE_ROLES):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Relinking patient to a different user requires platform privileges",
-                )
-            patient.user_id = _validate_patient_user_link(
+            PatientOwnershipPolicy.assert_can_relink_user(
                 db,
-                user_id=patient_update.user_id,
-                clinic_id=patient.clinic_id,
-                allow_platform=True,
+                current_user=current_user,
+                patient=patient,
+                new_user_id=patient_update.user_id,
             )
+            patient.user_id = patient_update.user_id
 
     db.commit()
     db.refresh(patient)

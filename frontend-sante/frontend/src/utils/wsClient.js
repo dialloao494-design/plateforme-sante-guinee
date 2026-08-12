@@ -1,0 +1,2 @@
+import { getAuthToken, isSameOriginApi } from './authStorage.js';
+export function connectLiveWebSocket(h={}){const p=location.protocol==='https:'?'wss:':'ws:';const s=new WebSocket(`${p}//${location.host}/api/ws/live`);s.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='auth_required'&&!isSameOriginApi()){const t=getAuthToken();if(t)s.send(JSON.stringify({type:'auth',token:t}));return;}if(m.type==='connected')h.onOpen?.(s);h.onMessage?.(m);};return s;}

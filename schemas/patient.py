@@ -20,6 +20,8 @@ class PatientResponse(PatientBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    clinic_id: Optional[int] = None
+    is_archived: bool = False
     date_of_birth: Optional[date] = None
     phone: Optional[str] = None
     email: Optional[str] = None
