@@ -139,7 +139,7 @@ export default function NutritionDashboard() {
       ];
 
   return (
-    <div className="clinical-page">
+    <div className="clinical-page" data-testid="nutrition-dashboard">
       <h1>Tableau de bord — Nutrition</h1>
       <p className="clinical-lead">Suivi de la croissance : poids, taille, périmètre brachial (MUAC).</p>
       {error && <p className="clinical-error">{String(error)}</p>}

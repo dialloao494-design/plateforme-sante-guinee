@@ -20,8 +20,8 @@ Status key:
 | must_change_password gate | VERIFIED FIXED | Wave6 |
 | Login lockout | VERIFIED FIXED | Wave6 |
 | Public register role=admin | VERIFIED FIXED | provisioning hooks |
-| JWT still in sessionStorage (XSS residual) | PARTIALLY FIXED | Cookie+Bearer hybrid; HttpOnly-only migration open |
-| WebSocket token in query | STILL BROKEN | Residual |
+| JWT still in sessionStorage (XSS residual) | PARTIALLY FIXED | Same-origin `/api` proxy + cookie-preferred path; cross-origin bearer retained for Safari |
+| WebSocket token in query | VERIFIED FIXED | Cookie handshake + post-connect auth; query rejected |
 | MFA optional for privileged | PARTIALLY FIXED | Soft-gate residual |
 
 ## Reception / clinic bugs
@@ -44,7 +44,7 @@ Status key:
 | Catalog-authoritative prices | VERIFIED FIXED | billing integrity suite |
 | DSR double-bill / cancelled | VERIFIED FIXED | billing integrity suite |
 | Patient register idempotency | VERIFIED FIXED (this branch) | `test_reception_register_idempotency.py` |
-| Mobile Money webhook signatures | STILL BROKEN | Residual until MM live |
+| Mobile Money webhook signatures | VERIFIED FIXED | HMAC fail-closed; `test_mobile_money_webhook_security.py` |
 | Appointment confirm without payment | PARTIALLY FIXED | Policy present; dual API debt |
 
 ## Tenant / authz
@@ -55,7 +55,7 @@ Status key:
 | Nurse foreign consultation overwrite | VERIFIED FIXED | Red Team |
 | Lab/pharmacy default doctor cross-tenant | VERIFIED FIXED | Red Team |
 | Patient user_id relink by clinic admin | VERIFIED FIXED | Red Team |
-| Open PR #26 patient ownership hardening | PARTIALLY FIXED | Branch exists; not on main |
+| Open PR #26 patient ownership hardening | VERIFIED FIXED | `patient_ownership_policy.py` + tenant mutation suite |
 
 ## Offline / PHI
 
@@ -67,7 +67,8 @@ Status key:
 | Conflict rows missing owner_key | VERIFIED FIXED (this branch) | Scoped |
 | Offline registration + dossier reconcile | VERIFIED FIXED | `reconcilePatient.js` |
 | Dependent mutation rewrite (admission on temp id) | VERIFIED FIXED (this branch) | `remapPatientRefs.js` rewrites outbox+caches; sync blocks until idmap |
-| Full multi-device concurrent offline E2E | PARTIALLY FIXED | Unit/integration; browser network-loss matrix in progress |
+| Full multi-device concurrent offline E2E | PARTIALLY FIXED | Unit/integration; browser network-loss matrix in `offline-failure-recovery.spec.js` + `docs/OFFLINE_FAILURE_RECOVERY_MATRIX.md` |
+| Role dashboard CTA matrix (all clinic roles) | VERIFIED FIXED (this branch) | `role-button-matrix.spec.js` + `docs/ROLE_E2E_BUTTON_MATRIX.md` |
 | Clinic Node appliance vs SPA dual stack | PARTIALLY FIXED | Documented; keep separate |
 
 ## Schema / ops
@@ -99,7 +100,13 @@ Status key:
 | Emergency specialty / dept validation | `test_reception_emergency_specialty_invoice.py` |
 | Register idempotency | `test_reception_register_idempotency.py` |
 | Offline classify + optimistic patient | `offline-pure.test.mjs` |
+| Offline failure/recovery matrix | `offline-failure-recovery.spec.js`, `offline-failure-recovery.test.mjs` |
+| Role button matrix (all clinic roles) | `role-button-matrix.spec.js` |
 | Dossier reconcile helpers | `reconcilePatient.test.mjs` |
 | PR #31 adversarial | `test_pr31_adversarial_audit.py` |
 | Billing integrity | `test_billing_integrity_hardening.py` |
 | Safari auth tokens | `test_auth_spa_cross_origin_tokens.py` |
+| WebSocket auth | `test_ws_auth_security.py` |
+| Mobile Money webhooks | `test_mobile_money_webhook_security.py` |
+| Tenant patient ownership | `test_tenant_mutation_hardening.py` |
+| Same-origin cookie auth | `test_auth_same_origin_cookies.py`, `authStorage.test.mjs` |

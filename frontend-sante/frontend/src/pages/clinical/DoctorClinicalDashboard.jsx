@@ -583,7 +583,7 @@ export default function DoctorClinicalDashboard() {
   })();
 
   return (
-    <div className="clinical-page reception-his">
+    <div className="clinical-page reception-his" data-testid="doctor-dashboard">
       <header className="reception-his-header">
         <div>
           <p className="nurse-his-clinic-name">{CLINIC_PRINT_NAME}</p>
@@ -609,7 +609,7 @@ export default function DoctorClinicalDashboard() {
               }}
               autoComplete="off"
             />
-            <button type="button" className="clinical-btn" onClick={runSearch} disabled={searching || !searchQ.trim()}>
+            <button type="button" className="clinical-btn" data-testid="doctor-patient-search-btn" onClick={runSearch} disabled={searching || !searchQ.trim()}>
               {searching ? '…' : 'Rechercher'}
             </button>
           </div>

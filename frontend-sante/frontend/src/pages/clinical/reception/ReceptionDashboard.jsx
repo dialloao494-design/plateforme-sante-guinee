@@ -33,7 +33,7 @@ export default function ReceptionDashboard() {
   } = dashboard;
 
   return (
-    <div className="clinical-page reception-his">
+    <div className="clinical-page reception-his" data-testid="reception-dashboard">
       <header className="reception-his-header">
         <div>
           <h1>Tableau de bord — Réception</h1>
@@ -99,7 +99,7 @@ export default function ReceptionDashboard() {
 
       <nav className="reception-his-tabs">
         {TABS.map((t) => (
-          <button key={t.id} type="button" className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
+          <button key={t.id} type="button" data-testid={`reception-tab-${t.id}`} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
             {t.label}<kbd>{t.shortcut}</kbd>
           </button>
         ))}

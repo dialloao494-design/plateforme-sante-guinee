@@ -301,7 +301,7 @@ export default function NurseDashboard() {
   ];
 
   return (
-    <div className="clinical-page reception-his nurse-his">
+    <div className="clinical-page reception-his nurse-his" data-testid="nurse-dashboard">
       <header className="reception-his-header nurse-his-header">
         <div>
           <p className="nurse-his-clinic-name">{CLINIC_PRINT_NAME}</p>

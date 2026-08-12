@@ -149,7 +149,7 @@ export default function ClinicAdminDashboard() {
   }, [activity, clinicStaff.length]);
 
   return (
-    <div className="clinical-page clinical-page--clinic-admin">
+    <div className="clinical-page clinical-page--clinic-admin" data-testid="admin-dashboard">
       <header className="clinical-page-header">
         <p className="clinical-eyebrow">Pilotage clinique</p>
         <h1>Administration — {user?.clinic_name || 'Ma clinique'}</h1>

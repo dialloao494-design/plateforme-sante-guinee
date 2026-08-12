@@ -13,7 +13,9 @@
     "preview": "vite preview",
     "test:unit": "node --test src/utils/apiError.test.mjs src/utils/loginErrors.test.mjs src/utils/authStorage.test.mjs src/pages/clinical/reception/registrationConflict.test.mjs src/pages/clinical/reception/registrationSuccess.test.mjs src/pages/clinical/reception/hooks/buildInvoiceItemPayload.test.mjs src/offline/reconcilePatient.test.mjs src/offline/remapPatientRefs.test.mjs",
     "test:e2e": "playwright test",
-    "test:offline": "node --test tests/offline-pure.test.mjs tests/offline-outbox.test.mjs src/offline/reconcilePatient.test.mjs src/offline/remapPatientRefs.test.mjs"
+    "test:e2e:matrix": "playwright test e2e/role-button-matrix.spec.js",
+    "test:e2e:offline-recovery": "playwright test e2e/reception-offline-registration.spec.js e2e/offline-failure-recovery.spec.js",
+    "test:offline": "node --test tests/offline-pure.test.mjs tests/offline-outbox.test.mjs tests/offline-failure-recovery.test.mjs src/offline/reconcilePatient.test.mjs src/offline/remapPatientRefs.test.mjs"
   },
   "dependencies": {
     "@jitsi/react-sdk": "^1.4.4",
