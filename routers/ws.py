@@ -96,6 +96,17 @@ async def _authenticate_live_channel(websocket: WebSocket) -> dict | None:
     return payload
 
 
+@router.get("/status")
+def ws_http_status():
+    """HTTP probe — proves the WS router is mounted even when upgrades fail at the edge."""
+    return {
+        "status": "ok",
+        "websocket_paths": ["/ws/health", "/ws/live"],
+        "auth": "cookie_or_first_message",
+        "query_token": "rejected",
+    }
+
+
 @router.websocket("/health")
 async def ws_health(websocket: WebSocket):
     """Public ping/pong — validates nginx WebSocket proxy without auth."""
@@ -124,6 +135,9 @@ async def ws_live(websocket: WebSocket):
     Query-string ``?token=`` is rejected.
     """
     if _reject_query_token(websocket):
+        # Must accept before close so proxies don't collapse the denial into a bare 404.
+        await websocket.accept()
+        await websocket.send_json({"type": "error", "detail": "query_token_forbidden"})
         await websocket.close(code=4401)
         return
 
