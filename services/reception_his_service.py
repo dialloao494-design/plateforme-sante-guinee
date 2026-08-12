@@ -25,6 +25,7 @@ from schemas.reception_his import (
     ServiceRequestCreate,
     ServiceRequestUpdate,
 )
+from core.patient_number import format_patient_number
 from services.cis_audit import log_cis
 from services.medical_history_service import ensure_medical_record
 
@@ -38,10 +39,6 @@ def _normalize_phone(phone: str | None) -> str:
     if not phone:
         return ""
     return "".join(c for c in phone if c.isdigit())[-9:]
-
-
-def _patient_number(clinic_id: int, patient_id: int) -> str:
-    return f"PAT-{clinic_id:03d}-{patient_id:06d}"
 
 
 def _qr_token(clinic_id: int) -> str:
@@ -247,7 +244,7 @@ class ReceptionHisService:
         # Single commit: flush to allocate id, assign dossier number, then commit once
         # so a patient is never persisted without patient_number.
         db.flush()
-        patient.patient_number = _patient_number(clinic_id, patient.id)
+        patient.patient_number = format_patient_number(clinic_id, patient.id)
         db.commit()
         db.refresh(patient)
 

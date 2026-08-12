@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import SessionLocal
 import models
 from routers import patient, patient_record, rendezvous, doctor, auth, teleconsultation, notifications, messages
-from routers import users, appointments, doctor_dashboard, ws, clinical, medical_history, hospitalization
+from routers import users, appointments, doctor_dashboard, ws, clinical, medical_history, hospitalization, payments_webhooks
 from routers import unified_billing, discharge, radiology, reminders, clinical_reports, platform, platform_setup
 from routers import nutrition, immunization, nursing_care, visit_workflow, clinical_phase2, lab_phase2, pharmacy_phase2, reception_his, nurse_assessment
 from routers import clinic_node_ops
@@ -94,6 +94,16 @@ _tunnel_test = os.getenv("ENABLE_TUNNEL_TEST", "").lower() in ("1", "true", "yes
 _debug = _settings.debug
 _is_production = _settings.is_production
 _is_deployed = _settings.is_deployed
+
+
+def _alembic_only_schema() -> bool:
+    """Deployed/Railway/clinic-node: schema must come from Alembic only (no create_all / ensure_*)."""
+    if _settings.is_deployed:
+        return True
+    return bool(
+        (os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID") or "").strip()
+    )
+
 
 if _is_deployed:
     cors_origin_regex = None
@@ -406,6 +416,7 @@ app.include_router(reminders.router)
 app.include_router(clinical_reports.router)
 app.include_router(reception_his.router)
 app.include_router(clinic_node_ops.router)
+app.include_router(payments_webhooks.router)
 app.include_router(ws.router)
 
 
@@ -602,10 +613,13 @@ def _run_schema_and_seed_startup() -> None:
         import models.clinic, models.clinical_consultation, models.lab_order, models.lab_result, models.prescription, models.pharmacy_order, models.clinic_charge, models.clinic_charge_payment, models.medical_history, models.hospitalization, models.clinical_visit, models.invoice, models.discharge, models.imaging, models.appointment_reminder, models.pharmacy_inventory, models.password_reset_token, models.email_verification_token, models.visit_workflow, models.nutrition, models.immunization, models.nursing_care, models.nurse_assessment, models.clinic_node_ops, models.api_idempotency  # noqa: F401
 
         # Local/test environments may bootstrap an empty disposable database.
-        # Deployed environments must be controlled by versioned migrations only.
-        if not _settings.is_deployed:
+        # Deployed/Railway/clinic-node must be controlled by versioned migrations only.
+        alembic_only = _alembic_only_schema()
+        if not alembic_only:
             Base.metadata.create_all(bind=engine)
             logger.info("Development database tables verified / created.")
+        else:
+            logger.info("Alembic-only schema mode: skipping Base.metadata.create_all.")
 
         from database_migrations import (
             ensure_attachment_access_log_table,
@@ -640,12 +654,12 @@ def _run_schema_and_seed_startup() -> None:
             run_alembic_upgrade_head,
         )
 
-        run_alembic_upgrade_head(fail_closed=_settings.is_deployed)
+        run_alembic_upgrade_head(fail_closed=alembic_only)
 
-        # Production/deployed: Alembic is the sole schema authority — no runtime DDL.
+        # Production/deployed/Railway: Alembic is the sole schema authority — no runtime DDL.
         # Development/test: keep ensure_* helpers for disposable local databases.
-        if _settings.is_deployed:
-            logger.info("Deployed mode: skipping runtime ensure_* schema mutations (Alembic-only).")
+        if alembic_only:
+            logger.info("Alembic-only mode: skipping runtime ensure_* schema mutations.")
         else:
             ensure_user_session_security_columns(engine)
             ensure_doctor_geolocation_columns(engine)
@@ -684,7 +698,7 @@ def _run_schema_and_seed_startup() -> None:
         except Exception as hook_exc:
             logger.warning("Clinic Node sync hooks not registered: %s", hook_exc)
 
-        if _settings.is_deployed:
+        if alembic_only:
             from sqlalchemy import inspect
 
             inspector = inspect(engine)
@@ -693,6 +707,8 @@ def _run_schema_and_seed_startup() -> None:
                 "clinics",
                 "patients",
                 "doctors",
+                "rendezvous",
+                "messages",
                 "clinical_visits",
                 "invoices",
                 "clinical_audit_logs",
@@ -700,7 +716,17 @@ def _run_schema_and_seed_startup() -> None:
             missing_tables = sorted(required_tables - set(inspector.get_table_names()))
             user_columns = (
                 {column["name"] for column in inspector.get_columns("users")}
-                if not missing_tables and "users" in required_tables
+                if "users" in inspector.get_table_names()
+                else set()
+            )
+            patient_columns = (
+                {column["name"] for column in inspector.get_columns("patients")}
+                if "patients" in inspector.get_table_names()
+                else set()
+            )
+            rdv_columns = (
+                {column["name"] for column in inspector.get_columns("rendezvous")}
+                if "rendezvous" in inspector.get_table_names()
                 else set()
             )
             missing_user_columns = sorted(
@@ -713,11 +739,17 @@ def _run_schema_and_seed_startup() -> None:
                 }
                 - user_columns
             )
-            if missing_tables or missing_user_columns:
+            missing_patient_columns = sorted(
+                {"clinic_id", "user_id", "is_archived", "patient_number"} - patient_columns
+            )
+            missing_rdv_columns = sorted({"clinic_id", "patient_id", "doctor_id", "status"} - rdv_columns)
+            if missing_tables or missing_user_columns or missing_patient_columns or missing_rdv_columns:
                 raise RuntimeError(
                     "Database schema is incomplete after migrations: "
                     f"missing_tables={missing_tables}, "
-                    f"missing_users_columns={missing_user_columns}"
+                    f"missing_users_columns={missing_user_columns}, "
+                    f"missing_patients_columns={missing_patient_columns}, "
+                    f"missing_rendezvous_columns={missing_rdv_columns}"
                 )
 
         from database import SessionLocal
@@ -731,7 +763,7 @@ def _run_schema_and_seed_startup() -> None:
             bootstrap_db.close()
     except Exception as exc:
         logger.exception("Database schema initialization failed")
-        if _settings.is_deployed:
+        if _alembic_only_schema():
             # Never accept traffic with a partially migrated clinical schema.
             raise RuntimeError("Database schema initialization failed") from exc
 
