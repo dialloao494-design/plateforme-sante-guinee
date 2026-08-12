@@ -61,8 +61,8 @@ def test_invoice_create_emergency_specialty_keeps_label_and_price(client, db_ses
     assert items[0]["unit_price_gnf"] == 150_000
 
 
-def test_invoice_create_infers_emergency_from_description_without_variant(client, db_session):
-    """Older clients may omit price_variant; description must still protect urgences."""
+def test_invoice_create_infers_emergency_from_department_without_variant(client, db_session):
+    """Older clients may omit price_variant; department context selects emergency tariff."""
     _clinic, admin, patient, *_ = _seed(db_session)
     r = client.post(
         "/clinical/reception/his/invoices",
@@ -72,7 +72,7 @@ def test_invoice_create_infers_emergency_from_description_without_variant(client
             "items": [
                 {
                     "charge_type": "consultation",
-                    "description": "Consultation d'urgences — Médecine",
+                    "description": "ignored — server authoritative",
                     "quantity": 1,
                     "catalog_code": "medicine",
                 }
@@ -100,6 +100,77 @@ def test_invoice_create_specialized_still_uses_specialized_tariff(client, db_ses
                     "quantity": 1,
                     "catalog_code": "medicine",
                     "price_variant": "specialized",
+                }
+            ],
+        },
+        headers=_auth(admin),
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["total_amount_gnf"] == 250_000
+    assert body["items"][0]["description"] == "Consultation spécialisée — Médecine"
+
+
+def test_invoice_rejects_emergency_variant_under_specialized_department(client, db_session):
+    """Client cannot select the cheaper emergency tariff on a specialized invoice."""
+    _clinic, admin, patient, *_ = _seed(db_session)
+    r = client.post(
+        "/clinical/reception/his/invoices",
+        json={
+            "patient_id": patient.id,
+            "department": "Consultation spécialisée",
+            "items": [
+                {
+                    "charge_type": "consultation",
+                    "description": "Consultation spécialisée — Médecine",
+                    "quantity": 1,
+                    "catalog_code": "medicine",
+                    "price_variant": "emergency",
+                }
+            ],
+        },
+        headers=_auth(admin),
+    )
+    assert r.status_code == 400, r.text
+    assert "incompatible" in r.text.lower() or "emergency" in r.text.lower()
+
+
+def test_invoice_rejects_emergency_variant_without_emergency_department(client, db_session):
+    _clinic, admin, patient, *_ = _seed(db_session)
+    r = client.post(
+        "/clinical/reception/his/invoices",
+        json={
+            "patient_id": patient.id,
+            "department": "Consultation externe",
+            "items": [
+                {
+                    "charge_type": "consultation",
+                    "description": "spoof urgence in text",
+                    "quantity": 1,
+                    "catalog_code": "medicine",
+                    "price_variant": "emergency",
+                }
+            ],
+        },
+        headers=_auth(admin),
+    )
+    assert r.status_code == 400, r.text
+
+
+def test_invoice_ignores_urgence_in_description_under_specialized_department(client, db_session):
+    """Free-text description must not unlock the emergency tariff."""
+    _clinic, admin, patient, *_ = _seed(db_session)
+    r = client.post(
+        "/clinical/reception/his/invoices",
+        json={
+            "patient_id": patient.id,
+            "department": "Consultation spécialisée",
+            "items": [
+                {
+                    "charge_type": "consultation",
+                    "description": "Consultation d'urgences — Médecine",
+                    "quantity": 1,
+                    "catalog_code": "medicine",
                 }
             ],
         },

@@ -4,7 +4,11 @@
  */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { classifyRequest, isPatientSearchUrl } from '../src/offline/entityTypes.js';
+import {
+  classifyRequest,
+  isOnlineOnlyMutation,
+  isPatientSearchUrl,
+} from '../src/offline/entityTypes.js';
 import { computeBackoffMs, buildOptimisticResponse } from '../src/offline/outbox.js';
 import { mergeLastWriteWins, resolveLastWriteWins } from '../src/offline/conflict.js';
 
@@ -19,6 +23,20 @@ test('classifyRequest maps billing invoice create', () => {
   const r = classifyRequest('/clinical/reception/his/invoices', 'post');
   assert.equal(r.entityType, 'billing');
   assert.equal(r.domain, 'billing');
+});
+
+test('HIS patient registration is online-only and never queueable', () => {
+  const create = classifyRequest('/clinical/reception/his/patients', 'post');
+  assert.equal(create.entityType, 'patient');
+  assert.equal(create.queueable, false);
+  assert.equal(isOnlineOnlyMutation('/clinical/reception/his/patients', 'post'), true);
+  // Trailing slash / query must not re-enable queueing
+  assert.equal(classifyRequest('/clinical/reception/his/patients/', 'post').queueable, false);
+  // Search and other patient GETs remain classifiable; search POST not used
+  const search = classifyRequest('/clinical/reception/his/patients/search', 'get');
+  assert.equal(search.entityType, 'patient');
+  assert.equal(search.cacheable, true);
+  assert.equal(isOnlineOnlyMutation('/clinical/reception/his/patients/search', 'post'), false);
 });
 
 test('classifyRequest maps pharmacy patch', () => {

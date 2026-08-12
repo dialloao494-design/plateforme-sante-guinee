@@ -92,6 +92,21 @@ def _invoice_status(invoice: models.Invoice) -> str:
     return "unpaid" if invoice.status != "cancelled" else invoice.status
 
 
+def _department_price_context(department: str | None) -> str | None:
+    """Map invoice department to allowed specialty price_variant context."""
+    d = (department or "").strip().lower()
+    if not d:
+        return None
+    if "urgence" in d:
+        return "emergency"
+    # Match spécialisée / specialisee / specialized
+    if "sp" in d and "cialis" in d:
+        return "specialized"
+    if "specialized" in d:
+        return "specialized"
+    return None
+
+
 class ReceptionHisService:
     @staticmethod
     def find_duplicates(
@@ -411,6 +426,7 @@ class ReceptionHisService:
         row,
         seen_dsr_ids: set[int],
         actor: User,
+        department: str | None = None,
     ) -> dict:
         """Build one invoice line. Prices are server-authoritative."""
         from core.rbac import Permission, assert_permission
@@ -422,6 +438,7 @@ class ReceptionHisService:
         catalog_code = (getattr(row, "catalog_code", None) or "").strip() or None
         override_reason = (getattr(row, "price_override_reason", None) or "").strip()
         client_unit = getattr(row, "unit_price_gnf", None)
+        dept_context = _department_price_context(department)
 
         # --- Service request (DSR) path ---
         if source_type == "service_request" or source_ref.upper().startswith("DSR-"):
@@ -486,14 +503,40 @@ class ReceptionHisService:
 
         if catalog_code:
             price_variant = (getattr(row, "price_variant", None) or "").strip().lower() or None
-            # Infer emergency pricing when the client description clearly says urgences
-            # but price_variant was omitted (older frontends / partial payloads).
             if price_variant not in ("specialized", "emergency"):
-                desc_l = description.lower()
-                if "urgence" in desc_l or "urgences" in desc_l:
-                    price_variant = "emergency"
-                else:
-                    price_variant = None
+                # Infer from structured department only — never from free-text description.
+                price_variant = dept_context
+
+            # Specialty tariff selection must match invoice department context.
+            # A client must not pick emergency (cheaper) under a specialized department
+            # without an explicit privileged override + audit reason.
+            if price_variant in ("emergency", "specialized"):
+                if dept_context and price_variant != dept_context:
+                    if override_reason:
+                        assert_permission(actor, Permission.BILLING_OVERRIDE)
+                    else:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=(
+                                f"price_variant={price_variant!r} incompatible avec "
+                                f"department={department!r}. Utilisez le service "
+                                f"correspondant, ou fournissez price_override_reason "
+                                f"avec le droit billing.override."
+                            ),
+                        )
+                elif not dept_context and price_variant == "emergency":
+                    # Emergency tariff requires an emergency department classification.
+                    if override_reason:
+                        assert_permission(actor, Permission.BILLING_OVERRIDE)
+                    else:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=(
+                                "price_variant='emergency' requiert un department "
+                                "d'urgences (ex. 'Consultation urgences')."
+                            ),
+                        )
+
             cat = resolve_billing_catalog_item(catalog_code, price_variant=price_variant)
             if not cat:
                 raise HTTPException(status_code=400, detail=f"Code catalogue inconnu: {catalog_code}")
@@ -502,19 +545,26 @@ class ReceptionHisService:
             catalog_price = int(cat["price_gnf"])
             if override_reason:
                 assert_permission(actor, Permission.BILLING_OVERRIDE)
-                if client_unit is None:
+                if client_unit is None and cat.get("bucket") != "specialty":
+                    # Numeric override still requires a client unit price.
                     raise HTTPException(
                         status_code=400,
                         detail="unit_price_gnf requis avec price_override_reason",
                     )
-                unit = int(client_unit)
+                if client_unit is not None:
+                    unit = int(client_unit)
+                else:
+                    # Variant/classification override keeps catalog price for that variant.
+                    unit = catalog_price
                 price_audit = {
                     "kind": "price_override",
                     "catalog_code": catalog_code,
                     "catalog_price_gnf": catalog_price,
                     "negotiated_price_gnf": unit,
                     "reason": override_reason,
-                    "price_variant": cat.get("price_variant"),
+                    "price_variant": cat.get("price_variant") or price_variant,
+                    "department": department,
+                    "department_context": dept_context,
                 }
             else:
                 unit = catalog_price
@@ -589,6 +639,7 @@ class ReceptionHisService:
                 row=row,
                 seen_dsr_ids=seen_dsr_ids,
                 actor=actor,
+                department=payload.department,
             )
             if line.get("service_request") is not None:
                 billed_requests.append(line["service_request"])

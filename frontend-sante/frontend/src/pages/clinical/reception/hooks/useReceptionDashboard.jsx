@@ -35,7 +35,7 @@ import { useBillingCatalogFilters } from './useBillingCatalogFilters.js';
 import { buildInvoiceItemPayload } from './buildInvoiceItemPayload.js';
 import {
   isCompleteRegistrationResponse,
-  REGISTRATION_INCOMPLETE_MESSAGE,
+  REGISTRATION_ONLINE_REQUIRED_MESSAGE,
 } from '../registrationSuccess.js';
 export function useReceptionDashboard() {
   const { user } = useAuth();
@@ -117,7 +117,6 @@ export function useReceptionDashboard() {
 
   const updateReg = (v) => setRegForm((p) => ({ ...p, ...v }));
   const updateAdmission = (v) => setAdmissionForm((p) => ({ ...p, ...v }));
-  const updateBilling = (v) => setBillingForm((p) => ({ ...p, ...v }));
   const updatePaymentLine = (id, patch) =>
     setPaymentLines((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const addPaymentLine = () => setPaymentLines((rows) => [...rows, emptyPaymentLine()]);
@@ -136,6 +135,20 @@ export function useReceptionDashboard() {
 
   const syncSpecialtyOther = (text) => {
     updateAdmission({ specialty_other: text });
+  };
+
+  const updateBilling = (v) => {
+    let departmentChanged = false;
+    setBillingForm((p) => {
+      departmentChanged = 'department' in v && v.department !== p.department;
+      return { ...p, ...v };
+    });
+    // Specialty state is shared across specialized/emergency pickers —
+    // clear it on department change to avoid stale "Autre" labels.
+    if (departmentChanged) {
+      syncSpecialtyCode('');
+      syncSpecialtyOther('');
+    }
   };
 
   const showSpecialtyPicker =
@@ -737,10 +750,10 @@ export function useReceptionDashboard() {
     setMessage('');
     try {
       const { data } = await clinicalApi.receptionHisRegister(payload);
-      // Offline/optimistic queue returns 202 without a real dossier number — never
-      // present that as a successful registration (clinic sees "data taken, no ID").
+      // Defense in depth: HIS register is online-only (not queued). Reject any
+      // optimistic/incomplete payload so staff never see a false success.
       if (!isCompleteRegistrationResponse(data)) {
-        setError(REGISTRATION_INCOMPLETE_MESSAGE);
+        setError(REGISTRATION_ONLINE_REQUIRED_MESSAGE);
         return false;
       }
       setDuplicateMatches([]);
@@ -754,6 +767,14 @@ export function useReceptionDashboard() {
       await loadDashboard();
       return true;
     } catch (err) {
+      const isNetwork =
+        !err?.response
+        || err?.code === 'ERR_NETWORK'
+        || err?.code === 'ECONNABORTED';
+      if (isNetwork) {
+        setError(REGISTRATION_ONLINE_REQUIRED_MESSAGE);
+        return false;
+      }
       const conflict = resolveRegistrationConflict(err, payload);
       setDuplicateMatches(conflict.matches);
       setPendingRegPayload(conflict.pendingPayload);
