@@ -1,1 +1,30 @@
-import assert from 'node:assert/strict';import test from 'node:test';import{clearAllClientStorage,getAuthToken,persistSessionTokens,isSameOriginApi}from './authStorage.js';const mem=()=>{const s=new Map();return{getItem:k=>s.has(k)?s.get(k):null,setItem:(k,v)=>s.set(k,String(v)),removeItem:k=>s.delete(k)};};globalThis.sessionStorage=mem();globalThis.window=globalThis;if(!import.meta.env)import.meta.env={};test('same-origin',()=>{import.meta.env.VITE_SAME_ORIGIN_API='true';clearAllClientStorage();persistSessionTokens({access_token:'a',refresh_token:'r',csrf_token:'c'});assert.equal(getAuthToken(),null);assert.equal(isSameOriginApi(),true);});
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
+  clearAllClientStorage,
+  getAuthToken,
+  isSameOriginApi,
+  persistSessionTokens,
+} from './authStorage.js';
+
+function mem() {
+  const s = new Map();
+  return {
+    getItem: (k) => (s.has(k) ? s.get(k) : null),
+    setItem: (k, v) => s.set(k, String(v)),
+    removeItem: (k) => s.delete(k),
+  };
+}
+
+globalThis.sessionStorage = mem();
+globalThis.localStorage = mem();
+globalThis.window = globalThis;
+if (!import.meta.env) import.meta.env = {};
+
+test('same-origin mode does not persist bearer tokens', () => {
+  import.meta.env.VITE_SAME_ORIGIN_API = 'true';
+  clearAllClientStorage();
+  persistSessionTokens({ access_token: 'a', refresh_token: 'r', csrf_token: 'c' });
+  assert.equal(getAuthToken(), null);
+  assert.equal(isSameOriginApi(), true);
+});

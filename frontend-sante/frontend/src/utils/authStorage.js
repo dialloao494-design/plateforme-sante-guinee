@@ -144,6 +144,13 @@ export function persistSessionTokens(payload = {}) {
   const access =
     payload?.access_token || payload?.accessToken || payload?.token || null;
   const refresh = payload?.refresh_token || payload?.refreshToken || null;
+  if (isSameOriginApi()) {
+    if (access || refresh) {
+      setAuthToken(null);
+      setRefreshToken(null);
+    }
+    return Boolean(access || refresh || payload?.csrf_token);
+  }
   if (access) {
     setAuthToken(access);
   }
