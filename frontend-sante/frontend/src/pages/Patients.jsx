@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePatientContext } from '../contexts/PatientContext.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import PatientList from '../components/PatientList.jsx';
@@ -20,7 +20,7 @@ const Patients = () => {
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState('');
 
-  const isAdmin = ADMIN_ROLES.has(user?.role);
+  const isAdmin = ADMIN_ROLES.has(String(user?.role || '').toLowerCase());
   const isDoctor = user?.role === 'doctor';
   const showForm = isAdmin || (isDoctor && editingId !== null);
 
@@ -131,11 +131,14 @@ const Patients = () => {
             value={formData.gender}
             onChange={(e) => setFormData((prev) => ({ ...prev, gender: e.target.value }))}
           />
-          <button type="submit">
+          <button
+            type="submit"
+            disabled={editingId === null && isAdmin && !formData.selectedAccount?.id}
+          >
             {editingId !== null ? 'Mettre à jour' : 'Ajouter'}
           </button>
-          {editingId !== null && (
-            <button type="button" onClick={handleCancel}>
+          {(editingId !== null || (isAdmin && formData.firstName)) && (
+            <button type="button" className="btn btn-tertiary" onClick={handleCancel}>
               Annuler
             </button>
           )}

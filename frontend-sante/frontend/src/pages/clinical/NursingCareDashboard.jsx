@@ -120,7 +120,7 @@ export default function NursingCareDashboard() {
     : [];
 
   return (
-    <div className="clinical-page">
+    <div className="clinical-page" data-testid="nursing-care-dashboard">
       <h1>Tableau de bord — Soins infirmiers</h1>
       <p className="clinical-lead">
         Enregistrement des soins : injections, perfusions, pansements, sutures — registre mensuel automatique.
@@ -131,7 +131,7 @@ export default function NursingCareDashboard() {
       <ClinicalStatGrid stats={stats} />
 
       <div className="clinical-tabs" role="tablist">
-        <button type="button" className={`clinical-tab${view === 'record' ? ' active' : ''}`} onClick={() => setView('record')}>
+        <button type="button" data-testid="nursing-care-tab-record" className={`clinical-tab${view === 'record' ? ' active' : ''}`} onClick={() => setView('record')}>
           Enregistrement
         </button>
         <button type="button" className={`clinical-tab${view === 'register' ? ' active' : ''}`} onClick={() => setView('register')}>

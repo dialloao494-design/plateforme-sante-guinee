@@ -72,15 +72,15 @@ export const PatientProvider = ({ children }) => {
   }, [user, authLoading]);
 
   const addPatient = async ({ firstName, lastName, age, gender, userId }) => {
-    const adminRoles = new Set(['admin', 'clinic_admin', 'platform_admin', 'platform_owner']);
-    if (!adminRoles.has(user?.role)) {
+    const role = String(user?.role || '').toLowerCase();
+    if (!['admin', 'clinic_admin', 'platform_admin', 'platform_owner'].includes(role)) {
       const errMsg = 'Seuls les administrateurs peuvent créer un dossier patient.';
       setError(errMsg);
       throw new Error(errMsg);
     }
     const uid = Number(userId);
     if (!Number.isInteger(uid) || uid < 1) {
-      const errMsg = 'Sélectionnez un compte patient dans la liste de recherche.';
+      const errMsg = 'Sélectionnez un compte patient confirmé avant de créer le dossier.';
       setError(errMsg);
       throw new Error(errMsg);
     }
@@ -139,7 +139,8 @@ export const PatientProvider = ({ children }) => {
   };
 
   const deletePatient = async (id) => {
-    if (user?.role !== 'admin') {
+    const role = String(user?.role || '').toLowerCase();
+    if (!['admin', 'clinic_admin', 'platform_admin', 'platform_owner'].includes(role)) {
       const errMsg = 'Seuls les administrateurs peuvent supprimer un dossier patient.';
       setError(errMsg);
       throw new Error(errMsg);

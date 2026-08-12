@@ -75,8 +75,8 @@ Status key:
 | Finding | Status | Notes |
 |---|---|---|
 | session_version column missing | VERIFIED FIXED | Alembic 0025 |
-| Triple schema authority (create_all + runtime) | PARTIALLY FIXED | Alembic preferred; runtime helpers residual |
-| patient_number nullable at DB | PARTIALLY FIXED | HIS path assigns; DB NOT NULL deferred (legacy rows) |
+| Triple schema authority (create_all + runtime) | PARTIALLY FIXED | Alembic-only when deployed/Railway; `ensure_*` dev-only |
+| patient_number nullable at DB | PARTIALLY FIXED | Alembic 0028 backfill + unique index; NOT NULL on PG when safe |
 | Git history secrets | PARTIALLY FIXED | Rotation ops residual |
 | Dual `/appointments` vs `/rendezvous` | STILL BROKEN | Architecture debt |
 
@@ -92,14 +92,20 @@ Status key:
 
 ## Permanent regression gates (CI)
 
+Full inventory: [`docs/HISTORICAL_REGRESSION_MATRIX.md`](./HISTORICAL_REGRESSION_MATRIX.md).
+
 | Gate | Location |
 |---|---|
 | Duplicate 409 UX | `registrationConflict.test.mjs`, e2e reception-registration |
 | Patient number generation | `test_reception_patient_number_generation.py` |
+| Patient number migration / backfill | `test_patient_number_migration.py` |
+| Alembic-only schema startup | `test_schema_startup_authority.py` |
 | Emergency specialty / dept validation | `test_reception_emergency_specialty_invoice.py` |
 | Register idempotency | `test_reception_register_idempotency.py` |
 | Offline classify + optimistic patient | `offline-pure.test.mjs` |
 | Dossier reconcile helpers | `reconcilePatient.test.mjs` |
+| Temp→server dependent remap | `remapPatientRefs.test.mjs` |
 | PR #31 adversarial | `test_pr31_adversarial_audit.py` |
 | Billing integrity | `test_billing_integrity_hardening.py` |
 | Safari auth tokens | `test_auth_spa_cross_origin_tokens.py` |
+| Expanded historical suite | `clinic-regression-gates` job (see matrix doc) |

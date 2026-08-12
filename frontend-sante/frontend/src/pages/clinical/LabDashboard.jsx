@@ -652,7 +652,7 @@ export default function LabDashboard() {
   };
 
   return (
-    <div className="clinical-page reception-his lab-his-page">
+    <div className="clinical-page reception-his lab-his-page" data-testid="lab-dashboard">
       <header className="reception-his-header">
         <div>
           <p className="reception-his-eyebrow">Plateforme Santé · Guinée</p>

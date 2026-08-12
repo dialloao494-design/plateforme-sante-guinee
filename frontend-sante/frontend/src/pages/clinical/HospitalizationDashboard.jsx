@@ -165,7 +165,7 @@ export default function HospitalizationDashboard() {
   const availableBeds = beds.filter((b) => b.status === 'available' || b.status === 'reserved');
 
   return (
-    <div className="clinical-page">
+    <div className="clinical-page" data-testid="hospitalization-dashboard">
       <header className="clinical-header">
         <h1>Hospitalisation</h1>
         <p>Admissions, lits et occupation — pilotage du service.</p>

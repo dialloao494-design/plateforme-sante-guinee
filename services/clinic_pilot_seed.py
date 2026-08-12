@@ -34,6 +34,9 @@ PILOT_STAFF: list[dict[str, str]] = [
     {"email": "dr.pilot@pilot.local", "password": "DoctorPilot1!", "role": "doctor"},
     {"email": "lab@pilot.local", "password": "LabPilot123!", "role": "lab_technician"},
     {"email": "pharmacy@pilot.local", "password": "PharmacyPilot1!", "role": "pharmacist"},
+    {"email": "nurse@pilot.local", "password": "NursePilot1!", "role": "nurse"},
+    {"email": "nutrition@pilot.local", "password": "NutritionPilot1!", "role": "nutritionist"},
+    {"email": "pev@pilot.local", "password": "PevPilot1!", "role": "pev_agent"},
 ]
 
 

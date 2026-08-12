@@ -303,7 +303,7 @@ export default function ImmunizationDashboard() {
       : '—';
 
   return (
-    <div className="clinical-page pev-page">
+    <div className="clinical-page pev-page" data-testid="pev-dashboard">
       <h1>PEV / Vaccination — Registre Centre de Santé Koloma</h1>
       <p className="clinical-lead">
         Registre mensuel numérique aligné sur le carnet PEV : un seul dossier patient central, toutes les vaccinations
@@ -321,6 +321,7 @@ export default function ImmunizationDashboard() {
           <button
             key={key}
             type="button"
+            data-testid={`pev-tab-${key}`}
             className={view === key ? 'clinical-tab active' : 'clinical-tab'}
             onClick={() => setView(key)}
           >

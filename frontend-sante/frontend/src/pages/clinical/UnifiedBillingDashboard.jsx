@@ -88,7 +88,7 @@ export default function UnifiedBillingDashboard() {
   ];
 
   return (
-    <div className="clinical-page">
+    <div className="clinical-page" data-testid="billing-dashboard">
       <header className="clinical-header">
         <h1>Facturation unifiée</h1>
         <p>Agrégation consultation, labo, radio, pharmacie et hospitalisation.</p>
@@ -116,7 +116,7 @@ export default function UnifiedBillingDashboard() {
                   </option>
                 ))}
               </select>
-              <button type="button" className="clinical-btn" onClick={generate}>Générer la facture</button>
+              <button type="button" className="clinical-btn" data-testid="billing-generate-invoice" onClick={generate}>Générer la facture</button>
             </>
           )}
         </div>
