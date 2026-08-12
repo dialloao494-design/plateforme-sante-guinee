@@ -1,4 +1,3 @@
-/* eslint-env node */
 /** Shared Playwright helpers for stable login against cookie-auth SPA. */
 
 /** @typedef {{ email: string, password: string, homePath: RegExp, skipReason?: string }} RoleCredential */
