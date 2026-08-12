@@ -50,9 +50,19 @@ def test_ws_health_is_public(client):
 def test_ws_live_rejects_query_token(client, db_session):
     user = _make_user(db_session)
     token = _token_for(user)
-    with pytest.raises(Exception):
-        with client.websocket_connect(f"/ws/live?token={token}") as ws:
-            ws.receive_json()
+    with client.websocket_connect(f"/ws/live?token={token}") as ws:
+        msg = ws.receive_json()
+        assert msg.get("type") == "error"
+        assert msg.get("detail") == "query_token_forbidden"
+
+
+def test_ws_http_status_probe(client):
+    r = client.get("/ws/status")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "ok"
+    assert body["query_token"] == "rejected"
+    assert "/ws/live" in body["websocket_paths"]
 
 
 def test_ws_live_accepts_cookie_auth(client, db_session):

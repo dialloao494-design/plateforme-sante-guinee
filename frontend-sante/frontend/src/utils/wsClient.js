@@ -19,11 +19,15 @@ function resolveWsBaseUrl() {
   }
   const apiUrl = (import.meta.env.VITE_API_URL || '').trim();
   if (apiUrl.startsWith('http')) {
+    // Absolute Railway/API host serves /ws directly (no /api prefix).
+    // /api/ws is only for same-origin Vercel rewrites.
     const parsed = new URL(apiUrl);
     const wsProto = parsed.protocol === 'https:' ? 'wss:' : 'ws:';
     const path = parsed.pathname.replace(/\/$/, '');
-    const basePath = path.endsWith('/api') ? path : `${path}/api`;
-    return `${wsProto}//${parsed.host}${basePath}/ws`;
+    if (path.endsWith('/api')) {
+      return `${wsProto}//${parsed.host}${path}/ws`;
+    }
+    return `${wsProto}//${parsed.host}/ws`;
   }
   return `${protocol}//${window.location.host}/api/ws`;
 }
