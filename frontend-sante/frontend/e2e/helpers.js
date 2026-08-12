@@ -1,22 +1,78 @@
 /** Shared Playwright helpers for stable login against cookie-auth SPA. */
 
+export const ROLE_CREDENTIALS = {
+  reception: { email: process.env.E2E_RECEPTION_EMAIL || 'reception@pilot.local', password: process.env.E2E_RECEPTION_PASSWORD || 'ReceptionPilot1!', homePath: /\/clinical\/reception/ },
+  cashier: { email: process.env.E2E_CASHIER_EMAIL || 'cashier@pilot.local', password: process.env.E2E_CASHIER_PASSWORD || 'CashierPilot1!', homePath: /\/clinical\/reception/ },
+  doctor: { email: process.env.E2E_DOCTOR_EMAIL || 'dr.pilot@pilot.local', password: process.env.E2E_DOCTOR_PASSWORD || 'DoctorPilot1!', homePath: /\/clinical\/doctor/ },
+  lab: { email: process.env.E2E_LAB_EMAIL || 'lab@pilot.local', password: process.env.E2E_LAB_PASSWORD || 'LabPilot123!', homePath: /\/clinical\/lab/ },
+  pharmacy: { email: process.env.E2E_PHARMACY_EMAIL || 'pharmacy@pilot.local', password: process.env.E2E_PHARMACY_PASSWORD || 'PharmacyPilot1!', homePath: /\/clinical\/pharmacy/ },
+  nurse: { email: process.env.E2E_NURSE_EMAIL || 'nurse@pilot.local', password: process.env.E2E_NURSE_PASSWORD || 'NursePilot1!', homePath: /\/clinical\/nurse/ },
+  nutrition: { email: process.env.E2E_NUTRITION_EMAIL || 'nutrition@pilot.local', password: process.env.E2E_NUTRITION_PASSWORD || 'NutritionPilot1!', homePath: /\/clinical\/nutrition/ },
+  pev: { email: process.env.E2E_PEV_EMAIL || 'pev@pilot.local', password: process.env.E2E_PEV_PASSWORD || 'PevPilot1!', homePath: /\/clinical\/pev/ },
+  admin: { email: process.env.E2E_ADMIN_EMAIL || 'admin@pilot.local', password: process.env.E2E_ADMIN_PASSWORD || 'AdminPilot1!', homePath: /\/clinical\/admin/ },
+};
+
 export async function waitForLoginForm(page) {
   await page.goto('/login');
-  // Wait until AuthProvider finishes bootstrap AND we remain on /login
-  // (not redirected to /platform/setup when no owner exists).
   await page.waitForURL(/\/login\/?$/, { timeout: 30_000 });
-  await page.getByRole('heading', { name: 'Connexion' }).waitFor({
-    state: 'visible',
-    timeout: 30_000,
-  });
+  await page.getByRole('heading', { name: 'Connexion' }).waitFor({ state: 'visible', timeout: 30_000 });
   await page.locator('#email').waitFor({ state: 'visible', timeout: 10_000 });
   await page.locator('#password').waitFor({ state: 'visible', timeout: 10_000 });
 }
 
-export async function loginAsReception(page) {
+export async function loginWithCredentials(page, { email, password, homePath }) {
   await waitForLoginForm(page);
-  await page.locator('#email').fill('reception@pilot.local');
-  await page.locator('#password').fill('ReceptionPilot1!');
+  await page.locator('#email').fill(email);
+  await page.locator('#password').fill(password);
   await page.getByRole('button', { name: 'Se connecter' }).click();
-  await page.waitForURL(/\/clinical\/reception/, { timeout: 45_000 });
+  if (homePath) await page.waitForURL(homePath, { timeout: 45_000 });
+}
+
+export async function loginAsReception(page) { await loginWithCredentials(page, ROLE_CREDENTIALS.reception); }
+export async function loginAsRole(page, roleKey) { await loginWithCredentials(page, ROLE_CREDENTIALS[roleKey]); }
+
+export async function logoutFromApp(page) {
+  const logoutBtn = page.getByRole('button', { name: 'Déconnexion' });
+  if (await logoutBtn.isVisible().catch(() => false)) await logoutBtn.click();
+  else { await page.goto('/login'); await page.evaluate(() => sessionStorage.clear()); }
+  await page.waitForURL(/\/login\/?$/, { timeout: 30_000 });
+}
+
+export function attachConsoleErrorCollector(page) {
+  const errors = [];
+  page.on('pageerror', (err) => errors.push(String(err)));
+  page.on('console', (msg) => { if (msg.type() === 'error') { const t = msg.text(); if (!/favicon|404.*\.(png|ico)|ResizeObserver/i.test(t)) errors.push(t); } });
+  return { assertClean() { if (errors.length) throw new Error(`Unexpected console/page errors:\n${errors.join('\n')}`); } };
+}
+
+export async function assertButtonPresent(page, locator, { allowDisabled = false } = {}) {
+  await locator.waitFor({ state: 'visible', timeout: 15_000 });
+  await locator.scrollIntoViewIfNeeded();
+  if (!allowDisabled && (await locator.isDisabled())) throw new Error('Expected enabled button');
+}
+
+export async function assertButtonClickable(page, locator) { await assertButtonPresent(page, locator); }
+
+export async function fillRegistrationForm(page, { lastName, firstName, phone, dob = '1990-05-15' }) {
+  await page.getByRole('button', { name: /Enregistrement/ }).click();
+  await page.getByLabel('Nom *', { exact: true }).fill(lastName);
+  await page.getByLabel('Prénom *', { exact: true }).fill(firstName);
+  await page.locator('.reception-his-birthdate-field input[type="date"]').fill(dob);
+  await page.getByLabel('Adresse *', { exact: true }).fill('123 Rue de Kaloum, Conakry');
+  await page.getByLabel('Tél. principal *', { exact: true }).fill(phone);
+  await page.getByLabel('Nom du contact *', { exact: true }).fill('Contact Urgence');
+  await page.getByRole('combobox', { name: 'Relation *' }).selectOption('Père');
+  await page.getByLabel('Téléphone *', { exact: true }).fill('622000000');
+}
+
+export async function countOutboxPending(page) {
+  return page.evaluate(async () => {
+    try {
+      const db = await new Promise((resolve, reject) => { const req = indexedDB.open('sante_offline_v2'); req.onerror = () => reject(req.error); req.onsuccess = () => resolve(req.result); });
+      if (!db.objectStoreNames.contains('outbox')) return 0;
+      const rows = await new Promise((resolve, reject) => { const tx = db.transaction('outbox', 'readonly'); const req = tx.objectStore('outbox').getAll(); req.onsuccess = () => resolve(req.result || []); req.onerror = () => reject(req.error); });
+      db.close();
+      return rows.filter((r) => ['pending', 'failed', 'in_flight'].includes(r.status)).length;
+    } catch { return 0; }
+  });
 }
