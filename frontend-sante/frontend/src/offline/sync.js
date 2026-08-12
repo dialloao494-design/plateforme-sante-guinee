@@ -9,6 +9,8 @@ import {
 import { detectAndRecordConflict } from './conflict.js';
 import { cacheGetResponse } from './cache.js';
 import { readOfflineOwnerScope } from './sessionScope.js';
+import { isHisPatientRegisterUrl } from './entityTypes.js';
+import { reconcilePatientCreate } from './reconcilePatient.js';
 
 let flushing = false;
 let syncTimer = null;
@@ -105,6 +107,19 @@ export async function replayOutboxItem(item, client) {
   }
 
   await markOutboxSynced(item.id, serverData);
+
+  if (
+    item.entity_type === 'patient'
+    && isHisPatientRegisterUrl(item.url)
+    && serverData?.patient_number
+  ) {
+    await reconcilePatientCreate({
+      clientRequestId: item.client_request_id,
+      localOptimistic,
+      serverPatient: serverData,
+    });
+  }
+
   return 'synced';
 }
 

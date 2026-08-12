@@ -30,6 +30,22 @@ export default function RegisterTab({
           <form className="clinical-card reception-his-form-sheet" onSubmit={handleRegister}>
             <h2>Enregistrement patient</h2>
             <GeneratedIdBanner label="N° dossier patient généré" value={registeredPatient?.patient_number} />
+            {registeredPatient?._sync_status === 'queued' && !registeredPatient?.patient_number && (
+              <div
+                className="reception-his-qr-block"
+                data-testid="reception-registration-queued"
+              >
+                <div>
+                  <p data-testid="reception-patient-sync-status">
+                    <strong>Statut :</strong> Enregistré hors ligne — synchronisation en attente
+                  </p>
+                  <p className="clinical-hint">
+                    Le N° dossier patient sera attribué automatiquement dès la reconnexion.
+                    Ne créez pas un second enregistrement pour le même patient.
+                  </p>
+                </div>
+              </div>
+            )}
             {registeredPatient?.patient_number && (
               <div
                 className="reception-his-qr-block"
@@ -51,7 +67,13 @@ export default function RegisterTab({
               <DisplayField
                 label="N° dossier patient"
                 value={registeredPatient?.patient_number || ''}
-                hint={registeredPatient?.patient_number ? undefined : FIELD_HINTS.patientId}
+                hint={
+                  registeredPatient?.patient_number
+                    ? undefined
+                    : (registeredPatient?._sync_status === 'queued'
+                      ? 'Synchronisation en attente — le N° dossier sera généré à la reconnexion.'
+                      : FIELD_HINTS.patientId)
+                }
               />
               <label>Date inscription<input required type="date" value={regForm.registration_date} onChange={(e) => updateReg({ registration_date: e.target.value })} /></label>
               <label className="reception-his-check"><input type="checkbox" checked={regForm.is_newborn} onChange={(e) => updateReg({ is_newborn: e.target.checked })} />Nouveau-né</label>
@@ -259,12 +281,16 @@ export default function RegisterTab({
             <button
               type="submit"
               className="clinical-btn"
-              disabled={loading || Boolean(registeredPatient?.patient_number)}
+              disabled={
+                loading
+                || Boolean(registeredPatient?.patient_number)
+                || registeredPatient?._sync_status === 'queued'
+              }
               data-testid="reception-register-submit"
             >
               Enregistrer le patient
             </button>
-            {registeredPatient && (
+            {registeredPatient?.patient_number && (
               <button
                 type="button"
                 className="clinical-btn clinical-btn--secondary"
@@ -284,6 +310,7 @@ export default function RegisterTab({
                   setRegForm({ ...EMPTY_REG, registration_date: todayStr });
                   setMessage('');
                 }}
+                data-testid="reception-new-registration"
               >
                 Nouvel enregistrement
               </button>

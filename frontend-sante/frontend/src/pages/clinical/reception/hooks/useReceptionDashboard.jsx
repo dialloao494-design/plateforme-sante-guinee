@@ -34,13 +34,25 @@ import SpecialtyPicker from '../components/SpecialtyPicker.jsx';
 import { useBillingCatalogFilters } from './useBillingCatalogFilters.js';
 import { buildInvoiceItemPayload } from './buildInvoiceItemPayload.js';
 import {
+  classifyRegistrationResponse,
   isCompleteRegistrationResponse,
-  REGISTRATION_ONLINE_REQUIRED_MESSAGE,
+  isQueuedRegistrationResponse,
+  REG_STATUS,
+  REGISTRATION_QUEUED_MESSAGE,
+  REGISTRATION_INCOMPLETE_MESSAGE,
 } from '../registrationSuccess.js';
+import {
+  buildRegistrationFingerprint,
+  findPendingRegistrationByFingerprint,
+  onPatientReconciled,
+} from '../../../../offline/reconcilePatient.js';
+
 export function useReceptionDashboard() {
   const { user } = useAuth();
   const searchRef = useRef(null);
   const regPrintRef = useRef(null);
+  const pendingRegClientRequestIds = useRef(new Set());
+  const registeredPatientRef = useRef(null);
 
   const [tab, setTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
@@ -515,6 +527,32 @@ export function useReceptionDashboard() {
     setMessage(`Patient sélectionné : ${patientFullName(patient)} · N° dossier ${patient.patient_number || '—'}`);
   };
 
+  // When an offline registration syncs, surface the real PAT- dossier number.
+  useEffect(() => {
+    registeredPatientRef.current = registeredPatient;
+  }, [registeredPatient]);
+
+  useEffect(() => {
+    const unsubscribe = onPatientReconciled(async (event) => {
+      const current = registeredPatientRef.current;
+      const tracked = pendingRegClientRequestIds.current.has(event.clientRequestId);
+      const matchesTemp =
+        current
+        && event.tempId
+        && String(current.id) === String(event.tempId);
+      if (!tracked && !matchesTemp) return;
+      pendingRegClientRequestIds.current.delete(event.clientRequestId);
+      if (matchesTemp || (current && current._sync_status === 'queued' && tracked)) {
+        setRegisteredPatient(event.merged);
+        if (event.merged?.id) setSelectedPatient(event.merged);
+      }
+      setMessage(`Patient synchronisé · N° dossier patient ${event.merged.patient_number}`);
+      setError('');
+      await loadDashboard();
+    });
+    return unsubscribe;
+  }, [loadDashboard]);
+
   const clearPatient = () => {
     setSelectedPatient(null);
     setInvoices([]);
@@ -749,13 +787,57 @@ export function useReceptionDashboard() {
     setError('');
     setMessage('');
     try {
+      // If the same registration is already queued offline, reuse it — do not
+      // create a second outbox entry (prevents duplicate sync conflicts).
+      const fingerprint = buildRegistrationFingerprint(payload);
+      const alreadyQueued = await findPendingRegistrationByFingerprint(fingerprint);
+      if (alreadyQueued) {
+        let optimistic = {};
+        try {
+          optimistic = JSON.parse(alreadyQueued.optimistic_json || '{}');
+        } catch {
+          optimistic = {};
+        }
+        const queued = {
+          ...optimistic,
+          client_request_id: alreadyQueued.client_request_id,
+          _offline_queued: true,
+          _sync_status: 'queued',
+          patient_number: null,
+        };
+        pendingRegClientRequestIds.current.add(alreadyQueued.client_request_id);
+        setDuplicateMatches([]);
+        setPendingRegPayload(null);
+        setRegistrationPrintForm({ ...regForm });
+        setRegisteredPatient(queued);
+        setMessage(REGISTRATION_QUEUED_MESSAGE);
+        return true;
+      }
+
       const { data } = await clinicalApi.receptionHisRegister(payload);
-      // Defense in depth: HIS register is online-only (not queued). Reject any
-      // optimistic/incomplete payload so staff never see a false success.
+      const status = classifyRegistrationResponse(data);
+
+      if (status === REG_STATUS.QUEUED || isQueuedRegistrationResponse(data)) {
+        if (data?.client_request_id) {
+          pendingRegClientRequestIds.current.add(data.client_request_id);
+        }
+        setDuplicateMatches([]);
+        setPendingRegPayload(null);
+        setRegistrationPrintForm({ ...regForm });
+        setRegisteredPatient({
+          ...data,
+          _sync_status: 'queued',
+          patient_number: null,
+        });
+        setMessage(REGISTRATION_QUEUED_MESSAGE);
+        return true;
+      }
+
       if (!isCompleteRegistrationResponse(data)) {
-        setError(REGISTRATION_ONLINE_REQUIRED_MESSAGE);
+        setError(REGISTRATION_INCOMPLETE_MESSAGE);
         return false;
       }
+
       setDuplicateMatches([]);
       setPendingRegPayload(null);
       setRegistrationPrintForm({ ...regForm });
@@ -767,14 +849,6 @@ export function useReceptionDashboard() {
       await loadDashboard();
       return true;
     } catch (err) {
-      const isNetwork =
-        !err?.response
-        || err?.code === 'ERR_NETWORK'
-        || err?.code === 'ECONNABORTED';
-      if (isNetwork) {
-        setError(REGISTRATION_ONLINE_REQUIRED_MESSAGE);
-        return false;
-      }
       const conflict = resolveRegistrationConflict(err, payload);
       setDuplicateMatches(conflict.matches);
       setPendingRegPayload(conflict.pendingPayload);

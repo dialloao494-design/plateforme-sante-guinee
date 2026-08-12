@@ -1,5 +1,6 @@
 import { offlineDb } from './db.js';
 import { generateClientRequestId } from './outbox.js';
+import { readOfflineOwnerScope } from './sessionScope.js';
 
 /**
  * Last-write-wins: pick newer record by version then timestamp.
@@ -35,8 +36,12 @@ export async function recordConflict({
   remotePayload,
   resolution = 'pending',
 }) {
+  const scope = readOfflineOwnerScope();
   const id = await offlineDb.conflicts.add({
     conflict_id: generateClientRequestId(),
+    owner_key: scope.ownerKey,
+    user_id: scope.userId,
+    clinic_id: scope.clinicId,
     client_request_id: clientRequestId,
     entity_type: entityType,
     entity_id: entityId || null,

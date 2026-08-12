@@ -27,15 +27,22 @@ export function computeBackoffMs(attempt, baseMs = 2000, maxMs = 300_000) {
 export function buildOptimisticResponse(payload, entityType) {
   const now = new Date().toISOString();
   const tempId = `offline_${generateClientRequestId().slice(0, 8)}`;
-  return {
+  const base = {
     id: tempId,
     offline: true,
     entity_type: entityType,
     created_at: now,
     updated_at: now,
     record_version: 1,
+    _sync_status: 'queued',
     ...((typeof payload === 'object' && payload !== null) ? payload : {}),
   };
+  // Never invent a server dossier number offline — UI shows pending sync state.
+  if (entityType === 'patient') {
+    base.patient_number = null;
+    base._pending_dossier = true;
+  }
+  return base;
 }
 
 /**
@@ -121,11 +128,13 @@ export async function listOutboxByStatus(status) {
   return offlineDb.outbox.where('status').equals(status).toArray();
 }
 
-export async function countPendingOutbox() {
-  const pending = await offlineDb.outbox.where('status').equals(OUTBOX_STATUS.PENDING).count();
-  const failed = await offlineDb.outbox.where('status').equals(OUTBOX_STATUS.FAILED).count();
-  const inFlight = await offlineDb.outbox.where('status').equals(OUTBOX_STATUS.IN_FLIGHT).count();
-  return pending + failed + inFlight;
+export async function countPendingOutbox({ ownerKey } = {}) {
+  const scope = ownerKey ? { ownerKey } : readOfflineOwnerScope();
+  const rows = await offlineDb.outbox
+    .where('status')
+    .anyOf([OUTBOX_STATUS.PENDING, OUTBOX_STATUS.FAILED, OUTBOX_STATUS.IN_FLIGHT])
+    .toArray();
+  return rows.filter((r) => r.owner_key && r.owner_key === scope.ownerKey).length;
 }
 
 export async function markOutboxInFlight(id) {

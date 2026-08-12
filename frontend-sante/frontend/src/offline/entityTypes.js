@@ -1,25 +1,42 @@
 /** Map API paths to sync entity types (mirrors clinic-node outbox conventions). */
 
 const RULES = [
-  // HIS registration requires a real server-issued dossier number — never queue offline.
+  // HIS patient registration — queueable with dossier reconciliation after sync.
   {
     pattern: /\/clinical\/reception\/his\/patients\/?$/,
     entityType: 'patient',
     domain: 'patients',
-    queueable: false,
+    queueable: true,
+    requiresReconciliation: true,
   },
-  { pattern: /\/clinical\/(reception\/his\/)?patients\/search|\/clinical\/reception\/patients|\/clinical\/(doctor|nurse|pharmacy|lab|billing\/unified)\/patients\/search/, entityType: 'patient', domain: 'patients' },
+  {
+    pattern:
+      /\/clinical\/(reception\/his\/)?patients\/search|\/clinical\/reception\/patients|\/clinical\/(doctor|nurse|pharmacy|lab|billing\/unified)\/patients\/search/,
+    entityType: 'patient',
+    domain: 'patients',
+  },
   { pattern: /\/clinical\/consultations/, entityType: 'consultation', domain: 'consultations' },
-  { pattern: /\/clinical\/(reception\/his\/)?invoices|\/clinical\/billing\//, entityType: 'billing', domain: 'billing' },
+  {
+    pattern: /\/clinical\/(reception\/his\/)?invoices|\/clinical\/billing\//,
+    entityType: 'billing',
+    domain: 'billing',
+  },
   { pattern: /\/clinical\/pharmacy\//, entityType: 'pharmacy', domain: 'pharmacy' },
   { pattern: /\/clinical\/lab\//, entityType: 'lab', domain: 'lab' },
-  { pattern: /\/clinical\/doctor\/catalog|\/clinical\/lab\/catalog|\/clinical\/reception\/his\/billing-catalog/, entityType: 'catalog', domain: 'catalogs' },
+  {
+    pattern:
+      /\/clinical\/doctor\/catalog|\/clinical\/lab\/catalog|\/clinical\/reception\/his\/billing-catalog/,
+    entityType: 'catalog',
+    domain: 'catalogs',
+  },
 ];
 
-/** True for mutations that must reach the server immediately (no outbox). */
-export function isOnlineOnlyMutation(url = '', method = 'get') {
-  const verb = String(method).toLowerCase();
-  if (!['post', 'patch', 'put', 'delete'].includes(verb)) return false;
+/** Kept for callers; HIS registration is no longer online-only. */
+export function isOnlineOnlyMutation() {
+  return false;
+}
+
+export function isHisPatientRegisterUrl(url = '') {
   return /\/clinical\/reception\/his\/patients\/?$/.test(String(url).split('?')[0]);
 }
 
@@ -38,6 +55,7 @@ export function classifyRequest(url = '', method = 'get') {
         operation: verbToOperation(verb),
         cacheable: verb === 'get',
         queueable,
+        requiresReconciliation: Boolean(rule.requiresReconciliation),
       };
     }
   }
@@ -47,7 +65,8 @@ export function classifyRequest(url = '', method = 'get') {
     domain: null,
     operation: verbToOperation(verb),
     cacheable: verb === 'get' && /\/clinical\//.test(path),
-    queueable: isMutation && /\/clinical\//.test(path) && !isOnlineOnlyMutation(path, verb),
+    queueable: isMutation && /\/clinical\//.test(path),
+    requiresReconciliation: false,
   };
 }
 
