@@ -10,7 +10,12 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session, joinedload
 
 import models
-from core.clinical_access import RECEPTION_ROLES, resolve_clinic_for_user
+from core.clinical_access import (
+    BILLING_PAY_ROLES,
+    BILLING_READ_ROLES,
+    RECEPTION_ROLES,
+    resolve_clinic_for_user,
+)
 from core.http_utils import client_ip
 from database import get_db
 from models.user import User
@@ -50,6 +55,30 @@ def _require_reception(user: User) -> None:
         "platform_owner",
     ):
         raise HTTPException(status_code=403, detail="Accès réservé à la réception")
+
+
+def _require_billing_read(user: User) -> None:
+    """Reception HIS invoice read — reception + cashier + clinic admins."""
+    if user.role in BILLING_READ_ROLES or user.role in (
+        "admin",
+        "clinic_admin",
+        "platform_admin",
+        "platform_owner",
+    ):
+        return
+    raise HTTPException(status_code=403, detail="Accès facturation requis")
+
+
+def _require_billing_pay(user: User) -> None:
+    """Reception HIS invoice payment — receptionist and cashier (BILLING_PAY_ROLES)."""
+    if user.role in BILLING_PAY_ROLES or user.role in (
+        "admin",
+        "clinic_admin",
+        "platform_admin",
+        "platform_owner",
+    ):
+        return
+    raise HTTPException(status_code=403, detail="Accès encaissement requis")
 
 
 def _patient_out(patient: models.Patient) -> PatientSearchResult:
@@ -440,7 +469,7 @@ def list_invoices(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _require_reception(current_user)
+    _require_billing_read(current_user)
     clinic = resolve_clinic_for_user(db, current_user)
     if not patient_id:
         return []
@@ -454,7 +483,7 @@ def get_invoice(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _require_reception(current_user)
+    _require_billing_read(current_user)
     clinic = resolve_clinic_for_user(db, current_user)
     invoice = ReceptionHisService.get_invoice(db, clinic_id=clinic.id, invoice_id=invoice_id)
     if not invoice:
@@ -472,7 +501,7 @@ def add_payment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _require_reception(current_user)
+    _require_billing_pay(current_user)
     clinic = resolve_clinic_for_user(db, current_user)
     invoice = ReceptionHisService.add_payment(
         db,
@@ -493,7 +522,7 @@ def search_invoice(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _require_reception(current_user)
+    _require_billing_read(current_user)
     clinic = resolve_clinic_for_user(db, current_user)
     invoice = ReceptionHisService.find_invoice(
         db, clinic_id=clinic.id, query=q, patient_id=patient_id
@@ -576,7 +605,7 @@ def print_receipt(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _require_reception(current_user)
+    _require_billing_read(current_user)
     clinic = resolve_clinic_for_user(db, current_user)
     invoice = ReceptionHisService.get_invoice(db, clinic_id=clinic.id, invoice_id=invoice_id)
     if not invoice:
