@@ -20,12 +20,18 @@ const PROFILE_STORAGE_KEYS = AUTH_STORAGE_KEYS.filter(
 );
 
 export function isSameOriginApi() {
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    const e = import.meta.env;
-    if (e.VITE_SAME_ORIGIN_API === 'true' || e.VITE_USE_RELATIVE_API === 'true') return true;
-    if ((e.VITE_API_URL || '').trim() === '/api') return true;
+  const fromMeta =
+    typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : {};
+  const fromProcess = typeof process !== 'undefined' ? process.env : {};
+  const flag = (name) =>
+    String(fromMeta[name] ?? fromProcess[name] ?? '')
+      .trim()
+      .toLowerCase() === 'true';
+  const apiUrl = String(fromMeta.VITE_API_URL ?? fromProcess.VITE_API_URL ?? '').trim();
+  if (flag('VITE_SAME_ORIGIN_API') || flag('VITE_USE_RELATIVE_API')) {
+    return true;
   }
-  return false;
+  return apiUrl === '/api';
 }
 
 function tabStore() {
