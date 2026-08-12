@@ -18,6 +18,27 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: python -m pytest tests/ -q
 
+  # Permanent clinic regression gates — must stay green to prevent known prod bugs returning.
+  clinic-regression-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: Reception / billing / auth clinic regressions
+        run: |
+          python -m pytest -q \
+            tests/test_reception_patient_number_generation.py \
+            tests/test_reception_register_idempotency.py \
+            tests/test_reception_emergency_specialty_invoice.py \
+            tests/test_reception_his_duplicate_registration.py \
+            tests/test_billing_integrity_hardening.py \
+            tests/test_pr31_adversarial_audit.py \
+            tests/test_auth_spa_cross_origin_tokens.py
+
   frontend-build:
     runs-on: ubuntu-latest
     defaults:

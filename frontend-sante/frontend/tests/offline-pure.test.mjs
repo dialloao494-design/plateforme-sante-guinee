@@ -6,7 +6,6 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   classifyRequest,
-  isOnlineOnlyMutation,
   isPatientSearchUrl,
 } from '../src/offline/entityTypes.js';
 import { computeBackoffMs, buildOptimisticResponse } from '../src/offline/outbox.js';
@@ -25,18 +24,15 @@ test('classifyRequest maps billing invoice create', () => {
   assert.equal(r.domain, 'billing');
 });
 
-test('HIS patient registration is online-only and never queueable', () => {
+test('HIS patient registration is queueable with reconciliation', () => {
   const create = classifyRequest('/clinical/reception/his/patients', 'post');
   assert.equal(create.entityType, 'patient');
-  assert.equal(create.queueable, false);
-  assert.equal(isOnlineOnlyMutation('/clinical/reception/his/patients', 'post'), true);
-  // Trailing slash / query must not re-enable queueing
-  assert.equal(classifyRequest('/clinical/reception/his/patients/', 'post').queueable, false);
-  // Search and other patient GETs remain classifiable; search POST not used
+  assert.equal(create.queueable, true);
+  assert.equal(create.requiresReconciliation, true);
+  assert.equal(classifyRequest('/clinical/reception/his/patients/', 'post').queueable, true);
   const search = classifyRequest('/clinical/reception/his/patients/search', 'get');
   assert.equal(search.entityType, 'patient');
   assert.equal(search.cacheable, true);
-  assert.equal(isOnlineOnlyMutation('/clinical/reception/his/patients/search', 'post'), false);
 });
 
 test('classifyRequest maps pharmacy patch', () => {
@@ -67,6 +63,16 @@ test('buildOptimisticResponse includes offline marker fields', () => {
   assert.equal(row.patient_id, 42);
   assert.ok(row.id.startsWith('offline_'));
   assert.equal(row.record_version, 1);
+});
+
+test('optimistic patient create never invents a dossier number', () => {
+  const row = buildOptimisticResponse(
+    { first_name: 'Awa', last_name: 'Diallo', phone: '620111222' },
+    'patient',
+  );
+  assert.equal(row.patient_number, null);
+  assert.equal(row._pending_dossier, true);
+  assert.equal(row._sync_status, 'queued');
 });
 
 test('resolveLastWriteWins prefers higher version', () => {

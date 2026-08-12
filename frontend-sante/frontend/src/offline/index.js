@@ -41,10 +41,23 @@ export {
   getCachedPatient,
   buildOfflineCacheKey,
 } from './cache.js';
-export { classifyRequest, isPatientSearchUrl, isCatalogUrl } from './entityTypes.js';
+export {
+  classifyRequest,
+  isPatientSearchUrl,
+  isCatalogUrl,
+  isHisPatientRegisterUrl,
+} from './entityTypes.js';
 export {
   initOfflineSupport,
   isBrowserOnline,
   onOnlineStatusChange,
   registerServiceWorker,
 } from './register.js';
+export {
+  onPatientReconciled,
+  reconcilePatientCreate,
+  buildRegistrationFingerprint,
+  findPendingRegistrationByFingerprint,
+  mergeReconciledPatient,
+  isTempPatientId,
+} from './reconcilePatient.js';

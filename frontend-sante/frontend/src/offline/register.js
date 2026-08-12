@@ -1,6 +1,6 @@
 import { enqueueMutation } from './outbox.js';
 import { cacheGetResponse, getCachedGet } from './cache.js';
-import { classifyRequest, isOnlineOnlyMutation } from './entityTypes.js';
+import { classifyRequest } from './entityTypes.js';
 import { bindHttpClient, cacheOnlineGet, flushOutbox, startAutoSync, stopAutoSync } from './sync.js';
 
 let requestInterceptorId = null;
@@ -81,14 +81,7 @@ export function attachOfflineInterceptors(httpClient) {
       return config;
     }
 
-    // Online-only mutations (HIS patient register): never enqueue — let the
-    // request fail so reception cannot create silent duplicate outbox entries.
-    if (
-      isMutationMethod(method)
-      && !navigator.onLine
-      && classified.queueable
-      && !isOnlineOnlyMutation(url, method)
-    ) {
+    if (isMutationMethod(method) && !navigator.onLine && classified.queueable) {
       const { optimistic, client_request_id } = await enqueueMutation({
         method,
         url,
@@ -97,11 +90,18 @@ export function attachOfflineInterceptors(httpClient) {
         headers: config.headers,
         entityType: classified.entityType,
         operation: classified.operation,
+        clientRequestId: config.headers?.['X-Client-Request-Id']
+          || config.headers?.['x-client-request-id'],
       });
 
       config.adapter = () =>
         Promise.resolve({
-          data: { ...optimistic, client_request_id, _offline_queued: true },
+          data: {
+            ...optimistic,
+            client_request_id,
+            _offline_queued: true,
+            _sync_status: 'queued',
+          },
           status: 202,
           statusText: 'Accepted (offline queue)',
           headers: { 'x-offline-queued': 'true' },
@@ -146,12 +146,7 @@ export function attachOfflineInterceptors(httpClient) {
         }
       }
 
-      if (
-        isMutationMethod(method)
-        && isNetworkError(error)
-        && classified.queueable
-        && !isOnlineOnlyMutation(config.url, method)
-      ) {
+      if (isMutationMethod(method) && isNetworkError(error) && classified.queueable) {
         const { optimistic, client_request_id } = await enqueueMutation({
           method,
           url: config.url,
@@ -160,10 +155,17 @@ export function attachOfflineInterceptors(httpClient) {
           headers: config.headers,
           entityType: classified.entityType,
           operation: classified.operation,
+          clientRequestId: config.headers?.['X-Client-Request-Id']
+            || config.headers?.['x-client-request-id'],
         });
 
         return {
-          data: { ...optimistic, client_request_id, _offline_queued: true },
+          data: {
+            ...optimistic,
+            client_request_id,
+            _offline_queued: true,
+            _sync_status: 'queued',
+          },
           status: 202,
           statusText: 'Accepted (offline queue)',
           headers: { 'x-offline-queued': 'true' },
