@@ -7,7 +7,6 @@ import hmac
 import os
 
 from core.payment_policy import validate_stub_token
-from core.settings import get_settings
 
 
 class MobileMoneyWebhookAuthError(Exception):
@@ -65,12 +64,12 @@ def verify_mobile_money_signature(
 
     Fail closed in production (and whenever the provider *_LIVE flag is set) when
     the webhook secret is unset. Unsigned callbacks must never mutate payment state.
-  """
-    settings = get_settings()
+    """
+    is_production = (os.getenv("ENVIRONMENT") or "development").strip().lower() == "production"
     live = provider_live(provider)
     secret = _secret_for_provider(provider)
 
-    if settings.is_production or live:
+    if is_production or live:
         if not secret:
             raise MobileMoneyWebhookAuthError(
                 f"Webhook secret is not configured for provider {provider}"

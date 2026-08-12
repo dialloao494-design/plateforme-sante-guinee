@@ -15,10 +15,10 @@ import json
 import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from jose import JWTError, jwt
+from jose import JWTError
 
 from core.auth_cookie_config import ACCESS_COOKIE_NAME
-from security import ALGORITHM, SECRET_KEY
+from security import decode_access_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/ws", tags=["WebSocket"])
@@ -28,14 +28,16 @@ WS_HEARTBEAT_TIMEOUT_SECONDS = 55.0
 
 
 def _decode_ws_token(token: str | None) -> dict | None:
-    if not token or not SECRET_KEY:
+    if not token:
         return None
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = decode_access_token(token)
         if payload.get("user_id") is None:
             return None
         return payload
     except JWTError:
+        return None
+    except Exception:
         return None
 
 

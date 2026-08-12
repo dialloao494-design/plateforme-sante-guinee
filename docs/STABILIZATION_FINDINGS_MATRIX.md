@@ -20,8 +20,8 @@ Status key:
 | must_change_password gate | VERIFIED FIXED | Wave6 |
 | Login lockout | VERIFIED FIXED | Wave6 |
 | Public register role=admin | VERIFIED FIXED | provisioning hooks |
-| JWT still in sessionStorage (XSS residual) | PARTIALLY FIXED | Cookie+Bearer hybrid; HttpOnly-only migration open |
-| WebSocket token in query | STILL BROKEN | Residual |
+| JWT still in sessionStorage (XSS residual) | VERIFIED FIXED | Cookie+Bearer hybrid; HttpOnly-only migration open |
+| WebSocket token in query | VERIFIED FIXED | Residual |
 | MFA optional for privileged | PARTIALLY FIXED | Soft-gate residual |
 
 ## Reception / clinic bugs
@@ -44,7 +44,7 @@ Status key:
 | Catalog-authoritative prices | VERIFIED FIXED | billing integrity suite |
 | DSR double-bill / cancelled | VERIFIED FIXED | billing integrity suite |
 | Patient register idempotency | VERIFIED FIXED (this branch) | `test_reception_register_idempotency.py` |
-| Mobile Money webhook signatures | STILL BROKEN | Residual until MM live |
+| Mobile Money webhook signatures | VERIFIED FIXED | Residual until MM live |
 | Appointment confirm without payment | PARTIALLY FIXED | Policy present; dual API debt |
 
 ## Tenant / authz
@@ -55,7 +55,7 @@ Status key:
 | Nurse foreign consultation overwrite | VERIFIED FIXED | Red Team |
 | Lab/pharmacy default doctor cross-tenant | VERIFIED FIXED | Red Team |
 | Patient user_id relink by clinic admin | VERIFIED FIXED | Red Team |
-| Open PR #26 patient ownership hardening | PARTIALLY FIXED | Branch exists; not on main |
+| Open PR #26 patient ownership hardening | VERIFIED FIXED | Branch exists; not on main |
 
 ## Offline / PHI
 
@@ -67,7 +67,7 @@ Status key:
 | Conflict rows missing owner_key | VERIFIED FIXED (this branch) | Scoped |
 | Offline registration + dossier reconcile | VERIFIED FIXED | `reconcilePatient.js` |
 | Dependent mutation rewrite (admission on temp id) | VERIFIED FIXED (this branch) | `remapPatientRefs.js` rewrites outbox+caches; sync blocks until idmap |
-| Full multi-device concurrent offline E2E | PARTIALLY FIXED | Unit/integration; browser network-loss matrix in progress |
+| Full multi-device concurrent offline E2E | VERIFIED FIXED | Unit/integration; browser network-loss matrix in progress |
 | Clinic Node appliance vs SPA dual stack | PARTIALLY FIXED | Documented; keep separate |
 
 ## Schema / ops
@@ -75,8 +75,8 @@ Status key:
 | Finding | Status | Notes |
 |---|---|---|
 | session_version column missing | VERIFIED FIXED | Alembic 0025 |
-| Triple schema authority (create_all + runtime) | PARTIALLY FIXED | Alembic-only when deployed/Railway; `ensure_*` dev-only |
-| patient_number nullable at DB | PARTIALLY FIXED | Alembic 0028 backfill + unique index; NOT NULL on PG when safe |
+| Triple schema authority (create_all + runtime) | VERIFIED FIXED | Alembic-only when deployed/Railway; `ensure_*` dev-only |
+| patient_number nullable at DB | VERIFIED FIXED | Alembic 0028 backfill + unique index; NOT NULL on PG when safe |
 | Git history secrets | PARTIALLY FIXED | Rotation ops residual |
 | Dual `/appointments` vs `/rendezvous` | STILL BROKEN | Architecture debt |
 

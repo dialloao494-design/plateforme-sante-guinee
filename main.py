@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import SessionLocal
 import models
 from routers import patient, patient_record, rendezvous, doctor, auth, teleconsultation, notifications, messages
-from routers import users, appointments, doctor_dashboard, ws, clinical, medical_history, hospitalization
+from routers import users, appointments, doctor_dashboard, ws, clinical, medical_history, hospitalization, payments_webhooks
 from routers import unified_billing, discharge, radiology, reminders, clinical_reports, platform, platform_setup
 from routers import nutrition, immunization, nursing_care, visit_workflow, clinical_phase2, lab_phase2, pharmacy_phase2, reception_his, nurse_assessment
 from routers import clinic_node_ops
@@ -417,6 +417,7 @@ app.include_router(reminders.router)
 app.include_router(clinical_reports.router)
 app.include_router(reception_his.router)
 app.include_router(clinic_node_ops.router)
+app.include_router(payments_webhooks.router)
 app.include_router(ws.router)
 
 

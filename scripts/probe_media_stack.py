@@ -61,12 +61,16 @@ async def ws_probe_live(token: str):
         import websockets
     except ImportError:
         return "SKIP websockets package not installed"
-    url = f"{WS_BASE}/ws/live?token={token}"
+    url = f"{WS_BASE}/ws/live"
     lines = []
     try:
         async with websockets.connect(url, open_timeout=5) as ws:
             msg = await asyncio.wait_for(ws.recv(), timeout=5)
             lines.append(f"WS /ws/live recv: {msg}")
+            if '"auth_required"' in msg:
+                await ws.send(json.dumps({"type": "auth", "token": token}))
+                msg = await asyncio.wait_for(ws.recv(), timeout=5)
+                lines.append(f"WS /ws/live auth->: {msg}")
             await ws.send(json.dumps({"type": "ping"}))
             msg2 = await asyncio.wait_for(ws.recv(), timeout=5)
             lines.append(f"WS /ws/live ping->: {msg2}")
