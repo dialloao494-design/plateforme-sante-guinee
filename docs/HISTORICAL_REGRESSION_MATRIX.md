@@ -33,10 +33,10 @@ Status: **LOCKED** = CI gate present; **PARTIAL** = unit only / incomplete E2E; 
 | H26 | Invoice serial allocation | `test_invoice_serial_allocation.py` | LOCKED |
 | H27 | Unified billing | `test_unified_billing.py` | LOCKED |
 | H28 | Print auth errors actionable | e2e login + downloadPdf paths (PR #35) | PARTIAL |
-| H29 | Dual `/appointments` vs `/rendezvous` | architecture debt | GAP → track in findings matrix |
-| H30 | Mobile Money webhook signatures | security residual branch | GAP until security PR |
-| H31 | WebSocket token-in-query | security residual branch | GAP until security PR |
-| H32 | HttpOnly-only auth (same-origin) | security residual branch | GAP until security PR |
+| H29 | Dual `/appointments` vs `/rendezvous` | `test_appointments_rendezvous_parity.py` — `/appointments` canonical; `/rendezvous` legacy alias with shared `effective_role` RBAC | LOCKED |
+| H30 | Mobile Money webhook signatures | `test_mobile_money_webhook_security.py` — HMAC fail-closed in production/`*_LIVE` | LOCKED |
+| H31 | WebSocket token-in-query | `test_ws_auth_security.py` — cookie / first-message auth; query token rejected | LOCKED |
+| H32 | HttpOnly-only auth (same-origin) | `test_auth_same_origin_cookies.py` + Vite prod default `VITE_API_URL=/api` + Vercel `/api` rewrite; JWT not persisted when same-origin | LOCKED |
 
 ## CI job
 

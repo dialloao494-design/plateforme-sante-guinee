@@ -19,7 +19,11 @@ from sqlalchemy import func
 import models
 from security import hash_password, verify_password
 from services.pilot_seed import PILOT_DOCTORS
-from services.user_provisioning import EmailAlreadyRegisteredError, create_staff_user
+from services.user_provisioning import (
+    EmailAlreadyRegisteredError,
+    UserProvisioningError,
+    create_staff_user,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +40,8 @@ PILOT_STAFF: list[dict[str, str]] = [
     {"email": "pharmacy@pilot.local", "password": "PharmacyPilot1!", "role": "pharmacist"},
     {"email": "nurse@pilot.local", "password": "NursePilot1!", "role": "nurse"},
     {"email": "nutrition@pilot.local", "password": "NutritionPilot1!", "role": "nutritionist"},
-    {"email": "pev@pilot.local", "password": "PevPilot1!", "role": "pev_agent"},
+    # Must satisfy PASSWORD_MIN_LENGTH (12); short "PevPilot1!" never seeded.
+    {"email": "pev@pilot.local", "password": "PevAgentPilot1!", "role": "pev_agent"},
 ]
 
 
@@ -95,8 +100,14 @@ def _ensure_staff_account(db, clinic_id: int, email: str, password: str, role: s
             logger.info("CIS pilot seed: created staff %s (%s)", email_l, role)
         except EmailAlreadyRegisteredError:
             pass
+        except UserProvisioningError as exc:
+            # Do not abort the whole pilot seed for one bad account (e.g. password policy).
+            logger.error("CIS pilot seed: failed to create %s (%s): %s", email_l, role, exc)
+            db.rollback()
+            return
         user = db.query(models.User).filter(func.lower(models.User.email) == email_l).first()
     if not user:
+        logger.error("CIS pilot seed: staff missing after create attempt: %s (%s)", email_l, role)
         return
     changed = False
     if user.role != role:

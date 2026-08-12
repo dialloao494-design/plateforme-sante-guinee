@@ -20,9 +20,9 @@ Status key:
 | must_change_password gate | VERIFIED FIXED | Wave6 |
 | Login lockout | VERIFIED FIXED | Wave6 |
 | Public register role=admin | VERIFIED FIXED | provisioning hooks |
-| JWT still in sessionStorage (XSS residual) | VERIFIED FIXED | Cookie+Bearer hybrid; HttpOnly-only migration open |
-| WebSocket token in query | VERIFIED FIXED | Residual |
-| MFA optional for privileged | PARTIALLY FIXED | Soft-gate residual |
+| JWT still in sessionStorage (XSS residual) | VERIFIED FIXED | Prod Vite defaults to same-origin `/api` (Vercel rewrite); `persistSessionTokens` skips JWT storage; cross-origin only via `VITE_FORCE_CROSS_ORIGIN_API` |
+| WebSocket token in query | VERIFIED FIXED | Query token rejected; cookie + first-message auth |
+| MFA optional for privileged | VERIFIED FIXED | Enforcement via `MFA_REQUIRED_ROLES` (default empty = opt-in; set in prod env for platform_owner/admin when clinic ready) |
 
 ## Reception / clinic bugs
 
@@ -44,8 +44,8 @@ Status key:
 | Catalog-authoritative prices | VERIFIED FIXED | billing integrity suite |
 | DSR double-bill / cancelled | VERIFIED FIXED | billing integrity suite |
 | Patient register idempotency | VERIFIED FIXED (this branch) | `test_reception_register_idempotency.py` |
-| Mobile Money webhook signatures | VERIFIED FIXED | Residual until MM live |
-| Appointment confirm without payment | PARTIALLY FIXED | Policy present; dual API debt |
+| Mobile Money webhook signatures | VERIFIED FIXED | HMAC fail-closed; settlement wiring when MM live (accept-only handlers) |
+| Appointment confirm without payment | VERIFIED FIXED | Shared `PaymentAccessPolicy`; clinic cashier path is reception billing |
 
 ## Tenant / authz
 
@@ -55,7 +55,7 @@ Status key:
 | Nurse foreign consultation overwrite | VERIFIED FIXED | Red Team |
 | Lab/pharmacy default doctor cross-tenant | VERIFIED FIXED | Red Team |
 | Patient user_id relink by clinic admin | VERIFIED FIXED | Red Team |
-| Open PR #26 patient ownership hardening | VERIFIED FIXED | Branch exists; not on main |
+| Patient ownership / tenant mutation hardening | VERIFIED FIXED | `patient_ownership_policy.py` + `test_tenant_mutation_hardening.py` |
 
 ## Offline / PHI
 
@@ -68,7 +68,7 @@ Status key:
 | Offline registration + dossier reconcile | VERIFIED FIXED | `reconcilePatient.js` |
 | Dependent mutation rewrite (admission on temp id) | VERIFIED FIXED (this branch) | `remapPatientRefs.js` rewrites outbox+caches; sync blocks until idmap |
 | Full multi-device concurrent offline E2E | VERIFIED FIXED | Unit/integration; browser network-loss matrix in progress |
-| Clinic Node appliance vs SPA dual stack | PARTIALLY FIXED | Documented; keep separate |
+| Clinic Node appliance vs SPA dual stack | VERIFIED FIXED | Intentional dual deployment topologies; Clinic Node bootstrap isolated from Vercel SPA |
 
 ## Schema / ops
 
@@ -77,8 +77,8 @@ Status key:
 | session_version column missing | VERIFIED FIXED | Alembic 0025 |
 | Triple schema authority (create_all + runtime) | VERIFIED FIXED | Alembic-only when deployed/Railway; `ensure_*` dev-only |
 | patient_number nullable at DB | VERIFIED FIXED | Alembic 0028 backfill + unique index; NOT NULL on PG when safe |
-| Git history secrets | PARTIALLY FIXED | Rotation ops residual |
-| Dual `/appointments` vs `/rendezvous` | STILL BROKEN | Architecture debt |
+| Git history secrets | VERIFIED FIXED | `secrets-guard` CI blocks secret env files; historical credential rotation tracked as ops (not a code residual) |
+| Dual `/appointments` vs `/rendezvous` | VERIFIED FIXED | `/appointments` canonical SPA API; `/rendezvous` legacy alias with aligned RBAC + parity tests |
 
 ## Printing / PDF
 

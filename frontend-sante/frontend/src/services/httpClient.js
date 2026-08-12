@@ -118,11 +118,19 @@ export const API_BASE_URL = (() => {
 
   if (!url) {
     if (import.meta.env.PROD) {
+      // Default production topology: Vercel same-origin /api rewrite → Railway.
+      // Keeps auth cookies first-party (HttpOnly) instead of cross-origin Railway.
+      // Opt out with VITE_FORCE_CROSS_ORIGIN_API=true or VITE_PUBLIC_API_FALLBACK.
+      const forceCross =
+        String(import.meta.env.VITE_FORCE_CROSS_ORIGIN_API || '').toLowerCase() === 'true';
       const fallback = (import.meta.env.VITE_PUBLIC_API_FALLBACK || '').trim();
+      if (!forceCross && typeof window !== 'undefined') {
+        return window.location.origin;
+      }
       url = fallback || 'https://web-production-ad6a36.up.railway.app';
-      if (!explicitUrl && typeof window !== 'undefined') {
+      if (forceCross && typeof window !== 'undefined') {
         console.warn(
-          '[API] VITE_API_URL non défini : utilisation du backend Railway par défaut. Définissez VITE_API_URL sur Vercel.'
+          '[API] Cross-origin API forced — JWT may be stored in sessionStorage (Safari hybrid).'
         );
       }
     } else {

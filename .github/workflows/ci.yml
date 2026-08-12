@@ -62,6 +62,8 @@ jobs:
             tests/test_nutrition_immunization_auth.py \
             tests/test_hospitalization.py \
             tests/test_doctor_appointment_rbac.py \
+            tests/test_appointments_rendezvous_parity.py \
+            tests/test_clinic_pilot_seed_passwords.py \
             tests/test_attachment_security.py
 
   frontend-build:

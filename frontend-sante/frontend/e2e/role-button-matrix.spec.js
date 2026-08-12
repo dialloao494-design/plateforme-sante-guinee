@@ -87,8 +87,7 @@ const ROLE_MATRIX = [
       role: 'button',
       name: 'Rechercher',
       prepare: async (page) => {
-        const input = page.locator('input[type="search"], input[placeholder*="Nom"], #nurse-patient-search').first();
-        await input.fill('Diallo');
+        await page.locator('#nurse-patient-search').fill('Diallo');
       },
     }],
   },

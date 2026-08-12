@@ -40,7 +40,7 @@ export const ROLE_CREDENTIALS = {
   },
   pev: {
     email: (globalThis.process?.env || {}).E2E_PEV_EMAIL || 'pev@pilot.local',
-    password: (globalThis.process?.env || {}).E2E_PEV_PASSWORD || 'PevPilot1!',
+    password: (globalThis.process?.env || {}).E2E_PEV_PASSWORD || 'PevAgentPilot1!',
     homePath: /\/clinical\/pev/,
   },
   admin: {

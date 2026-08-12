@@ -43,8 +43,19 @@ export default defineConfig(({ mode }) => {
   const useRelativeApi = env.VITE_USE_RELATIVE_API === 'true'
   const backendTarget = env.VITE_PROXY_TARGET || 'http://127.0.0.1:8000'
   const isTunnelMode = mode === 'tunnel' || useRelativeApi
+  // Production builds default to same-origin /api (Vercel rewrite) for HttpOnly cookies.
+  const prodSameOrigin = mode === 'production' && env.VITE_FORCE_CROSS_ORIGIN_API !== 'true'
+  const resolvedApiUrl = env.VITE_API_URL || (prodSameOrigin ? '/api' : '')
+  const resolvedSameOrigin =
+    env.VITE_SAME_ORIGIN_API
+    || env.VITE_USE_RELATIVE_API
+    || (prodSameOrigin && (!env.VITE_API_URL || env.VITE_API_URL === '/api') ? 'true' : '')
 
   return {
+    define: {
+      'import.meta.env.VITE_API_URL': JSON.stringify(resolvedApiUrl),
+      'import.meta.env.VITE_SAME_ORIGIN_API': JSON.stringify(resolvedSameOrigin || ''),
+    },
     plugins: [
       react(),
       VitePWA({
