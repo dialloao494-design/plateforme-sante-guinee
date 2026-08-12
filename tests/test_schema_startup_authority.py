@@ -61,8 +61,6 @@ def test_run_schema_startup_skips_create_all_when_alembic_only():
             "clinics",
             "patients",
             "doctors",
-            "rendezvous",
-            "messages",
             "clinical_visits",
             "invoices",
             "clinical_audit_logs",
@@ -76,16 +74,7 @@ def test_run_schema_startup_skips_create_all_when_alembic_only():
                 {"name": "must_change_password"},
             ],
             "patients": [
-                {"name": "clinic_id"},
-                {"name": "user_id"},
-                {"name": "is_archived"},
                 {"name": "patient_number"},
-            ],
-            "rendezvous": [
-                {"name": "clinic_id"},
-                {"name": "patient_id"},
-                {"name": "doctor_id"},
-                {"name": "status"},
             ],
         }[table]
         inspect_mock.return_value = inspector

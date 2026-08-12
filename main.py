@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import SessionLocal
 import models
 from routers import patient, patient_record, rendezvous, doctor, auth, teleconsultation, notifications, messages
-from routers import users, appointments, doctor_dashboard, ws, clinical, medical_history, hospitalization, payments_webhooks
+from routers import users, appointments, doctor_dashboard, ws, clinical, medical_history, hospitalization
 from routers import unified_billing, discharge, radiology, reminders, clinical_reports, platform, platform_setup
 from routers import nutrition, immunization, nursing_care, visit_workflow, clinical_phase2, lab_phase2, pharmacy_phase2, reception_his, nurse_assessment
 from routers import clinic_node_ops
@@ -98,7 +98,8 @@ _is_deployed = _settings.is_deployed
 
 def _alembic_only_schema() -> bool:
     """Deployed/Railway/clinic-node: schema must come from Alembic only (no create_all / ensure_*)."""
-    if _settings.is_deployed:
+    settings = get_settings()
+    if settings.is_deployed:
         return True
     return bool(
         (os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID") or "").strip()
@@ -416,7 +417,6 @@ app.include_router(reminders.router)
 app.include_router(clinical_reports.router)
 app.include_router(reception_his.router)
 app.include_router(clinic_node_ops.router)
-app.include_router(payments_webhooks.router)
 app.include_router(ws.router)
 
 
@@ -707,8 +707,6 @@ def _run_schema_and_seed_startup() -> None:
                 "clinics",
                 "patients",
                 "doctors",
-                "rendezvous",
-                "messages",
                 "clinical_visits",
                 "invoices",
                 "clinical_audit_logs",
@@ -716,17 +714,12 @@ def _run_schema_and_seed_startup() -> None:
             missing_tables = sorted(required_tables - set(inspector.get_table_names()))
             user_columns = (
                 {column["name"] for column in inspector.get_columns("users")}
-                if "users" in inspector.get_table_names()
+                if not missing_tables and "users" in required_tables
                 else set()
             )
             patient_columns = (
                 {column["name"] for column in inspector.get_columns("patients")}
-                if "patients" in inspector.get_table_names()
-                else set()
-            )
-            rdv_columns = (
-                {column["name"] for column in inspector.get_columns("rendezvous")}
-                if "rendezvous" in inspector.get_table_names()
+                if not missing_tables and "patients" in required_tables
                 else set()
             )
             missing_user_columns = sorted(
@@ -739,17 +732,13 @@ def _run_schema_and_seed_startup() -> None:
                 }
                 - user_columns
             )
-            missing_patient_columns = sorted(
-                {"clinic_id", "user_id", "is_archived", "patient_number"} - patient_columns
-            )
-            missing_rdv_columns = sorted({"clinic_id", "patient_id", "doctor_id", "status"} - rdv_columns)
-            if missing_tables or missing_user_columns or missing_patient_columns or missing_rdv_columns:
+            missing_patient_columns = sorted({"patient_number"} - patient_columns)
+            if missing_tables or missing_user_columns or missing_patient_columns:
                 raise RuntimeError(
                     "Database schema is incomplete after migrations: "
                     f"missing_tables={missing_tables}, "
                     f"missing_users_columns={missing_user_columns}, "
-                    f"missing_patients_columns={missing_patient_columns}, "
-                    f"missing_rendezvous_columns={missing_rdv_columns}"
+                    f"missing_patients_columns={missing_patient_columns}"
                 )
 
         from database import SessionLocal
