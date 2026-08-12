@@ -208,6 +208,11 @@ class ReceptionHisService:
             x for x in (payload.mother_first_name or "", payload.mother_last_name or "") if x
         ).strip() or None
 
+        # PostgreSQL enforces NOT NULL on INSERT (Alembic 0028). Allocate a unique
+        # provisional dossier number before flush, then replace with the canonical
+        # PAT-{clinic}-{id} once the primary key is known — single commit, never NULL.
+        provisional_number = f"TMP-{clinic_id}-{uuid.uuid4().hex[:16].upper()}"
+
         patient = models.Patient(
             clinic_id=clinic_id,
             first_name=payload.first_name.strip(),
@@ -237,12 +242,12 @@ class ReceptionHisService:
             emergency_contact_json=json.dumps(emergency_json, ensure_ascii=False),
             payer_json=json.dumps(payer.model_dump(), ensure_ascii=False),
             qr_token=_qr_token(clinic_id),
+            patient_number=provisional_number,
             is_newborn=bool(payload.is_newborn),
             registration_date=payload.registration_date,
         )
         db.add(patient)
-        # Single commit: flush to allocate id, assign dossier number, then commit once
-        # so a patient is never persisted without patient_number.
+        # Single commit: flush to allocate id, assign canonical dossier number, then commit once.
         db.flush()
         patient.patient_number = format_patient_number(clinic_id, patient.id)
         db.commit()
