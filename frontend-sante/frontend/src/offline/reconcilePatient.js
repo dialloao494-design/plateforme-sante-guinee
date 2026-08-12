@@ -2,6 +2,7 @@
  * Temp → server patient ID / dossier-number reconciliation after outbox replay.
  */
 import { offlineDb, setMeta, getMeta } from './db.js';
+import { remapDependentRecords } from './remapPatientRefs.js';
 import { readOfflineOwnerScope } from './sessionScope.js';
 
 const listeners = new Set();
@@ -118,12 +119,23 @@ export async function reconcilePatientCreate({
   }
   const tempId = isTempPatientId(localOptimistic?.id) ? localOptimistic.id : null;
   await cacheReconciledPatient(serverPatient, { tempId, clientRequestId });
+
+  let remap = { rewrittenOutbox: 0, rewrittenCaches: 0 };
+  if (tempId) {
+    // Rewrite every dependent outbox mutation + cached clinical row that still
+    // points at the offline temp id before those rows are replayed.
+    remap = await remapDependentRecords(tempId, serverPatient.id, {
+      patientNumber: serverPatient.patient_number,
+    });
+  }
+
   const merged = mergeReconciledPatient(localOptimistic || {}, serverPatient);
   const event = {
     clientRequestId,
     tempId,
     serverPatient,
     merged,
+    remap,
   };
   notify(event);
   return { ok: true, ...event };

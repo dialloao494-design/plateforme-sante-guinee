@@ -4,6 +4,7 @@ import {
   markOutboxFailed,
   markOutboxInFlight,
   markOutboxSynced,
+  resetOutboxForRetry,
   OUTBOX_STATUS,
 } from './outbox.js';
 import { detectAndRecordConflict } from './conflict.js';
@@ -11,6 +12,7 @@ import { cacheGetResponse } from './cache.js';
 import { readOfflineOwnerScope } from './sessionScope.js';
 import { isHisPatientRegisterUrl } from './entityTypes.js';
 import { reconcilePatientCreate } from './reconcilePatient.js';
+import { resolveOutboxItemPatientRefs } from './remapPatientRefs.js';
 
 let flushing = false;
 let syncTimer = null;
@@ -59,7 +61,7 @@ function parseJson(raw, fallback = {}) {
 
 /**
  * Replay one outbox row against the API.
- * @returns {Promise<'synced' | 'failed' | 'conflict' | 'skipped'>}
+ * @returns {Promise<'synced' | 'failed' | 'conflict' | 'skipped' | 'blocked'>}
  */
 export async function replayOutboxItem(item, client) {
   const scope = readOfflineOwnerScope();
@@ -68,37 +70,45 @@ export async function replayOutboxItem(item, client) {
     return 'skipped';
   }
 
-  const payload = parseJson(item.payload_json);
-  const params = parseJson(item.params_json, null);
+  // Dependents queued against offline_* patient ids must wait until the
+  // registration row reconciles and rewrites their foreign keys.
+  const resolved = await resolveOutboxItemPatientRefs(item);
+  if (resolved.blockedTempIds.length) {
+    return 'blocked';
+  }
+  const playable = resolved.item;
+
+  const payload = parseJson(playable.payload_json);
+  const params = parseJson(playable.params_json, null);
   const headers = {
-    ...parseJson(item.headers_json),
-    'X-Client-Request-Id': item.client_request_id,
-    'X-Record-Version': String(item.record_version || 1),
+    ...parseJson(playable.headers_json),
+    'X-Client-Request-Id': playable.client_request_id,
+    'X-Record-Version': String(playable.record_version || 1),
   };
 
-  const method = String(item.method || 'POST').toLowerCase();
+  const method = String(playable.method || 'POST').toLowerCase();
   const config = { headers, params: params || undefined };
 
   let response;
   if (method === 'post') {
-    response = await client.post(item.url, payload, config);
+    response = await client.post(playable.url, payload, config);
   } else if (method === 'patch') {
-    response = await client.patch(item.url, payload, config);
+    response = await client.patch(playable.url, payload, config);
   } else if (method === 'put') {
-    response = await client.put(item.url, payload, config);
+    response = await client.put(playable.url, payload, config);
   } else if (method === 'delete') {
-    response = await client.delete(item.url, config);
+    response = await client.delete(playable.url, config);
   } else {
     throw new Error(`Unsupported outbox method: ${method}`);
   }
 
   const serverData = response?.data;
-  const localOptimistic = parseJson(item.optimistic_json);
+  const localOptimistic = parseJson(playable.optimistic_json);
 
   if (response?.status === 409 || serverData?.conflict) {
     await detectAndRecordConflict({
-      clientRequestId: item.client_request_id,
-      entityType: item.entity_type,
+      clientRequestId: playable.client_request_id,
+      entityType: playable.entity_type,
       entityId: serverData?.id || localOptimistic?.id,
       localPayload: localOptimistic,
       remotePayload: serverData?.server_copy || serverData,
@@ -106,15 +116,15 @@ export async function replayOutboxItem(item, client) {
     return 'conflict';
   }
 
-  await markOutboxSynced(item.id, serverData);
+  await markOutboxSynced(playable.id, serverData);
 
   if (
-    item.entity_type === 'patient'
-    && isHisPatientRegisterUrl(item.url)
+    playable.entity_type === 'patient'
+    && isHisPatientRegisterUrl(playable.url)
     && serverData?.patient_number
   ) {
     await reconcilePatientCreate({
-      clientRequestId: item.client_request_id,
+      clientRequestId: playable.client_request_id,
       localOptimistic,
       serverPatient: serverData,
     });
@@ -146,12 +156,22 @@ export async function flushOutbox(client = httpClientRef) {
     }
     const pending = await getPendingOutbox(25, { ownerKey: scope.ownerKey });
     for (const item of pending) {
+      // Probe dependency before marking in-flight so blocked dependents stay
+      // pending and retry after the patient registration remap completes.
+      const preflight = await resolveOutboxItemPatientRefs(item);
+      if (preflight.blockedTempIds.length) {
+        continue;
+      }
+
       await markOutboxInFlight(item.id);
       try {
         const result = await replayOutboxItem(item, client);
         if (result === 'synced') synced += 1;
         else if (result === 'conflict') conflicts += 1;
-        else if (result === 'skipped') {
+        else if (result === 'blocked') {
+          // Registration may have been mid-flight; restore pending for retry.
+          await resetOutboxForRetry(item.id);
+        } else if (result === 'skipped') {
           await markOutboxFailed(item.id, new Error('owner mismatch'), 12);
         } else failed += 1;
       } catch (error) {

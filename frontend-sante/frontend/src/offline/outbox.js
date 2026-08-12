@@ -1,5 +1,6 @@
 import { offlineDb } from './db.js';
 import { classifyRequest } from './entityTypes.js';
+import { sortOutboxForPatientDependencies } from './remapPatientRefs.js';
 import { readOfflineOwnerScope } from './sessionScope.js';
 
 export const OUTBOX_STATUS = {
@@ -103,6 +104,21 @@ export async function enqueueMutation({
     last_error: null,
   });
 
+  // Cache provisional patient so offline search/select can use the temp id
+  // before connectivity returns; remap rewrites this row after sync.
+  if (type === 'patient' && optimistic?.id) {
+    try {
+      const { cachePatientRecord } = await import('./cache.js');
+      await cachePatientRecord({
+        ...optimistic,
+        full_name: [optimistic.first_name, optimistic.last_name].filter(Boolean).join(' '),
+        phone: optimistic.phone,
+      });
+    } catch {
+      /* non-fatal */
+    }
+  }
+
   return { client_request_id: reqId, optimistic };
 }
 
@@ -113,15 +129,15 @@ export async function getPendingOutbox(limit = 50, { ownerKey } = {}) {
     .where('status')
     .anyOf([OUTBOX_STATUS.PENDING, OUTBOX_STATUS.FAILED])
     .toArray();
-  return rows
-    .filter((r) => {
-      if (r.owner_key && r.owner_key !== scope.ownerKey) return false;
-      // Legacy unscoped rows must never replay under another session.
-      if (!r.owner_key) return false;
-      return !r.next_retry_at || r.next_retry_at <= now;
-    })
-    .sort((a, b) => a.created_at - b.created_at)
-    .slice(0, limit);
+  const filtered = rows.filter((r) => {
+    if (r.owner_key && r.owner_key !== scope.ownerKey) return false;
+    // Legacy unscoped rows must never replay under another session.
+    if (!r.owner_key) return false;
+    return !r.next_retry_at || r.next_retry_at <= now;
+  });
+  // Patient registration must sync before dependents that still reference
+  // offline_* temp patient ids (admission, billing, lab, pharmacy, …).
+  return sortOutboxForPatientDependencies(filtered).slice(0, limit);
 }
 
 export async function listOutboxByStatus(status) {

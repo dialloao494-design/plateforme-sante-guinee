@@ -60,4 +60,12 @@ export {
   findPendingRegistrationByFingerprint,
   mergeReconciledPatient,
   isTempPatientId,
+  lookupIdMap,
 } from './reconcilePatient.js';
+export {
+  rewritePatientRefs,
+  collectTempPatientIds,
+  remapDependentRecords,
+  resolveOutboxItemPatientRefs,
+  sortOutboxForPatientDependencies,
+} from './remapPatientRefs.js';
