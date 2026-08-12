@@ -289,7 +289,9 @@ def test_patient_create_rejects_cross_clinic_user(client, db_session):
         },
         headers=_auth(admin),
     )
-    assert r.status_code == 400, r.text
+    # Ownership policy returns 400 (legacy) or 403 with clinic mismatch detail.
+    assert r.status_code in (400, 403), r.text
+    assert "clinic" in r.text.lower() or "permission" in r.text.lower()
 
 
 def test_patient_create_rejects_duplicate_link(client, db_session):

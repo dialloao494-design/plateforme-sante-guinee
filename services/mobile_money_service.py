@@ -32,12 +32,12 @@ def describe_rails() -> dict[str, Any]:
             "orange_gn": {
                 "status": "live" if orange_live else "stub",
                 "callback_webhook": "/payments/webhooks/orange-money",
-                "env": ["ORANGE_MONEY_LIVE", "ORANGE_MONEY_MERCHANT_ID", "ORANGE_MONEY_API_KEY"],
+                "env": ["ORANGE_MONEY_LIVE", "ORANGE_MONEY_MERCHANT_ID", "ORANGE_MONEY_API_KEY", "ORANGE_MONEY_WEBHOOK_SECRET"],
             },
             "mtn_gn": {
                 "status": "live" if mtn_live else "stub",
                 "callback_webhook": "/payments/webhooks/mtn-momo",
-                "env": ["MTN_MOMO_LIVE", "MTN_MOMO_SUBSCRIPTION_KEY", "MTN_MOMO_API_USER", "MTN_MOMO_API_KEY"],
+                "env": ["MTN_MOMO_LIVE", "MTN_MOMO_SUBSCRIPTION_KEY", "MTN_MOMO_API_USER", "MTN_MOMO_API_KEY", "MTN_MOMO_WEBHOOK_SECRET"],
             },
         },
     }

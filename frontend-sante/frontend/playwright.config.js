@@ -10,6 +10,8 @@ const E2E_DB_PATH = join(E2E_DB_DIR, 'e2e.db');
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
+  // Cap workers in CI: many parallel logins hammer the shared e2e API + SQLite.
+  workers: process.env.CI ? 2 : undefined,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? [['html', { open: 'never' }]] : 'list',
@@ -44,6 +46,9 @@ export default defineConfig({
         PLATFORM_OWNER_PASSWORD: 'E2eOwnerPass12!',
         AUTH_COOKIE_SAMESITE: 'lax',
         AUTH_COOKIE_SECURE: 'false',
+        // Parallel Playwright logins share one IP — avoid false 429s in CI.
+        RATE_LIMIT_LOGIN: '1000/minute',
+        RATE_LIMIT_DEFAULT: '2000/minute',
       },
     },
     {

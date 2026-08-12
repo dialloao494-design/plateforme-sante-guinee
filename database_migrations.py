@@ -1,6 +1,9 @@
 """
 Lightweight additive migrations for SQLite / Postgres without Alembic runs.
-Called after SQLAlchemy create_all on startup.
+
+Called after SQLAlchemy create_all on startup in **local development only**.
+Deployed, Railway, and clinic-node environments must use Alembic exclusively —
+see main._alembic_only_schema() and run_alembic_upgrade_head(fail_closed=True).
 """
 
 from __future__ import annotations

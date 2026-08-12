@@ -394,7 +394,7 @@ export default function PharmacyDashboard() {
   const printNow = new Date();
 
   return (
-    <div className="clinical-page reception-his pharmacy-his-page">
+    <div className="clinical-page reception-his pharmacy-his-page" data-testid="pharmacy-dashboard">
       <header className="reception-his-header">
         <div>
           <p className="reception-his-eyebrow">Plateforme Santé · Guinée</p>
@@ -412,6 +412,7 @@ export default function PharmacyDashboard() {
             key={t.id}
             type="button"
             role="tab"
+            data-testid={`pharmacy-tab-${t.id}`}
             aria-selected={tab === t.id}
             className={`pharmacy-tab${tab === t.id ? ' active' : ''}`}
             onClick={() => setTab(t.id)}

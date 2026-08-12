@@ -10,13 +10,14 @@ from typing import List
 from datetime import datetime
 
 import models
-from core.roles import PLATFORM_SCOPE_ROLES, user_has_any_role
+from core.roles import PLATFORM_SCOPE_ROLES, effective_role, user_has_any_role
 from database import get_db
 from schemas import rendezvous as rendezvous_schemas
 from security import get_current_user, require_roles
 from services import RendezVousService
 
-router = APIRouter(prefix="/rendezvous", tags=["RendezVous"])
+# Legacy alias of /appointments — keep for scripts/tests; SPA uses /appointments.
+router = APIRouter(prefix="/rendezvous", tags=["RendezVous (legacy alias)"])
 
 
 def _get_patient_for_user(db: Session, user_id: int) -> models.Patient | None:
@@ -46,22 +47,25 @@ def _get_doctor_for_user(db: Session, user_id: int) -> models.Doctor | None:
 
 
 def _assert_can_access_appointment(db: Session, appointment: models.RendezVous, current_user) -> None:
-    if user_has_any_role(current_user.role, PLATFORM_SCOPE_ROLES):
+    """RBAC aligned with /appointments (effective_role — no legacy casing drift)."""
+    role = effective_role(current_user.role)
+
+    if user_has_any_role(role, PLATFORM_SCOPE_ROLES):
         return
 
-    if current_user.role in ("clinic_admin", "admin"):
+    if role in ("clinic_admin", "admin"):
         cid = current_user.clinic_id
         if cid is None or appointment.clinic_id != cid:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         return
 
-    if current_user.role == "patient":
+    if role == "patient":
         patient = _get_or_create_patient_for_user(db, current_user.id)
         if appointment.patient_id != patient.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         return
 
-    if current_user.role == "doctor":
+    if role == "doctor":
         doctor = _get_doctor_for_user(db, current_user.id)
         if not doctor or appointment.doctor_id != doctor.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
@@ -77,7 +81,7 @@ def create_appointment(
     current_user=Depends(get_current_user),
 ):
     """Create appointment (patient only)."""
-    if current_user.role != "patient":
+    if effective_role(current_user.role) != "patient":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only patients can create appointments"
@@ -147,7 +151,7 @@ def update_appointment_status(
     _assert_can_access_appointment(db, appointment, current_user)
 
     # Doctors can only modify appointments assigned to them.
-    if current_user.role == "doctor":
+    if effective_role(current_user.role) == "doctor":
         doctor = _get_doctor_for_user(db, current_user.id)
         if not doctor or appointment.doctor_id != doctor.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
@@ -178,7 +182,7 @@ def cancel_appointment(
 
     _assert_can_access_appointment(db, rdv, current_user)
 
-    if current_user.role == "patient" and rdv.date <= datetime.now():
+    if effective_role(current_user.role) == "patient" and rdv.date <= datetime.now():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Patients can only cancel appointments before the appointment time"
