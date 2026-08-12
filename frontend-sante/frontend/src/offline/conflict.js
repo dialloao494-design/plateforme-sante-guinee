@@ -56,9 +56,13 @@ export async function recordConflict({
 }
 
 export async function listConflicts({ includeResolved = false } = {}) {
+  const scope = readOfflineOwnerScope();
   const rows = await offlineDb.conflicts.orderBy('created_at').reverse().toArray();
-  if (includeResolved) return rows;
-  return rows.filter((r) => !r.resolved);
+  return rows.filter((r) => {
+    if (r.owner_key && r.owner_key !== scope.ownerKey) return false;
+    if (!includeResolved && r.resolved) return false;
+    return true;
+  });
 }
 
 export async function resolveConflict(conflictId, resolution, mergedPayload = null) {
