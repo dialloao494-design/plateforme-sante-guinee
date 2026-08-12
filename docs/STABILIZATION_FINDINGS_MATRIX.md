@@ -65,8 +65,8 @@ Status key:
 | Logout purge IndexedDB | VERIFIED FIXED | PR #31 |
 | countPendingOutbox global (cross-user) | VERIFIED FIXED (this branch) | Owner-filtered |
 | Conflict rows missing owner_key | VERIFIED FIXED (this branch) | Scoped |
-| Offline registration + dossier reconcile | VERIFIED FIXED (this branch) | `reconcilePatient.js` |
-| Dependent mutation rewrite (admission on temp id) | PARTIALLY FIXED | Register reconcile done; dependents backlog |
+| Offline registration + dossier reconcile | VERIFIED FIXED | `reconcilePatient.js` |
+| Dependent mutation rewrite (admission on temp id) | VERIFIED FIXED (this branch) | `remapPatientRefs.js` rewrites outbox+caches; sync blocks until idmap |
 | Full multi-device concurrent offline E2E | PARTIALLY FIXED | Unit/integration; browser network-loss matrix in progress |
 | Clinic Node appliance vs SPA dual stack | PARTIALLY FIXED | Documented; keep separate |
 

@@ -46,6 +46,18 @@ test('classifyRequest maps lab result create', () => {
   assert.equal(r.entityType, 'lab');
 });
 
+test('classifyRequest maps hospitalization and nursing mutations as queueable', () => {
+  const admit = classifyRequest('/clinical/hospitalization/admissions', 'post');
+  assert.equal(admit.entityType, 'hospitalization');
+  assert.equal(admit.queueable, true);
+  const nurse = classifyRequest('/clinical/nursing-care/assessments', 'post');
+  assert.equal(nurse.entityType, 'nursing');
+  assert.equal(nurse.queueable, true);
+  const pev = classifyRequest('/clinical/immunization/doses', 'post');
+  assert.equal(pev.entityType, 'care_program');
+  assert.equal(pev.queueable, true);
+});
+
 test('isPatientSearchUrl detects search endpoints', () => {
   assert.equal(isPatientSearchUrl('/clinical/reception/his/patients/search'), true);
   assert.equal(isPatientSearchUrl('/clinical/consultations'), false);
@@ -94,4 +106,18 @@ test('mergeLastWriteWins applies winner fields', () => {
   );
   assert.equal(merged.note, 'local');
   assert.equal(merged._conflict_winner, 'local');
+});
+
+test('patient registration sorts ahead of dependent clinical mutations', async () => {
+  const { sortOutboxForPatientDependencies } = await import('../src/offline/remapPatientRefs.js');
+  const sorted = sortOutboxForPatientDependencies([
+    { client_request_id: 'dep', entity_type: 'lab', url: '/clinical/lab/orders', created_at: 1 },
+    {
+      client_request_id: 'reg',
+      entity_type: 'patient',
+      url: '/clinical/reception/his/patients',
+      created_at: 99,
+    },
+  ]);
+  assert.equal(sorted[0].client_request_id, 'reg');
 });

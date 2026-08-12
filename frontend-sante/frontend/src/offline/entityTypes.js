@@ -24,6 +24,21 @@ const RULES = [
   { pattern: /\/clinical\/pharmacy\//, entityType: 'pharmacy', domain: 'pharmacy' },
   { pattern: /\/clinical\/lab\//, entityType: 'lab', domain: 'lab' },
   {
+    pattern: /\/clinical\/(hospitalization|admissions|wards)\b/,
+    entityType: 'hospitalization',
+    domain: 'consultations',
+  },
+  {
+    pattern: /\/clinical\/(nursing|nurse|nursing-care)\b/,
+    entityType: 'nursing',
+    domain: 'consultations',
+  },
+  {
+    pattern: /\/clinical\/(nutrition|immunization|pev)\b/,
+    entityType: 'care_program',
+    domain: 'consultations',
+  },
+  {
     pattern:
       /\/clinical\/doctor\/catalog|\/clinical\/lab\/catalog|\/clinical\/reception\/his\/billing-catalog/,
     entityType: 'catalog',
