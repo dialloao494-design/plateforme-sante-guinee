@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   isCompleteRegistrationResponse,
+  REGISTRATION_ONLINE_REQUIRED_MESSAGE,
   REGISTRATION_INCOMPLETE_MESSAGE,
 } from './registrationSuccess.js';
 
@@ -34,6 +35,8 @@ test('rejects response missing patient_number', () => {
   assert.equal(isCompleteRegistrationResponse(null), false);
 });
 
-test('incomplete message mentions dossier number', () => {
-  assert.match(REGISTRATION_INCOMPLETE_MESSAGE, /N° dossier patient/);
+test('online-required message forbids queueing and mentions dossier number', () => {
+  assert.match(REGISTRATION_ONLINE_REQUIRED_MESSAGE, /N° dossier patient/);
+  assert.match(REGISTRATION_ONLINE_REQUIRED_MESSAGE, /pas été mis en file/i);
+  assert.equal(REGISTRATION_INCOMPLETE_MESSAGE, REGISTRATION_ONLINE_REQUIRED_MESSAGE);
 });

@@ -1,6 +1,6 @@
 import { enqueueMutation } from './outbox.js';
 import { cacheGetResponse, getCachedGet } from './cache.js';
-import { classifyRequest } from './entityTypes.js';
+import { classifyRequest, isOnlineOnlyMutation } from './entityTypes.js';
 import { bindHttpClient, cacheOnlineGet, flushOutbox, startAutoSync, stopAutoSync } from './sync.js';
 
 let requestInterceptorId = null;
@@ -81,7 +81,14 @@ export function attachOfflineInterceptors(httpClient) {
       return config;
     }
 
-    if (isMutationMethod(method) && !navigator.onLine && classified.queueable) {
+    // Online-only mutations (HIS patient register): never enqueue — let the
+    // request fail so reception cannot create silent duplicate outbox entries.
+    if (
+      isMutationMethod(method)
+      && !navigator.onLine
+      && classified.queueable
+      && !isOnlineOnlyMutation(url, method)
+    ) {
       const { optimistic, client_request_id } = await enqueueMutation({
         method,
         url,
@@ -139,7 +146,12 @@ export function attachOfflineInterceptors(httpClient) {
         }
       }
 
-      if (isMutationMethod(method) && isNetworkError(error) && classified.queueable) {
+      if (
+        isMutationMethod(method)
+        && isNetworkError(error)
+        && classified.queueable
+        && !isOnlineOnlyMutation(config.url, method)
+      ) {
         const { optimistic, client_request_id } = await enqueueMutation({
           method,
           url: config.url,
