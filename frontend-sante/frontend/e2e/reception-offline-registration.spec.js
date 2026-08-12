@@ -29,12 +29,14 @@ test('offline registration queues then reconciles dossier after reconnect', asyn
   await page.getByTestId('reception-register-submit').click();
 
   await expect(page.getByTestId('reception-registration-queued')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('reception-patient-sync-status')).toBeVisible();
   await expect(page.getByTestId('reception-register-submit')).toBeDisabled();
-  await expect(page.getByText(/PAT-\d{3}-\d{6}/)).toHaveCount(0);
-  await expect(page.getByText(/synchronisation en attente/i)).toBeVisible();
+  await expect(page.getByTestId('reception-patient-number')).toHaveCount(0);
 
   // Reconnect and wait for outbox flush + reconciliation.
   await context.setOffline(false);
+  // Trigger sync (auto-sync may take up to 15s; also rely on online event).
+  await page.waitForTimeout(500);
   await expect(page.getByTestId('reception-patient-number')).toContainText(/PAT-\d{3}-\d{6}/, {
     timeout: 60_000,
   });
