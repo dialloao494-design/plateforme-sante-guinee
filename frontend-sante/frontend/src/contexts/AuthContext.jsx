@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api.js';
 import httpClient, { clearClientAuth, setAuthSessionReady } from '../services/httpClient.js';
+import { waitForOfflinePrivacyPurge } from '../utils/authStorage.js';
 import { invalidateCache } from '../utils/apiCache.js';
 import {
   touchSessionActivity,
@@ -203,6 +204,7 @@ export const AuthProvider = ({ children }) => {
 
   const establishSession = useCallback(
     async (loginPayload) => {
+      await waitForOfflinePrivacyPurge();
       authDebug('establishSession: start', loginPayload?.role || loginPayload?.user_role);
       clearPasswordResetFlags();
       invalidateCache();

@@ -136,13 +136,20 @@ export function touchSessionActivity() {
   setAuthItem('session_last_activity', String(Date.now()));
 }
 
+let offlinePrivacyPurge = Promise.resolve();
+
+export function waitForOfflinePrivacyPurge() {
+  return offlinePrivacyPurge;
+}
+
 export function clearAllClientStorage() {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return Promise.resolve();
   for (const key of AUTH_STORAGE_KEYS) removeAuthItem(key);
   invalidateCache();
-  void import('../offline/db.js')
+  offlinePrivacyPurge = import('../offline/db.js')
     .then(({ purgeOfflinePrivacyState }) => purgeOfflinePrivacyState())
     .catch(() => {});
+  return offlinePrivacyPurge;
 }
 
 export { PROFILE_STORAGE_KEYS };

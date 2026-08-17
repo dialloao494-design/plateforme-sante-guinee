@@ -29,7 +29,9 @@ export default defineConfig({
     {
       // Fresh disposable SQLite DB per run avoids leftover locks / schema drift.
       // Longer timeout: cold Alembic + ensure_* on CI can exceed 60s.
-      command: `python3 -m uvicorn main:app --host 127.0.0.1 --port 8000`,
+      command: process.env.E2E_PYTHON
+        ? `${process.env.E2E_PYTHON} -m uvicorn main:app --host 127.0.0.1 --port 8000`
+        : `./.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000`,
       cwd: REPO_ROOT,
       url: 'http://127.0.0.1:8000/health',
       reuseExistingServer: false,

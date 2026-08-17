@@ -4,6 +4,7 @@ import { test, before, after } from 'node:test';
 import { offlineDb, clearOfflineDatabase } from '../src/offline/db.js';
 import { enqueueMutation, getPendingOutbox } from '../src/offline/outbox.js';
 import { replayOutboxItem } from '../src/offline/sync.js';
+import { recordConflict, resolveConflict } from '../src/offline/conflict.js';
 
 function mockScope(userId = '42', clinicId = '7') {
   const storage = {
@@ -56,4 +57,30 @@ test('getPendingOutbox ignores legacy rows without owner_key', async () => {
   });
   const pending = await getPendingOutbox();
   assert.equal(pending.length, 0);
+});
+
+test('retry_local conflict resolution restores the original mutation', async () => {
+  mockScope('42', '7');
+  await offlineDb.outbox.clear();
+  await offlineDb.conflicts.clear();
+  await enqueueMutation({
+    method: 'patch',
+    url: '/clinical/lab/orders/4',
+    data: { patient_id: 2, result: 'local', record_version: 2 },
+    clientRequestId: 'conflict-retry',
+  });
+  const row = await offlineDb.outbox.where('client_request_id').equals('conflict-retry').first();
+  await offlineDb.outbox.update(row.id, { status: 'synced' });
+  const conflictId = await recordConflict({
+    clientRequestId: 'conflict-retry',
+    entityType: 'lab',
+    entityId: 4,
+    localPayload: { patient_id: 2, result: 'local', record_version: 2 },
+    remotePayload: { patient_id: 2, result: 'remote', record_version: 2 },
+  });
+  assert.equal(await resolveConflict(conflictId, 'retry_local'), true);
+  const restored = await offlineDb.outbox.get(row.id);
+  assert.equal(restored.status, 'pending');
+  assert.equal(JSON.parse(restored.payload_json).result, 'local');
+  assert.equal(restored.record_version, 3);
 });

@@ -185,7 +185,7 @@ export function clearClientAuth() {
     return;
   }
   invalidateCache('/auth/me');
-  clearAllClientStorage();
+  return clearAllClientStorage();
 }
 
 const isPublicRequest = (url = '') => {

@@ -5,9 +5,11 @@ import {
   getLastSyncAt,
   isBrowserOnline,
   listConflicts,
+  listDeadOutbox,
   onOnlineStatusChange,
   onSyncStateChange,
   resolveConflict,
+  retryDeadOutbox,
 } from '../offline/index.js';
 import './OfflineStatusIndicator.css';
 
@@ -26,16 +28,19 @@ export default function OfflineStatusIndicator() {
   const [lastSync, setLastSync] = useState(null);
   const [open, setOpen] = useState(false);
   const [conflicts, setConflicts] = useState([]);
+  const [deadItems, setDeadItems] = useState([]);
 
   const refresh = useCallback(async () => {
-    const [count, last, rows] = await Promise.all([
+    const [count, last, rows, dead] = await Promise.all([
       countPendingOutbox(),
       getLastSyncAt(),
       listConflicts({ includeResolved: false }),
+      listDeadOutbox(),
     ]);
     setPending(count);
     setLastSync(last);
     setConflicts(rows.slice(0, 5));
+    setDeadItems(dead.slice(0, 5));
   }, []);
 
   useEffect(() => {
@@ -64,7 +69,19 @@ export default function OfflineStatusIndicator() {
   };
 
   const handleResolve = async (id) => {
-    await resolveConflict(id, 'dismissed');
+    await resolveConflict(id, 'accept_remote');
+    await refresh();
+  };
+
+  const handleRetryConflict = async (id) => {
+    await resolveConflict(id, 'retry_local');
+    await flushOutbox();
+    await refresh();
+  };
+
+  const handleRetryDead = async (id) => {
+    await retryDeadOutbox(id);
+    await flushOutbox();
     await refresh();
   };
 
@@ -82,7 +99,7 @@ export default function OfflineStatusIndicator() {
         : 'En ligne'
       : `Hors ligne${pending > 0 ? ` · ${pending} en file` : ''}`;
 
-  if (online && pending === 0 && conflicts.length === 0 && !open) {
+  if (online && pending === 0 && conflicts.length === 0 && deadItems.length === 0 && !open) {
     return null;
   }
 
@@ -125,7 +142,24 @@ export default function OfflineStatusIndicator() {
                     className="offline-status__btn"
                     onClick={() => handleResolve(c.id)}
                   >
-                    Ignorer
+                    Garder serveur
+                  </button>
+                  <button type="button" className="offline-status__btn" onClick={() => handleRetryConflict(c.id)}>
+                    Renvoyer local
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {deadItems.length > 0 ? (
+            <div className="offline-conflicts">
+              <strong>Échecs permanents ({deadItems.length})</strong>
+              {deadItems.map((item) => (
+                <div key={item.id} className="offline-conflicts__item">
+                  <div>{item.entity_type} · {item.last_error || 'Échec de synchronisation'}</div>
+                  <button type="button" className="offline-status__btn" onClick={() => handleRetryDead(item.id)}>
+                    Réessayer
                   </button>
                 </div>
               ))}

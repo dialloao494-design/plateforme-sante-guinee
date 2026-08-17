@@ -5,6 +5,7 @@ import {
   markOutboxInFlight,
   markOutboxSynced,
   resetOutboxForRetry,
+  recoverStaleInFlight,
   OUTBOX_STATUS,
 } from './outbox.js';
 import { detectAndRecordConflict } from './conflict.js';
@@ -154,6 +155,7 @@ export async function flushOutbox(client = httpClientRef) {
     if (!scope.userId) {
       return { synced: 0, failed: 0, conflicts: 0, skipped: true };
     }
+    await recoverStaleInFlight();
     const pending = await getPendingOutbox(25, { ownerKey: scope.ownerKey });
     for (const item of pending) {
       // Probe dependency before marking in-flight so blocked dependents stay

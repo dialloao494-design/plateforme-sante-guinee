@@ -16,6 +16,10 @@ export {
   generateClientRequestId,
   computeBackoffMs,
   buildOptimisticResponse,
+  normalizeQueuedPayload,
+  listDeadOutbox,
+  retryDeadOutbox,
+  recoverStaleInFlight,
   OUTBOX_STATUS,
 } from './outbox.js';
 export {

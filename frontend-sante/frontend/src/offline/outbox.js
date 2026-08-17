@@ -11,6 +11,15 @@ export const OUTBOX_STATUS = {
   DEAD: 'dead',
 };
 
+export function normalizeQueuedPayload(data) {
+  if (typeof data !== 'string') return data ?? {};
+  try {
+    return JSON.parse(data);
+  } catch {
+    return data;
+  }
+}
+
 /** @returns {string} */
 export function generateClientRequestId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -78,7 +87,8 @@ export async function enqueueMutation({
     };
   }
 
-  const optimistic = buildOptimisticResponse(data, type);
+  const normalizedData = normalizeQueuedPayload(data);
+  const optimistic = buildOptimisticResponse(normalizedData, type);
   const now = Date.now();
   const scope = readOfflineOwnerScope();
 
@@ -91,7 +101,7 @@ export async function enqueueMutation({
     operation: op,
     method: String(method).toUpperCase(),
     url: String(url),
-    payload_json: JSON.stringify(data ?? {}),
+    payload_json: JSON.stringify(normalizedData),
     params_json: params ? JSON.stringify(params) : null,
     headers_json: JSON.stringify(headers),
     record_version: recordVersion,
@@ -151,6 +161,47 @@ export async function countPendingOutbox({ ownerKey } = {}) {
     .anyOf([OUTBOX_STATUS.PENDING, OUTBOX_STATUS.FAILED, OUTBOX_STATUS.IN_FLIGHT])
     .toArray();
   return rows.filter((r) => r.owner_key && r.owner_key === scope.ownerKey).length;
+}
+
+export async function listDeadOutbox({ ownerKey } = {}) {
+  const scope = ownerKey ? { ownerKey } : readOfflineOwnerScope();
+  const rows = await offlineDb.outbox.where('status').equals(OUTBOX_STATUS.DEAD).toArray();
+  return rows.filter((r) => r.owner_key && r.owner_key === scope.ownerKey);
+}
+
+export async function retryDeadOutbox(id) {
+  const scope = readOfflineOwnerScope();
+  const row = await offlineDb.outbox.get(id);
+  if (!row || row.owner_key !== scope.ownerKey) return false;
+  await offlineDb.outbox.update(id, {
+    status: OUTBOX_STATUS.PENDING,
+    attempt_count: 0,
+    next_retry_at: Date.now(),
+    last_error: null,
+    updated_at: Date.now(),
+  });
+  return true;
+}
+
+export async function recoverStaleInFlight(maxAgeMs = 60_000) {
+  const scope = readOfflineOwnerScope();
+  if (!scope.userId) return 0;
+  const cutoff = Date.now() - maxAgeMs;
+  const rows = await offlineDb.outbox.where('status').equals(OUTBOX_STATUS.IN_FLIGHT).toArray();
+  const stale = rows.filter(
+    (row) => row.owner_key === scope.ownerKey && Number(row.updated_at || 0) <= cutoff,
+  );
+  await offlineDb.transaction('rw', offlineDb.outbox, async () => {
+    for (const row of stale) {
+      await offlineDb.outbox.update(row.id, {
+        status: OUTBOX_STATUS.PENDING,
+        next_retry_at: Date.now(),
+        last_error: 'Recovered after interrupted synchronization',
+        updated_at: Date.now(),
+      });
+    }
+  });
+  return stale.length;
 }
 
 export async function markOutboxInFlight(id) {

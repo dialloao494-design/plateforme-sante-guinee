@@ -66,12 +66,36 @@ export async function listConflicts({ includeResolved = false } = {}) {
 }
 
 export async function resolveConflict(conflictId, resolution, mergedPayload = null) {
+  const scope = readOfflineOwnerScope();
+  const conflict = await offlineDb.conflicts.get(conflictId);
+  if (!conflict || conflict.owner_key !== scope.ownerKey) return false;
+  if (resolution === 'retry_local' || resolution === 'retry_merged') {
+    const row = await offlineDb.outbox
+      .where('client_request_id')
+      .equals(conflict.client_request_id)
+      .first();
+    if (row && row.owner_key === scope.ownerKey) {
+      const payload = resolution === 'retry_merged' && mergedPayload
+        ? mergedPayload
+        : JSON.parse(conflict.local_json || '{}');
+      await offlineDb.outbox.update(row.id, {
+        payload_json: JSON.stringify(payload),
+        status: 'pending',
+        attempt_count: 0,
+        next_retry_at: Date.now(),
+        record_version: Number(payload?.record_version || row.record_version || 1) + 1,
+        last_error: null,
+        updated_at: Date.now(),
+      });
+    }
+  }
   await offlineDb.conflicts.update(conflictId, {
     resolution,
     resolved: true,
     resolved_at: Date.now(),
     merged_json: mergedPayload ? JSON.stringify(mergedPayload) : null,
   });
+  return true;
 }
 
 export async function detectAndRecordConflict({
