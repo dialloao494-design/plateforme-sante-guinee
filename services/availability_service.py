@@ -86,6 +86,10 @@ class AvailabilityService:
             tuple: (is_available: bool, message: str)
         """
         appointment_end = appointment_start + timedelta(minutes=duration_minutes)
+        if duration_minutes <= 0:
+            return False, "Appointment duration must be greater than zero"
+        if appointment_end.date() != appointment_start.date():
+            return False, "Appointment cannot extend into another day"
         appointment_day = appointment_start.weekday()  # 0 = Monday, 6 = Sunday
         appointment_start_time = appointment_start.time()
         appointment_end_time = appointment_end.time()

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 import logging
 from sqlalchemy.orm import Session
 
@@ -41,10 +41,10 @@ def list_notifications(
         return {"items": items, "message": None if items else "Aucune notification pour le moment."}
     except Exception:
         logger.exception("list_notifications failed for user_id=%s", getattr(current_user, "id", None))
-        return {
-            "items": [],
-            "message": "Centre de notifications indisponible (base ou table). Relancez l’API après migration.",
-        }
+        raise HTTPException(
+            status_code=503,
+            detail="Centre de notifications temporairement indisponible",
+        )
 
 
 @router.get("/channels")

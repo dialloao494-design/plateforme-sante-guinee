@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import List
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
@@ -17,6 +18,7 @@ from services.reminder_service import ReminderService
 from services.whatsapp_service import WhatsAppService
 
 router = APIRouter(prefix="/clinical/reminders", tags=["Appointment Reminders"])
+logger = logging.getLogger(__name__)
 
 STAFF_ROLES = RECEPTION_ROLES + DOCTOR_ROLES + ADMIN_ROLES
 
@@ -141,7 +143,9 @@ async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
     except HTTPException:
         raise
     except Exception as exc:
-        return {"status": "error", "detail": str(exc)}
+        db.rollback()
+        logger.exception("WhatsApp reminder webhook processing failed")
+        raise HTTPException(status_code=503, detail="Webhook processing temporarily unavailable") from exc
 
 
 @router.post("/process-due")
