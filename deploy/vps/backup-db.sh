@@ -22,6 +22,15 @@ FILE="$BACKUP_DIR/sante_${STAMP}.sql.gz"
 docker compose -f docker-compose.yml ${COMPOSE_EXTRA} --env-file "$ENV_FILE" exec -T db \
   pg_dump -U "${POSTGRES_USER:-sante}" "${POSTGRES_DB:-sante}" | gzip > "$FILE"
 
-find "$BACKUP_DIR" -name 'sante_*.sql.gz' -mtime +14 -delete
+gzip -t "$FILE"
+sha256sum "$FILE" > "${FILE}.sha256"
+EVIDENCE_DIR="${BACKUP_EVIDENCE_DIR:-$ROOT/evidence/backup}"
+mkdir -p "$EVIDENCE_DIR"
+python3 scripts/db/backup_restore_evidence.py "$FILE" \
+  --rpo-target-minutes "${BACKUP_RPO_TARGET_MINUTES:-1440}" \
+  --evidence "$EVIDENCE_DIR/backup-${STAMP}.json"
 
-echo "Backup written: $FILE"
+find "$BACKUP_DIR" -name 'sante_*.sql.gz*' -mtime +"${BACKUP_RETENTION_DAYS:-30}" -delete
+
+echo "Backup verified: $FILE"
+echo "Checksum written: ${FILE}.sha256"

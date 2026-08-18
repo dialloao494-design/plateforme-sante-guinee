@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Restore drill into a temporary database inside the same Postgres container (non-destructive to prod DB).
-# Usage: ./scripts/db/restore_drill.sh backups/sante_YYYYMMDD.sql.gz
+# Guarded restore drill. Never restores into the source/live database.
+# Usage: VERIFICATION_DATABASE_URL=postgresql://.../sante_restore_verify \
+#        ./scripts/db/restore_drill.sh backups/sante_YYYYMMDD.sql.gz
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -8,35 +9,29 @@ cd "$ROOT"
 
 BACKUP_FILE="${1:-}"
 if [ -z "$BACKUP_FILE" ] || [ ! -f "$BACKUP_FILE" ]; then
-  echo "Usage: $0 <path-to-backup.sql.gz>"
+  echo "Usage: VERIFICATION_DATABASE_URL=.../sante_restore_verify $0 <backup.sql.gz>"
+  exit 1
+fi
+if [ -z "${VERIFICATION_DATABASE_URL:-}" ]; then
+  echo "VERIFICATION_DATABASE_URL is required and must end in _restore_verify"
   exit 1
 fi
 
-ENV_FILE=".env.production"
-[ -f .env.staging ] && ENV_FILE=".env.staging"
+ARGS=(
+  "$BACKUP_FILE"
+  --verification-database-url "$VERIFICATION_DATABASE_URL"
+  --rpo-target-minutes "${BACKUP_RPO_TARGET_MINUTES:-1440}"
+  --rto-target-minutes "${BACKUP_RTO_TARGET_MINUTES:-60}"
+  --evidence "${BACKUP_EVIDENCE_FILE:-evidence/backup/latest-restore-drill.json}"
+)
+if [ -n "${DATABASE_URL:-}" ]; then
+  ARGS+=(--source-database-url "$DATABASE_URL")
+fi
+if [ "${REPLACE_VERIFICATION_DATABASE:-0}" = "1" ]; then
+  ARGS+=(--replace-verification-database)
+fi
+if [ "${KEEP_VERIFICATION_DATABASE:-0}" = "1" ]; then
+  ARGS+=(--keep-verification-database)
+fi
 
-set -a
-# shellcheck disable=SC1091
-source "$ENV_FILE"
-set +a
-
-DRILL_DB="${POSTGRES_DB}_restore_drill"
-COMPOSE_FILES="-f docker-compose.yml -f docker-compose.prod.yml"
-
-echo "Creating drill database ${DRILL_DB} ..."
-docker compose $COMPOSE_FILES exec -T db psql -U "${POSTGRES_USER:-sante}" -d postgres -c \
-  "DROP DATABASE IF EXISTS ${DRILL_DB}; CREATE DATABASE ${DRILL_DB};"
-
-echo "Restoring into ${DRILL_DB} ..."
-gunzip -c "$BACKUP_FILE" | docker compose $COMPOSE_FILES exec -T db \
-  psql -U "${POSTGRES_USER:-sante}" -d "$DRILL_DB"
-
-echo "Row counts:"
-docker compose $COMPOSE_FILES exec -T db psql -U "${POSTGRES_USER:-sante}" -d "$DRILL_DB" -c \
-  "SELECT 'users' AS t, COUNT(*) FROM users UNION ALL SELECT 'rendezvous', COUNT(*) FROM rendezvous;"
-
-echo "Dropping drill database..."
-docker compose $COMPOSE_FILES exec -T db psql -U "${POSTGRES_USER:-sante}" -d postgres -c \
-  "DROP DATABASE ${DRILL_DB};"
-
-echo "Restore drill completed successfully."
+exec python3 scripts/db/backup_restore_evidence.py "${ARGS[@]}"
