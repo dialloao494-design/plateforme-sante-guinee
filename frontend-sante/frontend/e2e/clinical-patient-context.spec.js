@@ -57,6 +57,12 @@ test('patient context survives deep links and refresh across clinical roles', as
     await expect(strip).toContainText('Patient');
     await expect(strip).toContainText(patient.patient_number);
     await expect(strip).toHaveAttribute('aria-label', role.label);
+    if (role.key === 'lab' && role.route === '/clinical/lab') {
+      const overview = rolePage.getByTestId('lab-patient-overview');
+      await expect(overview).toBeVisible();
+      await expect(overview.getByText(patient.patient_number, { exact: true })).toBeVisible();
+      await expect(overview.getByRole('heading', { name: 'Informations patient' })).toBeVisible();
+    }
     if (role.passiveConsultation) {
       await expect(rolePage.getByRole('button', { name: 'Démarrer la consultation' })).toBeVisible();
       await expect(rolePage.getByText(/Consultation #\d+/)).toHaveCount(0);

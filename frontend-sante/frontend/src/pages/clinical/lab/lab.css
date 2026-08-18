@@ -1,0 +1,13 @@
+.lab-his-patient-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: #334155;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.lab-his-patient-field .reception-his-auto-display {
+  overflow-wrap: anywhere;
+}

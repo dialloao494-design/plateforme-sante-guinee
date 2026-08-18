@@ -7,8 +7,21 @@ import { detectLabTemplateId, LAB_TEMPLATES, LAB_TEMPLATE_OPTIONS, templateRowsF
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
 import PrintClinicHeader from '../../components/print/PrintClinicHeader.jsx';
 import PrintDocumentFooter from '../../components/print/PrintDocumentFooter.jsx';
+import { formatClinicalDateTime, patientDisplayName } from '../../utils/clinicalPresentation.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
+import LabPatientOverview, { ReadOnlyDisplay } from './lab/LabPatientOverview.jsx';
+import {
+  EMPTY_RESULT_ROW,
+  nowInputValue,
+  ORDER_STATUS_MAP,
+  parseLabPayload,
+  SAMPLE_TYPES,
+  sampleCodesFromLabels,
+  todayInputValue,
+  VALIDATION_STATUSES,
+} from './lab/labDomain.js';
 import './clinical.css';
+import './lab/lab.css';
 
 const TABS = [
   { id: 'workflow', label: 'Tableau de bord Labo', shortcut: '1' },
@@ -27,125 +40,6 @@ const BUCKET_TITLES = {
   analysis: 'Patients en analyse',
   validated_today: 'Examens validés aujourd\'hui',
 };
-
-const SAMPLE_TYPES = [
-  { code: 'blood', label: 'Sang' },
-  { code: 'urine', label: 'Urine' },
-  { code: 'stool', label: 'Selles' },
-  { code: 'lcr', label: 'LCR' },
-  { code: 'pus', label: 'Pus' },
-  { code: 'other', label: 'Autre' },
-];
-const VALIDATION_STATUSES = [
-  { value: 'pending', label: 'En attente' },
-  { value: 'in_progress', label: 'En cours' },
-  { value: 'validated', label: 'Validé' },
-  { value: 'rejected', label: 'Rejeté' },
-];
-
-const ORDER_STATUS_MAP = {
-  pending: 'ordered',
-  in_progress: 'in_analysis',
-  validated: 'completed',
-  rejected: 'cancelled',
-};
-
-const EMPTY_RESULT_ROW = { parameter: '', result: '', reference: '', unit: '' };
-
-const parseSampleNotes = (clinicalNotes) => {
-  if (!clinicalNotes) return null;
-  try {
-    const data = typeof clinicalNotes === 'string' ? JSON.parse(clinicalNotes) : clinicalNotes;
-    if (!data || typeof data !== 'object') return null;
-    return data;
-  } catch {
-    return null;
-  }
-};
-
-const parseResultPayload = (resultData) => {
-  if (!resultData) return null;
-  try {
-    return typeof resultData === 'string' ? JSON.parse(resultData) : resultData;
-  } catch {
-    return null;
-  }
-};
-
-const sampleCodesFromLabels = (labels = []) => {
-  const codes = [];
-  for (const label of labels) {
-    const hit = SAMPLE_TYPES.find((s) => s.label === label);
-    if (hit) codes.push(hit.code);
-  }
-  return codes;
-};
-
-const todayStr = () => new Date().toISOString().slice(0, 10);
-const nowTimeStr = () => new Date().toTimeString().slice(0, 5);
-
-const calcAge = (dob) => {
-  if (!dob) return '';
-  const b = new Date(dob);
-  if (Number.isNaN(b.getTime())) return '';
-  const n = new Date();
-  let age = n.getFullYear() - b.getFullYear();
-  const m = n.getMonth() - b.getMonth();
-  if (m < 0 || (m === 0 && n.getDate() < b.getDate())) age -= 1;
-  return age >= 0 ? String(age) : '';
-};
-
-const qrImageUrl = (token) =>
-  token ? `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(token)}` : '';
-
-const genderLabel = (gender) => {
-  if (gender === 'F') return 'Féminin';
-  if (gender === 'M') return 'Masculin';
-  if (gender === 'Autre') return 'Autre';
-  return gender || '';
-};
-
-const patientFullName = (p) => (p ? `${p.last_name || ''} ${p.first_name || ''}`.trim() : '');
-const patientAge = (p) => {
-  if (!p) return '';
-  if (p.date_of_birth) return calcAge(p.date_of_birth);
-  if (p.age != null && p.age !== '') return String(p.age);
-  return '';
-};
-
-const formatDob = (dob) => {
-  if (!dob) return '';
-  try {
-    return new Date(dob).toLocaleDateString('fr-FR');
-  } catch {
-    return String(dob);
-  }
-};
-
-const formatDateTime = (value) => {
-  if (!value) return '—';
-  try {
-    return new Date(value).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
-  } catch {
-    return String(value);
-  }
-};
-
-const ReadOnlyDisplay = ({ value }) => (
-  <div
-    className={`reception-his-auto-display${value ? ' reception-his-auto-display--filled' : ' reception-his-auto-display--empty'}`}
-    aria-live="polite"
-  >
-    {value || ''}
-  </div>
-);
-
-const DisplayField = ({ label, value }) => (
-  <label>
-    {label}
-    <ReadOnlyDisplay value={value} />
-  </label>
-);
 
 const FormNotice = ({ children }) =>
   children ? <p className="reception-his-form-notice">{children}</p> : null;
@@ -174,8 +68,8 @@ export default function LabDashboard() {
   const [serviceRequests, setServiceRequests] = useState([]);
 
   const [sampleForm, setSampleForm] = useState({
-    collection_date: todayStr(),
-    collection_time: nowTimeStr(),
+    collection_date: todayInputValue(),
+    collection_time: nowInputValue(),
     collector: '',
   });
   const [sampleTypes, setSampleTypes] = useState([]);
@@ -185,8 +79,8 @@ export default function LabDashboard() {
   const [resultRows, setResultRows] = useState([{ ...EMPTY_RESULT_ROW }]);
   const [validationForm, setValidationForm] = useState({
     technician: '',
-    validation_date: todayStr(),
-    validation_time: nowTimeStr(),
+    validation_date: todayInputValue(),
+    validation_time: nowInputValue(),
     status: 'pending',
     observations: '',
   });
@@ -357,7 +251,7 @@ export default function LabDashboard() {
     setValidationSummary(null);
     setSampleTypes([]);
     setSampleOther('');
-    setMessage(`Patient sélectionné : ${patientFullName(patient)} · N° ${patient.patient_number || patient.id}`);
+    setMessage(`Patient sélectionné : ${patientDisplayName(patient)} · N° ${patient.patient_number || patient.id}`);
     setError('');
   }, [setRoutePatientId]);
 
@@ -384,15 +278,15 @@ export default function LabDashboard() {
   }, [routePatientId, selectPatient, selectedPatient?.id]);
 
   const hydrateSampleFromOrder = useCallback((order) => {
-    const parsed = parseSampleNotes(order?.clinical_notes);
+    const parsed = parseLabPayload(order?.clinical_notes);
     if (!parsed) {
       setSavedSampleInfo(null);
       return;
     }
     setSavedSampleInfo(parsed);
     setSampleForm({
-      collection_date: parsed.collection_date || todayStr(),
-      collection_time: parsed.collection_time || nowTimeStr(),
+      collection_date: parsed.collection_date || todayInputValue(),
+      collection_time: parsed.collection_time || nowInputValue(),
       collector: parsed.collector || '',
     });
     const codes = sampleCodesFromLabels(parsed.sample_types || []);
@@ -401,7 +295,7 @@ export default function LabDashboard() {
   }, []);
 
   const hydrateResultsFromOrder = useCallback((order) => {
-    const payload = parseResultPayload(order?.result_data);
+    const payload = parseLabPayload(order?.result_data);
     if (!payload?.rows?.length) return false;
     setActiveTemplateId(payload.template_id || detectLabTemplateId(order.test_name));
     setResultRows(payload.rows);
@@ -412,13 +306,13 @@ export default function LabDashboard() {
     if (order.latest_result_id) setLastResultId(order.latest_result_id);
     if (order.result_status === 'validated') {
       setValidationSummary({
-        patient: patientFullName(selectedPatient),
+        patient: patientDisplayName(selectedPatient),
         patientNumber: selectedPatient?.patient_number || selectedPatient?.id,
         exam: order.test_name,
         rows: payload.rows,
         technician: payload.validation?.technician || order.technician_name || '—',
-        date: payload.validation?.validation_date || todayStr(),
-        time: payload.validation?.validation_time || nowTimeStr(),
+        date: payload.validation?.validation_date || todayInputValue(),
+        time: payload.validation?.validation_time || nowInputValue(),
         status: 'Validé',
         macro: payload.macro_appearance || '',
       });
@@ -469,8 +363,8 @@ export default function LabDashboard() {
       ...p,
       technician: order.technician_name || p.technician || '',
       status,
-      validation_date: todayStr(),
-      validation_time: nowTimeStr(),
+      validation_date: todayInputValue(),
+      validation_time: nowInputValue(),
     }));
     setMessage(`Examen actif : ${order.test_name}`);
     setError('');
@@ -518,7 +412,7 @@ export default function LabDashboard() {
         status: 'sample_collected',
         clinical_notes: notes,
       });
-      const snapshot = parseSampleNotes(notes);
+      const snapshot = parseLabPayload(notes);
       setSavedSampleInfo(snapshot);
       setActiveOrderId(order.id);
       setMessage('Prélèvement enregistré.');
@@ -633,7 +527,7 @@ export default function LabDashboard() {
         setLastResultId(result.id);
         setActiveOrderId(order.id);
         setValidationSummary({
-          patient: patientFullName(selectedPatient),
+          patient: patientDisplayName(selectedPatient),
           patientNumber: selectedPatient?.patient_number || selectedPatient?.id,
           exam: order.test_name,
           rows: filledRows,
@@ -775,7 +669,7 @@ export default function LabDashboard() {
                             </td>
                           )}
                           <td>{row.status}</td>
-                          <td>{formatDateTime(row.date_time)}</td>
+                          <td>{formatClinicalDateTime(row.date_time)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -794,36 +688,7 @@ export default function LabDashboard() {
               </section>
             ) : (
               <>
-                <section className="lab-his-workflow-card lab-his-workflow-card--patient reception-his-patient-context reception-his-patient-context--active">
-                  <h3>Informations patient</h3>
-                  <div className="reception-his-form-row reception-his-form-row--4">
-                    <DisplayField label="N° dossier" value={selectedPatient.patient_number || String(selectedPatient.id)} />
-                    <DisplayField label="Nom" value={selectedPatient.last_name} />
-                    <DisplayField label="Prénom" value={selectedPatient.first_name} />
-                    <DisplayField label="Date de naissance" value={formatDob(selectedPatient.date_of_birth)} />
-                  </div>
-                  <div className="reception-his-form-row reception-his-form-row--4">
-                    <DisplayField label="Âge" value={patientAge(selectedPatient)} />
-                    <DisplayField label="Sexe" value={genderLabel(selectedPatient.gender)} />
-                    <DisplayField label="Profession" value={selectedPatient.profession} />
-                    <DisplayField label="Téléphone" value={selectedPatient.phone} />
-                  </div>
-                  <div className="reception-his-form-row reception-his-form-row--4">
-                    <DisplayField label="Adresse" value={selectedPatient.address || selectedPatient.quartier} />
-                    <DisplayField label="Ville" value={selectedPatient.city} />
-                    <DisplayField label="Région" value={selectedPatient.region} />
-                    <DisplayField label="Pays" value={selectedPatient.country} />
-                  </div>
-                  {selectedPatient.qr_token && (
-                    <div className="reception-his-qr-block">
-                      <img src={qrImageUrl(selectedPatient.qr_token)} alt="QR patient" width={120} height={120} />
-                      <DisplayField label="Code QR" value={selectedPatient.qr_token} />
-                    </div>
-                  )}
-                  <button type="button" className="clinical-btn clinical-btn--secondary" onClick={clearPatient}>
-                    Changer de patient
-                  </button>
-                </section>
+                <LabPatientOverview patient={selectedPatient} onChangePatient={clearPatient} />
 
                 <section className="lab-his-workflow-card lab-his-workflow-card--exams">
                   <h3>Examens à traiter</h3>
@@ -1057,7 +922,12 @@ export default function LabDashboard() {
                             )}
                             <td>
                               {!activeTemplateId && (
-                                <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => removeResultRow(idx)}>
+                                <button
+                                  type="button"
+                                  className="clinical-btn clinical-btn--secondary"
+                                  onClick={() => removeResultRow(idx)}
+                                  aria-label={`Supprimer la ligne de résultat ${idx + 1}`}
+                                >
                                   ×
                                 </button>
                               )}

@@ -255,6 +255,15 @@ Implemented evidence (2026-08-18):
   a late consultation URL write could restore a dossier just closed by the
   clinician. Patient URL selection now occurs at the start of the explicit open
   action, so closing wins deterministically.
+- the first Laboratory controller extraction moved patient identity into
+  `LabPatientOverview` and stored-payload parsing/constants into a tested domain
+  module; the dashboard fell from **1,225** to **1,095** lines, its first
+  module-owned stylesheet is emitted as a separate route asset, and duplicate
+  date/time/name presentation now delegates to the shared Guinea formatter;
+- the laboratory extraction is locally verified by **41/41** frontend unit
+  tests, lint, production build, all 6 performance budgets, and the cross-role
+  patient-context browser regression. That browser test now asserts the
+  extracted laboratory identity panel and canonical dossier number directly.
 
 Remaining: split large workflow controllers and the shared clinical stylesheet,
 finish migrating legacy presentation calls, and validate on clinic
@@ -383,6 +392,7 @@ and a clear escalation contact.
 | 2026-08-18 | Shared patient context expanded to every patient-bound clinical dashboard; doctor deep links made read-only until explicit consultation start; focused browser regression passed across 13 workspaces. | Canonical workspace implementation moved to CODE COMPLETE; CI, cross-clinic browser evidence, and field validation remain. |
 | 2026-08-18 | Shared clinical formatters/live-region feedback added and route/style performance budgets enforced in CI; local unit, build, budget, accessibility, and cross-role browser checks passed. | UX coherence and frontend maintainability advanced; controller/style decomposition and field validation remain. |
 | 2026-08-18 | Doctor patient overview extracted from the monolithic controller; expanded browser coverage found and fixed a late open/close URL race. | First workflow-controller decomposition landed with a patient-context regression lock. |
+| 2026-08-18 | Laboratory patient overview and stored-payload domain logic extracted; local unit, build, performance, and cross-role browser gates passed. | Laboratory controller reduced by 130 lines with direct safety-identity regression coverage; broader controller/style decomposition remains open. |
 
 ## Related evidence
 
