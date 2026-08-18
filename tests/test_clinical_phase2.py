@@ -55,7 +55,8 @@ def test_nursing_register_and_timeline(client, db_session, admin_user):
         json={"first_name": "Fatou", "last_name": "Diallo", "age": 25, "gender": "F", "phone": "+224622111222"},
         headers=_auth(reception),
     )
-    patient_id = r.json()["id"]
+    patient = r.json()
+    patient_id = patient["id"]
 
     r = client.post(
         "/clinical/nursing-care/procedures",
@@ -83,7 +84,29 @@ def test_nursing_register_and_timeline(client, db_session, admin_user):
     assert r.status_code == 200
     body = r.json()
     assert body["patient_id"] == patient_id
+    assert body["patient"]["patient_number"] == patient["patient_number"]
+    assert body["patient"]["age"] == patient["age"]
     assert any(e["module"] == "nursing" for e in body["events"])
+
+    with provisioning_channel("test_fixture"):
+        pev_agent = models.User(
+            email=f"pev.{uuid.uuid4().hex[:8]}@test.com",
+            hashed_password=hash_password("StaffPass12!"),
+            role="pev_agent",
+            clinic_id=_clinic_id,
+        )
+        db_session.add(pev_agent)
+        db_session.commit()
+        db_session.refresh(pev_agent)
+
+    search = client.get(
+        "/clinical/reception/patients",
+        params={"q": patient["patient_number"]},
+        headers=_auth(pev_agent),
+    )
+    assert search.status_code == 200
+    journey = client.get(f"/clinical/patients/{patient_id}/journey", headers=_auth(pev_agent))
+    assert journey.status_code == 200
 
 
 def test_nutrition_register_json_serializable(client, db_session, admin_user):

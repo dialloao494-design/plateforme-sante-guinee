@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
 import { useAuth } from '../../contexts/AuthContext.jsx';
+import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 import clinicalApi from '../../services/clinicalApi';
 import { formatApiError } from '../../utils/apiError.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
@@ -106,6 +108,8 @@ function RegisterTable({ rows, title }) {
 
 export default function ImmunizationDashboard() {
   const { user } = useAuth();
+  const { patientId: routePatientId, setPatientId: setRoutePatientId } = useClinicalPatientRoute();
+  const closingPatientIdRef = useRef('');
   const [view, setView] = useState('record');
   const [schedule, setSchedule] = useState([]);
   const [fieldOptions, setFieldOptions] = useState({ injection_sites: [], strategies: [] });
@@ -195,10 +199,15 @@ export default function ImmunizationDashboard() {
   }, []);
 
   useEffect(() => {
-    if (selectedPatient?.id) {
-      loadPatientData(selectedPatient.id);
-    }
-  }, [selectedPatient, loadPatientData]);
+    if (!routePatientId) return;
+    if (closingPatientIdRef.current === routePatientId || String(selectedPatient?.id || '') === routePatientId) return;
+    clinicalApi.patientTimeline(routePatientId)
+      .then(({ data }) => {
+        setSelectedPatient(data?.patient || null);
+        return loadPatientData(routePatientId);
+      })
+      .catch((err) => setError(formatApiError(err, 'Patient indisponible')));
+  }, [routePatientId, selectedPatient?.id, loadPatientData]);
 
   const searchPatients = async () => {
     if (patientSearch.trim().length < 2) return;
@@ -211,10 +220,22 @@ export default function ImmunizationDashboard() {
   };
 
   const selectPatient = (patient) => {
+    closingPatientIdRef.current = '';
     setSelectedPatient(patient);
+    setRoutePatientId(patient.id);
     setPatientMatches([]);
     setMessage('');
     setError('');
+    loadPatientData(patient.id);
+  };
+
+  const closePatient = () => {
+    closingPatientIdRef.current = String(selectedPatient?.id || routePatientId || '');
+    setSelectedPatient(null);
+    setHistory([]);
+    setPatientJourney(null);
+    setStatus({ due: [], missed: [], upcoming: [] });
+    setRoutePatientId('');
   };
 
   const fillFromSchedule = (item) => {
@@ -331,6 +352,7 @@ export default function ImmunizationDashboard() {
       </div>
 
       <ClinicalStatGrid stats={stats} />
+      <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Patient actif au PEV" />
 
       {view === 'record' && (
         <>
@@ -338,7 +360,7 @@ export default function ImmunizationDashboard() {
             department="pev"
             title="File de visite — PEV / Vaccination"
             onSelectPatient={(item) =>
-              setSelectedPatient({
+              selectPatient({
                 id: item.patient_id,
                 first_name: item.patient_name?.split(' ')[0],
                 last_name: item.patient_name?.split(' ').slice(1).join(' '),

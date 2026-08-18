@@ -13,6 +13,7 @@ import AdminRouteEntry from "./AdminRouteEntry.jsx";
 import {
   BILLING_ROLES,
   CLINIC_ADMIN_ROLES,
+  DISCHARGE_ROLES,
   HOSPITALIZATION_ROLES,
   IMMUNIZATION_ROLES,
   NURSE_DASHBOARD_ROLES,
@@ -343,7 +344,7 @@ const AppRoutes = () => {
       <Route
         path="/clinical/discharge"
         element={
-          <ProtectedRoute allowedRoles={HOSPITALIZATION_ROLES}>
+          <ProtectedRoute allowedRoles={DISCHARGE_ROLES}>
             <DischargeDashboard />
           </ProtectedRoute>
         }

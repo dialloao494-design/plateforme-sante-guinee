@@ -21,6 +21,7 @@ export const IMMUNIZATION_ROLES = [...PEV_ROLES, 'nutritionist'];
 export const HOSPITALIZATION_ROLES = [
   'admin', 'clinic_admin', 'platform_admin', 'receptionist', 'doctor', 'nurse',
 ];
+export const DISCHARGE_ROLES = ['receptionist', 'doctor', 'admin', 'clinic_admin'];
 export const PATIENT_HISTORY_ROLES = [
   'receptionist', 'cashier', 'doctor', 'lab_technician', 'pharmacist',
   'nutritionist', 'pev_agent', 'nurse', 'midwife', 'clinic_admin',

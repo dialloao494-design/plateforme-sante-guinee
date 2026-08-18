@@ -112,7 +112,7 @@ finishes successfully, and failures provide actionable artifacts/logs.
 
 ### P1 — One canonical patient workspace
 
-**Status: IN PROGRESS — first shared context slice locally verified**
+**Status: CODE COMPLETE — locally browser-verified; CI and field validation open**
 
 The system has multiple independent `selectedPatient` and tab/workflow state
 implementations. Reception has moved toward URL-backed state, while laboratory,
@@ -153,10 +153,23 @@ Implemented evidence (2026-08-18):
 - closing a dossier removes URL context without the hydration race reopening it;
 - `clinical-patient-context.spec.js` verifies all 3 newly migrated roles against
   the same clinic patient in isolated authenticated sessions.
+- Doctor, Billing, Hospitalization, History, Nutrition, Immunization/PEV,
+  Nursing Care, Radiology, and Discharge now consume the same URL patient
+  contract and shared patient safety strip;
+- a doctor deep link restores identity without creating or reopening a clinical
+  consultation; starting a consultation remains an explicit clinician action;
+- the expanded browser regression covers 13 patient-bound workspaces, refresh,
+  close, role isolation, and the doctor no-write-on-refresh safeguard;
+- timeline identity now includes the canonical dossier number and recorded age,
+  with backend contract coverage;
+- discharge routing now matches backend authority instead of exposing a page to
+  nurses whose API calls would all be rejected.
+- PEV patient lookup and journey access now match the authorized vaccination
+  workflow while retaining clinic-scoped patient checks.
 
-Remaining: migrate Doctor, Billing, Hospitalization, History, Nutrition,
-Immunization/PEV, Nursing Care, Radiology, Discharge, and other patient-bound
-workspaces into the canonical route/context model.
+Remaining evidence: required CI must pass this commit, cross-clinic negative
+browser coverage must prove tenant isolation at the UI boundary, and hospital
+staff must validate the navigation model on clinic hardware.
 
 ### P1 — Clinical UX coherence and patient safety
 
@@ -182,9 +195,11 @@ physician, laboratory, pharmacy, cashier, and administration on clinic hardware
 and realistic network conditions.
 
 Implemented evidence (2026-08-18): the patient identity/safety strip is now a
-shared clinical component used consistently by Reception, Nursing, Laboratory,
-and Pharmacy, with role-specific context labels and a single “Fermer le dossier”
-action. This is locally browser-verified, not yet field-validated.
+shared clinical component used consistently by all patient-bound clinical
+dashboards, with role-specific context labels and a single “Fermer le dossier”
+action. The doctor workflow additionally separates passive dossier restoration
+from the write action that starts a consultation. This is locally
+browser-verified, not yet field-validated.
 
 ### P1 — Frontend decomposition and performance
 
@@ -346,6 +361,7 @@ and a clear escalation contact.
 | 2026-08-18 | Deployment run 32091947808 succeeded at `f6d5635`. | Latest validation deployment and production smoke are green. |
 | 2026-08-18 | Shared patient URL context and safety strip landed locally for Reception, Nursing, Laboratory, and Pharmacy; focused browser regression passed. | Canonical workspace and clinical UX workstreams moved to IN PROGRESS. |
 | 2026-08-18 | Hook warnings reduced from 10 to 0 and forced 572 KB clinical bundle removed. | Frontend maintainability/performance tranche locally verified; workstream remains open overall. |
+| 2026-08-18 | Shared patient context expanded to every patient-bound clinical dashboard; doctor deep links made read-only until explicit consultation start; focused browser regression passed across 13 workspaces. | Canonical workspace implementation moved to CODE COMPLETE; CI, cross-clinic browser evidence, and field validation remain. |
 
 ## Related evidence
 

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import DischargeAuthorizationPrint from '../../components/print/DischargeAuthorizationPrint.jsx';
+import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
 import { CLINIC_PRINT_NAME } from '../../constants/clinicBranding.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
+import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 import clinicalApi from '../../services/clinicalApi';
 import { formatApiError } from '../../utils/apiError.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
@@ -93,7 +95,9 @@ const formatDateTime = (value) => {
 
 export default function DoctorClinicalDashboard() {
   const { user } = useAuth();
+  const { patientId: routePatientId, setPatientId: setRoutePatientId } = useClinicalPatientRoute();
   const searchRef = useRef(null);
+  const closingPatientIdRef = useRef('');
 
   const [stats, setStats] = useState(null);
   const [queue, setQueue] = useState([]);
@@ -162,6 +166,14 @@ export default function DoctorClinicalDashboard() {
       .then(({ data }) => setCatalog(data || { specialties: [], imaging: [], lab_tests: [] }))
       .catch(() => {});
   }, [loadDashboard]);
+
+  useEffect(() => {
+    if (!routePatientId) return;
+    if (closingPatientIdRef.current === routePatientId || String(identity?.patient_id || '') === routePatientId) return;
+    clinicalApi.doctorPatientIdentity(routePatientId)
+      .then(({ data }) => setIdentity(data || null))
+      .catch((err) => setError(formatApiError(err, 'Patient indisponible')));
+  }, [routePatientId, identity?.patient_id]);
 
   const loadBucket = async (bucket) => {
     if (activeBucket === bucket) {
@@ -256,6 +268,8 @@ export default function DoctorClinicalDashboard() {
       setNurseAssessment(assessRes.status === 'fulfilled' ? assessRes.value.data || null : null);
       setHistory(histRes.status === 'fulfilled' ? histRes.value.data || [] : []);
       refreshServiceRequests(patientId);
+      closingPatientIdRef.current = '';
+      setRoutePatientId(patientId);
       setMessage(`Consultation #${consult.id} ouverte`);
       loadDashboard();
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -264,6 +278,17 @@ export default function DoctorClinicalDashboard() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const closePatient = () => {
+    closingPatientIdRef.current = String(identity?.patient_id || consultation?.patient_id || routePatientId || '');
+    setIdentity(null);
+    setConsultation(null);
+    setNurseAssessment(null);
+    setHistory([]);
+    setServiceRequests([]);
+    setForm(EMPTY_FORM);
+    setRoutePatientId('');
   };
 
   const refreshServiceRequests = (patientId) => {
@@ -636,6 +661,19 @@ export default function DoctorClinicalDashboard() {
 
       {error && <p className="clinical-error">{String(error)}</p>}
       {message && <p className="clinical-success">{message}</p>}
+      <PatientSafetyStrip patient={identity} onClose={closePatient} contextLabel="Patient actif en consultation" />
+
+      {identity && !consultation && (
+        <section className="clinical-card clinical-patient-next-action" aria-labelledby="doctor-start-consultation-title">
+          <div>
+            <h2 id="doctor-start-consultation-title">Dossier patient chargé</h2>
+            <p>Vérifiez l’identité ci-dessus avant de créer ou reprendre la consultation.</p>
+          </div>
+          <button type="button" className="clinical-btn" onClick={() => openPatient(identity.patient_id)} disabled={busy}>
+            {busy ? 'Ouverture…' : 'Démarrer la consultation'}
+          </button>
+        </section>
+      )}
 
       <ClinicalStatGrid stats={statCards} onStatClick={loadBucket} activeKey={activeBucket} />
 

@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import clinicalApi from '../../services/clinicalApi';
 
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import PatientPicker from '../../components/PatientPicker.jsx';
+import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 
 import './clinical.css';
 
@@ -12,6 +14,8 @@ function formatGNF(n) {
 }
 
 export default function UnifiedBillingDashboard() {
+  const { patientId: routePatientId, setPatientId: setRoutePatientId } = useClinicalPatientRoute();
+  const closingPatientIdRef = useRef('');
   const [invoices, setInvoices] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [patientVisits, setPatientVisits] = useState([]);
@@ -48,17 +52,38 @@ export default function UnifiedBillingDashboard() {
     }
   };
 
-  const selectPatient = async (patient) => {
+  const selectPatient = useCallback(async (patient, { updateRoute = true } = {}) => {
     setSelectedPatient(patient);
     setVisitId('');
     setPatientVisits([]);
-    if (!patient) return;
+    if (!patient) {
+      if (updateRoute) setRoutePatientId('');
+      return;
+    }
+    closingPatientIdRef.current = '';
+    if (updateRoute) setRoutePatientId(patient.id);
     try {
       const response = await clinicalApi.billingPatientVisits(patient.id);
       setPatientVisits(response?.data || []);
     } catch (err) {
       setError(err?.response?.data?.detail || 'Visites du patient indisponibles');
     }
+  }, [setRoutePatientId]);
+
+  useEffect(() => {
+    if (!routePatientId) return;
+    if (closingPatientIdRef.current === routePatientId || String(selectedPatient?.id || '') === routePatientId) return;
+    clinicalApi.patientTimeline(routePatientId)
+      .then(({ data }) => selectPatient(data?.patient, { updateRoute: false }))
+      .catch((err) => setError(err?.response?.data?.detail || 'Patient indisponible'));
+  }, [routePatientId, selectPatient, selectedPatient?.id]);
+
+  const closePatient = () => {
+    closingPatientIdRef.current = String(selectedPatient?.id || routePatientId || '');
+    setSelectedPatient(null);
+    setPatientVisits([]);
+    setVisitId('');
+    setRoutePatientId('');
   };
 
   const pay = async (invoiceId) => {
@@ -95,16 +120,13 @@ export default function UnifiedBillingDashboard() {
       </header>
       {error && <div className="clinical-alert clinical-alert--error">{String(error)}</div>}
       {message && <div className="clinical-alert clinical-alert--success">{message}</div>}
+      <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Patient actif à la facturation" />
       <ClinicalStatGrid stats={stats} />
 
       <section className="clinical-panel">
         <h2>Générer une facture</h2>
         <div className="clinical-form">
-          <PatientPicker
-            search={clinicalApi.billingPatientSearch}
-            selected={selectedPatient}
-            onSelect={selectPatient}
-          />
+          {!selectedPatient && <PatientPicker search={clinicalApi.billingPatientSearch} onSelect={selectPatient} />}
           {selectedPatient && (
             <>
               <label htmlFor="billing-visit">Visite à facturer</label>

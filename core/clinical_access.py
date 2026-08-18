@@ -38,6 +38,7 @@ PATIENT_LOOKUP_ROLES = (
     "nutritionist",
     "midwife",
     "nurse",
+    "pev_agent",
     "platform_admin",
     "platform_owner",
 )

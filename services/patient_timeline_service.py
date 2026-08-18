@@ -214,8 +214,10 @@ class PatientTimelineService:
             "patient_id": patient_id,
             "patient": {
                 "id": patient.id,
+                "patient_number": patient.patient_number,
                 "first_name": patient.first_name,
                 "last_name": patient.last_name,
+                "age": patient.age,
                 "gender": patient.gender,
                 "phone": patient.phone,
                 "date_of_birth": _dt(patient.date_of_birth),

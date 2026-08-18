@@ -1,5 +1,7 @@
 function patientFullName(patient) {
-  return [patient?.last_name, patient?.first_name].filter(Boolean).join(' ') || 'Identité non renseignée';
+  return patient?.full_name
+    || [patient?.last_name, patient?.first_name].filter(Boolean).join(' ')
+    || 'Identité non renseignée';
 }
 
 function patientAge(patient) {
@@ -17,9 +19,10 @@ function patientAge(patient) {
 }
 
 function patientGender(patient) {
-  if (patient?.gender === 'F') return 'Féminin';
-  if (patient?.gender === 'M') return 'Masculin';
-  return patient?.gender || 'Non renseigné';
+  const gender = patient?.gender || patient?.sex;
+  if (gender === 'F') return 'Féminin';
+  if (gender === 'M') return 'Masculin';
+  return gender || 'Non renseigné';
 }
 
 export default function PatientSafetyStrip({ patient, onClose, contextLabel = 'Dossier patient ouvert' }) {

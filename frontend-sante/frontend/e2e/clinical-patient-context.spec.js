@@ -38,6 +38,15 @@ test('patient context survives deep links and refresh across clinical roles', as
     { key: 'lab', route: '/clinical/lab', label: 'Patient actif au laboratoire' },
     { key: 'pharmacy', route: '/clinical/pharmacy', label: 'Patient actif à la pharmacie' },
     { key: 'nurse', route: '/clinical/nurse', label: 'Patient actif en soins infirmiers' },
+    { key: 'doctor', route: '/clinical/doctor', label: 'Patient actif en consultation', passiveConsultation: true },
+    { key: 'cashier', route: '/clinical/billing', label: 'Patient actif à la facturation' },
+    { key: 'nutrition', route: '/clinical/nutrition', label: 'Patient actif en nutrition' },
+    { key: 'nurse', route: '/clinical/hospitalization', label: 'Patient actif en hospitalisation' },
+    { key: 'reception', route: '/clinical/patient-history', label: 'Dossier longitudinal actif' },
+    { key: 'pev', route: '/clinical/pev', label: 'Patient actif au PEV' },
+    { key: 'nurse', route: '/clinical/nursing-care', label: 'Patient actif pour les soins' },
+    { key: 'lab', route: '/clinical/radiology', label: 'Patient actif en imagerie' },
+    { key: 'doctor', route: '/clinical/discharge', label: 'Patient actif pour la sortie' },
   ]) {
     const roleContext = await browser.newContext({ baseURL: 'http://127.0.0.1:5173' });
     const rolePage = await roleContext.newPage();
@@ -48,9 +57,16 @@ test('patient context survives deep links and refresh across clinical roles', as
     await expect(strip).toContainText('Patient');
     await expect(strip).toContainText(patient.patient_number);
     await expect(strip).toHaveAttribute('aria-label', role.label);
+    if (role.passiveConsultation) {
+      await expect(rolePage.getByRole('button', { name: 'Démarrer la consultation' })).toBeVisible();
+      await expect(rolePage.getByText(/Consultation #\d+/)).toHaveCount(0);
+    }
 
     await rolePage.reload();
     await expect(rolePage.getByTestId('patient-safety-strip')).toContainText(patient.patient_number);
+    if (role.passiveConsultation) {
+      await expect(rolePage.getByText(/Consultation #\d+/)).toHaveCount(0);
+    }
 
     await rolePage.getByRole('button', { name: 'Fermer le dossier' }).click();
     await expect(rolePage).not.toHaveURL(/patient=/);

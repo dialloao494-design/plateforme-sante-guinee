@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import clinicalApi from '../../services/clinicalApi';
 import { useConfirm } from '../../contexts/ConfirmContext.jsx';
+import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 
@@ -9,10 +11,13 @@ import './clinical.css';
 
 export default function DischargeDashboard() {
   const confirm = useConfirm();
+  const { patientId: routePatientId, setPatientId: setRoutePatientId } = useClinicalPatientRoute();
+  const closingPatientIdRef = useRef('');
   const [summaries, setSummaries] = useState([]);
   const [openVisits, setOpenVisits] = useState([]);
   const [visitId, setVisitId] = useState('');
   const [selectedVisit, setSelectedVisit] = useState(null);
+  const [selectedPatient, setSelectedPatient] = useState(null);
   const [checklist, setChecklist] = useState(null);
   const [followUp, setFollowUp] = useState('');
   const [message, setMessage] = useState('');
@@ -35,6 +40,14 @@ export default function DischargeDashboard() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!routePatientId) return;
+    if (closingPatientIdRef.current === routePatientId || String(selectedPatient?.id || '') === routePatientId) return;
+    clinicalApi.patientTimeline(routePatientId)
+      .then(({ data }) => setSelectedPatient(data?.patient || null))
+      .catch((err) => setError(err?.response?.data?.detail || 'Patient indisponible'));
+  }, [routePatientId, selectedPatient?.id]);
+
   const loadChecklist = async (id = visitId) => {
     if (!id) return;
     try {
@@ -47,9 +60,24 @@ export default function DischargeDashboard() {
   };
 
   const onSelectVisit = (id) => {
-    setSelectedVisit(openVisits.find((visit) => visit.id === id) || null);
+    const visit = openVisits.find((item) => item.id === id) || null;
+    setSelectedVisit(visit);
+    if (visit?.patient_id) {
+      closingPatientIdRef.current = '';
+      setSelectedPatient({ id: visit.patient_id, full_name: visit.patient_name });
+      setRoutePatientId(visit.patient_id);
+    }
     setVisitId(String(id));
     loadChecklist(id);
+  };
+
+  const closePatient = () => {
+    closingPatientIdRef.current = String(selectedPatient?.id || routePatientId || '');
+    setSelectedPatient(null);
+    setSelectedVisit(null);
+    setVisitId('');
+    setChecklist(null);
+    setRoutePatientId('');
   };
 
   const discharge = async (force = false) => {
@@ -71,6 +99,8 @@ export default function DischargeDashboard() {
       setChecklist(null);
       setVisitId('');
       setSelectedVisit(null);
+      setSelectedPatient(null);
+      setRoutePatientId('');
       setFollowUp('');
       load();
     } catch (err) {
@@ -96,6 +126,7 @@ export default function DischargeDashboard() {
       </header>
       {error && <div className="clinical-alert clinical-alert--error">{String(error)}</div>}
       {message && <div className="clinical-alert clinical-alert--success">{message}</div>}
+      <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Patient actif pour la sortie" />
       <ClinicalStatGrid stats={stats} />
 
       <section className="clinical-panel">
@@ -126,6 +157,7 @@ export default function DischargeDashboard() {
                 setVisitId('');
                 setSelectedVisit(null);
                 setChecklist(null);
+                closePatient();
               }}>
                 Annuler la sélection
               </button>

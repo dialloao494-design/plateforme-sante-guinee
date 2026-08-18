@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import clinicalApi from '../../services/clinicalApi';
@@ -6,6 +6,8 @@ import { formatApiError } from '../../utils/apiError.js';
 import { userCanManageHospitalBeds } from '../../utils/clinicAccess.js';
 
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
+import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 
 import './clinical.css';
 
@@ -20,6 +22,8 @@ const STATUS_LABELS = {
 
 export default function HospitalizationDashboard() {
   const { user } = useAuth();
+  const { patientId: routePatientId, setPatientId: setRoutePatientId } = useClinicalPatientRoute();
+  const closingPatientIdRef = useRef('');
   const canManageBeds = userCanManageHospitalBeds(user?.role || user?.user_role);
   const [occupancy, setOccupancy] = useState(null);
   const [hospStats, setHospStats] = useState(null);
@@ -27,6 +31,7 @@ export default function HospitalizationDashboard() {
   const [beds, setBeds] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [selectedAdmission, setSelectedAdmission] = useState(null);
+  const [selectedPatient, setSelectedPatient] = useState(null);
   const [selectedBedId, setSelectedBedId] = useState('');
   const [transferReason, setTransferReason] = useState('');
   const [roomForm, setRoomForm] = useState({ ward_name: 'Médecine', room_number: '', room_type: 'general', capacity: 2 });
@@ -61,6 +66,33 @@ export default function HospitalizationDashboard() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!routePatientId) return;
+    if (closingPatientIdRef.current === routePatientId || String(selectedPatient?.id || '') === routePatientId) return;
+    clinicalApi.patientTimeline(routePatientId)
+      .then(({ data }) => {
+        const patient = data?.patient || null;
+        setSelectedPatient(patient);
+        setAdmitForm((current) => ({ ...current, patient_id: patient ? String(patient.id) : '' }));
+      })
+      .catch((err) => setError(formatApiError(err, 'Patient indisponible')));
+  }, [routePatientId, selectedPatient?.id]);
+
+  const selectPatient = (patient) => {
+    closingPatientIdRef.current = '';
+    setSelectedPatient(patient);
+    setAdmitForm((current) => ({ ...current, patient_id: String(patient.id) }));
+    setPatientMatches([]);
+    setRoutePatientId(patient.id);
+  };
+
+  const closePatient = () => {
+    closingPatientIdRef.current = String(selectedPatient?.id || routePatientId || '');
+    setSelectedPatient(null);
+    setAdmitForm((current) => ({ ...current, patient_id: '' }));
+    setRoutePatientId('');
+  };
 
   const stats = hospStats
     ? [
@@ -130,6 +162,8 @@ export default function HospitalizationDashboard() {
       });
       setMessage('Admission créée');
       setAdmitForm({ patient_id: '', diagnosis_summary: '', reason: '' });
+      setSelectedPatient(null);
+      setRoutePatientId('');
       setPatientMatches([]);
       load();
     } catch (err) {
@@ -173,6 +207,7 @@ export default function HospitalizationDashboard() {
 
       {error && <div className="clinical-alert clinical-alert--error">{String(error)}</div>}
       {message && <div className="clinical-alert clinical-alert--success">{message}</div>}
+      <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Patient actif en hospitalisation" />
 
       <ClinicalStatGrid stats={stats} />
 
@@ -194,20 +229,15 @@ export default function HospitalizationDashboard() {
             </div>
           </label>
           {patientMatches.length > 0 && (
-            <label className="clinical-span-2">
-              Patient
-              <select
-                value={admitForm.patient_id}
-                onChange={(e) => setAdmitForm({ ...admitForm, patient_id: e.target.value })}
-              >
-                <option value="">— Sélectionner —</option>
-                {patientMatches.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.first_name} {p.last_name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <ul className="clinical-list clinical-span-2" aria-label="Résultats patients">
+              {patientMatches.map((patient) => (
+                <li key={patient.id}>
+                  <button type="button" className="clinical-link-btn" onClick={() => selectPatient(patient)}>
+                    {patient.first_name} {patient.last_name} — {patient.phone || 'sans téléphone'}
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
           <label>
             Diagnostic
@@ -246,6 +276,13 @@ export default function HospitalizationDashboard() {
                     )}
                   </div>
                   <div className="clinical-actions">
+                    <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => selectPatient({
+                      id: a.patient_id,
+                      patient_number: a.patient_number,
+                      full_name: a.patient_name,
+                    })}>
+                      Ouvrir le dossier
+                    </button>
                     <button type="button" className="clinical-btn" onClick={() => setSelectedAdmission(a)}>
                       Assigner lit
                     </button>

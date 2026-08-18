@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import clinicalApi from '../../services/clinicalApi';
+import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 
@@ -9,8 +11,11 @@ import './clinical.css';
 const MODALITY_LABELS = { xray: 'Radiographie', ultrasound: 'Échographie', ct_scan: 'Scanner', mri: 'IRM' };
 
 export default function RadiologyDashboard() {
+  const { patientId: routePatientId, setPatientId: setRoutePatientId } = useClinicalPatientRoute();
+  const closingPatientIdRef = useRef('');
   const [orders, setOrders] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [selectedPatient, setSelectedPatient] = useState(null);
   const [reportForm, setReportForm] = useState({ findings: '', impression: '', recommendations: '' });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -28,6 +33,29 @@ export default function RadiologyDashboard() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!routePatientId) return;
+    if (closingPatientIdRef.current === routePatientId || String(selectedPatient?.id || '') === routePatientId) return;
+    clinicalApi.patientTimeline(routePatientId)
+      .then(({ data }) => setSelectedPatient(data?.patient || null))
+      .catch((err) => setError(err?.response?.data?.detail || 'Patient indisponible'));
+  }, [routePatientId, selectedPatient?.id]);
+
+  const selectOrder = (order) => {
+    setSelected(order);
+    if (!order.patient_id) return;
+    closingPatientIdRef.current = '';
+    setSelectedPatient({ id: order.patient_id, full_name: order.patient_name });
+    setRoutePatientId(order.patient_id);
+  };
+
+  const closePatient = () => {
+    closingPatientIdRef.current = String(selectedPatient?.id || routePatientId || '');
+    setSelectedPatient(null);
+    setSelected(null);
+    setRoutePatientId('');
+  };
 
   const schedule = async (orderId) => {
     try {
@@ -83,6 +111,7 @@ export default function RadiologyDashboard() {
       </header>
       {error && <div className="clinical-alert clinical-alert--error">{String(error)}</div>}
       {message && <div className="clinical-alert clinical-alert--success">{message}</div>}
+      <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Patient actif en imagerie" />
       <ClinicalStatGrid stats={stats} />
 
       <div className="clinical-grid clinical-grid--2">
@@ -99,7 +128,7 @@ export default function RadiologyDashboard() {
                   {o.status === 'ordered' && (
                     <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => schedule(o.id)}>Planifier</button>
                   )}
-                  <button type="button" className="clinical-btn" onClick={() => setSelected(o)}>Saisir CR</button>
+                  <button type="button" className="clinical-btn" onClick={() => selectOrder(o)}>Saisir CR</button>
                 </div>
                 {(o.results || []).map((r) => (
                   <div key={r.id} style={{ marginTop: '0.5rem' }}>

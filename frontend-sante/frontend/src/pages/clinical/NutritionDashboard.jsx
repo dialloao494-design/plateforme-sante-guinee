@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import clinicalApi from '../../services/clinicalApi';
 import { formatApiError } from '../../utils/apiError.js';
 import { userCanWriteNutrition } from '../../utils/clinicAccess.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
+import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 import './clinical.css';
 
 const STATUS_LABELS = {
@@ -14,6 +16,8 @@ const STATUS_LABELS = {
 };
 
 export default function NutritionDashboard() {
+  const { patientId: routePatientId, setPatientId: setRoutePatientId } = useClinicalPatientRoute();
+  const closingPatientIdRef = useRef('');
   const { user } = useAuth();
   const canWrite = userCanWriteNutrition(user?.role || user?.user_role);
   const [patientSearch, setPatientSearch] = useState('');
@@ -58,10 +62,15 @@ export default function NutritionDashboard() {
   }, []);
 
   useEffect(() => {
-    if (selectedPatient?.id) {
-      loadHistory(selectedPatient.id);
-    }
-  }, [selectedPatient, loadHistory]);
+    if (!routePatientId) return;
+    if (closingPatientIdRef.current === routePatientId || String(selectedPatient?.id || '') === routePatientId) return;
+    clinicalApi.patientTimeline(routePatientId)
+      .then(({ data }) => {
+        setSelectedPatient(data?.patient || null);
+        return loadHistory(routePatientId);
+      })
+      .catch((err) => setError(formatApiError(err, 'Patient indisponible')));
+  }, [routePatientId, selectedPatient?.id, loadHistory]);
 
   const searchPatients = async () => {
     if (patientSearch.trim().length < 2) return;
@@ -74,10 +83,20 @@ export default function NutritionDashboard() {
   };
 
   const selectPatient = (patient) => {
+    closingPatientIdRef.current = '';
     setSelectedPatient(patient);
+    setRoutePatientId(patient.id);
     setPatientMatches([]);
     setMessage('');
     setError('');
+    loadHistory(patient.id);
+  };
+
+  const closePatient = () => {
+    closingPatientIdRef.current = String(selectedPatient?.id || routePatientId || '');
+    setSelectedPatient(null);
+    setHistory([]);
+    setRoutePatientId('');
   };
 
   const submitAssessment = async (e) => {
@@ -144,13 +163,14 @@ export default function NutritionDashboard() {
       <p className="clinical-lead">Suivi de la croissance : poids, taille, périmètre brachial (MUAC).</p>
       {error && <p className="clinical-error">{String(error)}</p>}
       {message && <p className="clinical-success">{message}</p>}
+      <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Patient actif en nutrition" />
 
       <ClinicalStatGrid stats={stats} />
 
       <DepartmentQueuePanel
         department="nutrition"
         title="File de visite — Nutrition"
-        onSelectPatient={(item) => setSelectedPatient({ id: item.patient_id, first_name: item.patient_name?.split(' ')[0], last_name: item.patient_name?.split(' ').slice(1).join(' ') })}
+        onSelectPatient={(item) => selectPatient({ id: item.patient_id, first_name: item.patient_name?.split(' ')[0], last_name: item.patient_name?.split(' ').slice(1).join(' ') })}
       />
 
       <section className="clinical-card">

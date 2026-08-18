@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 import clinicalApi from '../../services/clinicalApi';
 import { formatApiError } from '../../utils/apiError.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
@@ -16,6 +18,8 @@ const PROCEDURE_TYPES = [
 const TYPE_LABELS = Object.fromEntries(PROCEDURE_TYPES.map((p) => [p.value, p.label]));
 
 export default function NursingCareDashboard() {
+  const { patientId: routePatientId, setPatientId: setRoutePatientId } = useClinicalPatientRoute();
+  const closingPatientIdRef = useRef('');
   const [view, setView] = useState('record');
   const [dashboard, setDashboard] = useState(null);
   const [monthlyReport, setMonthlyReport] = useState(null);
@@ -71,6 +75,14 @@ export default function NursingCareDashboard() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!routePatientId) return;
+    if (closingPatientIdRef.current === routePatientId || String(selectedPatient?.id || '') === routePatientId) return;
+    clinicalApi.patientTimeline(routePatientId)
+      .then(({ data }) => setSelectedPatient(data?.patient || null))
+      .catch((err) => setError(formatApiError(err, 'Patient indisponible')));
+  }, [routePatientId, selectedPatient?.id]);
+
   const searchPatients = async () => {
     if (patientSearch.trim().length < 2) return;
     try {
@@ -82,10 +94,18 @@ export default function NursingCareDashboard() {
   };
 
   const selectPatient = (patient) => {
+    closingPatientIdRef.current = '';
     setSelectedPatient(patient);
+    setRoutePatientId(patient.id);
     setPatientMatches([]);
     setMessage('');
     setError('');
+  };
+
+  const closePatient = () => {
+    closingPatientIdRef.current = String(selectedPatient?.id || routePatientId || '');
+    setSelectedPatient(null);
+    setRoutePatientId('');
   };
 
   const submitProcedure = async (e) => {
@@ -127,6 +147,7 @@ export default function NursingCareDashboard() {
       </p>
       {error && <p className="clinical-error">{String(error)}</p>}
       {message && <p className="clinical-success">{message}</p>}
+      <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Patient actif pour les soins" />
 
       <ClinicalStatGrid stats={stats} />
 
@@ -148,7 +169,7 @@ export default function NursingCareDashboard() {
         department="nursing"
         title="File de visite — Soins"
         onSelectPatient={(item) =>
-          setSelectedPatient({
+          selectPatient({
             id: item.patient_id,
             first_name: item.patient_name?.split(' ')[0],
             last_name: item.patient_name?.split(' ').slice(1).join(' '),

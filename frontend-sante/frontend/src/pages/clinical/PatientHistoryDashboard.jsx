@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 import clinicalApi from '../../services/clinicalApi';
 import { formatApiError } from '../../utils/apiError.js';
 import './clinical.css';
@@ -35,6 +37,8 @@ function formatWhen(value) {
 }
 
 export default function PatientHistoryDashboard() {
+  const { patientId: routePatientId, setPatientId: setRoutePatientId } = useClinicalPatientRoute();
+  const closingPatientIdRef = useRef('');
   const [patientSearch, setPatientSearch] = useState('');
   const [patientMatches, setPatientMatches] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
@@ -48,6 +52,7 @@ export default function PatientHistoryDashboard() {
     try {
       const { data } = await clinicalApi.patientTimeline(patientId);
       setTimeline(data);
+      setSelectedPatient(data?.patient || null);
       setError('');
     } catch (err) {
       setTimeline(null);
@@ -58,10 +63,10 @@ export default function PatientHistoryDashboard() {
   }, []);
 
   useEffect(() => {
-    if (selectedPatient?.id) {
-      loadTimeline(selectedPatient.id);
-    }
-  }, [selectedPatient, loadTimeline]);
+    if (!routePatientId) return;
+    if (closingPatientIdRef.current === routePatientId || String(selectedPatient?.id || '') === routePatientId) return;
+    loadTimeline(routePatientId);
+  }, [routePatientId, selectedPatient?.id, loadTimeline]);
 
   const searchPatients = async () => {
     if (patientSearch.trim().length < 2) return;
@@ -74,9 +79,20 @@ export default function PatientHistoryDashboard() {
   };
 
   const selectPatient = (patient) => {
+    closingPatientIdRef.current = '';
     setSelectedPatient(patient);
+    setRoutePatientId(patient.id);
     setPatientMatches([]);
     setModuleFilter('all');
+    loadTimeline(patient.id);
+  };
+
+  const closePatient = () => {
+    closingPatientIdRef.current = String(selectedPatient?.id || routePatientId || '');
+    setSelectedPatient(null);
+    setTimeline(null);
+    setModuleFilter('all');
+    setRoutePatientId('');
   };
 
   const events = (timeline?.events || []).filter(
@@ -92,6 +108,7 @@ export default function PatientHistoryDashboard() {
         Historique chronologique unifié : réception, consultations, PEV, nutrition, hospitalisation, soins, laboratoire et pharmacie.
       </p>
       {error && <p className="clinical-error">{String(error)}</p>}
+      <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Dossier longitudinal actif" />
 
       <section className="clinical-card">
         <h2>Rechercher un patient</h2>
