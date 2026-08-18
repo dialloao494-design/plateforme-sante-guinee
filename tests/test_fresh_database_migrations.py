@@ -43,7 +43,7 @@ def test_alembic_upgrade_head_bootstraps_pristine_database(tmp_path):
     } <= tables
     with engine.connect() as connection:
         revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-    assert revision == "20260812_0028_patient_number_integrity"
+    assert revision == "20260818_0029_patient_registration_dedupe"
 
     patient_columns = {column["name"] for column in inspector.get_columns("patients")}
     assert {"clinic_id", "patient_number", "user_id"} <= patient_columns
