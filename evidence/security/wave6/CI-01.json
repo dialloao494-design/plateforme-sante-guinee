@@ -1,6 +1,6 @@
 {
   "id": "CI-01",
-  "timestamp": "2026-07-30T03:58:47.148559+00:00",
+  "timestamp": "2026-08-18T20:37:59.020301+00:00",
   "operator": "wave6-automated-harness",
   "environment": "lab-sqlite-testclient",
   "result": "PARTIAL",
@@ -8,8 +8,8 @@
   "notes": "Branch protection and OIDC must be verified in GitHub settings",
   "evidence": {
     "workflows": [
-      "ci.yml",
-      "deploy-railway-vercel.yml"
+      "deploy-railway-vercel.yml",
+      "ci.yml"
     ]
   }
 }

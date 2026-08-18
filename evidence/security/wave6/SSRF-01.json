@@ -1,6 +1,6 @@
 {
   "id": "SSRF-01",
-  "timestamp": "2026-07-30T03:58:47.091162+00:00",
+  "timestamp": "2026-08-18T20:37:57.302835+00:00",
   "operator": "wave6-automated-harness",
   "environment": "lab-sqlite-testclient",
   "result": "PARTIAL",
@@ -12,7 +12,7 @@
       "http://127.0.0.1:5432/"
     ],
     "url_env_keys": [
-      "FRONTEND_URL"
+      "LIQUIBASE_URL"
     ]
   }
 }

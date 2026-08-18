@@ -1,15 +1,15 @@
 {
   "id": "W0-RECON",
-  "timestamp": "2026-07-30T03:58:46.937263+00:00",
+  "timestamp": "2026-08-18T20:37:56.964967+00:00",
   "operator": "wave6-automated-harness",
   "environment": "lab-sqlite-testclient",
   "result": "BLOCKED",
   "severity": "Info",
   "notes": "Surface inventory captured; OpenAPI gated by docs_enabled setting",
   "evidence": {
-    "route_count": 270,
-    "openapi_status": 404,
-    "docs_status": 404,
+    "route_count": 44,
+    "openapi_status": 200,
+    "docs_status": 200,
     "root_or_health": 200,
     "roles_in_rbac": [
       "admin",

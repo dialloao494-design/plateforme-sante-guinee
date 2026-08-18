@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import PatientRegistrationPrint from '../../../components/print/PatientRegistrationPrint.jsx';
 import '../clinical.css';
+import './receptionWorkspace.css';
 import { TABS } from './constants.js';
 import { useReceptionDashboard } from './hooks/useReceptionDashboard.jsx';
 import AdmissionTab from './tabs/AdmissionTab.jsx';
@@ -114,7 +115,7 @@ export default function ReceptionDashboard() {
       {message && <p className="clinical-message clinical-message--ok" role="status" aria-live="polite">{message}</p>}
       {error && <p className="clinical-message clinical-message--err" role="alert">{error}</p>}
 
-      <nav className="reception-his-tabs">
+      <nav className="reception-his-tabs" aria-label="Étapes du parcours de réception">
         {TABS.map((t) => (
           <button
             key={t.id}

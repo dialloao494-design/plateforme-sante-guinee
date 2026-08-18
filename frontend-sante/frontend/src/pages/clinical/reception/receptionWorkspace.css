@@ -1,0 +1,59 @@
+.app-shell .app-view .reception-his > .reception-his-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0;
+  overflow-x: auto;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid #cddde0;
+  border-radius: 0;
+  background: transparent;
+  scrollbar-width: thin;
+}
+
+.app-shell .app-view .reception-his > .reception-his-tabs > button {
+  flex: 0 0 auto;
+  min-height: 46px;
+  margin: 0;
+  padding: 0.7rem 1rem 0.62rem;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: #52677a;
+  box-shadow: none;
+  font-size: 0.94rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.app-shell .app-view .reception-his > .reception-his-tabs > button:hover {
+  background: #f0f7f6;
+  color: #075f59;
+}
+
+.app-shell .app-view .reception-his > .reception-his-tabs > button.active {
+  border-bottom-color: #07877d;
+  background: transparent;
+  color: #075f59;
+  box-shadow: none;
+}
+
+.reception-his-tabs kbd {
+  margin-left: 0.4rem;
+  padding: 0.08rem 0.3rem;
+  border: 1px solid #d6e1e3;
+  border-radius: 4px;
+  background: #f5f8f8;
+  color: #60747a;
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .app-shell .app-view .reception-his > .reception-his-tabs > button {
+    padding-inline: 0.75rem;
+  }
+}

@@ -8,6 +8,7 @@ import PatientContextPanel from '../components/PatientContextPanel.jsx';
 import { FormNotice, ReadOnlyDisplay } from '../components/FormPrimitives.jsx';
 import { formatGNF } from '../../../../utils/appointmentPresentation.js';
 import { formatDateTime, serviceRequestCategoryLabel, serviceRequestStatusLabel } from '../utils.js';
+import '../serviceRequests.css';
 
 export default function ServiceRequestsTab({
   patientPayerLabel,
@@ -41,28 +42,41 @@ export default function ServiceRequestsTab({
   return (
         <section className="reception-his-panel">
           <PatientContextPanel selectedPatient={selectedPatient} patientPayerLabel={patientPayerLabel} />
-          <div className="clinical-card reception-his-form-sheet">
-            <h2>Demandes de service</h2>
-            <div className="reception-his-search-inline reception-his-service-request-filters">
-              <input
-                type="search"
-                placeholder="Rechercher une demande (service, n°…)"
-                value={serviceRequestSearchQ}
-                onChange={(e) => setServiceRequestSearchQ(e.target.value)}
-              />
-              <select value={serviceRequestStatusFilter} onChange={(e) => setServiceRequestStatusFilter(e.target.value)}>
-                <option value="">Tous les statuts</option>
-                {SERVICE_REQUEST_STATUSES.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
+          <div className="clinical-card reception-his-form-sheet service-request-workspace">
+            <header className="service-request-workspace__header">
+              <div>
+                <p>Prescription interne</p>
+                <h2>Demandes de service</h2>
+              </div>
+              <span>Créer une demande et suivre sa facturation</span>
+            </header>
+
+            <div className="reception-his-service-request-filters" aria-label="Filtres du registre des demandes">
+              <label className="service-request-field service-request-field--search">
+                <span>Rechercher une demande</span>
+                <input
+                  type="search"
+                  placeholder="Service ou numéro de demande"
+                  value={serviceRequestSearchQ}
+                  onChange={(e) => setServiceRequestSearchQ(e.target.value)}
+                />
+              </label>
+              <label className="service-request-field">
+                <span>Statut du registre</span>
+                <select value={serviceRequestStatusFilter} onChange={(e) => setServiceRequestStatusFilter(e.target.value)}>
+                  <option value="">Tous les statuts</option>
+                  {SERVICE_REQUEST_STATUSES.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+              </label>
               <button type="button" className="clinical-btn clinical-btn--secondary" onClick={loadServiceRequests}>Actualiser</button>
             </div>
 
             <form className="reception-his-service-request-form" onSubmit={saveServiceRequest}>
               <FormNotice>{!selectedPatient ? PATIENT_REQUIRED_NOTICE : null}</FormNotice>
-              <div className="clinical-form-row">
-                <label>
+              <div className="service-request-setup">
+                <label className="service-request-field">
                   Catégorie
                   <select
                     value={serviceRequestForm.service_category}
@@ -85,11 +99,11 @@ export default function ServiceRequestsTab({
                     ))}
                   </select>
                 </label>
-                <label>
+                <label className="service-request-field service-request-field--selected">
                   Service / examen sélectionné
                   <ReadOnlyDisplay value={serviceRequestForm.service_name} />
                 </label>
-                <label>
+                <label className="service-request-field">
                   Statut
                   <select
                     value={serviceRequestForm.status}
