@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import ClinicalStatGrid from '../../ClinicalStatGrid.jsx';
 import { DASHBOARD_BUCKET_TITLES } from '../constants.js';
 import { formatGNF } from '../../../../utils/appointmentPresentation.js';
@@ -11,14 +12,21 @@ export default function DashboardTab({
   renderQueueTable,
   statCards,
   stats,
+  openPatient,
 }) {
+  const queueHeadingRef = useRef(null);
+
+  useEffect(() => {
+    if (activeStatBucket && !loading) queueHeadingRef.current?.focus();
+  }, [activeStatBucket, loading]);
+
   return (
         <section className="reception-his-panel">
           <ClinicalStatGrid stats={statCards} onStatClick={loadQueueBucket} activeKey={activeStatBucket} />
           {activeStatBucket && (
             <section className="lab-his-queue-panel reception-his-queue-panel" aria-live="polite">
-              <h3>{DASHBOARD_BUCKET_TITLES[activeStatBucket] || 'Liste détaillée'}</h3>
-              <div className="lab-his-results-wrap">{renderQueueTable()}</div>
+              <h3 ref={queueHeadingRef} tabIndex="-1">{DASHBOARD_BUCKET_TITLES[activeStatBucket] || 'Liste détaillée'}</h3>
+              <div className="lab-his-results-wrap">{renderQueueTable(openPatient)}</div>
             </section>
           )}
           <div className="clinical-grid">

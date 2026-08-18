@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import clinicalApi from '../../../../services/clinicalApi';
 import { useAuth } from '../../../../contexts/AuthContext.jsx';
 import { formatGNF } from '../../../../utils/appointmentPresentation.js';
@@ -46,15 +47,22 @@ import {
   findPendingRegistrationByFingerprint,
   onPatientReconciled,
 } from '../../../../offline/reconcilePatient.js';
+import { readReceptionRouteState, updateReceptionRouteState } from '../routeState.js';
+import { useConfirm } from '../../../../contexts/ConfirmContext.jsx';
 
 export function useReceptionDashboard() {
   const { user } = useAuth();
+  const confirm = useConfirm();
+  const [routeSearchParams, setRouteSearchParams] = useSearchParams();
   const searchRef = useRef(null);
   const regPrintRef = useRef(null);
   const pendingRegClientRequestIds = useRef(new Set());
   const registeredPatientRef = useRef(null);
 
-  const [tab, setTab] = useState('dashboard');
+  const { tab } = readReceptionRouteState(routeSearchParams);
+  const setTab = useCallback((nextTab) => {
+    setRouteSearchParams((current) => updateReceptionRouteState(current, { tab: nextTab }));
+  }, [setRouteSearchParams]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -423,7 +431,12 @@ export function useReceptionDashboard() {
   };
 
   const deleteServiceRequest = async (id) => {
-    if (!window.confirm('Supprimer cette demande de service ?')) return;
+    const accepted = await confirm({
+      title: 'Supprimer la demande de service ?',
+      message: 'Cette demande sera retirée du dossier patient. Cette action est définitive.',
+      confirmLabel: 'Supprimer la demande',
+    });
+    if (!accepted) return;
     setLoading(true);
     try {
       await clinicalApi.receptionHisDeleteServiceRequest(id);
@@ -492,9 +505,9 @@ export function useReceptionDashboard() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [setTab]);
 
-  const selectPatient = async (p) => {
+  const selectPatient = async (p, { silent = false, targetTab } = {}) => {
     if (!p?.id) return;
     let patient = p;
     try {
@@ -510,6 +523,10 @@ export function useReceptionDashboard() {
       }
     }
     setSelectedPatient(patient);
+    setRouteSearchParams((current) => updateReceptionRouteState(current, {
+      patientId: patient.id,
+      ...(targetTab ? { tab: targetTab } : {}),
+    }));
     setLastAdmission(null);
     setLastRefund(null);
     setSearchQ('');
@@ -524,7 +541,11 @@ export function useReceptionDashboard() {
       recipient_phone: prev.recipient_phone || patient.phone || '',
     }));
     await Promise.all([loadInvoices(patient.id), loadRefunds(patient.id)]);
-    setMessage(`Patient sélectionné : ${patientFullName(patient)} · N° dossier ${patient.patient_number || '—'}`);
+    if (!silent) {
+      setMessage(`Dossier de ${patientFullName(patient)} ouvert.`);
+    } else {
+      setMessage('');
+    }
   };
 
   // When an offline registration syncs, surface the real PAT- dossier number.
@@ -555,6 +576,7 @@ export function useReceptionDashboard() {
 
   const clearPatient = () => {
     setSelectedPatient(null);
+    setRouteSearchParams((current) => updateReceptionRouteState(current, { patientId: '' }));
     setInvoices([]);
     setRefunds([]);
     setActiveInvoice(null);
@@ -585,7 +607,7 @@ export function useReceptionDashboard() {
     return form.emergency_relationship || undefined;
   };
 
-  const renderQueueTable = () => {
+  const renderQueueTable = (openPatient) => {
     if (!activeStatBucket) return null;
     if (loadingQueue) return <p className="clinical-hint">Chargement…</p>;
     if (!queueRows.length) return <p className="clinical-hint">Aucun élément dans cette liste.</p>;
@@ -605,7 +627,7 @@ export function useReceptionDashboard() {
                 <td>{row.phone || '—'}</td>
                 <td>{row.gender || '—'}</td>
                 <td>{formatDateTime(row.registration_date)}</td>
-                <td><button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => selectPatient({ id: row.patient_id })}>Ouvrir</button></td>
+                <td><button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => openPatient({ id: row.patient_id })}>Ouvrir le dossier</button></td>
               </tr>
             ))}
           </tbody>
@@ -623,7 +645,7 @@ export function useReceptionDashboard() {
                 <td>{formatDateTime(row.admitted_at)}</td>
                 <td>{row.department || '—'}</td>
                 <td>{row.status}</td>
-                <td><button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => selectPatient({ id: row.patient_id })}>Ouvrir patient</button></td>
+                <td><button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => openPatient({ id: row.patient_id })}>Ouvrir le dossier</button></td>
               </tr>
             ))}
           </tbody>
@@ -641,7 +663,7 @@ export function useReceptionDashboard() {
                 <td>{row.room || '—'}</td>
                 <td>{row.doctor_name || '—'}</td>
                 <td>{formatDateTime(row.admitted_at)}</td>
-                <td><button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => selectPatient({ id: row.patient_id })}>Ouvrir patient</button></td>
+                <td><button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => openPatient({ id: row.patient_id })}>Ouvrir le dossier</button></td>
               </tr>
             ))}
           </tbody>

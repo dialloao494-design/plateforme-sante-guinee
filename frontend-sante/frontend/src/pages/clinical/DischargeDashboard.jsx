@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import clinicalApi from '../../services/clinicalApi';
+import { useConfirm } from '../../contexts/ConfirmContext.jsx';
 
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 
 import './clinical.css';
 
 export default function DischargeDashboard() {
+  const confirm = useConfirm();
   const [summaries, setSummaries] = useState([]);
   const [openVisits, setOpenVisits] = useState([]);
   const [visitId, setVisitId] = useState('');
@@ -53,9 +55,12 @@ export default function DischargeDashboard() {
   const discharge = async (force = false) => {
     if (!visitId) return;
     const patientName = selectedVisit?.patient_name || 'ce patient';
-    if (!window.confirm(`Confirmer la sortie de ${patientName} ? Cette action clôture la visite.`)) {
-      return;
-    }
+    const accepted = await confirm({
+      title: `Confirmer la sortie de ${patientName} ?`,
+      message: 'La visite sera clôturée. Vérifiez les ordonnances, consignes et rendez-vous de suivi avant de continuer.',
+      confirmLabel: 'Clôturer la visite',
+    });
+    if (!accepted) return;
     try {
       await clinicalApi.executeDischarge({
         visit_id: Number(visitId),

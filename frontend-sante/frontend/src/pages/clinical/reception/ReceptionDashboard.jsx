@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PatientRegistrationPrint from '../../../components/print/PatientRegistrationPrint.jsx';
 import '../clinical.css';
 import { TABS } from './constants.js';
@@ -8,8 +10,13 @@ import DashboardTab from './tabs/DashboardTab.jsx';
 import RefundTab from './tabs/RefundTab.jsx';
 import RegisterTab from './tabs/RegisterTab.jsx';
 import ServiceRequestsTab from './tabs/ServiceRequestsTab.jsx';
+import PatientSafetyStrip from './components/PatientSafetyStrip.jsx';
+import { readReceptionRouteState } from './routeState.js';
 
 export default function ReceptionDashboard() {
+  const [searchParams] = useSearchParams();
+  const routeState = readReceptionRouteState(searchParams);
+  const hydratedPatientId = useRef('');
   const dashboard = useReceptionDashboard();
   const {
     user,
@@ -31,6 +38,22 @@ export default function ReceptionDashboard() {
     registrationPrintForm,
     resolveRelationship,
   } = dashboard;
+
+  const openPatient = async (patient, targetTab = 'admission') => {
+    await selectPatient(patient, { silent: true, targetTab });
+    hydratedPatientId.current = String(patient.id);
+  };
+
+  const closePatient = () => {
+    clearPatient();
+    hydratedPatientId.current = '';
+  };
+
+  useEffect(() => {
+    if (!routeState.patientId || selectedPatient?.id || hydratedPatientId.current === routeState.patientId) return;
+    hydratedPatientId.current = routeState.patientId;
+    void selectPatient({ id: routeState.patientId }, { silent: true });
+  }, [routeState.patientId, selectedPatient?.id, selectPatient]);
 
   return (
     <div className="clinical-page reception-his" data-testid="reception-dashboard">
@@ -74,10 +97,10 @@ export default function ReceptionDashboard() {
                 <li key={p.id}>
                   <button
                     type="button"
-                    onClick={() => selectPatient(p)}
+                    onClick={() => openPatient(p)}
                   >
                     <strong>{p.last_name} {p.first_name}</strong>
-                    <span>ID patient {p.patient_number || '—'} · {p.phone || '—'}</span>
+                    <span>N° dossier {p.patient_number || 'Non attribué'} · {p.phone || 'Téléphone non renseigné'}</span>
                   </button>
                 </li>
               ))}
@@ -86,16 +109,10 @@ export default function ReceptionDashboard() {
         </div>
       </header>
 
-      {selectedPatient && (
-        <div className="reception-his-selected">
-          Patient actif : <strong>{selectedPatient.last_name} {selectedPatient.first_name}</strong> · ID patient{' '}
-          <strong>{selectedPatient.patient_number || '—'}</strong>
-          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={clearPatient}>Effacer</button>
-        </div>
-      )}
+      <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} />
 
-      {message && <p className="clinical-message clinical-message--ok">{message}</p>}
-      {error && <p className="clinical-message clinical-message--err">{error}</p>}
+      {message && <p className="clinical-message clinical-message--ok" role="status" aria-live="polite">{message}</p>}
+      {error && <p className="clinical-message clinical-message--err" role="alert">{error}</p>}
 
       <nav className="reception-his-tabs">
         {TABS.map((t) => (
@@ -105,13 +122,14 @@ export default function ReceptionDashboard() {
             data-testid={`reception-tab-${t.id}`}
             className={tab === t.id ? 'active' : ''}
             onClick={() => setTab(t.id)}
+            aria-current={tab === t.id ? 'page' : undefined}
           >
             {t.label}<kbd>{t.shortcut}</kbd>
           </button>
         ))}
       </nav>
 
-      {tab === 'dashboard' && <DashboardTab {...dashboard} />}
+      {tab === 'dashboard' && <DashboardTab {...dashboard} openPatient={openPatient} />}
       {tab === 'register' && <RegisterTab {...dashboard} />}
       {tab === 'admission' && <AdmissionTab {...dashboard} />}
       {tab === 'billing' && <BillingTab {...dashboard} />}

@@ -244,7 +244,20 @@ test('reception can navigate all primary workflow tabs without errors', async ({
     await assertButtonClickable(page, tab);
     await tab.click();
     await expect(page.getByTestId('reception-dashboard')).toBeVisible();
+    if (tabId === 'dashboard') {
+      await expect(page).not.toHaveURL(/[?&]tab=/);
+    } else {
+      await expect(page).toHaveURL(new RegExp(`[?&]tab=${tabId}(?:&|$)`));
+    }
   }
+
+  await page.getByTestId('reception-tab-admission').click();
+  await page.reload();
+  await expect(page.getByTestId('reception-tab-admission')).toHaveAttribute('aria-current', 'page');
+
+  await page.getByTestId('reception-tab-billing').click();
+  await page.goBack();
+  await expect(page.getByTestId('reception-tab-admission')).toHaveAttribute('aria-current', 'page');
 
   consoleGuard.assertClean();
 });

@@ -13,6 +13,7 @@ import {
 } from '../utils/appointmentPresentation.js';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
+import { useConfirm } from '../contexts/ConfirmContext.jsx';
 import './Appointments.css';
 
 function normalizeDoctor(item) {
@@ -33,6 +34,7 @@ function normalizeDoctor(item) {
 
 const Appointments = () => {
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const location = useLocation();
   const { user } = useAuth();
   const isPatient = user?.role === 'patient';
@@ -138,9 +140,12 @@ const Appointments = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir annuler ce rendez-vous ?')) {
-      return;
-    }
+    const accepted = await confirm({
+      title: 'Annuler ce rendez-vous ?',
+      message: 'Le rendez-vous sera marqué comme annulé et retiré de la file active.',
+      confirmLabel: 'Annuler le rendez-vous',
+    });
+    if (!accepted) return;
 
     setActionError('');
     setSuccess('');

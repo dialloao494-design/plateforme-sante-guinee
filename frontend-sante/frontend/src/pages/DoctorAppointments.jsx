@@ -12,9 +12,11 @@ import {
 import './DoctorAppointments.css';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
+import { useConfirm } from '../contexts/ConfirmContext.jsx';
 
 const DoctorAppointments = () => {
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -99,9 +101,12 @@ const DoctorAppointments = () => {
   };
 
   const handleCancel = async (appointmentId) => {
-    if (!window.confirm('Confirmer l’annulation de ce rendez-vous ?')) {
-      return;
-    }
+    const accepted = await confirm({
+      title: 'Annuler ce rendez-vous ?',
+      message: 'Le patient ne figurera plus dans la file active de consultation.',
+      confirmLabel: 'Annuler le rendez-vous',
+    });
+    if (!accepted) return;
 
     setActionBusyId(appointmentId);
     try {

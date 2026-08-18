@@ -266,3 +266,47 @@
 .app-toast.Toastify__toast--error {
   background: #b91c1c;
 }
+.app-confirm-backdrop {
+  position: fixed; z-index: 10000; inset: 0; display: grid; place-items: center;
+  padding: 1rem; background: rgba(5, 24, 34, 0.52); backdrop-filter: blur(2px);
+  overscroll-behavior: contain;
+}
+
+.app-confirm {
+  display: grid; grid-template-columns: auto 1fr; gap: 0.9rem 1rem;
+  width: min(100%, 30rem); padding: 1.25rem; border: 1px solid #d8e1e5;
+  border-radius: 14px; background: #fff; box-shadow: 0 24px 70px rgba(4, 30, 40, 0.25);
+}
+
+.app-confirm__mark {
+  display: grid; width: 2.5rem; height: 2.5rem; place-items: center; border-radius: 50%;
+  background: #fff1f0; color: #a7251d; font-size: 1.2rem; font-weight: 900;
+}
+
+.app-confirm h2 { margin: 0 0 0.35rem; color: #082f49; font-size: 1.15rem; text-wrap: balance; }
+.app-confirm p { margin: 0; color: #526773; line-height: 1.55; }
+.app-confirm__actions {
+  grid-column: 1 / -1; display: flex; justify-content: flex-end;
+  gap: 0.65rem; margin-top: 0.35rem;
+}
+
+.app-confirm .clinical-btn--danger {
+  border-color: #a7251d;
+  background: #a7251d;
+  color: #fff;
+}
+
+.app-confirm .clinical-btn--danger:hover {
+  border-color: #7f1d1d;
+  background: #7f1d1d;
+}
+
+.app-confirm .clinical-btn--danger:focus-visible {
+  outline: 3px solid rgba(167, 37, 29, 0.28);
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .app-confirm__actions { flex-direction: column-reverse; }
+  .app-confirm__actions .clinical-btn { width: 100%; }
+}

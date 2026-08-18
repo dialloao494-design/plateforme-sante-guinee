@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
 import { formatApiError } from '../../utils/apiError.js';
+import { useConfirm } from '../../contexts/ConfirmContext.jsx';
 
 const EMPTY_FORM = {
   sku: '',
@@ -16,6 +17,7 @@ const EMPTY_FORM = {
 };
 
 export default function PharmacyStockTab({ onInventoryChange }) {
+  const confirm = useConfirm();
   const [items, setItems] = useState([]);
   const [searchQ, setSearchQ] = useState('');
   const [form, setForm] = useState(EMPTY_FORM);
@@ -102,7 +104,12 @@ export default function PharmacyStockTab({ onInventoryChange }) {
   };
 
   const deleteItem = async (item) => {
-    if (!window.confirm(`Supprimer « ${item.medication_name} » du stock ?`)) return;
+    const accepted = await confirm({
+      title: 'Retirer ce médicament du stock ?',
+      message: `« ${item.medication_name} » sera retiré de l’inventaire. Cette action est définitive.`,
+      confirmLabel: 'Retirer du stock',
+    });
+    if (!accepted) return;
     setLoading(true);
     setError('');
     try {
