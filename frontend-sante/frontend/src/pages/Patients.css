@@ -28,7 +28,13 @@
   border-radius: 10px;
   border: 1px solid #d1d5db;
   margin-bottom: 12px;
-  outline: none;
+}
+
+.patients-search input:focus-visible,
+.patients-form input:focus-visible {
+  border-color: #087f75;
+  outline: 3px solid rgba(8, 127, 117, 0.18);
+  outline-offset: 1px;
 }
 
 .patients-form {

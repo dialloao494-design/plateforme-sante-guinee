@@ -373,7 +373,7 @@ export default function NurseDashboard() {
                     <th>Statut</th>
                     <th>Infirmier(ère)</th>
                     <th>Date / heure</th>
-                    <th />
+                    <th scope="col">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -404,7 +404,7 @@ export default function NurseDashboard() {
                     <th>Date / heure admission</th>
                     <th>Service</th>
                     <th>Priorité</th>
-                    <th />
+                    <th scope="col">Actions</th>
                   </tr>
                 </thead>
                 <tbody>

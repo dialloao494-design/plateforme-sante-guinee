@@ -658,7 +658,7 @@ export default function PharmacyDashboard() {
                         <th>Mode de paiement</th>
                         <th>Montant (GNF)</th>
                         <th>Référence</th>
-                        <th />
+                        <th scope="col">Actions</th>
                       </tr>
                     </thead>
                     <tbody>

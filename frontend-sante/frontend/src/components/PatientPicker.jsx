@@ -54,9 +54,11 @@ export default function PatientPicker({ search, selected, onSelect, label = 'Rec
         <div className="clinical-actions">
           <input
             id="patient-picker-query"
+            name="patient_search"
+            type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Nom, téléphone ou numéro de dossier"
+            placeholder="Nom, téléphone ou N° dossier…"
             autoComplete="off"
           />
           <button type="submit" className="clinical-btn" disabled={busy}>

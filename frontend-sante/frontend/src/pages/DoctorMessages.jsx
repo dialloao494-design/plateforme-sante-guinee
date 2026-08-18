@@ -273,7 +273,7 @@ const DoctorMessages = () => {
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={3}
-              placeholder="Écrire un message..."
+              placeholder="Écrire un message…"
               disabled={!selectedAppointmentId}
             />
             <div className="composer-actions">

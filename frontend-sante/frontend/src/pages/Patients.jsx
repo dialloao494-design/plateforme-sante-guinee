@@ -80,14 +80,17 @@ const Patients = () => {
     <div className="patients-page">
       <h1>Gestion des patients</h1>
 
-      {loading && <p>Chargement...</p>}
+      {loading && <p>Chargement…</p>}
       {error && <p className="error">Erreur : {error}</p>}
 
       <div className="patients-top-controls">
         <div>
           <input
-            type="text"
-            placeholder="Rechercher un patient..."
+            type="search"
+            name="patient_search"
+            aria-label="Rechercher un patient"
+            autoComplete="off"
+            placeholder="Rechercher un patient…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

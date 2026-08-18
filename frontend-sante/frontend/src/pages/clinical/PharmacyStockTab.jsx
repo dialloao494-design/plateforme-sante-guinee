@@ -203,7 +203,7 @@ export default function PharmacyStockTab({ onInventoryChange }) {
               <th>Lot</th>
               <th>Expiration</th>
               <th>Fournisseur</th>
-              <th />
+              <th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody>

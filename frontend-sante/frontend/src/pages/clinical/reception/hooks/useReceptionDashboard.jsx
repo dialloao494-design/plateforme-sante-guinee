@@ -595,7 +595,7 @@ export function useReceptionDashboard() {
       return (
         <table className="lab-his-queue-table">
           <thead>
-            <tr><th>Patient</th><th>N° dossier</th><th>Téléphone</th><th>Sexe</th><th>Date inscription</th><th /></tr>
+            <tr><th>Patient</th><th>N° dossier</th><th>Téléphone</th><th>Sexe</th><th>Date inscription</th><th scope="col">Actions</th></tr>
           </thead>
           <tbody>
             {queueRows.map((row) => (
@@ -615,7 +615,7 @@ export function useReceptionDashboard() {
     if (bucket === 'admissions_today') {
       return (
         <table className="lab-his-queue-table">
-          <thead><tr><th>Patient</th><th>Heure admission</th><th>Service</th><th>Statut</th><th /></tr></thead>
+          <thead><tr><th>Patient</th><th>Heure admission</th><th>Service</th><th>Statut</th><th scope="col">Actions</th></tr></thead>
           <tbody>
             {queueRows.map((row) => (
               <tr key={row.admission_id}>
@@ -633,7 +633,7 @@ export function useReceptionDashboard() {
     if (bucket === 'hospitalized_patients') {
       return (
         <table className="lab-his-queue-table">
-          <thead><tr><th>Patient</th><th>Chambre</th><th>Médecin</th><th>Date admission</th><th /></tr></thead>
+          <thead><tr><th>Patient</th><th>Chambre</th><th>Médecin</th><th>Date admission</th><th scope="col">Actions</th></tr></thead>
           <tbody>
             {queueRows.map((row) => (
               <tr key={row.admission_id}>
@@ -651,7 +651,7 @@ export function useReceptionDashboard() {
     if (bucket === 'paid_invoices') {
       return (
         <table className="lab-his-queue-table">
-          <thead><tr><th>Patient</th><th>N° facture</th><th>Montant</th><th>Mode paiement</th><th>Date paiement</th><th /></tr></thead>
+          <thead><tr><th>Patient</th><th>N° facture</th><th>Montant</th><th>Mode paiement</th><th>Date paiement</th><th scope="col">Actions</th></tr></thead>
           <tbody>
             {queueRows.map((row) => (
               <tr key={row.invoice_id}>
@@ -670,7 +670,7 @@ export function useReceptionDashboard() {
     if (bucket === 'unpaid_invoices') {
       return (
         <table className="lab-his-queue-table">
-          <thead><tr><th>Patient</th><th>N° facture</th><th>Solde dû</th><th>Date facture</th><th /></tr></thead>
+          <thead><tr><th>Patient</th><th>N° facture</th><th>Solde dû</th><th>Date facture</th><th scope="col">Actions</th></tr></thead>
           <tbody>
             {queueRows.map((row) => (
               <tr key={row.invoice_id}>

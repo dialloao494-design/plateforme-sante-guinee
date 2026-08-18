@@ -268,10 +268,11 @@ a {
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
 }
 
-.ds-field input:focus,
-.ds-field select:focus,
-.ds-field textarea:focus {
-  outline: none;
+.ds-field input:focus-visible,
+.ds-field select:focus-visible,
+.ds-field textarea:focus-visible {
+  outline: 3px solid var(--color-primary-soft);
+  outline-offset: 1px;
   border-color: rgba(13, 148, 136, 0.45);
   box-shadow: 0 0 0 3px var(--color-primary-soft);
   background: var(--color-surface);

@@ -76,7 +76,7 @@ export default function DepartmentQueuePanel({ department, title, onSelectPatien
               <th>Âge</th>
               <th>Parcours</th>
               <th>Depuis</th>
-              <th />
+              <th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody>

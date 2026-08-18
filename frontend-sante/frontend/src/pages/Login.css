@@ -91,7 +91,8 @@
 }
 
 .login-field input:focus {
-  outline: none;
+  outline: 3px solid rgba(8, 127, 117, 0.18);
+  outline-offset: 1px;
   border-color: rgba(13, 148, 136, 0.45);
   box-shadow: 0 0 0 3px var(--color-primary-soft, rgba(13, 148, 136, 0.12));
   background: #fff;
@@ -114,7 +115,8 @@
 }
 
 .login-field select:focus {
-  outline: none;
+  outline: 3px solid rgba(8, 127, 117, 0.18);
+  outline-offset: 1px;
   border-color: rgba(13, 148, 136, 0.45);
   box-shadow: 0 0 0 3px var(--color-primary-soft, rgba(13, 148, 136, 0.12));
   background: #fff;
@@ -316,7 +318,8 @@
 }
 
 .form-group input:focus {
-  outline: none;
+  outline: 3px solid rgba(8, 127, 117, 0.18);
+  outline-offset: 1px;
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }

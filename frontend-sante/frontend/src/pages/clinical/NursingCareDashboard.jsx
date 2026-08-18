@@ -161,7 +161,10 @@ export default function NursingCareDashboard() {
         <div className="clinical-inline-form">
           <input
             type="search"
-            placeholder="Nom ou téléphone (min. 2 caractères)"
+            name="patient_search"
+            aria-label="Rechercher un patient par nom ou téléphone"
+            autoComplete="off"
+            placeholder="Nom ou téléphone · 2 caractères minimum…"
             value={patientSearch}
             onChange={(e) => setPatientSearch(e.target.value)}
           />

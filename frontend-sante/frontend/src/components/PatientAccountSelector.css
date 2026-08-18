@@ -69,7 +69,8 @@
 .patient-account-selector__list button:hover,
 .patient-account-selector__list button:focus-visible {
   background: #ecfeff;
-  outline: none;
+  outline: 3px solid rgba(8, 127, 117, 0.22);
+  outline-offset: 2px;
 }
 
 .patient-account-selector__email {

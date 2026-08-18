@@ -28,12 +28,17 @@ export default function AdmissionTab({
   return (
         <section className="reception-his-panel">
           <PatientContextPanel selectedPatient={selectedPatient} patientPayerLabel={patientPayerLabel} />
-          <form className="clinical-card reception-his-form-sheet" onSubmit={handleAdmission}>
-            <h2>Admission</h2>
+          <form className="clinical-card reception-his-form-sheet reception-admission-form" onSubmit={handleAdmission}>
+            <header className="reception-admission-header">
+              <div>
+                <p>Parcours patient</p>
+                <h2>Nouvelle admission</h2>
+                <span>Choisissez les services et l’orientation du patient.</span>
+              </div>
+            </header>
             <FormNotice>{!selectedPatient ? PATIENT_REQUIRED_NOTICE : null}</FormNotice>
             <GeneratedIdBanner label="N° admission généré" value={lastAdmission?.admission_number} />
-            <fieldset>
-              <legend>Admission</legend>
+            <section className="reception-admission-body" aria-label="Informations d’admission">
               <div className="reception-his-admission-grid">
                 <div className="reception-his-admission-ids">
                   <DisplayField
@@ -46,7 +51,10 @@ export default function AdmissionTab({
                 </div>
 
                 <div className="reception-his-admission-services">
-                  <span className="reception-his-multi-service-label">Services demandés *</span>
+                  <div className="reception-admission-section-title">
+                    <strong>Services demandés *</strong>
+                    <span>Sélectionnez un ou plusieurs services.</span>
+                  </div>
                   <div className="reception-his-multi-service-grid">
                     {admissionServices.map((svc) => (
                       <label key={svc} className="reception-his-check">
@@ -62,7 +70,7 @@ export default function AdmissionTab({
                             });
                           }}
                         />
-                        {svc}
+                        <span>{svc}</span>
                       </label>
                     ))}
                   </div>
@@ -119,26 +127,30 @@ export default function AdmissionTab({
                 )}
 
                 <div className="reception-his-admission-meta">
-                  <label>
+                  <label className="reception-admission-datetime">
                     Date et heure d&apos;admission
                     <div className="reception-his-datetime-pair">
                       <input
                         required
                         type="date"
+                        name="admission_date"
+                        autoComplete="off"
                         value={admissionForm.admission_date}
                         onChange={(e) => updateAdmission({ admission_date: e.target.value })}
                       />
                       <input
                         required
                         type="time"
+                        name="admission_time"
+                        autoComplete="off"
                         value={admissionForm.admission_time}
                         onChange={(e) => updateAdmission({ admission_time: e.target.value })}
                       />
                     </div>
                   </label>
-                  <label>
+                  <label className="reception-admission-physician">
                     Médecin traitant
-                    <select value={admissionForm.attending_clinician_user_id} onChange={(e) => updateAdmission({ attending_clinician_user_id: e.target.value })}>
+                    <select name="attending_clinician_user_id" autoComplete="off" value={admissionForm.attending_clinician_user_id} onChange={(e) => updateAdmission({ attending_clinician_user_id: e.target.value })}>
                       <option value="">— Sélectionner —</option>
                       {doctors.map((d) => (
                         <option key={d.user_id || d.id} value={d.user_id || d.id}>
@@ -148,14 +160,18 @@ export default function AdmissionTab({
                     </select>
                     <input
                       type="text"
-                      placeholder="Ou saisir le nom du médecin"
+                      name="attending_physician_name"
+                      autoComplete="off"
+                      placeholder="Ou saisir un médecin externe…"
                       value={admissionForm.attending_physician_name}
                       onChange={(e) => updateAdmission({ attending_physician_name: e.target.value })}
                     />
                   </label>
-                  <label>
+                  <label className="reception-admission-type">
                     Type d&apos;admission
                     <select
+                      name="admission_type"
+                      autoComplete="off"
                       value={admissionForm.admission_type}
                       onChange={(e) => {
                         const v = e.target.value;
@@ -172,20 +188,28 @@ export default function AdmissionTab({
                       {ADMISSION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
                   </label>
-                  <label>
+                  <label className="reception-admission-confirmation">
                     Confirmation / rendez-vous
-                    <select value={admissionForm.confirmation_status} onChange={(e) => updateAdmission({ confirmation_status: e.target.value })}>
+                    <select name="confirmation_status" autoComplete="off" value={admissionForm.confirmation_status} onChange={(e) => updateAdmission({ confirmation_status: e.target.value })}>
                       {ADMISSION_CONFIRMATIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                     </select>
                   </label>
                   <label className="reception-his-notes-field reception-his-admission-notes">
                     Notes
-                    <textarea rows={2} value={admissionForm.notes} onChange={(e) => updateAdmission({ notes: e.target.value })} />
+                    <textarea name="admission_notes" rows={3} value={admissionForm.notes} onChange={(e) => updateAdmission({ notes: e.target.value })} />
                   </label>
                 </div>
               </div>
-            </fieldset>
-            <button type="submit" className="clinical-btn" disabled={loading || !selectedPatient}>Créer l&apos;admission</button>
+            </section>
+            <footer className="reception-admission-actions">
+              <div>
+                <strong>{selectedPatient ? 'Admission prête à être créée' : 'Sélectionnez d’abord un patient'}</strong>
+                <span>Le numéro d’admission sera attribué automatiquement.</span>
+              </div>
+              <button type="submit" className="clinical-btn" disabled={loading || !selectedPatient}>
+                {loading ? 'Création…' : 'Créer l’admission'}
+              </button>
+            </footer>
           </form>
         </section>
   );

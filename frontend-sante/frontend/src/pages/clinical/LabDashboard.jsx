@@ -977,7 +977,7 @@ export default function LabDashboard() {
                               <th>Unité</th>
                             </>
                           )}
-                          <th />
+                          <th scope="col">Actions</th>
                         </tr>
                       </thead>
                       <tbody>

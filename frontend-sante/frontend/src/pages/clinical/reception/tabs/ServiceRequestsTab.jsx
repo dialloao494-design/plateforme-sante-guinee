@@ -327,38 +327,80 @@ export default function ServiceRequestsTab({
             ) : serviceRequests.length === 0 ? (
               <FormNotice>Aucune demande de service{selectedPatient ? ' pour ce patient' : ''}.</FormNotice>
             ) : (
-              <table className="reception-his-billing-lines">
-                <thead>
-                  <tr>
-                    <th>N° demande</th>
-                    <th>Patient</th>
-                    <th>Catégorie</th>
-                    <th>Service</th>
-                    <th>Statut</th>
-                    <th>Créée le</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
+              <section className="service-request-register" aria-labelledby="service-request-register-title">
+                <header className="service-request-register__header">
+                  <div>
+                    <p className="service-request-register__eyebrow">Registre des demandes</p>
+                    <h3 id="service-request-register-title">
+                      {serviceRequests.length} demande{serviceRequests.length > 1 ? 's' : ''}
+                    </h3>
+                  </div>
+                  <p>Les demandes en attente peuvent être envoyées directement en facturation.</p>
+                </header>
+
+                <div className="service-request-list" role="list">
                   {serviceRequests.map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.request_number}</td>
-                      <td>{row.patient_name || row.patient_id}</td>
-                      <td>{serviceRequestCategoryLabel(row.service_category)}</td>
-                      <td>{row.service_name}</td>
-                      <td>{serviceRequestStatusLabel(row.status)}</td>
-                      <td>{formatDateTime(row.created_at)}</td>
-                      <td>
-                        <div className="reception-his-refund-actions">
-                          <button type="button" className="clinical-btn" onClick={() => applyServiceRequestToBilling(row)}>Facturer</button>
-                          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => startEditServiceRequest(row)}>Modifier</button>
-                          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => deleteServiceRequest(row.id)}>Supprimer</button>
+                    <article className="service-request-item" key={row.id} role="listitem">
+                      <div className="service-request-item__identity">
+                        <span className="service-request-item__label">N° demande</span>
+                        <strong translate="no">{row.request_number || `DSR-${row.id}`}</strong>
+                        <span className={`service-request-status service-request-status--${row.status || 'unknown'}`}>
+                          {serviceRequestStatusLabel(row.status)}
+                        </span>
+                      </div>
+
+                      <div className="service-request-item__patient">
+                        <span className="service-request-item__label">Patient</span>
+                        <strong>{row.patient_name || `Patient ${row.patient_id}`}</strong>
+                        <span>{serviceRequestCategoryLabel(row.service_category)}</span>
+                      </div>
+
+                      <div className="service-request-item__service">
+                        <span className="service-request-item__label">Service demandé</span>
+                        <strong>{row.service_name || 'Service non renseigné'}</strong>
+                        {Number(row.unit_price_gnf || 0) > 0 && (
+                          <span>{formatGNF(row.unit_price_gnf)}</span>
+                        )}
+                      </div>
+
+                      <div className="service-request-item__date">
+                        <span className="service-request-item__label">Créée le</span>
+                        <time dateTime={row.created_at || undefined}>{formatDateTime(row.created_at)}</time>
+                      </div>
+
+                      <div className="service-request-item__actions" aria-label={`Actions pour ${row.request_number || `la demande ${row.id}`}`}>
+                        <span className="service-request-item__label">Actions</span>
+                        <div>
+                          <button
+                            type="button"
+                            className="clinical-btn service-request-action service-request-action--billing"
+                            onClick={() => applyServiceRequestToBilling(row)}
+                            disabled={loading}
+                          >
+                            Facturer
+                          </button>
+                          <button
+                            type="button"
+                            className="clinical-btn clinical-btn--secondary service-request-action"
+                            onClick={() => startEditServiceRequest(row)}
+                            disabled={loading}
+                          >
+                            Modifier
+                          </button>
+                          <button
+                            type="button"
+                            className="service-request-action service-request-action--danger"
+                            onClick={() => deleteServiceRequest(row.id)}
+                            disabled={loading}
+                          >
+                            Supprimer
+                          </button>
                         </div>
-                      </td>
-                    </tr>
+                      </div>
+                    </article>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </section>
             )}
           </div>
         </section>

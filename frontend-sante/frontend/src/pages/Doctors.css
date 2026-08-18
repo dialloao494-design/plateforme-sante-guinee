@@ -69,7 +69,8 @@
 }
 
 .filter-input:focus {
-  outline: none;
+  outline: 3px solid rgba(8, 127, 117, 0.18);
+  outline-offset: 1px;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
@@ -87,7 +88,7 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .button-primary {

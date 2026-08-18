@@ -314,7 +314,7 @@ export default function BillingTab({
                         <th>Qté</th>
                         <th>Prix U</th>
                         <th>Total</th>
-                        <th />
+                        <th scope="col">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -457,7 +457,7 @@ export default function BillingTab({
                         <th>Mode de paiement</th>
                         <th>Montant (GNF)</th>
                         <th>Référence</th>
-                        <th />
+                        <th scope="col">Actions</th>
                       </tr>
                     </thead>
                     <tbody>

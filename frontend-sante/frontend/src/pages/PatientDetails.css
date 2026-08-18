@@ -346,7 +346,8 @@
 }
 
 .patient-card--notes textarea:focus {
-  outline: none;
+  outline: 3px solid rgba(8, 127, 117, 0.18);
+  outline-offset: 1px;
   border-color: rgba(13, 148, 136, 0.45);
   box-shadow: 0 0 0 3px var(--color-primary-soft);
   background: var(--color-surface);

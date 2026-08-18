@@ -144,7 +144,7 @@ const Messages = () => {
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Écrivez votre message..."
+          placeholder="Écrivez votre message…"
           rows={3}
         />
         <div className="composer-actions">

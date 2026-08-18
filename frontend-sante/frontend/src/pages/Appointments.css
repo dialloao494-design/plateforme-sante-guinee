@@ -185,7 +185,8 @@
 
 .form-group input:focus,
 .form-group select:focus {
-  outline: none;
+  outline: 3px solid rgba(8, 127, 117, 0.18);
+  outline-offset: 1px;
   border-color: #2563eb;
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
 }
@@ -207,7 +208,7 @@
   font-weight: 600;
   padding: 14px 22px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
   min-height: 44px;
 }
 
