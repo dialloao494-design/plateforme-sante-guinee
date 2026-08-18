@@ -302,7 +302,7 @@ complete locally; the broader workstream remains open until CI and field evidenc
 
 ### P1 — Offline release certification
 
-**Status: CODE COMPLETE and LOCALLY VERIFIED; CI/FIELD VALIDATION OPEN**
+**Status: CI VERIFIED; FIELD VALIDATION OPEN**
 
 Existing strengths include Dexie persistence, durable FIFO outbox behavior,
 exponential retry, dead-letter handling, stale in-flight recovery, per-user
@@ -328,9 +328,15 @@ Local evidence added 2026-08-18:
 
 Remaining evidence:
 
-- the full matrix must pass CI on the committed revision;
 - clinic staff must complete and sign the observed wording/recovery exercise on
   clinic hardware. This has not yet been claimed or inferred from automation.
+
+CI evidence: [run 32183372265](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32183372265)
+passed all five required jobs at `ac33f0d`, including **425 passed / 1 skipped**
+backend tests, frontend/offline/build/performance gates, historical clinic
+regressions, secrets, and the full **24/24** Chromium suite. The preceding run
+`32183014841` failed only because legacy tests still expected migration `0028` as
+the head; it is superseded, not reported as successful.
 
 **Exit criterion:** the full offline matrix passes in CI and during an observed
 clinic exercise without duplicate clinical or financial records.
