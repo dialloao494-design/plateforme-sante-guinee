@@ -1,5 +1,5 @@
 from passlib.context import CryptContext
-from jose import jwt
+import jwt
 from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, Request, status
 from database import get_db

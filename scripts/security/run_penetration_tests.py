@@ -121,7 +121,7 @@ def run_all() -> dict[str, Any]:
     # Deferred imports after env set
     from cryptography.fernet import Fernet
     from fastapi.testclient import TestClient
-    from jose import jwt as jose_jwt
+    import jwt as jose_jwt
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     from sqlalchemy.pool import StaticPool

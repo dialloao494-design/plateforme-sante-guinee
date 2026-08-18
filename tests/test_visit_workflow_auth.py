@@ -6,6 +6,7 @@ import uuid
 from datetime import date, timedelta
 
 import models
+from models.visit_workflow import PatientVisitWorkflow, PatientVisitWorkflowStep
 from core.provisioning_context import provisioning_channel
 from security import create_access_token, hash_password, verify_password
 
@@ -104,3 +105,55 @@ def test_child_visit_workflow_advances(client, db_session, admin_user):
 
     r = client.post(f"/clinical/workflow/visits/{wf_id}/complete/nutrition", headers=_auth(nutritionist))
     assert r.json()["current_department"] == "pev"
+
+
+def test_pev_agent_can_read_and_complete_pev_queue(client, db_session, admin_user):
+    suffix = uuid.uuid4().hex[:8]
+    clinic = models.Clinic(name=f"PEV Clinic {suffix}", city="Conakry")
+    db_session.add(clinic)
+    db_session.flush()
+    with provisioning_channel("test_fixture"):
+        pev_agent = models.User(
+            email=f"pev.wf.{suffix}@test.com",
+            hashed_password=hash_password("StaffPass12!"),
+            role="pev_agent",
+            clinic_id=clinic.id,
+        )
+        db_session.add(pev_agent)
+        db_session.flush()
+        db_session.add(models.ClinicStaff(clinic_id=clinic.id, user_id=pev_agent.id, is_active=True))
+        patient = models.Patient(
+            clinic_id=clinic.id,
+            first_name="Child",
+            last_name="PEV",
+            age=2,
+            gender="F",
+        )
+        db_session.add(patient)
+        db_session.flush()
+        workflow = PatientVisitWorkflow(
+            clinic_id=clinic.id,
+            patient_id=patient.id,
+            workflow_type="child",
+            current_department="pev",
+            status="active",
+        )
+        db_session.add(workflow)
+        db_session.flush()
+        db_session.add(PatientVisitWorkflowStep(
+            workflow_id=workflow.id,
+            department="pev",
+            step_order=3,
+            status="in_progress",
+        ))
+        db_session.commit()
+
+    queue = client.get("/clinical/workflow/queue/pev", headers=_auth(pev_agent))
+    assert queue.status_code == 200, queue.text
+    assert any(item["id"] == workflow.id for item in queue.json())
+
+    completed = client.post(
+        f"/clinical/workflow/visits/{workflow.id}/complete/pev",
+        headers=_auth(pev_agent),
+    )
+    assert completed.status_code == 200, completed.text

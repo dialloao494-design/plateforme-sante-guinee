@@ -15,7 +15,7 @@ import json
 import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from jose import JWTError
+from jwt import PyJWTError
 
 from core.auth_cookie_config import ACCESS_COOKIE_NAME
 from security import decode_access_token
@@ -35,7 +35,7 @@ def _decode_ws_token(token: str | None) -> dict | None:
         if payload.get("user_id") is None:
             return None
         return payload
-    except JWTError:
+    except PyJWTError:
         return None
     except Exception:
         return None

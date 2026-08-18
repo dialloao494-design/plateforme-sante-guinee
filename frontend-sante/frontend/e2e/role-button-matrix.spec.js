@@ -198,6 +198,18 @@ for (const entry of ROLE_MATRIX) {
       : { name: entry.heading };
     await expect(page.getByRole('heading', headingOpts)).toBeVisible();
 
+    if (entry.roleKey === 'pev') {
+      const queueStatus = await page.evaluate(async () => {
+        const token = sessionStorage.getItem('access_token') || sessionStorage.getItem('token');
+        const response = await fetch('http://127.0.0.1:8000/clinical/workflow/queue/pev', {
+          credentials: 'include',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        return response.status;
+      });
+      expect(queueStatus).toBe(200);
+    }
+
     for (const btn of entry.buttons) {
       if (typeof btn.prepare === 'function') {
         await btn.prepare(page);

@@ -203,10 +203,10 @@ async def clinic_node_license_middleware(request, call_next):
     auth = request.headers.get("authorization") or ""
     if auth.lower().startswith("bearer "):
         try:
-            from jose import jwt as jose_jwt
+            import jwt as jose_jwt
 
             token = auth.split(" ", 1)[1]
-            payload = jose_jwt.get_unverified_claims(token)
+            payload = jose_jwt.decode(token, options={"verify_signature": False})
             # Resolve clinic via user id if needed later; env CLINIC_ID is primary on appliance
             _ = payload
         except Exception:

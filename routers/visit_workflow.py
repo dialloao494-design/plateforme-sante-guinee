@@ -23,7 +23,7 @@ router = APIRouter(prefix="/clinical/workflow", tags=["Visit Workflow"])
 
 RECEPTION_ROLES = ("receptionist", "cashier", "clinic_admin", "admin")
 NUTRITION_ROLES = ("nutritionist", "midwife", "clinic_admin", "admin")
-PEV_ROLES = ("midwife", "receptionist", "clinic_admin", "admin")
+PEV_ROLES = ("pev_agent", "midwife", "receptionist", "clinic_admin", "admin")
 DOCTOR_ROLES = ("doctor", "clinic_admin", "admin")
 LAB_ROLES = ("lab_technician", "clinic_admin", "admin")
 MIDWIFE_ROLES = ("midwife", "clinic_admin", "admin")

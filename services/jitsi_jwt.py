@@ -11,7 +11,7 @@ import os
 import time
 from typing import Any
 
-from jose import jwt
+import jwt
 
 
 def _clean_domain(value: str) -> str:

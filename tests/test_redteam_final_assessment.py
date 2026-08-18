@@ -212,7 +212,7 @@ def test_rt_doctor_put_cross_clinic_denied(client, db_session):
 
 def test_rt_access_token_rejects_empty_jti(client, db_session, admin_user):
     # Craft a token with blank jti by encoding manually after create (bypass create_access_token)
-    from jose import jwt
+    import jwt
     from security import SECRET_KEY, ALGORITHM
 
     payload = {
