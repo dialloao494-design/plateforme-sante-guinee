@@ -164,6 +164,15 @@ jobs:
       - run: pip install httpx
       - name: Smoke test production
         run: |
-          python scripts/deploy/post_deploy_verify.py \
-            --backend "$BACKEND_URL" \
-            --frontend "$FRONTEND_URL"
+          for attempt in 1 2 3; do
+            if python scripts/deploy/post_deploy_verify.py \
+              --backend "$BACKEND_URL" \
+              --frontend "$FRONTEND_URL"; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Smoke attempt ${attempt} failed; retrying in 15 seconds..."
+              sleep 15
+            fi
+          done
+          exit 1
