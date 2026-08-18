@@ -8,7 +8,7 @@ test('network loss before request queues registration', async ({ page, context }
   await page.getByRole('button', { name: /Enregistrement/ }).click();
   await page.getByLabel('Nom *', { exact: true }).fill(`FailNom${unique}`);
   await page.getByLabel('Prénom *', { exact: true }).fill(`FailPrenom${unique}`);
-  await page.locator('.reception-his-birthdate-field input[type="date"]').fill('1991-03-03');
+  await page.getByTestId('reception-date-of-birth').fill('1991-03-03');
   await page.getByLabel('Adresse *', { exact: true }).fill('Kaloum');
   await page.getByLabel('Tél. principal *', { exact: true }).fill(`625${String(unique).slice(-6)}`);
   await page.getByLabel('Nom du contact *', { exact: true }).fill('Contact');

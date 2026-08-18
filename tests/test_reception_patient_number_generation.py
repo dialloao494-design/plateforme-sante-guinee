@@ -97,3 +97,41 @@ def test_his_register_never_flushes_null_patient_number(client, db_session):
     row = db_session.query(Patient).filter(Patient.id == body["id"]).one()
     assert row.patient_number == body["patient_number"]
     assert not row.patient_number.startswith("TMP-")
+
+
+def test_legacy_intake_never_flushes_null_patient_number(client, db_session):
+    """The legacy CIS intake route must obey the same production constraint."""
+    clinic, admin, *_ = _seed(db_session)
+    seen_before_flush: list[str | None] = []
+
+    from sqlalchemy.orm import Session
+
+    original_flush = Session.flush
+
+    def tracking_flush(self, *args, **kwargs):
+        for obj in list(self.new):
+            if isinstance(obj, Patient):
+                seen_before_flush.append(obj.patient_number)
+                assert obj.patient_number is not None
+                assert str(obj.patient_number).startswith("TMP-")
+        return original_flush(self, *args, **kwargs)
+
+    with patch.object(Session, "flush", tracking_flush):
+        response = client.post(
+            "/clinical/reception/patients",
+            json={
+                "first_name": "Alpha",
+                "last_name": "DeploySmoke",
+                "age": 42,
+                "gender": "F",
+                "phone": "620555777",
+            },
+            headers=_auth(admin),
+        )
+
+    assert response.status_code == 201, response.text
+    assert seen_before_flush
+    body = response.json()
+    assert body["patient_number"].startswith(f"PAT-{clinic.id:03d}-")
+    row = db_session.query(Patient).filter(Patient.id == body["id"]).one()
+    assert row.patient_number == body["patient_number"]

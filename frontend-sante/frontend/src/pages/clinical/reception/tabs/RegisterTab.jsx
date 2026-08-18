@@ -142,7 +142,7 @@ export default function RegisterTab({
                   </label>
                 ) : (
                   <label>Date complète *
-                    <input required type="date" name="date_of_birth" autoComplete="bday" max={todayStr} value={regForm.date_of_birth} onChange={(e) => {
+                    <input required type="date" name="date_of_birth" data-testid="reception-date-of-birth" autoComplete="bday" max={todayStr} value={regForm.date_of_birth} onChange={(e) => {
                       const dob = e.target.value;
                       const age = calcAge(dob);
                       updateReg({ date_of_birth: dob, age_years: age !== '' ? String(age) : regForm.age_years });

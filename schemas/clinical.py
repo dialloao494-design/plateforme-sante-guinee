@@ -90,6 +90,7 @@ class PatientIntakeCreate(BaseModel):
 
 class PatientIntakeResponse(BaseModel):
     id: int
+    patient_number: Optional[str] = None
     first_name: str
     last_name: str
     age: int

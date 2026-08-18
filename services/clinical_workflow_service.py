@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time
+import uuid
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, joinedload
@@ -22,6 +23,7 @@ from schemas.clinical import (
 )
 from services.clinic_billing_service import ClinicBillingService
 from services.cis_audit import log_cis
+from core.patient_number import format_patient_number
 from services.rendezvous_service import RendezVousService, _cmp_dt
 from schemas import rendezvous as rendezvous_schemas
 
@@ -81,8 +83,13 @@ class ClinicalWorkflowService:
                         status_code=409,
                         detail="Un patient avec ce numéro existe déjà dans cette clinique",
                     )
+        # PostgreSQL enforces patients.patient_number NOT NULL. Allocate a unique
+        # provisional value before flush, then replace it with the canonical
+        # clinic-scoped dossier number as soon as the primary key exists.
+        provisional_number = f"TMP-{clinic_id}-{uuid.uuid4().hex[:16].upper()}"
         patient = models.Patient(
             clinic_id=clinic_id,
+            patient_number=provisional_number,
             first_name=payload.first_name.strip(),
             last_name=payload.last_name.strip(),
             age=payload.age,
@@ -97,6 +104,8 @@ class ClinicalWorkflowService:
             visit_destination=(payload.visit_destination or "").strip() or None,
         )
         db.add(patient)
+        db.flush()
+        patient.patient_number = format_patient_number(clinic_id, patient.id)
         db.commit()
         db.refresh(patient)
         from services.medical_history_service import ensure_medical_record
