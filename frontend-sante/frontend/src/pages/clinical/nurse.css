@@ -1,0 +1,26 @@
+/* Nurse triage dashboard — paper-form layout */
+.nurse-his-clinic-name { font-weight: 700; letter-spacing: 0.04em; color: var(--clinical-accent, #0d6b5c); margin: 0 0 0.25rem; }
+.nurse-his-form-sheet fieldset { margin-bottom: 1rem; }
+.nurse-his-display-field { display: flex; min-width: 0; flex-direction: column; gap: 0.35rem; color: #334155; font-size: 0.9rem; font-weight: 600; }
+.nurse-his-header-grid { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: start; }
+.nurse-his-bp-pair { display: flex; align-items: center; gap: 0.35rem; }
+.nurse-his-bp-pair input { flex: 1; min-width: 0; }
+.nurse-his-textarea-field textarea { width: 100%; min-height: 5rem; resize: vertical; }
+.nurse-his-save-row { display: flex; justify-content: flex-end; padding-top: 0.5rem; }
+.nurse-his-recent, .nurse-his-patient-history { margin-top: 1rem; }
+.nurse-his-history-header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; align-items: flex-start; }
+.nurse-his-history-header h2 { margin-bottom: 0.25rem; }
+.nurse-his-history-list { display: grid; gap: 0.75rem; margin-top: 1rem; }
+.nurse-his-history-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.85rem; background: #f8fafc; }
+.nurse-his-history-card h3 { margin: 0 0 0.25rem; font-size: 1rem; }
+.nurse-his-history-card p { margin: 0 0 0.75rem; color: #475569; }
+.nurse-his-history-card dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.5rem 0.75rem; margin: 0; }
+.nurse-his-history-card div { min-width: 0; }
+.nurse-his-history-card dt { font-size: 0.76rem; font-weight: 700; color: #64748b; }
+.nurse-his-history-card dd { margin: 0.1rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: #0f172a; }
+.nurse-doctor-panel { background: #f4faf8; border: 1px solid #c5e8df; }
+.nurse-doctor-vitals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem 1rem; margin: 0.75rem 0; font-size: 0.95rem; }
+
+@media (max-width: 720px) {
+  .nurse-his-header-grid { grid-template-columns: 1fr; }
+}

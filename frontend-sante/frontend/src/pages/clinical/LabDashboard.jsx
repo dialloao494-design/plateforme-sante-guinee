@@ -3,13 +3,13 @@ import clinicalApi from '../../services/clinicalApi';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { formatApiError } from '../../utils/apiError.js';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
-import { detectLabTemplateId, LAB_TEMPLATES, LAB_TEMPLATE_OPTIONS, templateRowsForExam, templateRowsForTemplateId } from '../../data/labReportTemplates.js';
+import { detectLabTemplateId, LAB_TEMPLATES, templateRowsForExam, templateRowsForTemplateId } from '../../data/labReportTemplates.js';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
-import PrintClinicHeader from '../../components/print/PrintClinicHeader.jsx';
-import PrintDocumentFooter from '../../components/print/PrintDocumentFooter.jsx';
-import { formatClinicalDateTime, patientDisplayName } from '../../utils/clinicalPresentation.js';
+import { formatClinicalStatus, patientDisplayName } from '../../utils/clinicalPresentation.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import LabPatientOverview, { ReadOnlyDisplay } from './lab/LabPatientOverview.jsx';
+import LabQueuePanel from './lab/LabQueuePanel.jsx';
+import LabResultsWorkspace from './lab/LabResultsWorkspace.jsx';
 import {
   EMPTY_RESULT_ROW,
   nowInputValue,
@@ -18,7 +18,6 @@ import {
   SAMPLE_TYPES,
   sampleCodesFromLabels,
   todayInputValue,
-  VALIDATION_STATUSES,
 } from './lab/labDomain.js';
 import './clinical.css';
 import './lab/lab.css';
@@ -635,48 +634,12 @@ export default function LabDashboard() {
           <ClinicalStatGrid stats={stats} onStatClick={loadQueueBucket} activeKey={activeStatBucket} />
 
           {activeStatBucket && (
-            <section className="lab-his-queue-panel" aria-live="polite">
-              <h3>{BUCKET_TITLES[activeStatBucket] || 'File d\'attente'}</h3>
-              {loadingQueue ? (
-                <p className="clinical-hint">Chargement…</p>
-              ) : queueRows.length === 0 ? (
-                <p className="clinical-hint">Aucun patient dans cette file.</p>
-              ) : (
-                <div className="lab-his-results-wrap">
-                  <table className="lab-his-queue-table">
-                    <thead>
-                      <tr>
-                        <th>N° dossier</th>
-                        <th>Nom</th>
-                        <th>Prénom</th>
-                        <th>Examens / services demandés</th>
-                        {activeStatBucket === 'validated_today' && <th>Résumé des résultats</th>}
-                        <th>Statut</th>
-                        <th>Date / heure</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {queueRows.map((row) => (
-                        <tr key={`${row.patient_id}-${row.date_time || row.exams}`}>
-                          <td>{row.patient_number || row.patient_id}</td>
-                          <td>{row.last_name}</td>
-                          <td>{row.first_name}</td>
-                          <td>{row.exams}</td>
-                          {activeStatBucket === 'validated_today' && (
-                            <td className="lab-his-queue-summary">
-                              {row.result_summary || '—'}
-                              {row.technician ? ` · ${row.technician}` : ''}
-                            </td>
-                          )}
-                          <td>{row.status}</td>
-                          <td>{formatClinicalDateTime(row.date_time)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
+            <LabQueuePanel
+              bucketTitle={BUCKET_TITLES[activeStatBucket] || 'File d\'attente'}
+              bucket={activeStatBucket}
+              loading={loadingQueue}
+              rows={queueRows}
+            />
           )}
 
           <div className="lab-his-workflow">
@@ -705,7 +668,7 @@ export default function LabDashboard() {
                           className={`lab-his-worklist-item${activeOrderId === order.id ? ' lab-his-worklist-item--active' : ''}`}
                         >
                           <span>
-                            <strong>{order.test_name}</strong> — {order.status}
+                            <strong>{order.test_name}</strong> — {formatClinicalStatus(order.status)}
                           </span>
                           <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => selectOrder(order)}>
                             Saisir résultats
@@ -791,300 +754,26 @@ export default function LabDashboard() {
                   </button>
                 </section>
 
-                <section className="lab-his-workflow-card lab-his-workflow-card--templates">
-                  <h3>Modèles de rapport officiels</h3>
-                  <p className="clinical-hint">
-                    Sélectionnez le modèle validé par la clinique (Hémogramme, BU ou ECBU). Les paramètres et valeurs de référence se chargent automatiquement.
-                  </p>
-                  <div className="lab-his-template-picker" role="group" aria-label="Modèles de rapport">
-                    {LAB_TEMPLATE_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        className={`clinical-btn clinical-btn--secondary lab-his-template-btn${activeTemplateId === opt.id ? ' lab-his-template-btn--active' : ''}`}
-                        onClick={() => applyLabTemplate(opt.id)}
-                        disabled={loading || !selectedPatient}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                  {!selectedPatient && (
-                    <FormNotice>Sélectionnez d&apos;abord un patient pour charger un modèle.</FormNotice>
-                  )}
-                  {activeTemplateId === 'ecbu' && (
-                    <label className="lab-his-ecbu-macro-field">
-                      Aspect macroscopique
-                      <textarea
-                        rows={2}
-                        value={ecbuMacro}
-                        onChange={(e) => setEcbuMacro(e.target.value)}
-                        placeholder="Saisir l'aspect macroscopique (ex. urine jaune clair, culot léger…)"
-                      />
-                    </label>
-                  )}
-                  {activeTemplateId === 'hemogram' && LAB_TEMPLATES.hemogram?.note && (
-                    <p className="clinical-hint">{LAB_TEMPLATES.hemogram.note}</p>
-                  )}
-                </section>
-
-                <section className="lab-his-workflow-card lab-his-workflow-card--results">
-                  <h3>Résultats</h3>
-                  {activeOrder ? (
-                    <p className="clinical-lead lab-his-active-order">
-                      Examen actif : <strong>{activeOrder.test_name}</strong>
-                      {activeTemplateId && LAB_TEMPLATES[activeTemplateId] ? (
-                        <span className="clinical-hint"> · Modèle : {LAB_TEMPLATES[activeTemplateId].title}</span>
-                      ) : null}
-                    </p>
-                  ) : (
-                    <p className="clinical-lead lab-his-active-order">Sélectionnez une commande pour saisir les résultats.</p>
-                  )}
-                  <div className="lab-his-results-wrap">
-                    <table className={`lab-his-results-table${activeTemplateId === 'hemogram' ? ' lab-his-results-table--hemogram' : ''}`}>
-                      <thead>
-                        <tr>
-                          <th>Paramètre</th>
-                          <th>Résultat</th>
-                          {activeTemplateId === 'hemogram' ? (
-                            <>
-                              <th>Unités</th>
-                              <th>Enfant</th>
-                              <th>Homme</th>
-                              <th>Femme</th>
-                            </>
-                          ) : activeTemplateId === 'bu' ? (
-                            <th>Valeurs de référence</th>
-                          ) : (
-                            <>
-                              <th>Valeurs de référence</th>
-                              <th>Unité</th>
-                            </>
-                          )}
-                          <th scope="col">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {resultRows.map((row, idx) => (
-                          <tr key={idx}>
-                            <td>
-                              <input
-                                value={row.parameter}
-                                onChange={(e) => updateResultRow(idx, 'parameter', e.target.value)}
-                                placeholder="ex. Glucose"
-                                readOnly={Boolean(activeTemplateId)}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                value={row.result}
-                                onChange={(e) => updateResultRow(idx, 'result', e.target.value)}
-                                placeholder="Valeur"
-                              />
-                            </td>
-                            {activeTemplateId === 'hemogram' ? (
-                              <>
-                                <td><ReadOnlyDisplay value={row.unit} /></td>
-                                <td><ReadOnlyDisplay value={row.ref_child} /></td>
-                                <td><ReadOnlyDisplay value={row.ref_male} /></td>
-                                <td><ReadOnlyDisplay value={row.ref_female} /></td>
-                              </>
-                            ) : activeTemplateId === 'bu' ? (
-                              <>
-                                <td>
-                                  <input
-                                    value={row.reference}
-                                    onChange={(e) => updateResultRow(idx, 'reference', e.target.value)}
-                                    placeholder="0,7 – 1,1 g/L"
-                                    readOnly={Boolean(activeTemplateId)}
-                                  />
-                                </td>
-                              </>
-                            ) : (
-                              <>
-                                <td>
-                                  <input
-                                    value={row.reference}
-                                    onChange={(e) => updateResultRow(idx, 'reference', e.target.value)}
-                                    placeholder="0,7 – 1,1 g/L"
-                                    readOnly={Boolean(activeTemplateId)}
-                                  />
-                                </td>
-                                <td>
-                                  <input
-                                    value={row.unit}
-                                    onChange={(e) => updateResultRow(idx, 'unit', e.target.value)}
-                                    placeholder="g/L"
-                                    readOnly={Boolean(activeTemplateId)}
-                                  />
-                                </td>
-                              </>
-                            )}
-                            <td>
-                              {!activeTemplateId && (
-                                <button
-                                  type="button"
-                                  className="clinical-btn clinical-btn--secondary"
-                                  onClick={() => removeResultRow(idx)}
-                                  aria-label={`Supprimer la ligne de résultat ${idx + 1}`}
-                                >
-                                  ×
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {!activeTemplateId && (
-                    <button type="button" className="clinical-btn clinical-btn--secondary lab-his-add-row" onClick={addResultRow}>
-                      + Ajouter une ligne
-                    </button>
-                  )}
-                </section>
-
-                <section className="lab-his-workflow-card lab-his-workflow-card--validation">
-                  <h3>Validation</h3>
-                  <div className="reception-his-form-row reception-his-form-row--3">
-                    <label>
-                      Biologiste / technicien
-                      <input
-                        value={validationForm.technician}
-                        onChange={(e) => setValidationForm((p) => ({ ...p, technician: e.target.value }))}
-                      />
-                    </label>
-                    <label>
-                      Date de validation
-                      <input
-                        type="date"
-                        value={validationForm.validation_date}
-                        onChange={(e) => setValidationForm((p) => ({ ...p, validation_date: e.target.value }))}
-                      />
-                    </label>
-                    <label>
-                      Heure de validation
-                      <input
-                        type="time"
-                        value={validationForm.validation_time}
-                        onChange={(e) => setValidationForm((p) => ({ ...p, validation_time: e.target.value }))}
-                      />
-                    </label>
-                  </div>
-                  <div className="lab-his-status-options" role="radiogroup" aria-label="Statut">
-                    {VALIDATION_STATUSES.map((s) => (
-                      <label key={s.value}>
-                        <input
-                          type="radio"
-                          name="lab-status"
-                          checked={validationForm.status === s.value}
-                          onChange={() => setValidationForm((p) => ({ ...p, status: s.value }))}
-                        />
-                        {s.label}
-                      </label>
-                    ))}
-                  </div>
-                  <label className="lab-his-notes-field">
-                    Observations / notes
-                    <textarea
-                      rows={3}
-                      value={validationForm.observations}
-                      onChange={(e) => setValidationForm((p) => ({ ...p, observations: e.target.value }))}
-                      placeholder="Notes cliniques, commentaires…"
-                    />
-                  </label>
-                  <div className="lab-his-validation-actions">
-                    <button
-                      type="button"
-                      className="clinical-btn lab-his-workflow-action"
-                      onClick={submitResults}
-                      disabled={loading}
-                    >
-                      {loading ? 'Enregistrement…' : 'Enregistrer les résultats'}
-                    </button>
-                    {lastResultId && (
-                      <button
-                        type="button"
-                        className="clinical-btn clinical-btn--secondary"
-                        onClick={() => printLabReport(lastResultId)}
-                        disabled={loading}
-                      >
-                        Imprimer le rapport
-                      </button>
-                    )}
-                  </div>
-                  {validationSummary && (
-                    <section className="lab-his-validation-summary" aria-live="polite">
-                      <h4>Résumé de validation</h4>
-                      <dl className="lab-his-summary-grid">
-                        <div><dt>Patient</dt><dd>{validationSummary.patient} · N° {validationSummary.patientNumber}</dd></div>
-                        <div><dt>Examen</dt><dd>{validationSummary.exam}</dd></div>
-                        <div><dt>Technicien</dt><dd>{validationSummary.technician}</dd></div>
-                        <div><dt>Date</dt><dd>{validationSummary.date} {validationSummary.time}</dd></div>
-                        <div><dt>Statut</dt><dd>{validationSummary.status}</dd></div>
-                      </dl>
-                      {validationSummary.macro ? (
-                        <p className="lab-his-summary-macro"><strong>Aspect macroscopique :</strong> {validationSummary.macro}</p>
-                      ) : null}
-                      {validationSummary.observations ? (
-                        <p className="lab-his-summary-macro"><strong>Observations :</strong> {validationSummary.observations}</p>
-                      ) : null}
-                      <div className="lab-his-results-wrap">
-                        <table className="lab-his-results-table">
-                          <thead>
-                            <tr>
-                              <th>Paramètre</th>
-                              <th>Résultat</th>
-                              <th>Référence</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {validationSummary.rows.map((row, idx) => (
-                              <tr key={idx}>
-                                <td>{row.parameter}</td>
-                                <td>{row.result}</td>
-                                <td>{row.reference || row.ref_male || '—'}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      <button
-                        type="button"
-                        className="clinical-btn clinical-btn--secondary"
-                        onClick={() => window.print()}
-                      >
-                        Imprimer le résumé de validation
-                      </button>
-                    </section>
-                  )}
-                  {validationSummary && (
-                    <div className="lab-his-validation-summary-print" aria-hidden="true">
-                      <PrintClinicHeader documentTitle="Résumé de validation laboratoire" compact />
-                      <dl className="lab-his-summary-grid">
-                        <div><dt>Patient</dt><dd>{validationSummary.patient} · N° {validationSummary.patientNumber}</dd></div>
-                        <div><dt>Examen</dt><dd>{validationSummary.exam}</dd></div>
-                        <div><dt>Technicien</dt><dd>{validationSummary.technician}</dd></div>
-                        <div><dt>Date / heure</dt><dd>{validationSummary.date} {validationSummary.time}</dd></div>
-                        <div><dt>Statut</dt><dd>{validationSummary.status}</dd></div>
-                      </dl>
-                      {validationSummary.observations ? <p><strong>Observations :</strong> {validationSummary.observations}</p> : null}
-                      <table className="lab-his-results-table">
-                        <thead><tr><th>Paramètre</th><th>Résultat</th><th>Référence</th></tr></thead>
-                        <tbody>
-                          {validationSummary.rows.map((row, idx) => (
-                            <tr key={idx}>
-                              <td>{row.parameter}</td>
-                              <td>{row.result}</td>
-                              <td>{row.reference || row.ref_male || '—'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      <PrintDocumentFooter printedBy={user?.email || ''} department="Laboratoire" />
-                    </div>
-                  )}
-                </section>
+                <LabResultsWorkspace
+                  activeOrder={activeOrder}
+                  activeTemplateId={activeTemplateId}
+                  addResultRow={addResultRow}
+                  applyLabTemplate={applyLabTemplate}
+                  ecbuMacro={ecbuMacro}
+                  lastResultId={lastResultId}
+                  loading={loading}
+                  onPrintReport={printLabReport}
+                  onSubmitResults={submitResults}
+                  printedBy={user?.email || ''}
+                  removeResultRow={removeResultRow}
+                  resultRows={resultRows}
+                  selectedPatient={selectedPatient}
+                  setEcbuMacro={setEcbuMacro}
+                  setValidationForm={setValidationForm}
+                  updateResultRow={updateResultRow}
+                  validationForm={validationForm}
+                  validationSummary={validationSummary}
+                />
               </>
             )}
           </div>

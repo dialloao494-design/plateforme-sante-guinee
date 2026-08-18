@@ -5,107 +5,15 @@ import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 import clinicalApi from '../../services/clinicalApi';
 import { formatApiError } from '../../utils/apiError.js';
+import { formatClinicalDate } from '../../utils/clinicalPresentation.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
+import RegisterTable from './pev/RegisterTable.jsx';
+import { INJECTION_SITE_LABELS, STRATEGY_LABELS } from './pev/pevPresentation.js';
 import './clinical.css';
 import './pev.css';
 
-const INJECTION_SITE_FALLBACK = {
-  deltoide_d: 'Deltoïde droit',
-  deltoide_g: 'Deltoïde gauche',
-  cuisse_d: 'Cuisse droite',
-  cuisse_g: 'Cuisse gauche',
-  fesse: 'Fesse',
-  oral: 'Voie orale',
-  autre: 'Autre',
-};
-
-const STRATEGY_FALLBACK = {
-  routine: 'Routine',
-  campagne: 'Campagne',
-  riposte: 'Riposte / Urgence',
-};
-
 const GENDER_LABELS = { M: 'M', F: 'F', male: 'M', female: 'F', other: '—' };
-
-function formatDate(value) {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString('fr-FR');
-}
-
-function RegisterTable({ rows, title }) {
-  if (!rows?.length) {
-    return (
-      <section className="clinical-card">
-        <h2>{title}</h2>
-        <p>Aucune vaccination enregistrée pour cette période.</p>
-      </section>
-    );
-  }
-  return (
-    <section className="clinical-card pev-register-card">
-      <h2>{title}</h2>
-      <div className="pev-register-scroll">
-        <table className="clinical-table pev-register-table">
-          <thead>
-            <tr>
-              <th>N°</th>
-              <th>Date</th>
-              <th>Nom enfant</th>
-              <th>Sexe</th>
-              <th>Date naiss.</th>
-              <th>Âge</th>
-              <th>Mère / tuteur</th>
-              <th>Quartier</th>
-              <th>Vaccin</th>
-              <th>Dose</th>
-              <th>Lot</th>
-              <th>Péremption</th>
-              <th>Site</th>
-              <th>Stratégie</th>
-              <th>Vaccinateur</th>
-              <th>Proch. RDV</th>
-              <th>Observations</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => {
-              const rec = row.record;
-              const pat = row.patient;
-              const age =
-                rec.age_at_vaccination_months != null
-                  ? `${rec.age_at_vaccination_months} mois`
-                  : pat.age_display || '—';
-              return (
-                <tr key={rec.id}>
-                  <td>{row.line_number}</td>
-                  <td>{formatDate(rec.administered_at)}</td>
-                  <td>
-                    {pat.first_name} {pat.last_name}
-                  </td>
-                  <td>{GENDER_LABELS[pat.gender] || pat.gender || '—'}</td>
-                  <td>{formatDate(pat.date_of_birth)}</td>
-                  <td>{age}</td>
-                  <td>{pat.mother_or_guardian || '—'}</td>
-                  <td>{pat.address || '—'}</td>
-                  <td>{rec.vaccine_name}</td>
-                  <td>{rec.dose_label || rec.dose_number || '—'}</td>
-                  <td>{rec.batch_number || '—'}</td>
-                  <td>{formatDate(rec.vaccine_expiry_date)}</td>
-                  <td>{INJECTION_SITE_FALLBACK[rec.injection_site] || rec.injection_site || '—'}</td>
-                  <td>{STRATEGY_FALLBACK[rec.vaccination_strategy] || rec.vaccination_strategy || 'Routine'}</td>
-                  <td>{rec.vaccinator_name || '—'}</td>
-                  <td>{formatDate(rec.next_appointment_date)}</td>
-                  <td>{rec.notes || rec.aefi_notes || '—'}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
 
 export default function ImmunizationDashboard() {
   const { user } = useAuth();
@@ -296,10 +204,10 @@ export default function ImmunizationDashboard() {
   const activeList = status[tab] || [];
   const injectionSites = fieldOptions.injection_sites?.length
     ? fieldOptions.injection_sites
-    : Object.entries(INJECTION_SITE_FALLBACK).map(([code, label]) => ({ code, label }));
+    : Object.entries(INJECTION_SITE_LABELS).map(([code, label]) => ({ code, label }));
   const strategies = fieldOptions.strategies?.length
     ? fieldOptions.strategies
-    : Object.entries(STRATEGY_FALLBACK).map(([code, label]) => ({ code, label }));
+    : Object.entries(STRATEGY_LABELS).map(([code, label]) => ({ code, label }));
 
   const stats = useMemo(() => {
     if (clinicStats) {
@@ -319,7 +227,7 @@ export default function ImmunizationDashboard() {
   }, [clinicStats, status, registerRows.length, history.length]);
 
   const patientAgeDisplay = selectedPatient?.date_of_birth
-    ? formatDate(selectedPatient.date_of_birth)
+    ? formatClinicalDate(selectedPatient.date_of_birth)
     : selectedPatient?.age != null
       ? `${selectedPatient.age} an(s)`
       : '—';
@@ -583,14 +491,14 @@ export default function ImmunizationDashboard() {
                     <tbody>
                       {history.map((row) => (
                         <tr key={row.id}>
-                          <td>{formatDate(row.administered_at)}</td>
+                          <td>{formatClinicalDate(row.administered_at)}</td>
                           <td>{row.vaccine_name}</td>
                           <td>{row.dose_label || row.dose_number || '—'}</td>
                           <td>{row.batch_number || '—'}</td>
-                          <td>{INJECTION_SITE_FALLBACK[row.injection_site] || row.injection_site || '—'}</td>
-                          <td>{STRATEGY_FALLBACK[row.vaccination_strategy] || 'Routine'}</td>
+                          <td>{INJECTION_SITE_LABELS[row.injection_site] || row.injection_site || '—'}</td>
+                          <td>{STRATEGY_LABELS[row.vaccination_strategy] || 'Routine'}</td>
                           <td>{row.vaccinator_name || '—'}</td>
-                          <td>{formatDate(row.next_appointment_date)}</td>
+                          <td>{formatClinicalDate(row.next_appointment_date)}</td>
                         </tr>
                       ))}
                     </tbody>

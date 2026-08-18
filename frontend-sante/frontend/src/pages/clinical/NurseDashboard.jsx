@@ -5,115 +5,27 @@ import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 import clinicalApi from '../../services/clinicalApi';
 import { formatApiError } from '../../utils/apiError.js';
+import { formatClinicalDate, formatClinicalDateTime, formatClinicalStatus, patientAge, patientDisplayName, patientGenderLabel } from '../../utils/clinicalPresentation.js';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
+import { DisplayField, ReadOnlyDisplay, TextAreaField } from './nurse/NurseFormPrimitives.jsx';
+import { calculateBmi, EMPTY_NURSE_ASSESSMENT } from './nurse/nurseDomain.js';
 import './clinical.css';
-
-const EMPTY_FORM = {
-  temperature_c: '',
-  bp_systolic: '',
-  bp_diastolic: '',
-  heart_rate: '',
-  respiratory_rate: '',
-  height_cm: '',
-  weight_kg: '',
-  vitals_observations: '',
-  reason_for_consultation: '',
-  history_of_present_illness: '',
-  medical_history: '',
-  surgical_history: '',
-  gynecological_history: '',
-  allergies: '',
-  current_treatments: '',
-  hospitalized_daily_vitals: '',
-  prescription: '',
-  nurse_notes: '',
-};
-
-const calcAge = (dob) => {
-  if (!dob) return '';
-  const b = new Date(dob);
-  if (Number.isNaN(b.getTime())) return '';
-  const n = new Date();
-  let age = n.getFullYear() - b.getFullYear();
-  const m = n.getMonth() - b.getMonth();
-  if (m < 0 || (m === 0 && n.getDate() < b.getDate())) age -= 1;
-  return age >= 0 ? String(age) : '';
-};
+import './nurse.css';
 
 const qrImageUrl = (token) =>
   token ? `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(token)}` : '';
 
-const genderLabel = (gender) => {
-  if (gender === 'F') return 'Féminin';
-  if (gender === 'M') return 'Masculin';
-  if (gender === 'Autre') return 'Autre';
-  return gender || '';
-};
-
-const patientFullName = (p) => (p ? `${p.last_name || ''} ${p.first_name || ''}`.trim() : '');
-
-const patientAge = (p) => {
-  if (!p) return '';
-  if (p.date_of_birth) return calcAge(p.date_of_birth);
-  if (p.age != null && p.age !== '') return String(p.age);
-  return '';
-};
-
 const formatDob = (dob, precision) => {
   if (!dob) return '';
   if (precision === 'year') return String(dob).slice(0, 4);
-  try {
-    return new Date(dob).toLocaleDateString('fr-FR');
-  } catch {
-    return String(dob);
-  }
-};
-
-const formatDateTime = (value) => {
-  if (!value) return '—';
-  try {
-    return new Date(value).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
-  } catch {
-    return String(value);
-  }
+  return formatClinicalDate(dob, '');
 };
 
 const BUCKET_TITLES = {
   assessments_today: 'Évaluations aujourd\'hui',
   pending_admissions: 'Admissions en attente',
 };
-
-const calcBmi = (weightKg, heightCm) => {
-  const w = Number(weightKg);
-  const h = Number(heightCm);
-  if (!w || !h || h <= 0) return '';
-  const hm = h / 100;
-  return (w / (hm * hm)).toFixed(1);
-};
-
-const ReadOnlyDisplay = ({ value }) => (
-  <div
-    className={`reception-his-auto-display${value ? ' reception-his-auto-display--filled' : ' reception-his-auto-display--empty'}`}
-    aria-live="polite"
-  >
-    {value || ''}
-  </div>
-);
-
-const DisplayField = ({ label, value }) => (
-  <label>
-    {label}
-    <ReadOnlyDisplay value={value} />
-  </label>
-);
-
-const TextAreaField = ({ label, value, onChange, rows = 4 }) => (
-  <label className="nurse-his-textarea-field">
-    {label}
-    <textarea rows={rows} value={value} onChange={onChange} />
-  </label>
-);
 
 export default function NurseDashboard() {
   const { user } = useAuth();
@@ -131,7 +43,7 @@ export default function NurseDashboard() {
   const [searching, setSearching] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [assessmentLoading, setAssessmentLoading] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(EMPTY_NURSE_ASSESSMENT);
   const [activeStatBucket, setActiveStatBucket] = useState(null);
   const [queueRows, setQueueRows] = useState([]);
   const [loadingQueue, setLoadingQueue] = useState(false);
@@ -139,7 +51,7 @@ export default function NurseDashboard() {
   const [loadingPatientHistory, setLoadingPatientHistory] = useState(false);
   const [showPatientHistory, setShowPatientHistory] = useState(false);
 
-  const bmi = useMemo(() => calcBmi(form.weight_kg, form.height_cm), [form.weight_kg, form.height_cm]);
+  const bmi = useMemo(() => calculateBmi(form.weight_kg, form.height_cm), [form.weight_kg, form.height_cm]);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -192,7 +104,7 @@ export default function NurseDashboard() {
     setSearchQ('');
     setMessage('');
     setError('');
-    setForm(EMPTY_FORM);
+    setForm(EMPTY_NURSE_ASSESSMENT);
     setPatientAssessments([]);
     setShowPatientHistory(false);
     setAssessmentLoading(true);
@@ -295,7 +207,7 @@ export default function NurseDashboard() {
         nurse_notes: form.nurse_notes || null,
       });
       setMessage('Évaluation infirmière enregistrée — visible par le médecin.');
-      setForm(EMPTY_FORM);
+      setForm(EMPTY_NURSE_ASSESSMENT);
       closingPatientIdRef.current = String(selectedPatient?.id || routePatientId || '');
       setSelectedPatient(null);
       setRoutePatientId('');
@@ -314,7 +226,7 @@ export default function NurseDashboard() {
   const statCards = [
     { key: 'assessments_today', label: 'Évaluations aujourd\'hui', value: stats?.assessments_today ?? 0, variant: 'success' },
     { key: 'pending_admissions', label: 'Admissions en attente', value: stats?.pending_admissions_today ?? 0, variant: 'warning' },
-    { label: 'Patient actif', value: selectedPatient ? patientFullName(selectedPatient) : '—', variant: 'accent' },
+    { label: 'Patient actif', value: selectedPatient ? patientDisplayName(selectedPatient) : '—', variant: 'accent' },
   ];
 
   return (
@@ -406,9 +318,9 @@ export default function NurseDashboard() {
                     <tr key={row.assessment_id}>
                       <td>{row.patient_number || row.patient_id}</td>
                       <td>{row.patient_name}</td>
-                      <td>{row.status}</td>
+                      <td>{formatClinicalStatus(row.status)}</td>
                       <td>{row.nurse_name || '—'}</td>
-                      <td>{formatDateTime(row.recorded_at)}</td>
+                      <td>{formatClinicalDateTime(row.recorded_at)}</td>
                       <td>
                         <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => openPatientById(row.patient_id)}>
                           Ouvrir patient
@@ -437,7 +349,7 @@ export default function NurseDashboard() {
                     <tr key={row.admission_id}>
                       <td>{row.patient_number || row.patient_id}</td>
                       <td>{row.patient_name}</td>
-                      <td>{formatDateTime(row.admitted_at)}</td>
+                      <td>{formatClinicalDateTime(row.admitted_at)}</td>
                       <td>{(row.services || []).join(', ') || row.department || '—'}</td>
                       <td>{row.priority}</td>
                       <td>
@@ -476,9 +388,9 @@ export default function NurseDashboard() {
               <div className="nurse-his-header-fields">
                 <div className="reception-his-form-row reception-his-form-row--4">
                   <DisplayField label="N° dossier patient" value={selectedPatient.patient_number || ''} />
-                  <DisplayField label="Nom et prénom" value={patientFullName(selectedPatient)} />
-                  <DisplayField label="Âge" value={patientAge(selectedPatient)} />
-                  <DisplayField label="Sexe" value={genderLabel(selectedPatient.gender)} />
+                  <DisplayField label="Nom et prénom" value={patientDisplayName(selectedPatient)} />
+                  <DisplayField label="Âge" value={patientAge(selectedPatient, '')} />
+                  <DisplayField label="Sexe" value={patientGenderLabel(selectedPatient.gender, '')} />
                 </div>
               </div>
               {selectedPatient.qr_token && (
@@ -711,7 +623,7 @@ export default function NurseDashboard() {
                     <p>
                       <strong>{row.nurse_name || 'Infirmier(ère)'}</strong>
                       {' · '}
-                      {formatDateTime(row.recorded_at)}
+                      {formatClinicalDateTime(row.recorded_at)}
                     </p>
                     <dl>
                       <div><dt>Motif</dt><dd>{row.reason_for_consultation || '—'}</dd></div>
@@ -748,7 +660,7 @@ export default function NurseDashboard() {
                   <td>{row.patient_name || '—'}</td>
                   <td>{row.patient_number || '—'}</td>
                   <td>{row.nurse_name || '—'}</td>
-                  <td>{new Date(row.recorded_at).toLocaleString('fr-FR')}</td>
+                  <td>{formatClinicalDateTime(row.recorded_at)}</td>
                 </tr>
               ))}
             </tbody>

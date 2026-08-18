@@ -112,7 +112,7 @@ finishes successfully, and failures provide actionable artifacts/logs.
 
 ### P1 — One canonical patient workspace
 
-**Status: CODE COMPLETE — locally browser-verified; CI and field validation open**
+**Status: CODE COMPLETE — locally browser-verified; CI rerun and field validation open**
 
 The system has multiple independent `selectedPatient` and tab/workflow state
 implementations. Reception has moved toward URL-backed state, while laboratory,
@@ -167,9 +167,16 @@ Implemented evidence (2026-08-18):
 - PEV patient lookup and journey access now match the authorized vaccination
   workflow while retaining clinic-scoped patient checks.
 
-Remaining evidence: required CI must pass this commit, cross-clinic negative
-browser coverage must prove tenant isolation at the UI boundary, and hospital
-staff must validate the navigation model on clinic hardware.
+Remaining evidence: required CI must pass this commit, and hospital staff must
+validate the navigation model on clinic hardware.
+
+Cross-clinic negative browser evidence (2026-08-18): a disposable two-clinic
+Playwright scenario provisions real staff and patients, then proves that foreign
+patient IDs do not hydrate in Laboratory, Pharmacy, Nursing, or PEV; foreign
+patients do not appear in Laboratory search; cached Clinic B context does not
+survive authentication as Clinic A; and Back/Forward navigation restores only
+the authorized Clinic A dossier. This passed locally within the full **22/22**
+browser suite. Required CI rerun and field validation remain open.
 
 ### P1 — Clinical UX coherence and patient safety
 
@@ -264,10 +271,28 @@ Implemented evidence (2026-08-18):
   tests, lint, production build, all 6 performance budgets, and the cross-role
   patient-context browser regression. That browser test now asserts the
   extracted laboratory identity panel and canonical dossier number directly.
+- Laboratory report templates, result-grid editing, validation, summaries, and
+  print rendering now live in `LabResultsWorkspace`, while queue and patient
+  identity have their own components; the controller is **784** lines versus
+  **1,225** at baseline;
+- Pharmacy domain calculations/form primitives, Nursing assessment domain/form
+  primitives, and the PEV register/presentation layer now live in bounded module
+  directories. Reception was already split into a 153-line controller, hooks,
+  tabs, and components; its billing tab remains the largest reception view;
+- patient age, gender, address, workflow status, date/time, GNF, and patient-name
+  presentation now share the tested Guinea clinical presentation layer across
+  these workspaces;
+- the Nursing-specific block moved out of `clinical.css`, reducing the shared
+  stylesheet from **3,841** to **3,714** lines and emitting Nursing as a separate
+  route stylesheet. Laboratory, Pharmacy, and PEV also use module-owned styles;
+- this tranche passes locally: lint, **43/43** frontend unit tests, **31/31**
+  offline tests, production build, all 6 bundle/style budgets, the full **22/22**
+  browser suite, and a post-extraction focused **15/15** browser rerun.
 
-Remaining: split large workflow controllers and the shared clinical stylesheet,
-finish migrating legacy presentation calls, and validate on clinic
-hardware/network conditions.
+Remaining: continue reducing large view files and the shared clinical stylesheet
+as normal maintainability work, and validate performance/UX on clinic
+hardware/network conditions. The named controller/presentation tranche is code
+complete locally; the broader workstream remains open until CI and field evidence.
 
 ### P1 — Offline release certification
 
@@ -393,6 +418,7 @@ and a clear escalation contact.
 | 2026-08-18 | Shared clinical formatters/live-region feedback added and route/style performance budgets enforced in CI; local unit, build, budget, accessibility, and cross-role browser checks passed. | UX coherence and frontend maintainability advanced; controller/style decomposition and field validation remain. |
 | 2026-08-18 | Doctor patient overview extracted from the monolithic controller; expanded browser coverage found and fixed a late open/close URL race. | First workflow-controller decomposition landed with a patient-context regression lock. |
 | 2026-08-18 | Laboratory patient overview and stored-payload domain logic extracted; local unit, build, performance, and cross-role browser gates passed. | Laboratory controller reduced by 130 lines with direct safety-identity regression coverage; broader controller/style decomposition remains open. |
+| 2026-08-18 | Laboratory results/validation, Pharmacy, Nursing, and PEV boundaries extracted; shared presentation expanded; two-clinic browser attack scenario and full local release matrix passed. | Named frontend decomposition tranche is locally code-complete; canonical patient workspace gains direct tenant-isolation evidence. CI rerun and field validation remain open. |
 
 ## Related evidence
 

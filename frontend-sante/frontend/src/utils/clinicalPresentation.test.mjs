@@ -4,9 +4,13 @@ import test from 'node:test';
 import {
   formatClinicalDate,
   formatClinicalDateTime,
+  formatClinicalStatus,
   formatClinicalTime,
   formatGNF,
+  patientAddress,
+  patientAge,
   patientDisplayName,
+  patientGenderLabel,
 } from './clinicalPresentation.js';
 
 test('clinical formatters use Guinea French presentation and safe fallbacks', () => {
@@ -26,4 +30,20 @@ test('patient display names prioritize canonical server identity', () => {
   assert.equal(patientDisplayName({ full_name: 'BARRY Maimouna', first_name: 'Wrong' }), 'BARRY Maimouna');
   assert.equal(patientDisplayName({ first_name: 'Maimouna', last_name: 'Barry' }), 'Barry Maimouna');
   assert.equal(patientDisplayName(null), 'Identité non renseignée');
+});
+
+test('patient presentation handles recorded and calculated demographics', () => {
+  assert.equal(patientAge({ age: 7 }), '7');
+  assert.equal(patientAge({ date_of_birth: '2000-09-01' }, '—', new Date('2026-08-18')), '25');
+  assert.equal(patientAge({}, 'Inconnu'), 'Inconnu');
+  assert.equal(patientGenderLabel('F'), 'Féminin');
+  assert.equal(patientGenderLabel('male'), 'Masculin');
+  assert.equal(patientAddress({ quartier: 'Koloma', city: 'Conakry', region: 'Conakry' }), 'Koloma, Conakry, Conakry');
+});
+
+test('clinical statuses are translated without hiding unknown server values', () => {
+  assert.equal(formatClinicalStatus('sample_collected'), 'Prélèvement effectué');
+  assert.equal(formatClinicalStatus('partially_paid'), 'Partiellement payé');
+  assert.equal(formatClinicalStatus('custom_review'), 'custom_review');
+  assert.equal(formatClinicalStatus(''), '—');
 });

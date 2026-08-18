@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
-import { formatGNF } from '../../utils/appointmentPresentation.js';
+import { formatClinicalDate, formatClinicalTime, formatGNF, patientAddress, patientAge, patientGenderLabel } from '../../utils/clinicalPresentation.js';
 import { formatApiError } from '../../utils/apiError.js';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
 import PrintClinicHeader from '../../components/print/PrintClinicHeader.jsx';
 import PharmacyMedicationAutocomplete from './PharmacyMedicationAutocomplete.jsx';
 import PharmacyStockTab from './PharmacyStockTab.jsx';
+import { AmountDisplay, DisplayField, FormNotice, PaymentMethodRadios } from './pharmacy/PharmacyFormPrimitives.jsx';
+import { BILLING_NOTICE, EMPTY_PAYMENT, emptyMedicationLine, emptyPaymentLine, initialMedicationLines, medicationLineTotal, PATIENT_NOTICE, PAYMENT_METHODS, paymentMethodLabel } from './pharmacy/pharmacyDomain.js';
 import './clinical.css';
 import './pharmacy.css';
 
@@ -16,116 +18,8 @@ const TABS = [
   { id: 'stock', label: 'Stock' },
 ];
 
-const PAYMENT_METHODS = [
-  { value: 'cash', label: 'Espèces' },
-  { value: 'orange_money', label: 'Orange Money' },
-  { value: 'bank_transfer', label: 'Virement' },
-  { value: 'card', label: 'Carte bancaire' },
-  { value: 'insurance', label: 'Assurance' },
-];
-
-const PATIENT_NOTICE = 'Recherchez et sélectionnez un patient enregistré à la réception.';
-const BILLING_NOTICE = 'Enregistrez la demande de service pour activer la facturation.';
-const INITIAL_ROW_COUNT = 4;
-const EMPTY_PAYMENT = { amount_gnf: '', payment_method: 'orange_money', reference: '' };
-const newPaymentLineId = () => `pay-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-const emptyPaymentLine = () => ({ id: newPaymentLineId(), amount_gnf: '', payment_method: 'orange_money', reference: '' });
-
-const newLineId = () => `line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-
-const emptyLine = () => ({
-  id: newLineId(),
-  designation: '',
-  quantity: '',
-  unit_price_gnf: '',
-  inventory_item_id: null,
-});
-
-const initialLines = () => Array.from({ length: INITIAL_ROW_COUNT }, () => emptyLine());
-
-const calcAge = (dob) => {
-  if (!dob) return '';
-  const b = new Date(dob);
-  if (Number.isNaN(b.getTime())) return '';
-  const n = new Date();
-  let age = n.getFullYear() - b.getFullYear();
-  const m = n.getMonth() - b.getMonth();
-  if (m < 0 || (m === 0 && n.getDate() < b.getDate())) age -= 1;
-  return age >= 0 ? String(age) : '';
-};
-
-const genderLabel = (g) => {
-  if (g === 'F') return 'Féminin';
-  if (g === 'M') return 'Masculin';
-  return g || '';
-};
-
-const patientAge = (patient) => {
-  if (!patient) return '';
-  if (patient.date_of_birth) return calcAge(patient.date_of_birth);
-  if (patient.age != null && patient.age !== '') return String(patient.age);
-  return '';
-};
-
-const patientAddress = (patient) => {
-  if (!patient) return '';
-  return [patient.address || patient.quartier, patient.city, patient.region].filter(Boolean).join(', ');
-};
-
-const methodLabel = (value) => PAYMENT_METHODS.find((m) => m.value === value)?.label || value || '—';
-
-const ReadOnlyDisplay = ({ value }) => (
-  <div
-    className={`reception-his-auto-display${value ? ' reception-his-auto-display--filled' : ' reception-his-auto-display--empty'}`}
-    aria-live="polite"
-  >
-    {value || ''}
-  </div>
-);
-
-const DisplayField = ({ label, value }) => (
-  <label>
-    {label}
-    <ReadOnlyDisplay value={value} />
-  </label>
-);
-
-const AmountDisplay = ({ amountGnf }) => {
-  const has = amountGnf != null && amountGnf !== '' && !Number.isNaN(Number(amountGnf));
-  return <ReadOnlyDisplay value={has ? formatGNF(Number(amountGnf)) : ''} />;
-};
-
-const FormNotice = ({ children }) =>
-  children ? <p className="reception-his-form-notice">{children}</p> : null;
-
-const PaymentMethodRadios = ({ name, value, onChange, methods, disabled }) => (
-  <div className="reception-his-payment-methods" role="radiogroup" aria-label="Mode de paiement">
-    {methods.map((m) => (
-      <label key={m.value} className="reception-his-payment-option">
-        <input
-          type="radio"
-          name={name}
-          checked={value === m.value}
-          onChange={() => onChange(m.value)}
-          disabled={disabled}
-        />
-        {m.label}
-      </label>
-    ))}
-  </div>
-);
-
-// legacy single-payment radios kept for print preview only
-
-const lineTotal = (line) => {
-  const qty = Number(line.quantity);
-  const unit = Number(line.unit_price_gnf);
-  if (!Number.isFinite(qty) || !Number.isFinite(unit) || qty < 1 || unit < 0) return 0;
-  return qty * unit;
-};
-
-const formatPrintDate = (d = new Date()) => d.toLocaleDateString('fr-FR');
-const formatPrintTime = (d = new Date()) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+const formatPrintDate = (d = new Date()) => formatClinicalDate(d);
+const formatPrintTime = (d = new Date()) => formatClinicalTime(d);
 
 export default function PharmacyDashboard() {
   const { user } = useAuth();
@@ -141,7 +35,7 @@ export default function PharmacyDashboard() {
   const [searchError, setSearchError] = useState('');
   const [selectedPatient, setSelectedPatient] = useState(null);
 
-  const [lines, setLines] = useState(initialLines);
+  const [lines, setLines] = useState(initialMedicationLines);
   const [savedRequest, setSavedRequest] = useState(null);
   const [paymentLines, setPaymentLines] = useState([emptyPaymentLine()]);
   const [exemptionPercent, setExemptionPercent] = useState('0');
@@ -202,7 +96,7 @@ export default function PharmacyDashboard() {
   };
 
   const requestTotal = useMemo(
-    () => lines.reduce((sum, line) => sum + lineTotal(line), 0),
+    () => lines.reduce((sum, line) => sum + medicationLineTotal(line), 0),
     [lines]
   );
 
@@ -244,7 +138,7 @@ export default function PharmacyDashboard() {
     setSearchError('');
     setSavedRequest(null);
     prefillPharmacyPayments('');
-    setLines(initialLines());
+    setLines(initialMedicationLines());
     setError('');
     setMessage(`Patient sélectionné : ${patient.last_name} ${patient.first_name} · N° ${patient.patient_number || patient.id}`);
   }, [setRoutePatientId]);
@@ -255,7 +149,7 @@ export default function PharmacyDashboard() {
     setRoutePatientId('');
     setSavedRequest(null);
     prefillPharmacyPayments('');
-    setLines(initialLines());
+    setLines(initialMedicationLines());
     setMessage('');
     setError('');
   };
@@ -281,7 +175,7 @@ export default function PharmacyDashboard() {
     });
   };
 
-  const addLine = () => setLines((rows) => [...rows, emptyLine()]);
+  const addLine = () => setLines((rows) => [...rows, emptyMedicationLine()]);
   const removeLine = (id) => {
     setLines((rows) => (rows.length <= 1 ? rows : rows.filter((r) => r.id !== id)));
   };
@@ -405,7 +299,7 @@ export default function PharmacyDashboard() {
           product_name: l.designation.trim(),
           quantity: Number(l.quantity) || 0,
           unit_price_gnf: Number(l.unit_price_gnf) || 0,
-          total_gnf: lineTotal(l),
+          total_gnf: medicationLineTotal(l),
         }));
 
   const printNow = new Date();
@@ -494,12 +388,12 @@ export default function PharmacyDashboard() {
                 <DisplayField label="N° dossier" value={selectedPatient?.patient_number || (selectedPatient ? String(selectedPatient.id) : '')} />
                 <DisplayField label="Nom" value={selectedPatient?.last_name} />
                 <DisplayField label="Prénom" value={selectedPatient?.first_name} />
-                <DisplayField label="Âge" value={patientAge(selectedPatient)} />
+                <DisplayField label="Âge" value={patientAge(selectedPatient, '')} />
               </div>
               <div className="reception-his-form-row reception-his-form-row--3">
-                <DisplayField label="Sexe" value={genderLabel(selectedPatient?.gender)} />
+                <DisplayField label="Sexe" value={patientGenderLabel(selectedPatient?.gender, '')} />
                 <DisplayField label="Téléphone" value={selectedPatient?.phone} />
-                <DisplayField label="Adresse" value={patientAddress(selectedPatient)} />
+                <DisplayField label="Adresse" value={patientAddress(selectedPatient, '')} />
               </div>
             </section>
 
@@ -548,7 +442,7 @@ export default function PharmacyDashboard() {
                             disabled={!selectedPatient}
                           />
                         </td>
-                        <td className="pharmacy-his-total-cell">{formatGNF(lineTotal(line))}</td>
+                        <td className="pharmacy-his-total-cell">{formatGNF(medicationLineTotal(line))}</td>
                         <td>
                           <button
                             type="button"
@@ -730,7 +624,7 @@ export default function PharmacyDashboard() {
                     <tbody>
                       {paymentRows.map((p) => (
                         <tr key={p.id}>
-                          <td>{methodLabel(p.payment_method)}</td>
+                          <td>{paymentMethodLabel(p.payment_method)}</td>
                           <td>{formatGNF(p.amount_gnf)}</td>
                           <td>{p.reference || '—'}</td>
                         </tr>
@@ -807,7 +701,7 @@ export default function PharmacyDashboard() {
             <ul>
               {paymentRows.map((p) => (
                 <li key={p.id}>
-                  {methodLabel(p.payment_method)} … {formatGNF(p.amount_gnf)}
+                  {paymentMethodLabel(p.payment_method)} … {formatGNF(p.amount_gnf)}
                 </li>
               ))}
             </ul>
