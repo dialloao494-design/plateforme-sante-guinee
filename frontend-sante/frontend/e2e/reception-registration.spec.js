@@ -26,9 +26,9 @@ test('reception can register a new patient end to end', async ({ page }) => {
 
   await page.getByTestId('reception-register-submit').click();
 
-  await expect(page.getByText(/Patient enregistré · N° dossier patient PAT-/i)).toBeVisible();
   await expect(page.getByTestId('reception-patient-number')).toContainText(/PAT-\d{3}-\d{6}/);
   await expect(page.getByTestId('reception-registration-success')).toBeVisible();
+  await expect(page.getByText('Dossier créé. Imprimez la fiche ou commencez un nouvel enregistrement.')).toBeVisible();
 });
 
 test('reception duplicate patient shows matches and allow confirm', async ({ page }) => {

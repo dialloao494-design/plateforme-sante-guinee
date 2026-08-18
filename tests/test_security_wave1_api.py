@@ -198,3 +198,10 @@ def test_audit_requires_admin_audit_permission(client, db_session):
     detail = str(r.json().get("detail", "")).lower()
     assert "permission denied" in detail
     assert "requires one of" not in detail
+
+
+def test_clinic_administrators_can_use_the_billing_workspace_the_ui_exposes():
+    for role in ("admin", "clinic_admin"):
+        actor = User(role=role)
+        assert has_permission(actor, Permission.BILLING_READ)
+        assert has_permission(actor, Permission.BILLING_PAY)

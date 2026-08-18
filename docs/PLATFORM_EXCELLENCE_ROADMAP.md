@@ -66,10 +66,12 @@ Current evidence:
 
 | Gate | State | Evidence |
 |---|---|---|
-| Backend test suite | CI VERIFIED | 425 passed, 1 skipped locally during remediation; backend CI green on `0a43385`. |
-| Frontend unit tests | CI VERIFIED | 33 passed locally; frontend CI green on `0a43385`. |
-| Offline unit/pure tests | CI VERIFIED | 31 passed locally; frontend CI green on `0a43385`. |
-| Browser E2E | CI VERIFIED | 20/20 passed locally in CI mode; [CI run 32090605230](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32090605230) succeeded. |
+| Backend test suite | LOCAL VERIFIED; prior CI green | 435 passed, 1 skipped on the final 2026-08-18 matrix; backend CI was green before this local tranche. |
+| Frontend unit tests | LOCAL VERIFIED; prior CI green | 44/44 passed after the final session-race repair. |
+| Offline unit/pure tests | LOCAL VERIFIED; prior CI green | 37/37 passed, including corrupt-cache/export and restart recovery. |
+| Browser E2E | LOCAL VERIFIED; prior CI green | 34/34 passed with the CI worker count, including responsive, WCAG-blocking, offline, cross-clinic, and role workflows. |
+| Dependency audits | LOCAL VERIFIED | `pip-audit` reports no known production Python vulnerabilities; `npm audit --omit=dev` reports zero vulnerabilities. |
+| Frontend build/performance | LOCAL VERIFIED | Lint and production build pass; all six JavaScript/route/stylesheet budgets pass. |
 | Deployment and production smoke | PRODUCTION VERIFIED | [Deployment run 32091947808](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32091947808) succeeded for `f6d5635`. |
 | Latest validation-trigger CI | Superseded/cancelled | [Run 32091947800](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32091947800) was cancelled; use the preceding successful CI evidence above, not this run as a green claim. |
 | Repository state at update | Documented | `main` at `f6d5635` before this documentation change. |
@@ -84,10 +86,10 @@ remain permanent gates, and cancellation must never be reported as success.
 | Core clinical functionality | Strong | Pilot-ready; field validation remains workflow-specific. |
 | Backend reliability | Strong | Broad automated coverage and production health checks. |
 | Database integrity | Strong | Versioned migrations, billing integrity, dossier-number constraints. |
-| Security architecture | Strong | Operational exercises and fresh dependency evidence remain. |
-| Offline engine | Technically solid | Full browser/network recovery and field evidence remain. |
-| Frontend maintainability | Needs restructuring | Large modules and stylesheet create regression risk. |
-| UX consistency | Improving, fragmented | Reception improved; clinical modules remain inconsistent. |
+| Security architecture | Strong | Dependency evidence is current; operational exercises remain. |
+| Offline engine | Technically solid | Automated browser/network recovery is green; field wording exercise remains. |
+| Frontend maintainability | Improving | Shared patterns and extracted workflows landed; further controller/style reduction remains routine debt. |
+| UX consistency | Cohesive baseline | Core hospital workspaces now share navigation, layout, feedback, and responsive patterns; field review remains. |
 | Automated testing | Strong | Green reference CI exists; keep browser gate reliable. |
 | Deployment | Live | Latest validation deployment and smoke workflow succeeded. |
 | Supervised clinic pilot | Yes | Continue with backups and an escalation contact. |
@@ -534,6 +536,7 @@ and a clear escalation contact.
 | 2026-08-18 | Offline recovery export upgraded to a scope-checked v2 manifest; corrupt conflict copies gain integrity warnings; unreadable mutations cannot be blindly retried; restart/network/concurrent-device Chromium cases passed 4/4 with 37/37 offline tests and all performance budgets green. | Automated offline recovery evidence is stronger and safer for clinic support; the observed clinic wording exercise remains the only offline certification exit item. |
 | 2026-08-18 | Guarded backup/restore evidence runner, checksum manifests, isolated-target enforcement, migration/table/orphan integrity probes, and RPO/RTO measurement added; 31/31 focused DR tests passed. | Backup tooling moves to locally verified; a timed restore of a recent encrypted production backup plus attachment recovery remains an operational release requirement. |
 | 2026-08-18 | Session, permission/tenant, audit, attachment, and WebSocket controls re-audited; live WebSockets now honor logout/disable/version invalidation and denied attachment access is audited. Focused security gates passed 67/67 (WebSockets 9/9). | Requested code-level security controls are verified; privileged MFA, access review, retention/key rotation, proxy exercise, and incident response remain operational work. |
+| 2026-08-18 | Final local release matrix exposed and fixed a logout/re-login revocation race, duplicate refresh rotation, a stale registration assertion, and clinic-admin billing permission mismatch. Final gates: backend 435 passed/1 skipped; frontend 44/44; offline 37/37; Chromium 34/34; lint/build and six budgets green; Python and npm production audits clean. | Requested code-based tranche is locally release-green. Current commits still require remote CI/deployment verification; field/offline wording, production restore, MFA/access review, and operational drills are not claimed complete. |
 
 ## Related evidence
 

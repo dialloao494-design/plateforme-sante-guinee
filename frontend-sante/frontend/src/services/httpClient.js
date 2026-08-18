@@ -251,6 +251,26 @@ const httpClient = axios.create({
   timeout: 60_000,
 });
 
+let authRefreshPromise = null;
+
+/** Rotate a refresh token once even when several requests fail together. */
+export function refreshAuthSession() {
+  if (!authRefreshPromise) {
+    authRefreshPromise = (async () => {
+      const storedRefreshToken = getRefreshToken();
+      const refreshBody = storedRefreshToken ? { refresh_token: storedRefreshToken } : {};
+      const response = await httpClient.post('/auth/refresh', refreshBody, {
+        __skipAuthRefresh: true,
+      });
+      persistSessionTokens(response?.data || {});
+      return response?.data || {};
+    })().finally(() => {
+      authRefreshPromise = null;
+    });
+  }
+  return authRefreshPromise;
+}
+
 httpClient.interceptors.request.use(
   (config) => {
     const runtimeBase = config.baseURL || httpClient.defaults.baseURL || API_BASE_URL;
@@ -372,11 +392,7 @@ httpClient.interceptors.response.use(
       if (canRefresh) {
         try {
           config.__authRefreshAttempt = true;
-          const refreshBody = getRefreshToken() ? { refresh_token: getRefreshToken() } : {};
-          const refreshed = await httpClient.post('/auth/refresh', refreshBody, {
-            __skipAuthRefresh: true,
-          });
-          persistSessionTokens(refreshed?.data || {});
+          await refreshAuthSession();
           return httpClient(config);
         } catch {
           /* fall through to logout below */

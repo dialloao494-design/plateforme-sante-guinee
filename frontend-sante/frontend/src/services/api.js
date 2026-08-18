@@ -1,4 +1,4 @@
-import httpClient, { API_BASE_URL } from './httpClient.js';
+import httpClient, { API_BASE_URL, refreshAuthSession } from './httpClient.js';
 import { CACHE_TTL } from '../utils/apiCache.js';
 import { cachedGet } from '../utils/cachedHttp.js';
 
@@ -38,13 +38,7 @@ export const getAuthenticatedUser = async (opts = {}) => {
 export const authAPI = {
   login,
   me: (opts) => getAuthenticatedUser(opts),
-  refresh: async () => {
-    const { getRefreshToken, persistSessionTokens } = await import('../utils/authStorage.js');
-    const body = getRefreshToken() ? { refresh_token: getRefreshToken() } : {};
-    const { data } = await httpClient.post('/auth/refresh', body);
-    persistSessionTokens(data || {});
-    return data;
-  },
+  refresh: () => refreshAuthSession(),
   logout: async () => {
     const { data } = await httpClient.post('/auth/logout');
     return data;

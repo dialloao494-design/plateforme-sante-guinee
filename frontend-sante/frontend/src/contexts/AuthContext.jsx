@@ -107,14 +107,22 @@ export const AuthProvider = ({ children }) => {
     return normalizedUser;
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     // Stop offline replay before clearing identity-bound IndexedDB/PHI caches.
     stopAutoSync();
-    // Clear React state immediately; the logout request clears HttpOnly cookies server-side.
-    void authAPI.logout().catch(() => {}).finally(() => clearClientAuth());
-    clearPasswordResetFlags();
-    setUser(null);
-    setError(null);
+    // Wait for server-side family/JTI/session invalidation before exposing the
+    // login form. Otherwise a fast re-login can be invalidated by the older
+    // logout request completing afterward.
+    try {
+      await authAPI.logout();
+    } catch {
+      // Local credentials must still be removed when the network is unavailable.
+    } finally {
+      clearClientAuth();
+      clearPasswordResetFlags();
+      setUser(null);
+      setError(null);
+    }
   }, []);
 
   const fetchCurrentUser = useCallback(async ({ allowRefresh = false } = {}) => {
@@ -334,8 +342,8 @@ export const AuthProvider = ({ children }) => {
 function SessionTimeoutBridge({ children, logout, isAuthenticated, authLoading }) {
   const navigate = useNavigate();
 
-  const handleExpire = useCallback(() => {
-    logout();
+  const handleExpire = useCallback(async () => {
+    await logout();
     navigate('/login', { replace: true });
   }, [logout, navigate]);
 
@@ -344,8 +352,8 @@ function SessionTimeoutBridge({ children, logout, isAuthenticated, authLoading }
     onExpire: handleExpire,
   });
 
-  const handleLogoutFromModal = () => {
-    logout();
+  const handleLogoutFromModal = async () => {
+    await logout();
     navigate('/login', { replace: true });
   };
 

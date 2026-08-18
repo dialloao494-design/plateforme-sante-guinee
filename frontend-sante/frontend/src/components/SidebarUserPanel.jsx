@@ -26,8 +26,8 @@ export default function SidebarUserPanel({ role, onNavigate }) {
     return null;
   }
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     if (typeof onNavigate === 'function') {
       onNavigate();
     }
