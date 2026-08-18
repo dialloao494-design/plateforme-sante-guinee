@@ -29,6 +29,7 @@ npm run dev
 
 | Guide | Description |
 |-------|-------------|
+| [docs/PLATFORM_EXCELLENCE_ROADMAP.md](docs/PLATFORM_EXCELLENCE_ROADMAP.md) | **Living platform verdict, risks, priorities, and hospital-readiness gates** |
 | [docs/PRODUCTION_DEPLOYMENT_PACKAGE.md](docs/PRODUCTION_DEPLOYMENT_PACKAGE.md) | **Pilot go-live — all checklists** |
 | [RELEASE_NOTES.md](RELEASE_NOTES.md) | **v1.0.0-pilot release notes** |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Environment, Docker, VPS production |

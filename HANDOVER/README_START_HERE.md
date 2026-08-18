@@ -122,16 +122,17 @@ Lire **dans cet ordre** avant toute modification importante :
 | # | Document | Contenu |
 |---|----------|---------|
 | 1 | **Ce fichier** (`README_START_HERE.md`) | Vue d'ensemble, accès, structure |
-| 2 | [`INSTALLATION_COMPLETE.md`](./INSTALLATION_COMPLETE.md) | Installation locale + Docker + PostgreSQL |
-| 3 | [`CHECKLIST_REPRISE.md`](./CHECKLIST_REPRISE.md) | Vérifications obligatoires avant de coder |
-| 4 | [`../ARCHITECTURE_GLOBALE.md`](../ARCHITECTURE_GLOBALE.md) | Architecture technique détaillée |
-| 5 | [`../DOSSIER_PATIENT.md`](../DOSSIER_PATIENT.md) | Module dossier clinique + RBAC + audit |
-| 6 | [`DEPLOIEMENT_VPS.md`](./DEPLOIEMENT_VPS.md) | Mise en production autonome |
-| 7 | [`INCIDENTS_ET_DEPANNAGE.md`](./INCIDENTS_ET_DEPANNAGE.md) | Problèmes connus et solutions |
-| 8 | [`ROADMAP_90_JOURS.md`](./ROADMAP_90_JOURS.md) | Priorités produit et technique |
-| 9 | [`../GUIDE_UTILISATEUR_PATIENT.md`](../GUIDE_UTILISATEUR_PATIENT.md) | Parcours patient |
-| 10 | [`../GUIDE_UTILISATEUR_MEDECIN.md`](../GUIDE_UTILISATEUR_MEDECIN.md) | Parcours médecin |
-| 11 | [`../RAPPORT_ETAT_PROJET.md`](../RAPPORT_ETAT_PROJET.md) | État du projet au moment de la passation |
+| 2 | [`../docs/PLATFORM_EXCELLENCE_ROADMAP.md`](../docs/PLATFORM_EXCELLENCE_ROADMAP.md) | Verdict vivant, risques et priorités vers une plateforme hospitalière |
+| 3 | [`INSTALLATION_COMPLETE.md`](./INSTALLATION_COMPLETE.md) | Installation locale + Docker + PostgreSQL |
+| 4 | [`CHECKLIST_REPRISE.md`](./CHECKLIST_REPRISE.md) | Vérifications obligatoires avant de coder |
+| 5 | [`../ARCHITECTURE_GLOBALE.md`](../ARCHITECTURE_GLOBALE.md) | Architecture technique détaillée |
+| 6 | [`../DOSSIER_PATIENT.md`](../DOSSIER_PATIENT.md) | Module dossier clinique + RBAC + audit |
+| 7 | [`DEPLOIEMENT_VPS.md`](./DEPLOIEMENT_VPS.md) | Mise en production autonome |
+| 8 | [`INCIDENTS_ET_DEPANNAGE.md`](./INCIDENTS_ET_DEPANNAGE.md) | Problèmes connus et solutions |
+| 9 | [`ROADMAP_90_JOURS.md`](./ROADMAP_90_JOURS.md) | Priorités produit et technique |
+| 10 | [`../GUIDE_UTILISATEUR_PATIENT.md`](../GUIDE_UTILISATEUR_PATIENT.md) | Parcours patient |
+| 11 | [`../GUIDE_UTILISATEUR_MEDECIN.md`](../GUIDE_UTILISATEUR_MEDECIN.md) | Parcours médecin |
+| 12 | [`../RAPPORT_ETAT_PROJET.md`](../RAPPORT_ETAT_PROJET.md) | État du projet au moment de la passation |
 
 Documentation complémentaire (référence) :
 
