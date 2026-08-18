@@ -19,6 +19,7 @@ export {
   normalizeQueuedPayload,
   listDeadOutbox,
   retryDeadOutbox,
+  markOutboxCorrupted,
   recoverStaleInFlight,
   OUTBOX_STATUS,
 } from './outbox.js';
@@ -73,3 +74,8 @@ export {
   resolveOutboxItemPatientRefs,
   sortOutboxForPatientDependencies,
 } from './remapPatientRefs.js';
+export {
+  buildOfflineRecoveryExport,
+  downloadOfflineRecoveryExport,
+  recoveryExportFilename,
+} from './recovery.js';

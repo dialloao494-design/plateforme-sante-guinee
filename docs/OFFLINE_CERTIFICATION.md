@@ -1,0 +1,74 @@
+# Offline certification and clinic exercise
+
+**Owner:** platform maintainers and clinic lead  
+**Last code evidence:** 2026-08-18  
+**Field status:** open until the clinic exercise below is observed and signed
+
+## Safety contract
+
+- An offline patient receives a stable `offline_…` local ID immediately. This is
+  an operational reference, not the final dossier number.
+- The server remains the only authority that issues `PAT-…` dossier numbers.
+- Admissions and invoices queued against a local patient ID wait for patient
+  synchronization, then their patient references are remapped before replay.
+- Exact concurrent registrations are prevented at the database boundary. A
+  second device adopts the one canonical dossier; an intentional duplicate is
+  still possible only through the explicit confirmation workflow.
+- Corrupted derived cache entries are discarded. Corrupted durable mutations
+  are quarantined and exported; they are never replayed as empty records.
+- Recovery exports are clinic/user scoped and exclude stored request headers.
+  They contain health information and must be handled as confidential records.
+
+## Automated matrix
+
+| Scenario | Automated evidence | Expected result |
+|---|---|---|
+| Browser network loss → registration → invoice → reconnect | `e2e/reception-offline-registration.spec.js` | Local patient ID is usable for billing; one patient and one invoice replay; canonical dossier replaces all patient references. |
+| Restart while synchronization is in flight | Same browser spec | Stale in-flight work returns to pending and synchronizes after a new page/runtime starts. |
+| Two devices register the same patient concurrently | Same browser spec | One canonical dossier; both devices adopt it; no duplicate patient. |
+| Storage quota exhaustion | `tests/offline-outbox.test.mjs`, `apiError.test.mjs` | Existing work remains intact; new write fails explicitly; staff receive an actionable French message. |
+| Corrupted patient cache | `tests/offline-failure-recovery.test.mjs` | Only the damaged derived cache row is removed; durable mutations remain. |
+| Corrupted queued mutation | Same offline test | Mutation is quarantined as dead-letter, not sent; integrity warning appears in recovery export. |
+| Interrupted/stale in-flight row | `tests/offline-outbox.test.mjs` | Old in-flight work is recovered; active synchronization is untouched. |
+| Recovery export | `recovery.js` and offline tests | Pending/failed/dead mutations and conflicts export as JSON without authentication headers. |
+
+## Clinic staff validation script
+
+Run this on the clinic’s real workstation, browser, printer and normal network.
+Use a clearly marked test patient. A platform maintainer observes without guiding
+the wording interpretation.
+
+1. Sign in as reception while online and confirm the offline status control is
+   understandable when opened.
+2. Disconnect the workstation network. Register the test patient.
+3. Ask the receptionist what “ID local” and “synchronisation en attente” mean.
+   Passing answer: the record is saved locally, the final dossier is pending,
+   and the patient must not be registered again.
+4. Open **Facturation**, add a consultation, and create the invoice while still
+   offline. Confirm the queued message is understood.
+5. Close and reopen the browser once while the work is queued. Confirm the work
+   remains visible and the queue count is not lost.
+6. Reconnect. Confirm the patient receives one `PAT-…` number and the invoice is
+   attached to that same dossier. Search by phone and refresh the page.
+7. With a maintainer-provided test failure row, open offline details, explain
+   “échec permanent”, retry once, then use **Exporter pour récupération**.
+8. Confirm staff know not to email or copy the recovery file to personal media,
+   and know the clinic’s named support contact and secure transfer channel.
+
+Record date, workstation/browser versions, staff role (not patient data), each
+step pass/fail, confusing wording verbatim, observer, and follow-up owner. Only
+then may the roadmap state move to `FIELD VALIDATED`.
+
+## Recovery procedure
+
+1. Do not clear browser data, uninstall the application, create a replacement
+   patient, or repeat a financial entry.
+2. Open the offline status control and try **Synchroniser** once when the network
+   is stable.
+3. If a permanent failure remains, select **Exporter pour récupération**.
+4. Store the JSON file in the clinic-approved encrypted location and transfer it
+   only to the authorized support contact.
+5. Support reconciles each `client_request_id` against server records before any
+   manual replay. Patient and financial records require two-person verification.
+6. Delete the recovery file from the workstation only after reconciliation is
+   documented and the clinic lead approves disposal.

@@ -70,3 +70,12 @@ test('isDuplicatePatientError is false for other 409s', () => {
     false
   );
 });
+
+test('formatApiError gives an actionable storage-quota message', () => {
+  const message = formatApiError(
+    Object.assign(new Error('Quota exceeded'), { name: 'QuotaExceededError' }),
+    'fallback',
+  );
+  assert.match(message, /Stockage hors ligne plein/);
+  assert.match(message, /Exportez/);
+});

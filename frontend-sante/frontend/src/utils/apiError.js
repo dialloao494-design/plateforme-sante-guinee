@@ -70,6 +70,12 @@ export function isPermissionDeniedError(err) {
 export function formatApiError(err, fallback = 'Une erreur est survenue.') {
   if (!err) return fallback;
 
+  const errorName = String(err?.name || err?.cause?.name || '');
+  const errorText = String(err?.message || '');
+  if (/QuotaExceededError/i.test(errorName) || /quota/i.test(errorText)) {
+    return 'Stockage hors ligne plein. Les données saisies sont conservées dans ce formulaire mais ne sont pas encore enregistrées. Exportez la file hors ligne si elle est disponible, puis contactez le support de la clinique.';
+  }
+
   const detail = getApiErrorDetail(err);
   if (typeof detail === 'string' && detail.trim()) {
     return humanizeApiError(detail.trim());

@@ -112,3 +112,34 @@ test('dead-letter work is visible and can be retried', async () => {
   assert.equal(row.status, 'pending');
   assert.equal(row.attempt_count, 0);
 });
+
+test('storage quota failure rejects the new mutation without deleting existing work', async () => {
+  await offlineDb.outbox.clear();
+  await offlineDb.outbox.add({
+    owner_key: '7:3',
+    client_request_id: 'already-safe',
+    status: 'pending',
+    created_at: Date.now(),
+  });
+  const originalAdd = offlineDb.outbox.add.bind(offlineDb.outbox);
+  offlineDb.outbox.add = async () => {
+    throw new DOMException('Quota exceeded', 'QuotaExceededError');
+  };
+  try {
+    await assert.rejects(
+      enqueueMutation({
+        method: 'post',
+        url: '/clinical/reception/his/patients',
+        data: { first_name: 'Quota' },
+        clientRequestId: 'quota-rejected',
+        entityType: 'patient',
+      }),
+      (error) => error?.name === 'QuotaExceededError',
+    );
+  } finally {
+    offlineDb.outbox.add = originalAdd;
+  }
+  const rows = await offlineDb.outbox.toArray();
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].client_request_id, 'already-safe');
+});

@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import uuid
 from datetime import date, datetime, time
 from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 import models
@@ -39,6 +41,19 @@ def _normalize_phone(phone: str | None) -> str:
     if not phone:
         return ""
     return "".join(c for c in phone if c.isdigit())[-9:]
+
+
+def _registration_dedupe_key(clinic_id: int, payload: PatientRegistrationCreate) -> str:
+    identity = "|".join(
+        (
+            str(clinic_id),
+            _normalize_phone(payload.phone),
+            payload.first_name.strip().casefold(),
+            payload.last_name.strip().casefold(),
+            payload.date_of_birth.isoformat() if payload.date_of_birth else "",
+        )
+    )
+    return hashlib.sha256(identity.encode("utf-8")).hexdigest()
 
 
 def _qr_token(clinic_id: int) -> str:
@@ -212,6 +227,7 @@ class ReceptionHisService:
         # provisional dossier number before flush, then replace with the canonical
         # PAT-{clinic}-{id} once the primary key is known — single commit, never NULL.
         provisional_number = f"TMP-{clinic_id}-{uuid.uuid4().hex[:16].upper()}"
+        dedupe_key = None if payload.confirm_duplicate else _registration_dedupe_key(clinic_id, payload)
 
         patient = models.Patient(
             clinic_id=clinic_id,
@@ -243,12 +259,46 @@ class ReceptionHisService:
             payer_json=json.dumps(payer.model_dump(), ensure_ascii=False),
             qr_token=_qr_token(clinic_id),
             patient_number=provisional_number,
+            registration_dedupe_key=dedupe_key,
             is_newborn=bool(payload.is_newborn),
             registration_date=payload.registration_date,
         )
         db.add(patient)
         # Single commit: flush to allocate id, assign canonical dossier number, then commit once.
-        db.flush()
+        try:
+            db.flush()
+        except IntegrityError as error:
+            db.rollback()
+            if dedupe_key:
+                existing = (
+                    db.query(models.Patient)
+                    .filter(
+                        models.Patient.clinic_id == clinic_id,
+                        models.Patient.registration_dedupe_key == dedupe_key,
+                        models.Patient.is_archived.is_(False),
+                    )
+                    .first()
+                )
+                if existing:
+                    raise HTTPException(
+                        status_code=409,
+                        detail={
+                            "code": "duplicate_patient",
+                            "message": "Ce patient vient d’être enregistré sur un autre appareil",
+                            "matches": [
+                                DuplicatePatientMatch(
+                                    id=existing.id,
+                                    patient_number=existing.patient_number,
+                                    first_name=existing.first_name,
+                                    last_name=existing.last_name,
+                                    phone=existing.phone,
+                                    date_of_birth=existing.date_of_birth,
+                                    match_reasons=["concurrent_registration"],
+                                ).model_dump(mode="json")
+                            ],
+                        },
+                    ) from error
+            raise
         patient.patient_number = format_patient_number(clinic_id, patient.id)
         db.commit()
         db.refresh(patient)

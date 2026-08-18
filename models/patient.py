@@ -21,6 +21,9 @@ class Patient(Base):
     date_of_birth = Column(Date, nullable=True)
     date_of_birth_precision = Column(String(16), nullable=False, default="full")
     patient_number = Column(String(32), nullable=True, index=True)
+    # Exact registration fingerprint used only to close concurrent-create races.
+    # Intentional duplicates (explicitly confirmed by reception) store NULL.
+    registration_dedupe_key = Column(String(64), nullable=True, index=True)
     qr_token = Column(String(64), nullable=True, unique=True, index=True)
     photo_url = Column(Text, nullable=True)
     phone = Column(String(32), nullable=True)

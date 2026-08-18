@@ -79,8 +79,15 @@
 
 .offline-status__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.5rem;
+}
+
+.offline-status__recovery-message {
+  margin: 0.5rem 0 0;
+  color: #334155;
+  line-height: 1.35;
 }
 
 .offline-status__btn {

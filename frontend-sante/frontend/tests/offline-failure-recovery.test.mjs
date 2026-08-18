@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import { test, before, after } from 'node:test';
 import { offlineDb, clearOfflineDatabase } from '../src/offline/db.js';
 import { enqueueMutation, getPendingOutbox } from '../src/offline/outbox.js';
-import { replayOutboxItem } from '../src/offline/sync.js';
+import { flushOutbox, replayOutboxItem } from '../src/offline/sync.js';
 import { recordConflict, resolveConflict } from '../src/offline/conflict.js';
+import { buildOfflineRecoveryExport } from '../src/offline/recovery.js';
+import { getCachedPatient } from '../src/offline/cache.js';
 
 function mockScope(userId = '42', clinicId = '7') {
   const storage = {
@@ -21,6 +23,11 @@ function mockScope(userId = '42', clinicId = '7') {
   global.sessionStorage = sessionStorage;
   global.localStorage = localStorage;
   global.window = { sessionStorage, localStorage };
+  if (global.navigator) {
+    Object.defineProperty(global.navigator, 'onLine', { configurable: true, value: true });
+  } else {
+    global.navigator = { onLine: true };
+  }
 }
 
 before(async () => { await offlineDb.open(); });
@@ -83,4 +90,59 @@ test('retry_local conflict resolution restores the original mutation', async () 
   assert.equal(restored.status, 'pending');
   assert.equal(JSON.parse(restored.payload_json).result, 'local');
   assert.equal(restored.record_version, 3);
+});
+
+test('corrupted cached patient is removed without touching durable mutations', async () => {
+  mockScope('42', '7');
+  await offlineDb.patients.clear();
+  await offlineDb.outbox.clear();
+  await offlineDb.patients.add({
+    owner_key: '42:7',
+    patient_id: '9',
+    search_key: 'id:9',
+    payload_json: '{broken',
+    cached_at: Date.now(),
+    expires_at: Date.now() + 60_000,
+  });
+  await enqueueMutation({
+    method: 'post',
+    url: '/clinical/lab/orders',
+    data: { patient_id: 9 },
+    clientRequestId: 'durable-survives-cache-repair',
+  });
+  assert.equal(await getCachedPatient(9), undefined);
+  assert.equal(await offlineDb.patients.count(), 0);
+  assert.equal(await offlineDb.outbox.count(), 1);
+});
+
+test('corrupted outbox payload is quarantined for export instead of replaying empty data', async () => {
+  mockScope('42', '7');
+  await offlineDb.outbox.clear();
+  const id = await offlineDb.outbox.add({
+    owner_key: '42:7',
+    user_id: '42',
+    clinic_id: '7',
+    client_request_id: 'corrupt-payload',
+    entity_type: 'billing',
+    method: 'POST',
+    url: '/clinical/reception/his/invoices',
+    payload_json: '{broken',
+    headers_json: JSON.stringify({ Authorization: 'must-not-export' }),
+    status: 'pending',
+    attempt_count: 0,
+    created_at: Date.now(),
+    updated_at: Date.now(),
+    next_retry_at: Date.now(),
+  });
+  let calls = 0;
+  const result = await flushOutbox({ post: async () => { calls += 1; return { status: 200, data: {} }; } });
+  assert.equal(calls, 0);
+  assert.equal(result.failed, 1);
+  assert.equal((await offlineDb.outbox.get(id)).status, 'dead');
+
+  const bundle = await buildOfflineRecoveryExport();
+  assert.equal(bundle.mutations.length, 1);
+  assert.equal(bundle.mutations[0].payload, '{broken');
+  assert.equal(bundle.integrity_warnings.length, 1);
+  assert.equal(JSON.stringify(bundle).includes('must-not-export'), false);
 });

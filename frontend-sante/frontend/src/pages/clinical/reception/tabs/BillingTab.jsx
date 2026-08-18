@@ -390,8 +390,8 @@ export default function BillingTab({
                     </tr>
                   </thead>
                   <tbody>
-                    {(activeInvoice.items || []).map((item) => (
-                      <tr key={item.id}>
+                {(activeInvoice.items || []).map((item, index) => (
+                  <tr key={item.id || `${item.catalog_code || item.description}-${index}`}>
                         <td>{item.description}</td>
                         <td>{item.quantity}</td>
                         <td>{formatGNF(item.unit_price_gnf)}</td>

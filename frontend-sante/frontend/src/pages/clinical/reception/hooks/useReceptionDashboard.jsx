@@ -45,6 +45,7 @@ import {
 import {
   buildRegistrationFingerprint,
   findPendingRegistrationByFingerprint,
+  isTempPatientId,
   onPatientReconciled,
 } from '../../../../offline/reconcilePatient.js';
 import { readReceptionRouteState, updateReceptionRouteState } from '../routeState.js';
@@ -289,6 +290,10 @@ export function useReceptionDashboard() {
       setInvoices([]);
       return;
     }
+    if (isTempPatientId(patientId)) {
+      setInvoices([]);
+      return;
+    }
     try {
       const { data } = await clinicalApi.receptionHisListInvoices(patientId);
       setInvoices(data || []);
@@ -298,6 +303,10 @@ export function useReceptionDashboard() {
   }, []);
 
   const loadRefunds = useCallback(async (patientId) => {
+    if (!patientId || isTempPatientId(patientId)) {
+      setRefunds([]);
+      return;
+    }
     try {
       const { data } = await clinicalApi.receptionHisListRefunds(patientId);
       setRefunds(data || []);
@@ -546,6 +555,20 @@ export function useReceptionDashboard() {
     } else {
       setMessage('');
     }
+  };
+
+  const activateQueuedPatient = (patient) => {
+    setSelectedPatient(patient);
+    setRouteSearchParams((current) => updateReceptionRouteState(current, { patientId: patient.id }));
+    setLastAdmission(null);
+    setLastRefund(null);
+    setSearchQ('');
+    setSearchResults([]);
+    setInvoices([]);
+    setRefunds([]);
+    setActiveInvoice(null);
+    setInvoiceSearchQ('');
+    setInvoiceSearchHits([]);
   };
 
   // When an offline registration syncs, surface the real PAT- dossier number.
@@ -832,6 +855,7 @@ export function useReceptionDashboard() {
         setPendingRegPayload(null);
         setRegistrationPrintForm({ ...regForm });
         setRegisteredPatient(queued);
+        activateQueuedPatient(queued);
         setMessage(REGISTRATION_QUEUED_MESSAGE);
         return true;
       }
@@ -846,11 +870,16 @@ export function useReceptionDashboard() {
         setDuplicateMatches([]);
         setPendingRegPayload(null);
         setRegistrationPrintForm({ ...regForm });
-        setRegisteredPatient({
+        const queuedPatient = {
           ...data,
           _sync_status: 'queued',
           patient_number: null,
-        });
+        };
+        setRegisteredPatient(queuedPatient);
+        // A queued registration already has a durable local identity. Open it
+        // immediately so admissions/invoices can reference that identity while
+        // offline; reconciliation rewrites those references after reconnect.
+        activateQueuedPatient(queuedPatient);
         setMessage(REGISTRATION_QUEUED_MESSAGE);
         return true;
       }
@@ -1022,7 +1051,11 @@ export function useReceptionDashboard() {
       setActiveInvoice(data || null);
       setBillingLineItems([]);
       prefillPaymentLines(data?.remaining_balance_gnf ?? data?.total_amount_gnf ?? 0);
-      setMessage(`Facture créée · N° facture ${data?.invoice_number || '—'}`);
+      setMessage(
+        data?._offline_queued
+          ? 'Facture enregistrée hors ligne — synchronisation en attente.'
+          : `Facture créée · N° facture ${data?.invoice_number || '—'}`,
+      );
       await Promise.all([loadInvoices(selectedPatient.id), loadDashboard()]);
     } catch (err) {
       setError(formatApiError(err, 'Création de facture impossible'));
@@ -1272,7 +1305,8 @@ export function useReceptionDashboard() {
   );
   const draftRemainingAfterPay = activeMeta ? Math.max(0, activeMeta.remaining - draftPaymentTotal) : null;
 
-  const patientDossier = selectedPatient?.patient_number || '';
+  const patientDossier = selectedPatient?.patient_number
+    || (selectedPatient?._sync_status === 'queued' ? selectedPatient.id : '');
   const patientDisplayName = patientFullName(selectedPatient);
   const patientPayerLabel = useMemo(() => {
     if (!selectedPatient) return '';

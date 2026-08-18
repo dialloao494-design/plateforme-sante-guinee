@@ -11,6 +11,18 @@ export function buildOfflineCacheKey(method, url, params) {
   return buildCacheKey(method, url, params);
 }
 
+async function readCachedJson(table, row) {
+  try {
+    return JSON.parse(row.payload_json);
+  } catch {
+    // A malformed cache must never crash a clinical screen or be mistaken for
+    // valid patient data. Remove only the damaged derived row; durable outbox
+    // mutations live in a separate table and remain untouched/exportable.
+    await table.delete(row.id);
+    return undefined;
+  }
+}
+
 /** Store GET response in IndexedDB for offline replay. */
 export async function cacheGetResponse(url, params, data) {
   const key = buildOfflineCacheKey('get', url, params);
@@ -69,7 +81,7 @@ export async function getCachedGet(url, params) {
       .filter((row) => row.owner_key === ownerKey)
       .first();
     if (exact && (!exact.expires_at || exact.expires_at > now)) {
-      return JSON.parse(exact.payload_json);
+      return readCachedJson(offlineDb.patients, exact);
     }
     if (q.length >= 2) {
       const all = await offlineDb.patients.orderBy('cached_at').reverse().toArray();
@@ -77,7 +89,8 @@ export async function getCachedGet(url, params) {
       for (const row of all) {
         if (row.owner_key !== ownerKey) continue;
         if (row.expires_at && row.expires_at <= now) continue;
-        const payload = JSON.parse(row.payload_json || '[]');
+        const payload = await readCachedJson(offlineDb.patients, row);
+        if (payload === undefined) continue;
         const list = Array.isArray(payload) ? payload : payload?.results || payload?.patients || [];
         for (const p of list) {
           const hay = `${p.full_name || ''} ${p.patient_code || ''} ${p.phone || ''}`.toLowerCase();
@@ -96,7 +109,7 @@ export async function getCachedGet(url, params) {
       .filter((r) => r.owner_key === ownerKey)
       .first();
     if (row && (!row.expires_at || row.expires_at > now)) {
-      return JSON.parse(row.payload_json);
+      return readCachedJson(offlineDb.catalogs, row);
     }
     return undefined;
   }
@@ -134,7 +147,7 @@ export async function getCachedPatient(patientId) {
     .first();
   if (!row) return undefined;
   if (row.expires_at && row.expires_at <= Date.now()) return undefined;
-  return JSON.parse(row.payload_json);
+  return readCachedJson(offlineDb.patients, row);
 }
 
 export async function storeDomainEntity(domain, entity) {

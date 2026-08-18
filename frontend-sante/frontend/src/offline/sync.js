@@ -3,6 +3,7 @@ import {
   getPendingOutbox,
   markOutboxFailed,
   markOutboxInFlight,
+  markOutboxCorrupted,
   markOutboxSynced,
   resetOutboxForRetry,
   recoverStaleInFlight,
@@ -60,6 +61,20 @@ function parseJson(raw, fallback = {}) {
   }
 }
 
+function parseMutationPayload(raw) {
+  try {
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('payload is not an object');
+    }
+    return parsed;
+  } catch (error) {
+    const corrupted = new Error(`Contenu hors ligne illisible: ${error?.message || 'JSON invalide'}`);
+    corrupted.code = 'OFFLINE_CORRUPTED_PAYLOAD';
+    throw corrupted;
+  }
+}
+
 /**
  * Replay one outbox row against the API.
  * @returns {Promise<'synced' | 'failed' | 'conflict' | 'skipped' | 'blocked'>}
@@ -79,7 +94,7 @@ export async function replayOutboxItem(item, client) {
   }
   const playable = resolved.item;
 
-  const payload = parseJson(playable.payload_json);
+  const payload = parseMutationPayload(playable.payload_json);
   const params = parseJson(playable.params_json, null);
   const headers = {
     ...parseJson(playable.headers_json),
@@ -177,6 +192,11 @@ export async function flushOutbox(client = httpClientRef) {
           await markOutboxFailed(item.id, new Error('owner mismatch'), 12);
         } else failed += 1;
       } catch (error) {
+        if (error?.code === 'OFFLINE_CORRUPTED_PAYLOAD') {
+          await markOutboxCorrupted(item.id, error.message);
+          failed += 1;
+          continue;
+        }
         const attempt = Number(item.attempt_count || 0) + 1;
         if (isNetworkError(error)) {
           await markOutboxFailed(item.id, error, attempt);
@@ -185,6 +205,29 @@ export async function flushOutbox(client = httpClientRef) {
         }
         if (error?.response?.status === 409) {
           const localOptimistic = parseJson(item.optimistic_json);
+          const detail = error.response?.data?.detail;
+          const duplicateMatch = (
+            item.entity_type === 'patient'
+            && isHisPatientRegisterUrl(item.url)
+            && detail?.code === 'duplicate_patient'
+            && Array.isArray(detail.matches)
+            && detail.matches.length === 1
+            && detail.matches[0]?.id
+            && detail.matches[0]?.patient_number
+          ) ? detail.matches[0] : null;
+          if (duplicateMatch) {
+            // Another device registered this exact patient first. Adopt the
+            // canonical dossier and remap queued billing/admission work instead
+            // of leaving reception on a permanent provisional identity.
+            await markOutboxSynced(item.id, duplicateMatch);
+            await reconcilePatientCreate({
+              clientRequestId: item.client_request_id,
+              localOptimistic,
+              serverPatient: duplicateMatch,
+            });
+            synced += 1;
+            continue;
+          }
           await detectAndRecordConflict({
             clientRequestId: item.client_request_id,
             entityType: item.entity_type,

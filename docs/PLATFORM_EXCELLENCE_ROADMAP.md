@@ -302,21 +302,35 @@ complete locally; the broader workstream remains open until CI and field evidenc
 
 ### P1 — Offline release certification
 
-**Status: CI VERIFIED at component/logic level; FIELD VALIDATION OPEN**
+**Status: CODE COMPLETE and LOCALLY VERIFIED; CI/FIELD VALIDATION OPEN**
 
 Existing strengths include Dexie persistence, durable FIFO outbox behavior,
 exponential retry, dead-letter handling, stale in-flight recovery, per-user
 ownership, idempotency, dossier reconciliation, temporary-ID remapping, and
 dependent mutation ordering.
 
+Local evidence added 2026-08-18:
+
+- real Chromium network loss now covers offline patient registration, immediate
+  local identity, offline invoice creation, reconnect, canonical dossier
+  reconciliation, dependent billing remap, and an empty durable queue;
+- a second Chromium case closes the active page with a stale in-flight patient
+  mutation, starts a new runtime, and proves recovery to one searchable dossier;
+- a two-browser/device case exposed and then locked a concurrent-registration
+  race: an exact-registration fingerprint is uniquely enforced per clinic, the
+  losing device adopts the canonical dossier, and search returns one patient;
+- quota exhaustion preserves existing queued work and produces an actionable
+  message; malformed derived cache is removed without touching the outbox;
+  malformed durable payload is quarantined rather than replayed;
+- the offline status panel now exports clinic-scoped recovery JSON without
+  authentication headers; the confidential handling/escalation procedure and
+  observed staff exercise are in `docs/OFFLINE_CERTIFICATION.md`.
+
 Remaining evidence:
 
-- browser-to-backend recovery under actual network loss;
-- restart/crash recovery during synchronization;
-- multi-device/concurrent conflict behavior;
-- storage-quota and corrupted-cache recovery;
-- clinic staff comprehension of queued, failed, conflict, and synchronized states;
-- a documented escalation/export path when synchronization cannot recover.
+- the full matrix must pass CI on the committed revision;
+- clinic staff must complete and sign the observed wording/recovery exercise on
+  clinic hardware. This has not yet been claimed or inferred from automation.
 
 **Exit criterion:** the full offline matrix passes in CI and during an observed
 clinic exercise without duplicate clinical or financial records.

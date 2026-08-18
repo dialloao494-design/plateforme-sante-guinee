@@ -7,7 +7,7 @@ export default function PatientContextPanel({ selectedPatient, patientPayerLabel
     <div className={`clinical-card reception-his-patient-context${selectedPatient ? ' reception-his-patient-context--active' : ''}`}>
       <h3>Patient sélectionné</h3>
       <div className="reception-his-patient-context-grid">
-        <div><strong>N° dossier</strong><span className={selectedPatient?.patient_number ? 'reception-his-value-filled' : ''}>{selectedPatient?.patient_number || ''}</span></div>
+        <div><strong>{selectedPatient?._sync_status === 'queued' ? 'ID local' : 'N° dossier'}</strong><span className={(selectedPatient?.patient_number || selectedPatient?.id) ? 'reception-his-value-filled' : ''}>{selectedPatient?.patient_number || (selectedPatient?._sync_status === 'queued' ? selectedPatient.id : '')}</span></div>
         <div><strong>Nom</strong><span className={selectedPatient?.last_name ? 'reception-his-value-filled' : ''}>{selectedPatient?.last_name || ''}</span></div>
         <div><strong>Prénom</strong><span className={selectedPatient?.first_name ? 'reception-his-value-filled' : ''}>{selectedPatient?.first_name || ''}</span></div>
         <div><strong>Payeur</strong><span className={patientPayerLabel ? 'reception-his-value-filled' : ''}>{patientPayerLabel || ''}</span></div>

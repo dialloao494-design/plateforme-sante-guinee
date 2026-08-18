@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   countPendingOutbox,
+  downloadOfflineRecoveryExport,
   flushOutbox,
   getLastSyncAt,
   isBrowserOnline,
@@ -29,6 +30,7 @@ export default function OfflineStatusIndicator() {
   const [open, setOpen] = useState(false);
   const [conflicts, setConflicts] = useState([]);
   const [deadItems, setDeadItems] = useState([]);
+  const [recoveryMessage, setRecoveryMessage] = useState('');
 
   const refresh = useCallback(async () => {
     const [count, last, rows, dead] = await Promise.all([
@@ -83,6 +85,15 @@ export default function OfflineStatusIndicator() {
     await retryDeadOutbox(id);
     await flushOutbox();
     await refresh();
+  };
+
+  const handleExport = async () => {
+    try {
+      const bundle = await downloadOfflineRecoveryExport();
+      setRecoveryMessage(`${bundle.mutations.length} opération(s) exportée(s). Conservez le fichier en lieu sûr.`);
+    } catch (error) {
+      setRecoveryMessage(error?.message || 'Export de récupération impossible.');
+    }
   };
 
   const dotClass = syncing
@@ -175,10 +186,16 @@ export default function OfflineStatusIndicator() {
             >
               Synchroniser
             </button>
+            {(pending > 0 || conflicts.length > 0 || deadItems.length > 0) && (
+              <button type="button" className="offline-status__btn" onClick={handleExport}>
+                Exporter pour récupération
+              </button>
+            )}
             <button type="button" className="offline-status__btn" onClick={() => setOpen(false)}>
               Fermer
             </button>
           </div>
+          {recoveryMessage && <p className="offline-status__recovery-message" role="status">{recoveryMessage}</p>}
         </div>
       ) : null}
     </div>

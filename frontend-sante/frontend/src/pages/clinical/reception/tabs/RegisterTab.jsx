@@ -29,7 +29,7 @@ const PatientSummary = ({ form, registeredPatient }) => {
         <strong>{fullName || 'Identité à renseigner'}</strong>
       </div>
       <dl>
-        <div><dt>N° dossier</dt><dd>{registeredPatient?.patient_number || 'Attribué à l’enregistrement'}</dd></div>
+        <div><dt>N° dossier</dt><dd>{registeredPatient?.patient_number || 'Attribué après synchronisation'}</dd></div>
         <div><dt>Naissance</dt><dd>{birth || 'À renseigner'}</dd></div>
         <div><dt>Sexe</dt><dd>{form.gender === 'F' ? 'Féminin' : form.gender === 'M' ? 'Masculin' : form.gender || 'À renseigner'}</dd></div>
         <div><dt>Téléphone</dt><dd>{form.phone || 'À renseigner'}</dd></div>
@@ -89,6 +89,7 @@ export default function RegisterTab({
           <div className="reception-his-qr-block" data-testid="reception-registration-queued" role="status">
             <div>
               <p data-testid="reception-patient-sync-status"><strong>Enregistré hors ligne</strong> — synchronisation en attente</p>
+              <p data-testid="reception-patient-local-id"><strong>ID local :</strong> {registeredPatient.id}</p>
               <p className="clinical-hint">Le N° dossier sera attribué à la reconnexion. Ne créez pas un second dossier pour ce patient.</p>
             </div>
           </div>

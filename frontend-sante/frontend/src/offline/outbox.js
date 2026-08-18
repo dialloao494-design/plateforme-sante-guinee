@@ -233,6 +233,16 @@ export async function markOutboxFailed(id, error, attemptCount) {
   });
 }
 
+export async function markOutboxCorrupted(id, detail = 'Corrupted offline payload') {
+  await offlineDb.outbox.update(id, {
+    status: OUTBOX_STATUS.DEAD,
+    attempt_count: 12,
+    last_error: String(detail),
+    next_retry_at: null,
+    updated_at: Date.now(),
+  });
+}
+
 export async function resetOutboxForRetry(id) {
   await offlineDb.outbox.update(id, {
     status: OUTBOX_STATUS.PENDING,
