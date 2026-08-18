@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import ClinicalFeedback from '../../components/clinical/ClinicalFeedback.jsx';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 import clinicalApi from '../../services/clinicalApi';
@@ -330,8 +331,7 @@ export default function ImmunizationDashboard() {
         Registre mensuel numérique aligné sur le carnet PEV : un seul dossier patient central, toutes les vaccinations
         ajoutées à l&apos;historique commun.
       </p>
-      {error && <p className="clinical-error">{String(error)}</p>}
-      {message && <p className="clinical-success">{message}</p>}
+      <ClinicalFeedback error={error} message={message} />
 
       <div className="clinical-tabs pev-view-tabs">
         {[

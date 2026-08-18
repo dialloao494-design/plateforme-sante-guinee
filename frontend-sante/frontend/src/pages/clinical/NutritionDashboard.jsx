@@ -6,7 +6,9 @@ import { userCanWriteNutrition } from '../../utils/clinicAccess.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import ClinicalFeedback from '../../components/clinical/ClinicalFeedback.jsx';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
+import { formatClinicalDate } from '../../utils/clinicalPresentation.js';
 import './clinical.css';
 
 const STATUS_LABELS = {
@@ -161,8 +163,7 @@ export default function NutritionDashboard() {
     <div className="clinical-page" data-testid="nutrition-dashboard">
       <h1>Tableau de bord — Nutrition</h1>
       <p className="clinical-lead">Suivi de la croissance : poids, taille, périmètre brachial (MUAC).</p>
-      {error && <p className="clinical-error">{String(error)}</p>}
-      {message && <p className="clinical-success">{message}</p>}
+      <ClinicalFeedback error={error} message={message} />
       <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Patient actif en nutrition" />
 
       <ClinicalStatGrid stats={stats} />
@@ -314,7 +315,7 @@ export default function NutritionDashboard() {
                 <tbody>
                   {history.map((row) => (
                     <tr key={row.id}>
-                      <td>{new Date(row.recorded_at).toLocaleDateString('fr-FR')}</td>
+                      <td>{formatClinicalDate(row.recorded_at)}</td>
                       <td>{row.weight_kg ?? '—'}</td>
                       <td>{row.height_cm ?? '—'}</td>
                       <td>{row.muac_cm ?? '—'}</td>

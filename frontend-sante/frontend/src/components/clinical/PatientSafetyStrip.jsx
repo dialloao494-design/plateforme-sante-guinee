@@ -1,8 +1,4 @@
-function patientFullName(patient) {
-  return patient?.full_name
-    || [patient?.last_name, patient?.first_name].filter(Boolean).join(' ')
-    || 'Identité non renseignée';
-}
+import { patientDisplayName } from '../../utils/clinicalPresentation.js';
 
 function patientAge(patient) {
   const explicitAge = patient?.age_years ?? patient?.age;
@@ -32,7 +28,7 @@ export default function PatientSafetyStrip({ patient, onClose, contextLabel = 'D
       <span className="patient-safety-strip__marker" aria-hidden="true">P</span>
       <div className="patient-safety-strip__identity">
         <span className="patient-safety-strip__eyebrow">{contextLabel}</span>
-        <strong>{patientFullName(patient)}</strong>
+        <strong>{patientDisplayName(patient)}</strong>
       </div>
       <dl className="patient-safety-strip__facts">
         <div><dt>N° dossier</dt><dd translate="no">{patient.patient_number || 'Non attribué'}</dd></div>

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import ClinicalFeedback from '../../components/clinical/ClinicalFeedback.jsx';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
+import { formatClinicalDateTime } from '../../utils/clinicalPresentation.js';
 import clinicalApi from '../../services/clinicalApi';
 import { formatApiError } from '../../utils/apiError.js';
 import './clinical.css';
@@ -26,15 +28,6 @@ const MODULE_COLORS = {
   lab: 'clinical-badge--accent',
   pharmacy: 'clinical-badge--success',
 };
-
-function formatWhen(value) {
-  if (!value) return '—';
-  try {
-    return new Date(value).toLocaleString('fr-FR');
-  } catch {
-    return String(value);
-  }
-}
 
 export default function PatientHistoryDashboard() {
   const { patientId: routePatientId, setPatientId: setRoutePatientId } = useClinicalPatientRoute();
@@ -107,7 +100,7 @@ export default function PatientHistoryDashboard() {
       <p className="clinical-lead">
         Historique chronologique unifié : réception, consultations, PEV, nutrition, hospitalisation, soins, laboratoire et pharmacie.
       </p>
-      {error && <p className="clinical-error">{String(error)}</p>}
+      <ClinicalFeedback error={error} />
       <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Dossier longitudinal actif" />
 
       <section className="clinical-card">
@@ -191,7 +184,7 @@ export default function PatientHistoryDashboard() {
                       <span className={`clinical-badge ${MODULE_COLORS[ev.module] || ''}`}>
                         {MODULE_LABELS[ev.module] || ev.module}
                       </span>
-                      <time>{formatWhen(ev.at)}</time>
+                      <time dateTime={ev.at || undefined}>{formatClinicalDateTime(ev.at)}</time>
                     </div>
                     <p className="clinical-timeline-summary">{ev.summary}</p>
                     {ev.detail && (

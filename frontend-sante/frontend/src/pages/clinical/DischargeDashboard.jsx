@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import { useConfirm } from '../../contexts/ConfirmContext.jsx';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import ClinicalFeedback from '../../components/clinical/ClinicalFeedback.jsx';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
@@ -124,8 +125,7 @@ export default function DischargeDashboard() {
         <h1>Sortie patient</h1>
         <p>Validation facture, bon de sortie et archivage dossier médical.</p>
       </header>
-      {error && <div className="clinical-alert clinical-alert--error">{String(error)}</div>}
-      {message && <div className="clinical-alert clinical-alert--success">{message}</div>}
+      <ClinicalFeedback error={error} message={message} />
       <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Patient actif pour la sortie" />
       <ClinicalStatGrid stats={stats} />
 

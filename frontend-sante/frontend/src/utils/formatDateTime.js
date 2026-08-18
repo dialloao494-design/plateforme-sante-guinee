@@ -1,24 +1,11 @@
-const LOCALE = 'fr-GN';
+import { formatClinicalDateTime, formatClinicalTime } from './clinicalPresentation.js';
 
 export function formatDateTimeShort(iso) {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleString(LOCALE, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
-  } catch {
-    return '—';
-  }
+  return formatClinicalDateTime(iso);
 }
 
 export function formatTimeOnly(iso) {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
-  } catch {
-    return '—';
-  }
+  return formatClinicalTime(iso);
 }
 
 export function formatRelativeDay(iso) {
@@ -30,5 +17,5 @@ export function formatRelativeDay(iso) {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
   if (d.toDateString() === tomorrow.toDateString()) return 'Demain';
-  return d.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'short' });
+  return new Intl.DateTimeFormat('fr-GN', { weekday: 'long', day: 'numeric', month: 'short' }).format(d);
 }

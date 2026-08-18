@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import ClinicalFeedback from '../../components/clinical/ClinicalFeedback.jsx';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 import clinicalApi from '../../services/clinicalApi';
 import { formatApiError } from '../../utils/apiError.js';
@@ -145,8 +146,7 @@ export default function NursingCareDashboard() {
       <p className="clinical-lead">
         Enregistrement des soins : injections, perfusions, pansements, sutures — registre mensuel automatique.
       </p>
-      {error && <p className="clinical-error">{String(error)}</p>}
-      {message && <p className="clinical-success">{message}</p>}
+      <ClinicalFeedback error={error} message={message} />
       <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Patient actif pour les soins" />
 
       <ClinicalStatGrid stats={stats} />

@@ -199,7 +199,10 @@ shared clinical component used consistently by all patient-bound clinical
 dashboards, with role-specific context labels and a single “Fermer le dossier”
 action. The doctor workflow additionally separates passive dossier restoration
 from the write action that starts a consultation. This is locally
-browser-verified, not yet field-validated.
+browser-verified, not yet field-validated. Clinical errors and success messages
+in the migrated workspaces now use one shared live-region component with alert
+and status semantics; the focused WCAG browser gate reports no serious or
+critical violations (known contrast warnings remain tracked).
 
 ### P1 — Frontend decomposition and performance
 
@@ -236,9 +239,17 @@ Implemented evidence (2026-08-18):
   **27 KB**, Nurse approximately **18 KB** in the local production build);
 - the build no longer reports a chunk over 500 KB or an ineffective clinical
   dashboard dynamic import.
+- Guinea-French date, time, GNF currency, and patient-name presentation now use
+  one tested formatter layer; existing appointment/date utilities delegate to
+  it instead of maintaining competing locale behavior;
+- CI now enforces explicit uncompressed budgets for the largest JavaScript
+  asset, shared clinical stylesheet, Reception, Doctor, Laboratory, and Pharmacy
+  route chunks. The local production build passes all 6 budgets (largest JS
+  **214.84 KiB**, clinical CSS **58.56 KiB**, Reception **106.04 KiB**, Doctor
+  **40.73 KiB**, Laboratory **32.62 KiB**, Pharmacy **26.58 KiB**).
 
 Remaining: split large workflow controllers and the shared clinical stylesheet,
-centralize formatters, establish performance budgets, and validate on clinic
+finish migrating legacy presentation calls, and validate on clinic
 hardware/network conditions.
 
 ### P1 — Offline release certification
@@ -362,6 +373,7 @@ and a clear escalation contact.
 | 2026-08-18 | Shared patient URL context and safety strip landed locally for Reception, Nursing, Laboratory, and Pharmacy; focused browser regression passed. | Canonical workspace and clinical UX workstreams moved to IN PROGRESS. |
 | 2026-08-18 | Hook warnings reduced from 10 to 0 and forced 572 KB clinical bundle removed. | Frontend maintainability/performance tranche locally verified; workstream remains open overall. |
 | 2026-08-18 | Shared patient context expanded to every patient-bound clinical dashboard; doctor deep links made read-only until explicit consultation start; focused browser regression passed across 13 workspaces. | Canonical workspace implementation moved to CODE COMPLETE; CI, cross-clinic browser evidence, and field validation remain. |
+| 2026-08-18 | Shared clinical formatters/live-region feedback added and route/style performance budgets enforced in CI; local unit, build, budget, accessibility, and cross-role browser checks passed. | UX coherence and frontend maintainability advanced; controller/style decomposition and field validation remain. |
 
 ## Related evidence
 

@@ -90,6 +90,8 @@ jobs:
         env:
           VITE_API_URL: https://example.com/api
           VITE_TELECONSULT_PROVIDER: stub
+      - name: Enforce clinic bundle performance budgets
+        run: npm run check:performance
 
   e2e-tests:
     runs-on: ubuntu-latest

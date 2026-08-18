@@ -5,13 +5,11 @@ import clinicalApi from '../../services/clinicalApi';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import PatientPicker from '../../components/PatientPicker.jsx';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import ClinicalFeedback from '../../components/clinical/ClinicalFeedback.jsx';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
+import { formatClinicalDateTime, formatGNF } from '../../utils/clinicalPresentation.js';
 
 import './clinical.css';
-
-function formatGNF(n) {
-  return `${Number(n || 0).toLocaleString('fr-GN')} GNF`;
-}
 
 export default function UnifiedBillingDashboard() {
   const { patientId: routePatientId, setPatientId: setRoutePatientId } = useClinicalPatientRoute();
@@ -118,8 +116,7 @@ export default function UnifiedBillingDashboard() {
         <h1>Facturation unifiée</h1>
         <p>Agrégation consultation, labo, radio, pharmacie et hospitalisation.</p>
       </header>
-      {error && <div className="clinical-alert clinical-alert--error">{String(error)}</div>}
-      {message && <div className="clinical-alert clinical-alert--success">{message}</div>}
+      <ClinicalFeedback error={error} message={message} />
       <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Patient actif à la facturation" />
       <ClinicalStatGrid stats={stats} />
 
@@ -134,7 +131,7 @@ export default function UnifiedBillingDashboard() {
                 <option value="">Toutes les charges non facturées</option>
                 {patientVisits.map((visit) => (
                   <option key={visit.id} value={visit.id}>
-                    Visite du {new Date(visit.started_at).toLocaleString('fr-GN')} · {visit.status}
+                    Visite du {formatClinicalDateTime(visit.started_at)} · {visit.status}
                   </option>
                 ))}
               </select>

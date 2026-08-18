@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import clinicalApi from '../../services/clinicalApi';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import ClinicalFeedback from '../../components/clinical/ClinicalFeedback.jsx';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
@@ -109,8 +110,7 @@ export default function RadiologyDashboard() {
         <h1>Imagerie médicale</h1>
         <p>RX, échographie, scanner — prescription à validation médecin.</p>
       </header>
-      {error && <div className="clinical-alert clinical-alert--error">{String(error)}</div>}
-      {message && <div className="clinical-alert clinical-alert--success">{message}</div>}
+      <ClinicalFeedback error={error} message={message} />
       <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Patient actif en imagerie" />
       <ClinicalStatGrid stats={stats} />
 

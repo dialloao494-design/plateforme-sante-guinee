@@ -7,6 +7,7 @@ import { userCanManageHospitalBeds } from '../../utils/clinicAccess.js';
 
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import ClinicalFeedback from '../../components/clinical/ClinicalFeedback.jsx';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 
 import './clinical.css';
@@ -205,8 +206,7 @@ export default function HospitalizationDashboard() {
         <p>Admissions, lits et occupation — pilotage du service.</p>
       </header>
 
-      {error && <div className="clinical-alert clinical-alert--error">{String(error)}</div>}
-      {message && <div className="clinical-alert clinical-alert--success">{message}</div>}
+      <ClinicalFeedback error={error} message={message} />
       <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Patient actif en hospitalisation" />
 
       <ClinicalStatGrid stats={stats} />

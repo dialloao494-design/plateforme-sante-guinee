@@ -1,3 +1,5 @@
+import { formatGNF } from './clinicalPresentation.js';
+
 const normalizeStatus = (statusValue) => {
   const normalized = String(statusValue || '')
     .toLowerCase()
@@ -91,10 +93,7 @@ export const isCancelledAppointment = (appointment) => resolveAppointmentState(a
 export const isConfirmedAppointment = (appointment) => resolveAppointmentState(appointment).isConfirmed;
 export const isPendingAppointment = (appointment) => resolveAppointmentState(appointment).isPending;
 
-export const formatGNF = (amount) => {
-  const value = Number(amount || 0);
-  return `${new Intl.NumberFormat('fr-FR').format(value)} GNF`;
-};
+export { formatGNF };
 
 export const getBackendAppointmentId = (appointment) => {
   const rawId = appointment?.id;

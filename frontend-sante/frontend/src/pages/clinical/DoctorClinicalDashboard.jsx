@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import DischargeAuthorizationPrint from '../../components/print/DischargeAuthorizationPrint.jsx';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import ClinicalFeedback from '../../components/clinical/ClinicalFeedback.jsx';
 import { CLINIC_PRINT_NAME } from '../../constants/clinicBranding.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
@@ -659,8 +660,7 @@ export default function DoctorClinicalDashboard() {
         </div>
       </header>
 
-      {error && <p className="clinical-error">{String(error)}</p>}
-      {message && <p className="clinical-success">{message}</p>}
+      <ClinicalFeedback error={error} message={message} />
       <PatientSafetyStrip patient={identity} onClose={closePatient} contextLabel="Patient actif en consultation" />
 
       {identity && !consultation && (
