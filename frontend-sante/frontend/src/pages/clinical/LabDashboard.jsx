@@ -10,6 +10,7 @@ import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import LabPatientOverview, { ReadOnlyDisplay } from './lab/LabPatientOverview.jsx';
 import LabQueuePanel from './lab/LabQueuePanel.jsx';
 import LabResultsWorkspace from './lab/LabResultsWorkspace.jsx';
+import LabSampleCollection from './lab/LabSampleCollection.jsx';
 import {
   EMPTY_RESULT_ROW,
   nowInputValue,
@@ -663,80 +664,18 @@ export default function LabDashboard() {
                   )}
                 </section>
 
-                <section className="lab-his-workflow-card lab-his-workflow-card--sample">
-                  <h3>Prélèvement</h3>
-                  <div className="reception-his-form-row reception-his-form-row--4">
-                    <label>
-                      Date de prélèvement
-                      <input
-                        type="date"
-                        value={sampleForm.collection_date}
-                        onChange={(e) => setSampleForm((p) => ({ ...p, collection_date: e.target.value }))}
-                      />
-                    </label>
-                    <label>
-                      Heure de prélèvement
-                      <input
-                        type="time"
-                        value={sampleForm.collection_time}
-                        onChange={(e) => setSampleForm((p) => ({ ...p, collection_time: e.target.value }))}
-                      />
-                    </label>
-                    <label>
-                      Agent de prélèvement
-                      <input
-                        value={sampleForm.collector}
-                        onChange={(e) => setSampleForm((p) => ({ ...p, collector: e.target.value }))}
-                      />
-                    </label>
-                  </div>
-                  <fieldset className="lab-his-sample-types">
-                    <legend>Types d&apos;échantillon</legend>
-                    <div className="lab-his-sample-checkboxes" role="group" aria-label="Types d'échantillon">
-                      {SAMPLE_TYPES.map((s) => (
-                        <label key={s.code} className="lab-his-sample-check">
-                          <input
-                            type="checkbox"
-                            checked={sampleTypes.includes(s.code)}
-                            onChange={() => toggleSampleType(s.code)}
-                          />
-                          {s.label}
-                        </label>
-                      ))}
-                    </div>
-                    {sampleTypes.includes('other') && (
-                      <label className="lab-his-sample-other">
-                        Autre échantillon
-                        <input
-                          value={sampleOther}
-                          onChange={(e) => setSampleOther(e.target.value)}
-                          placeholder="ex. Liquide pleural, Liquide ascitique, Salive…"
-                        />
-                      </label>
-                    )}
-                  </fieldset>
-                  {savedSampleInfo && (
-                    <div className="lab-his-saved-sample" aria-live="polite">
-                      <strong>Prélèvement enregistré</strong>
-                      <p>
-                        {(savedSampleInfo.sample_types || []).join(', ') || '—'}
-                        {savedSampleInfo.sample_other ? ` · ${savedSampleInfo.sample_other}` : ''}
-                      </p>
-                      <p className="clinical-hint">
-                        {savedSampleInfo.collection_date || '—'} {savedSampleInfo.collection_time || ''}
-                        {savedSampleInfo.collector ? ` · ${savedSampleInfo.collector}` : ''}
-                      </p>
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    className="clinical-btn clinical-btn--secondary"
-                    onClick={saveSampleCollection}
-                    disabled={loading}
-                  >
-                    {loading ? 'Enregistrement…' : 'Enregistrer le prélèvement'}
-                  </button>
-                </section>
+                <LabSampleCollection
+                  form={sampleForm}
+                  loading={loading}
+                  onChange={(name, value) => setSampleForm((previous) => ({ ...previous, [name]: value }))}
+                  onSave={saveSampleCollection}
+                  onToggleType={toggleSampleType}
+                  sampleOther={sampleOther}
+                  sampleTypes={sampleTypes}
+                  savedSampleInfo={savedSampleInfo}
+                  setSampleOther={setSampleOther}
+                  typeOptions={SAMPLE_TYPES}
+                />
 
                 <LabResultsWorkspace
                   activeOrder={activeOrder}

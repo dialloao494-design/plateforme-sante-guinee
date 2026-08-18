@@ -320,6 +320,15 @@ Implemented evidence (2026-08-18):
   [32180157974](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32180157974)
   passed backend, historical clinic regressions, frontend unit/offline/audit/build/
   performance, secrets guard, and **22/22** browser tests at `8922963`.
+- the next bounded extraction moved Laboratory sample collection into
+  `LabSampleCollection`, PEV entry into `VaccinationEntryForm`, and the Pharmacy
+  product grid into `PharmacyRequestEditor`. Laboratory fell from **768** to
+  **707** controller lines, PEV from **619** to **519**, and Pharmacy from **720**
+  to **647**. The extracted forms now own their accessible names, input metadata,
+  table-region semantics, and loading/action copy. Local evidence is green:
+  lint, **44/44** unit tests, production build, all 6 performance budgets, two
+  focused **5/5** Chromium runs covering role behavior, narrow layout, and
+  blocking WCAG checks across Laboratory, Pharmacy, Nursing, and PEV.
 
 Remaining: continue reducing large view files and the shared clinical stylesheet
 as normal maintainability work, and validate performance/UX on clinic
@@ -474,6 +483,7 @@ and a clear escalation contact.
 | 2026-08-18 | CI-only run 32180157974 passed all 5 required jobs at `8922963`, including 22/22 browser tests with the cross-clinic negative scenario. | Canonical patient workspace moves to CI VERIFIED; named decomposition tranche is CI verified. No deployment was triggered. |
 | 2026-08-18 | Reception service-request navigation and prescription workspace redesigned; desktop/mobile request regression added; local 44-unit/34-offline/26-browser release matrix passed. | Clinical UX coherence advances with a responsive, behavior-locked reception pattern; CI and field validation remain open for the tranche. |
 | 2026-08-18 | Shared workflow navigation, flatter clinical forms, cashier/admin workspaces, and Pharmacy accessible grid labels added across Reception, Billing, Lab, Pharmacy, Nursing, PEV, and Administration; focused 10/10 Chromium gate passed. | Cross-role UI coherence advances and new billing/admin module CSS avoids growing the shared stylesheet; full CI and field review remain open. |
+| 2026-08-18 | Laboratory sample collection, PEV vaccination entry, and Pharmacy request editing extracted into bounded components; controller sizes reduced and focused role/WCAG/browser gates passed. | Frontend decomposition advances without relaxing bundle budgets; Reception billing and Nursing assessment remain the principal large view sections. |
 
 ## Related evidence
 

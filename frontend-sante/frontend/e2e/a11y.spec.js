@@ -50,6 +50,8 @@ for (const workspace of [
   { role: 'admin', route: '/clinical/billing', testId: 'billing-dashboard', label: 'unified billing' },
   { role: 'admin', route: '/clinical/admin', testId: 'admin-dashboard', label: 'clinic administration' },
   { role: 'pharmacy', route: '/clinical/pharmacy', testId: 'pharmacy-dashboard', label: 'pharmacy' },
+  { role: 'lab', route: '/clinical/lab', testId: 'lab-dashboard', label: 'laboratory' },
+  { role: 'nurse', route: '/clinical/nurse', testId: 'nurse-dashboard', label: 'nursing triage' },
   { role: 'pev', route: '/clinical/pev', testId: 'pev-dashboard', label: 'PEV' },
 ]) {
   test(`${workspace.label} has no serious or critical a11y violations`, async ({ page }) => {

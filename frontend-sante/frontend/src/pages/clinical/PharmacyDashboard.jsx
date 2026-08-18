@@ -7,8 +7,8 @@ import { formatApiError } from '../../utils/apiError.js';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
 import ClinicalWorkflowNav from '../../components/clinical/ClinicalWorkflowNav.jsx';
 import PrintClinicHeader from '../../components/print/PrintClinicHeader.jsx';
-import PharmacyMedicationAutocomplete from './PharmacyMedicationAutocomplete.jsx';
 import PharmacyStockTab from './PharmacyStockTab.jsx';
+import PharmacyRequestEditor from './pharmacy/PharmacyRequestEditor.jsx';
 import { AmountDisplay, DisplayField, FormNotice, PaymentMethodRadios } from './pharmacy/PharmacyFormPrimitives.jsx';
 import { BILLING_NOTICE, EMPTY_PAYMENT, emptyMedicationLine, emptyPaymentLine, initialMedicationLines, medicationLineTotal, PATIENT_NOTICE, PAYMENT_METHODS, paymentMethodLabel } from './pharmacy/pharmacyDomain.js';
 import './clinical.css';
@@ -390,91 +390,18 @@ export default function PharmacyDashboard() {
               </div>
             </section>
 
-            <section className="pharmacy-his-workflow-card">
-              <h3>Demande de service</h3>
-              {!selectedPatient && <FormNotice>{PATIENT_NOTICE}</FormNotice>}
-              <div className="pharmacy-his-table-wrap">
-                <table className="pharmacy-his-table">
-                  <thead>
-                    <tr>
-                      <th>Produit / Désignation</th>
-                      <th>Quantité</th>
-                      <th>Prix unitaire</th>
-                      <th>Total</th>
-                      <th aria-label="Actions" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lines.map((line, index) => (
-                      <tr key={line.id}>
-                        <td>
-                          <PharmacyMedicationAutocomplete
-                            ariaLabel={`Produit ou médicament, ligne ${index + 1}`}
-                            value={line.designation}
-                            onChange={(v) => updateLine(line.id, { designation: v, inventory_item_id: null })}
-                            onSelectItem={(item) => selectStockItem(line.id, item)}
-                            disabled={!selectedPatient}
-                            inventory={inventory}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            aria-label={`Quantité, ligne ${index + 1}`}
-                            type="number"
-                            min="1"
-                            value={line.quantity}
-                            onChange={(e) => updateLine(line.id, { quantity: e.target.value })}
-                            disabled={!selectedPatient}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            aria-label={`Prix unitaire, ligne ${index + 1}`}
-                            type="number"
-                            min="0"
-                            step="500"
-                            value={line.unit_price_gnf}
-                            onChange={(e) => updateLine(line.id, { unit_price_gnf: e.target.value })}
-                            disabled={!selectedPatient}
-                          />
-                        </td>
-                        <td className="pharmacy-his-total-cell">{formatGNF(medicationLineTotal(line))}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className="clinical-btn clinical-btn--secondary pharmacy-his-row-remove"
-                            onClick={() => removeLine(line.id)}
-                            disabled={!selectedPatient}
-                            aria-label="Supprimer la ligne"
-                          >
-                            ×
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <td colSpan={3} className="pharmacy-his-foot-label">Total</td>
-                      <td colSpan={2} className="pharmacy-his-total-cell">{formatGNF(requestTotal)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-              <div className="pharmacy-his-actions">
-                <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addLine} disabled={!selectedPatient}>
-                  + Ligne
-                </button>
-                <button
-                  type="button"
-                  className="clinical-btn pharmacy-his-primary-action"
-                  onClick={submitRequest}
-                  disabled={loading || !selectedPatient}
-                >
-                  {loading ? 'Enregistrement…' : 'Enregistrer la demande de service'}
-                </button>
-              </div>
-            </section>
+            <PharmacyRequestEditor
+              lines={lines}
+              inventory={inventory}
+              loading={loading}
+              patient={selectedPatient}
+              requestTotal={requestTotal}
+              onAddLine={addLine}
+              onRemoveLine={removeLine}
+              onSelectStockItem={selectStockItem}
+              onSubmit={submitRequest}
+              onUpdateLine={updateLine}
+            />
 
             <section className="pharmacy-his-workflow-card pharmacy-his-workflow-card--billing">
               <h3>Facturation</h3>

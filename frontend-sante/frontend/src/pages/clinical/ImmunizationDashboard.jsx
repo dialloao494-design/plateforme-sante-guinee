@@ -10,6 +10,7 @@ import { formatClinicalDate } from '../../utils/clinicalPresentation.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
 import RegisterTable from './pev/RegisterTable.jsx';
+import VaccinationEntryForm from './pev/VaccinationEntryForm.jsx';
 import { INJECTION_SITE_LABELS, STRATEGY_LABELS } from './pev/pevPresentation.js';
 import './clinical.css';
 import './pev.css';
@@ -353,114 +354,13 @@ export default function ImmunizationDashboard() {
                 )}
               </section>
 
-              <section className="clinical-card">
-                <h2>Fiche vaccination (registre papier)</h2>
-                <form className="clinical-form-grid pev-form-grid" onSubmit={submitVaccination}>
-                  <label>
-                    Code vaccin *
-                    <input
-                      required
-                      value={form.vaccine_code}
-                      onChange={(e) => setForm({ ...form, vaccine_code: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Antigène / vaccin *
-                    <input
-                      required
-                      value={form.vaccine_name}
-                      onChange={(e) => setForm({ ...form, vaccine_name: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Dose
-                    <input value={form.dose_label} onChange={(e) => setForm({ ...form, dose_label: e.target.value })} />
-                  </label>
-                  <label>
-                    N° dose
-                    <input
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={form.dose_number}
-                      onChange={(e) => setForm({ ...form, dose_number: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Date vaccination *
-                    <input
-                      type="date"
-                      required
-                      value={form.administered_at}
-                      onChange={(e) => setForm({ ...form, administered_at: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    N° lot
-                    <input value={form.batch_number} onChange={(e) => setForm({ ...form, batch_number: e.target.value })} />
-                  </label>
-                  <label>
-                    Date péremption vaccin
-                    <input
-                      type="date"
-                      value={form.vaccine_expiry_date}
-                      onChange={(e) => setForm({ ...form, vaccine_expiry_date: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Site d&apos;injection
-                    <select
-                      value={form.injection_site}
-                      onChange={(e) => setForm({ ...form, injection_site: e.target.value })}
-                    >
-                      {injectionSites.map((s) => (
-                        <option key={s.code} value={s.code}>
-                          {s.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Stratégie
-                    <select
-                      value={form.vaccination_strategy}
-                      onChange={(e) => setForm({ ...form, vaccination_strategy: e.target.value })}
-                    >
-                      {strategies.map((s) => (
-                        <option key={s.code} value={s.code}>
-                          {s.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Vaccinateur
-                    <input
-                      value={form.vaccinator_name}
-                      onChange={(e) => setForm({ ...form, vaccinator_name: e.target.value })}
-                    />
-                  </label>
-                  <label>
-                    Prochain RDV
-                    <input
-                      type="date"
-                      value={form.next_appointment_date}
-                      onChange={(e) => setForm({ ...form, next_appointment_date: e.target.value })}
-                    />
-                  </label>
-                  <label className="pev-form-wide">
-                    Observations
-                    <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-                  </label>
-                  <label className="pev-form-wide">
-                    EIAS / réactions (AEFI)
-                    <input value={form.aefi_notes} onChange={(e) => setForm({ ...form, aefi_notes: e.target.value })} />
-                  </label>
-                  <button type="submit" className="clinical-btn primary">
-                    Enregistrer dans le registre
-                  </button>
-                </form>
-              </section>
+              <VaccinationEntryForm
+                form={form}
+                injectionSites={injectionSites}
+                strategies={strategies}
+                onChange={(name, value) => setForm((previous) => ({ ...previous, [name]: value }))}
+                onSubmit={submitVaccination}
+              />
 
               <section className="clinical-card">
                 <h2>Historique vaccinal du patient</h2>
