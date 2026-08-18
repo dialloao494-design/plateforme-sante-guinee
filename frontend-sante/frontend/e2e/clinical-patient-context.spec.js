@@ -66,6 +66,10 @@ test('patient context survives deep links and refresh across clinical roles', as
     await expect(rolePage.getByTestId('patient-safety-strip')).toContainText(patient.patient_number);
     if (role.passiveConsultation) {
       await expect(rolePage.getByText(/Consultation #\d+/)).toHaveCount(0);
+      await rolePage.getByRole('button', { name: 'Démarrer la consultation' }).click();
+      await expect(rolePage.getByRole('heading', { name: /Médecin — Consultation #\d+/ })).toBeVisible();
+      await expect(rolePage.getByText('Identité du patient', { exact: true })).toBeVisible();
+      await expect(rolePage.getByTestId('doctor-patient-overview').getByText(patient.patient_number, { exact: true })).toBeVisible();
     }
 
     await rolePage.getByRole('button', { name: 'Fermer le dossier' }).click();

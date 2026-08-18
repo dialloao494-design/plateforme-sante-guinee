@@ -10,6 +10,7 @@ import clinicalApi from '../../services/clinicalApi';
 import { formatApiError } from '../../utils/apiError.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
+import DoctorPatientOverview from './doctor/DoctorPatientOverview.jsx';
 import './clinical.css';
 
 const CONSULT_FIELDS = [
@@ -74,15 +75,6 @@ const BUCKET_TITLES = {
   lab_pending: 'Résultats labo en attente',
   imaging_pending: 'Imagerie en attente',
   completed_consultations: 'Consultations terminées',
-};
-
-const qrImageUrl = (token) =>
-  token ? `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(token)}` : '';
-
-const genderLabel = (g) => {
-  if (g === 'F' || g === 'Féminin' || g === 'f') return 'Féminin';
-  if (g === 'M' || g === 'Masculin' || g === 'm') return 'Masculin';
-  return g || '—';
 };
 
 const formatDateTime = (value) => {
@@ -213,6 +205,8 @@ export default function DoctorClinicalDashboard() {
 
   const openPatient = async (patientId, chiefComplaint) => {
     if (!patientId) return;
+    closingPatientIdRef.current = '';
+    setRoutePatientId(patientId);
     setBusy(true);
     setError('');
     setMessage('');
@@ -269,8 +263,6 @@ export default function DoctorClinicalDashboard() {
       setNurseAssessment(assessRes.status === 'fulfilled' ? assessRes.value.data || null : null);
       setHistory(histRes.status === 'fulfilled' ? histRes.value.data || [] : []);
       refreshServiceRequests(patientId);
-      closingPatientIdRef.current = '';
-      setRoutePatientId(patientId);
       setMessage(`Consultation #${consult.id} ouverte`);
       loadDashboard();
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -748,72 +740,7 @@ export default function DoctorClinicalDashboard() {
               <span className="clinical-badge">{consultation.status || 'in_progress'}</span>
             </div>
 
-            {/* 1. Identité du patient */}
-            <section className="doctor-box">
-              <div className="doctor-box-title">Identité du patient</div>
-              <div className="doctor-box-body">
-                {identity ? (
-                  <div className="doctor-identity">
-                    <div className="doctor-identity-grid">
-                      <div><span>N° dossier</span><strong>{identity.patient_number || '—'}</strong></div>
-                      <div><span>Nom complet</span><strong>{identity.full_name}</strong></div>
-                      <div><span>Âge</span><strong>{identity.age ?? '—'}</strong></div>
-                      <div><span>Sexe</span><strong>{genderLabel(identity.sex)}</strong></div>
-                      <div><span>Téléphone</span><strong>{identity.phone || '—'}</strong></div>
-                      <div><span>Prise en charge</span><strong>{identity.payer || '—'}</strong></div>
-                    </div>
-                    {identity.qr_token && (
-                      <img className="doctor-identity-qr" src={qrImageUrl(identity.qr_token)} alt="QR patient" width={92} height={92} />
-                    )}
-                  </div>
-                ) : (
-                  <p className="clinical-hint">Identité indisponible.</p>
-                )}
-              </div>
-            </section>
-
-            {/* 2. Paramètres vitaux — lecture seule (saisie infirmière) */}
-            <section className="doctor-box doctor-box--readonly" aria-readonly="true">
-              <div className="doctor-box-title">
-                Paramètres vitaux
-                <span className="doctor-readonly-badge">Lecture seule — saisie infirmière</span>
-              </div>
-              <div className="doctor-box-body">
-                {nurseAssessment ? (
-                  <>
-                    <p className="clinical-lead" style={{ marginTop: 0 }}>
-                      {nurseAssessment.nurse_name || 'Infirmier(ère)'} · {formatDateTime(nurseAssessment.recorded_at)}
-                    </p>
-                    <div className="doctor-vitals-grid">
-                      <div><span>T°</span><strong>{nurseAssessment.temperature_c ?? '—'} °C</strong></div>
-                      <div><span>TA</span><strong>{nurseAssessment.bp_systolic || '—'}/{nurseAssessment.bp_diastolic || '—'}</strong></div>
-                      <div><span>FC</span><strong>{nurseAssessment.heart_rate || '—'}</strong></div>
-                      <div><span>FR</span><strong>{nurseAssessment.respiratory_rate || '—'}</strong></div>
-                      <div><span>Poids</span><strong>{nurseAssessment.weight_kg ?? '—'} kg</strong></div>
-                      <div><span>Taille</span><strong>{nurseAssessment.height_cm ?? '—'} cm</strong></div>
-                      <div><span>IMC</span><strong>{nurseAssessment.bmi ?? '—'}</strong></div>
-                    </div>
-                    {nurseAssessment.vitals_observations && <p style={{ marginBottom: 0 }}><strong>Observations :</strong> {nurseAssessment.vitals_observations}</p>}
-                    {nurseAssessment.hospitalized_daily_vitals && (
-                      <div className="doctor-nurse-readonly-block">
-                        <strong>Signes vitaux hospitalisés (soins quotidiens) — infirmier(ère) :</strong>
-                        <p>{nurseAssessment.hospitalized_daily_vitals}</p>
-                      </div>
-                    )}
-                    {nurseAssessment.reason_for_consultation && (
-                      <p style={{ marginBottom: 0 }}><strong>Motif (infirmière) :</strong> {nurseAssessment.reason_for_consultation}</p>
-                    )}
-                    {nurseAssessment.prescription && <p style={{ marginBottom: 0 }}><strong>Ordonnance (infirmière) :</strong> {nurseAssessment.prescription}</p>}
-                    {nurseAssessment.nurse_notes && <p style={{ marginBottom: 0 }}><strong>Notes infirmières :</strong> {nurseAssessment.nurse_notes}</p>}
-                    <p className="clinical-hint" style={{ marginBottom: 0 }}>
-                      Le médecin consulte ces paramètres sans pouvoir les modifier. La saisie se fait uniquement côté infirmier.
-                    </p>
-                  </>
-                ) : (
-                  <p className="clinical-hint">Aucune évaluation infirmière disponible.</p>
-                )}
-              </div>
-            </section>
+            <DoctorPatientOverview identity={identity} nurseAssessment={nurseAssessment} />
 
             {/* 3. Motif de consultation */}
             <section className="doctor-box">

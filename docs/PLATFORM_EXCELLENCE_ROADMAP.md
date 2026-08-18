@@ -247,6 +247,14 @@ Implemented evidence (2026-08-18):
   route chunks. The local production build passes all 6 budgets (largest JS
   **214.84 KiB**, clinical CSS **58.56 KiB**, Reception **106.04 KiB**, Doctor
   **40.73 KiB**, Laboratory **32.62 KiB**, Pharmacy **26.58 KiB**).
+- the first Doctor controller extraction moved patient identity and read-only
+  nursing observations into `DoctorPatientOverview`; the dashboard fell from
+  **1,276** to **1,203** lines and the browser regression now opens a real
+  consultation and verifies the extracted safety-critical identity panel.
+- that stronger regression exposed and locked a doctor open/close timing defect:
+  a late consultation URL write could restore a dossier just closed by the
+  clinician. Patient URL selection now occurs at the start of the explicit open
+  action, so closing wins deterministically.
 
 Remaining: split large workflow controllers and the shared clinical stylesheet,
 finish migrating legacy presentation calls, and validate on clinic
@@ -374,6 +382,7 @@ and a clear escalation contact.
 | 2026-08-18 | Hook warnings reduced from 10 to 0 and forced 572 KB clinical bundle removed. | Frontend maintainability/performance tranche locally verified; workstream remains open overall. |
 | 2026-08-18 | Shared patient context expanded to every patient-bound clinical dashboard; doctor deep links made read-only until explicit consultation start; focused browser regression passed across 13 workspaces. | Canonical workspace implementation moved to CODE COMPLETE; CI, cross-clinic browser evidence, and field validation remain. |
 | 2026-08-18 | Shared clinical formatters/live-region feedback added and route/style performance budgets enforced in CI; local unit, build, budget, accessibility, and cross-role browser checks passed. | UX coherence and frontend maintainability advanced; controller/style decomposition and field validation remain. |
+| 2026-08-18 | Doctor patient overview extracted from the monolithic controller; expanded browser coverage found and fixed a late open/close URL race. | First workflow-controller decomposition landed with a patient-context regression lock. |
 
 ## Related evidence
 
