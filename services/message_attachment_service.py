@@ -15,6 +15,7 @@ from models.attachment_access_log import AttachmentAccessLog
 from models.user import User
 from core.roles import effective_role, user_has_any_role
 from services.secure_attachment_storage import SecureAttachmentStorage
+from services.clinical_audit_service import ClinicalAuditService
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,20 @@ class MessageAttachmentService:
         if not appointment:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
 
-        assert_appointment_access(db, appointment, current_user)
+        try:
+            assert_appointment_access(db, appointment, current_user)
+        except HTTPException:
+            ClinicalAuditService.log_denied(
+                db,
+                actor=current_user,
+                action="download",
+                resource_type="message_attachment",
+                resource_id=message.id,
+                patient_id=appointment.patient_id,
+                clinic_id=appointment.clinic_id,
+                client_ip=client_ip,
+            )
+            raise
 
         if message.attachment_storage_key:
             content, _path = SecureAttachmentStorage.read(message.attachment_storage_key)

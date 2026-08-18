@@ -6,6 +6,7 @@ import json
 import uuid
 
 import pytest
+from starlette.websockets import WebSocketDisconnect
 from core.auth_cookie_config import ACCESS_COOKIE_NAME
 from core.provisioning_context import provisioning_channel
 from security import create_access_token, hash_password
@@ -87,7 +88,50 @@ def test_ws_live_accepts_post_connect_auth_message(client, db_session):
         ws.send_text(json.dumps({"type": "auth", "token": token}))
         connected = ws.receive_json()
         assert connected["type"] == "connected"
-        assert connected["user_id"] == user.id
+    assert connected["user_id"] == user.id
+
+
+def test_ws_live_rejects_disabled_account_token(client, db_session):
+    user = _make_user(db_session)
+    token = _token_for(user)
+    user.is_active = False
+    db_session.commit()
+
+    with client.websocket_connect("/ws/live") as ws:
+        assert ws.receive_json()["type"] == "auth_required"
+        ws.send_text(json.dumps({"type": "auth", "token": token}))
+        with pytest.raises(WebSocketDisconnect) as closed:
+            ws.receive_json()
+        assert closed.value.code == 4401
+
+
+def test_ws_live_closes_established_channel_after_session_invalidation(client, db_session):
+    user = _make_user(db_session)
+    token = _token_for(user)
+    client.cookies.set(ACCESS_COOKIE_NAME, token)
+
+    with client.websocket_connect("/ws/live") as ws:
+        assert ws.receive_json()["type"] == "connected"
+        user.session_version = int(user.session_version or 0) + 1
+        db_session.commit()
+        ws.send_text(json.dumps({"type": "ping"}))
+        with pytest.raises(WebSocketDisconnect) as closed:
+            ws.receive_json()
+        assert closed.value.code == 4401
+
+
+def test_ws_live_rejects_token_after_http_logout(client, db_session):
+    user = _make_user(db_session)
+    token = _token_for(user)
+    logout = client.post("/auth/logout", headers={"Authorization": f"Bearer {token}"})
+    assert logout.status_code == 200
+
+    with client.websocket_connect("/ws/live") as ws:
+        assert ws.receive_json()["type"] == "auth_required"
+        ws.send_text(json.dumps({"type": "auth", "token": token}))
+        with pytest.raises(WebSocketDisconnect) as closed:
+            ws.receive_json()
+        assert closed.value.code == 4401
 
 
 def test_ws_live_rejects_invalid_post_connect_token(client):

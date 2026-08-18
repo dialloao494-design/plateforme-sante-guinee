@@ -18,7 +18,11 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from jwt import PyJWTError
 
 from core.auth_cookie_config import ACCESS_COOKIE_NAME
+from core.roles import roles_equivalent
+from database import SessionLocal
+from models.user import User
 from security import decode_access_token
+from services.auth_session_service import is_access_jti_denied
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/ws", tags=["WebSocket"])
@@ -32,13 +36,43 @@ def _decode_ws_token(token: str | None) -> dict | None:
         return None
     try:
         payload = decode_access_token(token)
-        if payload.get("user_id") is None:
+        if payload.get("user_id") is None or not str(payload.get("jti") or "").strip():
             return None
         return payload
     except PyJWTError:
         return None
     except Exception:
         return None
+
+
+def _validate_ws_identity(payload: dict | None) -> bool:
+    """Apply the same account/session invalidation controls as HTTP auth."""
+    if not payload:
+        return False
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == payload.get("user_id")).first()
+        if user is None or user.is_active is False or bool(user.must_change_password):
+            return False
+        if is_access_jti_denied(db, jti=payload.get("jti")):
+            return False
+        token_role = payload.get("user_role") or payload.get("role")
+        if token_role and not roles_equivalent(token_role, user.role):
+            return False
+        if int(payload.get("session_version", 0)) != int(user.session_version or 0):
+            return False
+        token_version = payload.get("tv", payload.get("token_version"))
+        user_token_version = int(user.token_version or 0)
+        if token_version is None:
+            return user_token_version == 0
+        return int(token_version) == user_token_version
+    except (TypeError, ValueError):
+        return False
+    except Exception:
+        logger.exception("WS identity validation failed closed")
+        return False
+    finally:
+        db.close()
 
 
 def _token_from_cookie(websocket: WebSocket) -> str | None:
@@ -61,7 +95,7 @@ async def _authenticate_live_channel(websocket: WebSocket) -> dict | None:
     """
     cookie_token = _token_from_cookie(websocket)
     cookie_payload = _decode_ws_token(cookie_token)
-    if cookie_payload:
+    if cookie_payload and _validate_ws_identity(cookie_payload):
         return cookie_payload
 
     await websocket.accept()
@@ -90,7 +124,7 @@ async def _authenticate_live_channel(websocket: WebSocket) -> dict | None:
 
     token = (msg.get("token") or "").strip()
     payload = _decode_ws_token(token)
-    if not payload:
+    if not payload or not _validate_ws_identity(payload):
         await websocket.close(code=4401)
         return None
     return payload
@@ -142,7 +176,7 @@ async def ws_live(websocket: WebSocket):
         return
 
     cookie_payload = _decode_ws_token(_token_from_cookie(websocket))
-    if cookie_payload:
+    if cookie_payload and _validate_ws_identity(cookie_payload):
         await websocket.accept()
         payload = cookie_payload
     else:
@@ -162,8 +196,14 @@ async def ws_live(websocket: WebSocket):
                     timeout=WS_HEARTBEAT_TIMEOUT_SECONDS,
                 )
             except asyncio.TimeoutError:
+                if not _validate_ws_identity(payload):
+                    await websocket.close(code=4401)
+                    return
                 await websocket.send_json({"type": "heartbeat"})
                 continue
+            if not _validate_ws_identity(payload):
+                await websocket.close(code=4401)
+                return
             try:
                 msg = json.loads(raw)
             except json.JSONDecodeError:

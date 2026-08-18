@@ -439,6 +439,20 @@ reviewed by the accountable operator and clinic lead.
 **Exit criterion:** automated dependency gates and a signed operational security
 checklist exist, with no unresolved critical finding.
 
+Code audit evidence added 2026-08-18:
+
+- WebSocket authentication now checks the access-token denylist, current role,
+  active/forced-password state, session version, and token version at connect
+  and on every message/heartbeat; regression cases cover logout, disabled users,
+  and invalidation of an established channel;
+- denied cross-patient attachment downloads now create a clinic/patient/resource
+  audit record, while successful access remains in the attachment access trail;
+- clinical audit listing is bounded to 1–500 records even for malformed negative
+  limits;
+- **67/67** focused session, permission, tenant, attachment, IDOR, and WebSocket
+  tests passed locally (WebSocket subset **9/9**). The detailed matrix is in
+  `docs/SECURITY_CONTROL_AUDIT_2026-08-18.md`.
+
 ### P2 — Framework and deployment debt
 
 **Status: IN PROGRESS — code and documentation aliases cleaned locally**
@@ -519,6 +533,7 @@ and a clear escalation contact.
 | 2026-08-18 | Production Python CVE audit added to CI; `PYSEC-2026-1917` remediated by upgrading Sentry SDK to 1.45.1; all Pydantic ORM schemas migrated to `ConfigDict`; obsolete frontend configuration aliases removed. Local `pip-audit` reported zero known vulnerabilities and backend tests passed 426/426 with one skip. | Dependency and framework debt substantially reduced; CI verification and direct confirmation of Railway's raw `FRONTEND_URL` remain before closing the workstreams. |
 | 2026-08-18 | Offline recovery export upgraded to a scope-checked v2 manifest; corrupt conflict copies gain integrity warnings; unreadable mutations cannot be blindly retried; restart/network/concurrent-device Chromium cases passed 4/4 with 37/37 offline tests and all performance budgets green. | Automated offline recovery evidence is stronger and safer for clinic support; the observed clinic wording exercise remains the only offline certification exit item. |
 | 2026-08-18 | Guarded backup/restore evidence runner, checksum manifests, isolated-target enforcement, migration/table/orphan integrity probes, and RPO/RTO measurement added; 31/31 focused DR tests passed. | Backup tooling moves to locally verified; a timed restore of a recent encrypted production backup plus attachment recovery remains an operational release requirement. |
+| 2026-08-18 | Session, permission/tenant, audit, attachment, and WebSocket controls re-audited; live WebSockets now honor logout/disable/version invalidation and denied attachment access is audited. Focused security gates passed 67/67 (WebSockets 9/9). | Requested code-level security controls are verified; privileged MFA, access review, retention/key rotation, proxy exercise, and incident response remain operational work. |
 
 ## Related evidence
 
@@ -526,6 +541,7 @@ and a clear escalation contact.
 - [`HISTORICAL_REGRESSION_MATRIX.md`](HISTORICAL_REGRESSION_MATRIX.md)
 - [`OFFLINE_FAILURE_RECOVERY_MATRIX.md`](OFFLINE_FAILURE_RECOVERY_MATRIX.md)
 - [`BACKUP_RESTORE.md`](BACKUP_RESTORE.md)
+- [`SECURITY_CONTROL_AUDIT_2026-08-18.md`](SECURITY_CONTROL_AUDIT_2026-08-18.md)
 - [`PRODUCTION_CHECKLIST.md`](PRODUCTION_CHECKLIST.md)
 - [`FINAL_PRODUCTION_READINESS_REPORT.md`](FINAL_PRODUCTION_READINESS_REPORT.md)
 

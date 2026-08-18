@@ -16,6 +16,7 @@ import pytest
 
 from main import app
 from models.attachment_access_log import AttachmentAccessLog
+from models.clinical_audit_log import ClinicalAuditLog
 from models.doctor import Doctor
 from models.message import Message
 from models.patient import Patient
@@ -147,7 +148,9 @@ class TestAttachmentDownloadAuth:
         response = client.get(f"/messages/attachments/{message['id']}/download")
         assert response.status_code == 401
 
-    def test_cross_patient_download_forbidden(self, client, messaging_context, secure_attachment_root):
+    def test_cross_patient_download_forbidden_is_audited(
+        self, client, db_session, messaging_context, secure_attachment_root
+    ):
         ctx = messaging_context
         message = _upload_pdf(client, ctx["doctor_headers"], ctx["appointment"].id)
 
@@ -156,6 +159,17 @@ class TestAttachmentDownloadAuth:
             headers=ctx["other_patient_headers"],
         )
         assert response.status_code == 403
+        denied = (
+            db_session.query(ClinicalAuditLog)
+            .filter(
+                ClinicalAuditLog.action == "denied_download",
+                ClinicalAuditLog.resource_type == "message_attachment",
+                ClinicalAuditLog.resource_id == message["id"],
+            )
+            .one()
+        )
+        assert denied.actor_id == ctx["other_patient_user"].id
+        assert denied.clinic_id == ctx["appointment"].clinic_id
 
     def test_patient_can_download_own_appointment_attachment(
         self, client, messaging_context, secure_attachment_root

@@ -1519,7 +1519,7 @@ def list_audit_logs(
     clinic = resolve_clinic_for_user(db, current_user)
     assert_permission(current_user, Permission.ADMIN_AUDIT)
     logs = ClinicalAuditService.list_for_clinic(
-        db, clinic_id=clinic.id, patient_id=patient_id, limit=min(limit, 500)
+        db, clinic_id=clinic.id, patient_id=patient_id, limit=max(1, min(limit, 500))
     )
     return logs
 
