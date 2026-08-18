@@ -112,7 +112,7 @@ finishes successfully, and failures provide actionable artifacts/logs.
 
 ### P1 — One canonical patient workspace
 
-**Status: CODE COMPLETE — locally browser-verified; CI rerun and field validation open**
+**Status: CI VERIFIED — field validation open**
 
 The system has multiple independent `selectedPatient` and tab/workflow state
 implementations. Reception has moved toward URL-backed state, while laboratory,
@@ -167,8 +167,8 @@ Implemented evidence (2026-08-18):
 - PEV patient lookup and journey access now match the authorized vaccination
   workflow while retaining clinic-scoped patient checks.
 
-Remaining evidence: required CI must pass this commit, and hospital staff must
-validate the navigation model on clinic hardware.
+Remaining evidence: hospital staff must validate the navigation model on clinic
+hardware.
 
 Cross-clinic negative browser evidence (2026-08-18): a disposable two-clinic
 Playwright scenario provisions real staff and patients, then proves that foreign
@@ -176,7 +176,9 @@ patient IDs do not hydrate in Laboratory, Pharmacy, Nursing, or PEV; foreign
 patients do not appear in Laboratory search; cached Clinic B context does not
 survive authentication as Clinic A; and Back/Forward navigation restores only
 the authorized Clinic A dossier. This passed locally within the full **22/22**
-browser suite. Required CI rerun and field validation remain open.
+browser suite. CI run
+[32180157974](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32180157974)
+passed all 5 required jobs at `8922963`; field validation remains open.
 
 ### P1 — Clinical UX coherence and patient safety
 
@@ -213,7 +215,7 @@ critical violations (known contrast warnings remain tracked).
 
 ### P1 — Frontend decomposition and performance
 
-**Status: IN PROGRESS — first performance/closure-risk tranche locally verified**
+**Status: IN PROGRESS — named decomposition tranche CI verified**
 
 Known hotspots at the original assessment included a roughly 3,841-line clinical
 stylesheet, 1,200–1,400-line clinical/reception modules, and several 700–820-line
@@ -288,6 +290,10 @@ Implemented evidence (2026-08-18):
 - this tranche passes locally: lint, **43/43** frontend unit tests, **31/31**
   offline tests, production build, all 6 bundle/style budgets, the full **22/22**
   browser suite, and a post-extraction focused **15/15** browser rerun.
+- CI run
+  [32180157974](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32180157974)
+  passed backend, historical clinic regressions, frontend unit/offline/audit/build/
+  performance, secrets guard, and **22/22** browser tests at `8922963`.
 
 Remaining: continue reducing large view files and the shared clinical stylesheet
 as normal maintainability work, and validate performance/UX on clinic
@@ -419,6 +425,7 @@ and a clear escalation contact.
 | 2026-08-18 | Doctor patient overview extracted from the monolithic controller; expanded browser coverage found and fixed a late open/close URL race. | First workflow-controller decomposition landed with a patient-context regression lock. |
 | 2026-08-18 | Laboratory patient overview and stored-payload domain logic extracted; local unit, build, performance, and cross-role browser gates passed. | Laboratory controller reduced by 130 lines with direct safety-identity regression coverage; broader controller/style decomposition remains open. |
 | 2026-08-18 | Laboratory results/validation, Pharmacy, Nursing, and PEV boundaries extracted; shared presentation expanded; two-clinic browser attack scenario and full local release matrix passed. | Named frontend decomposition tranche is locally code-complete; canonical patient workspace gains direct tenant-isolation evidence. CI rerun and field validation remain open. |
+| 2026-08-18 | CI-only run 32180157974 passed all 5 required jobs at `8922963`, including 22/22 browser tests with the cross-clinic negative scenario. | Canonical patient workspace moves to CI VERIFIED; named decomposition tranche is CI verified. No deployment was triggered. |
 
 ## Related evidence
 
