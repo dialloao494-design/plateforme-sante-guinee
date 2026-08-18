@@ -33,12 +33,33 @@
 }
 
 .home-brand-mark {
+  position: relative;
+  display: grid;
   width: 40px;
   height: 40px;
   border-radius: 12px;
   flex-shrink: 0;
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-deep));
   box-shadow: var(--shadow-md);
+  place-items: center;
+}
+
+.home-brand-mark::before,
+.home-brand-mark::after {
+  position: absolute;
+  border-radius: 2px;
+  background: #fff;
+  content: '';
+}
+
+.home-brand-mark::before {
+  width: 21px;
+  height: 6px;
+}
+
+.home-brand-mark::after {
+  width: 6px;
+  height: 21px;
 }
 
 .home-logo {

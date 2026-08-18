@@ -10,6 +10,7 @@ import { getShellContext } from './utils/appShellMeta.js';
 import { portalLabel } from './utils/portalAccess.js';
 import OfflineStatusIndicator from './components/OfflineStatusIndicator.jsx';
 import './AppLayout.css';
+import './HospitalTheme.css';
 
 const PUBLIC_PATHS = new Set(['/', '/login', '/signup']);
 
@@ -139,6 +140,10 @@ function App() {
               ))}
             </ol>
           </nav>
+          <div className="app-clinical-status" aria-label="État du poste">
+            <span aria-hidden="true" />
+            Poste clinique opérationnel
+          </div>
         </header>
         <section className="app-view">
           <Suspense fallback={<PageLoader label="Chargement du poste…" />}>

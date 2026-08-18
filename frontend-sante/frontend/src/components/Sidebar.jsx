@@ -156,7 +156,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         <div className="sidebar-header">
           <h2 className="sidebar-menu-label">Menu</h2>
           <button type="button" className="close-btn" onClick={closeIfMobile} aria-label="Fermer">
-            ✕
+            <span aria-hidden="true">×</span>
           </button>
         </div>
 
