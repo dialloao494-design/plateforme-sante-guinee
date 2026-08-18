@@ -7,6 +7,20 @@ on:
     branches: [main, master]
 
 jobs:
+  python-dependency-audit:
+    name: Python dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install locked production dependencies and audit tool
+        run: pip install -r requirements-prod.txt pip-audit==2.10.1
+      - name: Block known vulnerable Python dependencies
+        run: pip-audit -r requirements-prod.txt --strict --progress-spinner off
+
   backend-tests:
     runs-on: ubuntu-latest
     steps:

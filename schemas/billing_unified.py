@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class InvoiceGenerateRequest(BaseModel):
@@ -25,8 +25,7 @@ class InvoiceItemResponse(BaseModel):
     unit_price_gnf: int
     amount_gnf: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaymentRecordResponse(BaseModel):
@@ -35,8 +34,7 @@ class PaymentRecordResponse(BaseModel):
     payment_method: str
     paid_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InvoiceResponse(BaseModel):
@@ -53,5 +51,4 @@ class InvoiceResponse(BaseModel):
     patient_name: Optional[str] = None
     items: List[InvoiceItemResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

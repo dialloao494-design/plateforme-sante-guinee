@@ -60,7 +60,7 @@ def main() -> None:
     print(vercel_vars)
     print()
     print("Replace YOUR-RAILWAY-BACKEND with the public Railway hostname after first deploy.")
-    print("Then set FRONTEND_PRODUCTION_URL / CORS_ORIGINS on Railway to your Vercel URL.")
+    print("Then set FRONTEND_URL / CORS_ORIGINS on Railway to your Vercel URL.")
 
 
 if __name__ == "__main__":

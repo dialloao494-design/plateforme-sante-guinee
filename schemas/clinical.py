@@ -30,8 +30,7 @@ class ClinicResponse(BaseModel):
     email: Optional[str]
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StaffCreate(BaseModel):
@@ -50,8 +49,7 @@ class StaffResponse(BaseModel):
     clinic_id: Optional[int]
     is_active: bool = True
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StaffRoleUpdate(BaseModel):
@@ -103,8 +101,7 @@ class PatientIntakeResponse(BaseModel):
     quartier: Optional[str] = None
     visit_destination: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PatientSearchResponse(BaseModel):
@@ -120,8 +117,7 @@ class PatientSearchResponse(BaseModel):
     profession: Optional[str] = None
     quartier: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Appointment ---
@@ -150,8 +146,7 @@ class ClinicalAppointmentResponse(BaseModel):
     patient_name: Optional[str] = None
     doctor_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Consultation ---
@@ -229,8 +224,7 @@ class ConsultationResponse(BaseModel):
     patient_name: Optional[str] = None
     doctor_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Lab ---
@@ -273,8 +267,7 @@ class LabOrderResponse(BaseModel):
     result_data: Optional[str] = None
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LabOrderStatusUpdate(BaseModel):
@@ -339,8 +332,7 @@ class DoctorMedicineDeliveryResponse(BaseModel):
     source: str
     delivered_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LabResultCreate(BaseModel):
@@ -360,8 +352,7 @@ class LabResultResponse(BaseModel):
     interpretation: Optional[str]
     status: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Prescription ---
@@ -395,8 +386,7 @@ class PrescriptionResponse(BaseModel):
     items: list[PrescriptionItemCreate] = []
     patient_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Pharmacy ---
@@ -426,8 +416,7 @@ class PharmacyOrderResponse(BaseModel):
     notes: Optional[str] = None
     items: list[PrescriptionItemBrief] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PharmacyStatusUpdate(BaseModel):
@@ -452,8 +441,7 @@ class ClinicalAuditLogResponse(BaseModel):
     timestamp: datetime
     ip: Optional[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Billing ---
@@ -474,8 +462,7 @@ class ClinicChargeResponse(BaseModel):
     created_at: datetime
     patient_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ChargePaymentRequest(BaseModel):

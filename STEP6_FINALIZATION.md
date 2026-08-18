@@ -551,7 +551,7 @@ STRIPE_WEBHOOK_SECRET=whsec_test_5pMuykEWqPgUAMkj...
 # FRONTEND CONFIGURATION (for CORS)
 # ========================================
 FRONTEND_URL=http://localhost:5173      # React dev server
-FRONTEND_PRODUCTION_URL=https://your-domain.com
+FRONTEND_URL=https://your-domain.com
 
 # ========================================
 # EMAIL CONFIGURATION (optional, for notifications)
@@ -599,7 +599,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 
 # Frontend
 FRONTEND_URL=http://localhost:5173
-FRONTEND_PRODUCTION_URL=https://yourdomain.com
+FRONTEND_URL=https://yourdomain.com
 
 # Email (optional)
 SMTP_SERVER=smtp.gmail.com
@@ -648,7 +648,7 @@ node_modules/
 
 - [ ] Update `FRONTEND_URL` to production domain
   ```
-  FRONTEND_PRODUCTION_URL=https://yourdomain.com
+  FRONTEND_URL=https://yourdomain.com
   ```
 
 - [ ] Update CORS allowed origins in `main.py`:

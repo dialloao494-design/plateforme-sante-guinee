@@ -271,7 +271,7 @@ Before deploying to production:
 - [ ] SECRET_KEY changed to random 32-char string
 - [ ] Stripe keys updated to production (live) keys
 - [ ] DATABASE_URL pointing to production PostgreSQL
-- [ ] FRONTEND_PRODUCTION_URL set to actual domain
+- [ ] FRONTEND_URL set to actual domain
 - [ ] DEBUG set to False
 - [ ] CORS allowed_origins updated with actual domain
 - [ ] SSL certificates obtained (Let's Encrypt)

@@ -147,7 +147,7 @@ SECRET_KEY = <paste the secret from Step 1>
 STRIPE_SECRET_KEY = sk_live_... (get from Stripe)
 STRIPE_WEBHOOK_SECRET = whsec_... (get from Stripe)
 STRIPE_PUBLISHABLE_KEY = pk_live_... (get from Stripe)
-FRONTEND_PRODUCTION_URL = https://your-frontend-domain.vercel.app (update later after frontend deployed)
+FRONTEND_URL = https://your-frontend-domain.vercel.app (update later after frontend deployed)
 ```
 
 ⚠️ **Don't have Stripe keys yet?** Skip them for now, add them after getting keys in Step 4.

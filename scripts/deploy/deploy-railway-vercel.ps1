@@ -53,4 +53,4 @@ Pop-Location
 Write-Host "`n=== Smoke test ===" -ForegroundColor Cyan
 python scripts/deploy/post_deploy_verify.py --backend $BackendUrl
 
-Write-Host "`nDone. Set FRONTEND_PRODUCTION_URL on Railway to your Vercel URL." -ForegroundColor Green
+Write-Host "`nDone. Set FRONTEND_URL on Railway to your Vercel URL." -ForegroundColor Green

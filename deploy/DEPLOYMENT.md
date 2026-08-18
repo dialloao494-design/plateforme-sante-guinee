@@ -120,7 +120,7 @@ Edit **`deploy/env/.env.backend`**:
 
 - `SECRET_KEY=` (`python -c "import secrets; print(secrets.token_urlsafe(32))"`)
 - `CORS_ORIGINS=https://your.real.domain`
-- `FRONTEND_PRODUCTION_URL=https://your.real.domain`
+- `FRONTEND_URL=https://your.real.domain`
 - Stripe live keys
 - `TELECONSULT_PROVIDER=jitsi` (or `daily` / `twilio`)
 - SMTP settings

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from datetime import datetime
 from typing import Optional, Literal
 
@@ -49,8 +49,7 @@ class RendezVousResponse(BaseModel):
         self.meeting_link = None
         return self
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PatientSummary(BaseModel):
@@ -61,8 +60,7 @@ class PatientSummary(BaseModel):
     age: Optional[int] = None
     gender: Optional[str] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DoctorSummary(BaseModel):
@@ -74,16 +72,14 @@ class DoctorSummary(BaseModel):
     specialty: Optional[str] = None
     consultation_fee: float
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RendezVousWithParticipants(RendezVousResponse):
     patient: PatientSummary
     doctor: DoctorSummary
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PaymentResponse(BaseModel):
@@ -98,8 +94,7 @@ class PaymentResponse(BaseModel):
     created_at: datetime = Field(..., description="When appointment was created")
     updated_at: datetime = Field(..., description="Last update time")
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RendezVousDetailedResponse(RendezVousResponse):

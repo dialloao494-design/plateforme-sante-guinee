@@ -98,7 +98,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_PUBLISHABLE_KEY=pk_live_...
 
 # CORS Origins (frontend domain)
-FRONTEND_PRODUCTION_URL=https://your-frontend.vercel.app
+FRONTEND_URL=https://your-frontend.vercel.app
 ```
 
 #### Step 4: Create PostgreSQL Database
@@ -163,7 +163,7 @@ DATABASE_URL=${{Postgres.DATABASE_URL}}
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_PUBLISHABLE_KEY=pk_live_...
-FRONTEND_PRODUCTION_URL=https://your-frontend.vercel.app
+FRONTEND_URL=https://your-frontend.vercel.app
 ```
 
 #### Step 5: Deploy

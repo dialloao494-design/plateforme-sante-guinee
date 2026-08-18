@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PharmacyInventoryItemResponse(BaseModel):
@@ -23,8 +23,7 @@ class PharmacyInventoryItemResponse(BaseModel):
     expiry_date: Optional[date] = None
     supplier: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PharmacyInventoryUpsert(BaseModel):

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 
@@ -50,8 +50,7 @@ class DoctorResponse(BaseModel):
     longitude: Optional[float] = None
     distance_km: Optional[float] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DoctorDetailedResponse(BaseModel):
@@ -69,5 +68,4 @@ class DoctorDetailedResponse(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

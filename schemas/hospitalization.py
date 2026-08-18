@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class HospitalRoomCreate(BaseModel):
@@ -34,8 +34,7 @@ class HospitalRoomResponse(BaseModel):
     bed_count: int = 0
     occupied_beds: int = 0
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class HospitalBedCreate(BaseModel):
@@ -54,8 +53,7 @@ class HospitalBedResponse(BaseModel):
     ward_name: Optional[str] = None
     room_number: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AdmissionCreate(BaseModel):
@@ -98,8 +96,7 @@ class PatientStayResponse(BaseModel):
     room_number: Optional[str] = None
     ward_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AdmissionResponse(BaseModel):
@@ -122,8 +119,7 @@ class AdmissionResponse(BaseModel):
     current_bed: Optional[HospitalBedResponse] = None
     stays: List[PatientStayResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OccupancySummary(BaseModel):

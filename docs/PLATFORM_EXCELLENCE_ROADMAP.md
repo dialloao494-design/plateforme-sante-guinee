@@ -397,9 +397,12 @@ reviewed by the accountable operator and clinic lead.
 
 ### P2 — Security operations and dependency lifecycle
 
-**Status: architecture strong; operations partially verified**
+**Status: architecture strong; dependency gate locally verified; operations partially verified**
 
-- Complete a fresh Python dependency CVE audit in a reproducible CI job.
+- [x] Complete a fresh Python dependency CVE audit in a reproducible CI job.
+  `pip-audit 2.10.1` now audits `requirements-prod.txt`; the 2026-08-18
+  baseline found `PYSEC-2026-1917` in `sentry-sdk 1.40.0`, upgraded it to
+  `1.45.1`, and then reported no known vulnerabilities.
 - Maintain the zero-high/critical production npm policy.
 - Enforce and test privileged MFA according to deployment policy.
 - Verify secret rotation, access review, audit retention, attachment storage,
@@ -413,12 +416,16 @@ checklist exist, with no unresolved critical finding.
 
 ### P2 — Framework and deployment debt
 
-**Status: OPEN**
+**Status: IN PROGRESS — code and documentation aliases cleaned locally**
 
-- Replace deprecated Pydantic class configuration before Pydantic 3.
+- [x] Replace deprecated Pydantic class configuration before Pydantic 3.
+  All response schemas use `ConfigDict(from_attributes=True)` and a source
+  regression guard rejects both `orm_mode` and legacy `class Config` blocks.
 - Correct Railway's raw legacy `FRONTEND_URL` rather than relying on runtime
   canonicalization; verify the actual environment before changing it.
-- Remove obsolete deployment aliases and document the single canonical topology.
+- [x] Remove obsolete deployment aliases from code, automation, and active
+  deployment documentation. `FRONTEND_URL` is the only accepted configuration
+  key; a regression test proves former aliases are ignored.
 - Keep Alembic as the deployed schema authority and retain clean-database plus
   upgrade-path regression tests.
 
@@ -484,6 +491,7 @@ and a clear escalation contact.
 | 2026-08-18 | Reception service-request navigation and prescription workspace redesigned; desktop/mobile request regression added; local 44-unit/34-offline/26-browser release matrix passed. | Clinical UX coherence advances with a responsive, behavior-locked reception pattern; CI and field validation remain open for the tranche. |
 | 2026-08-18 | Shared workflow navigation, flatter clinical forms, cashier/admin workspaces, and Pharmacy accessible grid labels added across Reception, Billing, Lab, Pharmacy, Nursing, PEV, and Administration; focused 10/10 Chromium gate passed. | Cross-role UI coherence advances and new billing/admin module CSS avoids growing the shared stylesheet; full CI and field review remain open. |
 | 2026-08-18 | Laboratory sample collection, PEV vaccination entry, and Pharmacy request editing extracted into bounded components; controller sizes reduced and focused role/WCAG/browser gates passed. | Frontend decomposition advances without relaxing bundle budgets; Reception billing and Nursing assessment remain the principal large view sections. |
+| 2026-08-18 | Production Python CVE audit added to CI; `PYSEC-2026-1917` remediated by upgrading Sentry SDK to 1.45.1; all Pydantic ORM schemas migrated to `ConfigDict`; obsolete frontend configuration aliases removed. Local `pip-audit` reported zero known vulnerabilities and backend tests passed 426/426 with one skip. | Dependency and framework debt substantially reduced; CI verification and direct confirmation of Railway's raw `FRONTEND_URL` remain before closing the workstreams. |
 
 ## Related evidence
 

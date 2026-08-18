@@ -22,7 +22,7 @@ LEGACY_FRONTEND_HOSTS = frozenset(
         "frontend-seven-rust-94.vercel.app",
     }
 )
-_ENV_KEYS = ("FRONTEND_URL", "FRONTEND_PRODUCTION_URL", "PUBLIC_FRONTEND_URL")
+_ENV_KEY = "FRONTEND_URL"
 
 
 def _normalize(url: str) -> str:
@@ -37,12 +37,8 @@ def _host(url: str) -> str:
 
 
 def raw_frontend_url_from_env() -> str:
-    """First non-empty FRONTEND* env value, unmodified (may be legacy)."""
-    for key in _ENV_KEYS:
-        val = _normalize(os.getenv(key) or "")
-        if val:
-            return val
-    return ""
+    """Canonical frontend env value, unmodified (may contain a legacy host)."""
+    return _normalize(os.getenv(_ENV_KEY) or "")
 
 
 def resolve_frontend_url(*, allow_localhost_fallback: bool = True) -> str:

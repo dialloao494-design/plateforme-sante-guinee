@@ -51,8 +51,6 @@ jobs:
           echo "Setting Railway FRONTEND_URL=${canonical} on service ${SVC_ID}"
           railway variables --service="$SVC_ID" --set "FRONTEND_URL=${canonical}"
           # Clear alternate keys that could still inject the legacy host
-          railway variables --service="$SVC_ID" --set "FRONTEND_PRODUCTION_URL=${canonical}" || true
-          railway variables --service="$SVC_ID" --set "PUBLIC_FRONTEND_URL=${canonical}" || true
 
       - name: Deploy via Railway CLI
         if: env.RAILWAY_TOKEN != '' && env.SVC_ID != ''

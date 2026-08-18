@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ImagingOrderCreate(BaseModel):
@@ -39,8 +39,7 @@ class ImagingResultResponse(BaseModel):
     reported_at: Optional[datetime]
     validated_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ImagingOrderResponse(BaseModel):
@@ -57,5 +56,4 @@ class ImagingOrderResponse(BaseModel):
     patient_name: Optional[str] = None
     results: List[ImagingResultResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -8,7 +8,7 @@ Use this list before pointing a real domain and inviting doctors.
 |----------|---------|
 | `DATABASE_URL` | Postgres in production; SQLite only for local dev. |
 | `CORS_ORIGINS` | Comma-separated extra origins (HTTPS). |
-| `FRONTEND_URL` / `FRONTEND_PRODUCTION_URL` | Allowed CORS + Stripe return URLs if used. |
+| `FRONTEND_URL` | Canonical public UI URL used for CORS and generated links. |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Card payments + webhook verification. |
 | `ORANGE_MONEY_LIVE`, `ORANGE_MONEY_MERCHANT_ID`, `ORANGE_MONEY_API_KEY` | Enable live Orange Money path (see `services/mobile_money_service.py`). |
 | `MTN_MOMO_LIVE`, `MTN_MOMO_SUBSCRIPTION_KEY`, `MTN_MOMO_API_USER`, `MTN_MOMO_API_KEY` | Enable live MTN MoMo path. |

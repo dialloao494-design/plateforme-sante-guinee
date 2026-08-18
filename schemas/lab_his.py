@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class LabPatientOut(BaseModel):
@@ -25,8 +25,7 @@ class LabPatientOut(BaseModel):
     phone: Optional[str] = None
     quartier: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LabServiceRequestOut(BaseModel):

@@ -13,8 +13,6 @@ from core.frontend_url import (
 
 def test_remaps_legacy_seven_rust(monkeypatch):
     monkeypatch.setenv("FRONTEND_URL", "https://frontend-seven-rust-94.vercel.app")
-    monkeypatch.delenv("FRONTEND_PRODUCTION_URL", raising=False)
-    monkeypatch.delenv("PUBLIC_FRONTEND_URL", raising=False)
     assert resolve_frontend_url() == CANONICAL_FRONTEND_URL
     status = frontend_url_status()
     assert status["frontend_url"] == CANONICAL_FRONTEND_URL
@@ -26,6 +24,16 @@ def test_keeps_canonical(monkeypatch):
     monkeypatch.setenv("FRONTEND_URL", CANONICAL_FRONTEND_URL)
     assert resolve_frontend_url() == CANONICAL_FRONTEND_URL
     assert frontend_url_status()["frontend_url_remapped_from_legacy"] is False
+
+
+def test_obsolete_frontend_aliases_are_not_configuration_inputs(monkeypatch):
+    monkeypatch.delenv("FRONTEND_URL", raising=False)
+    monkeypatch.setenv("FRONTEND_PRODUCTION_URL", "https://obsolete.example")
+    monkeypatch.setenv("PUBLIC_FRONTEND_URL", "https://obsolete-public.example")
+    monkeypatch.setenv("ENVIRONMENT", "production")
+
+    assert resolve_frontend_url() == CANONICAL_FRONTEND_URL
+    assert frontend_url_status()["frontend_url_raw"] is None
 
 
 def test_reset_and_verify_links_use_canonical(monkeypatch):

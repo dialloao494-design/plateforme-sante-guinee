@@ -103,7 +103,7 @@ STRIPE_WEBHOOK_SECRET=whsec_YOUR_LIVE_WEBHOOK_SECRET
 
 # Frontend
 FRONTEND_URL=https://yourdomain.com
-FRONTEND_PRODUCTION_URL=https://yourdomain.com
+FRONTEND_URL=https://yourdomain.com
 
 # Logging
 LOG_LEVEL=INFO

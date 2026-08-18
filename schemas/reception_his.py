@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, time
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class EmergencyContactPayload(BaseModel):
@@ -100,8 +100,7 @@ class PatientRegistrationResponse(BaseModel):
     registration_date: Optional[date] = None
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DuplicateCheckRequest(BaseModel):
@@ -125,8 +124,7 @@ class PatientSearchResult(BaseModel):
     payer_json: Optional[str] = None
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReceptionAdmissionCreate(BaseModel):
@@ -210,8 +208,7 @@ class ServiceRequestResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReceptionAdmissionResponse(BaseModel):
@@ -226,8 +223,7 @@ class ReceptionAdmissionResponse(BaseModel):
     admitted_at: Optional[datetime] = None
     attending_clinician_user_id: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReceptionInvoiceLineItem(BaseModel):
@@ -278,8 +274,7 @@ class InvoiceItemOut(BaseModel):
     unit_price_gnf: int
     amount_gnf: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReceptionPaymentCreate(BaseModel):
@@ -295,8 +290,7 @@ class PaymentRecordOut(BaseModel):
     reference: Optional[str] = None
     paid_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReceptionInvoiceResponse(BaseModel):
@@ -317,8 +311,7 @@ class ReceptionInvoiceResponse(BaseModel):
     items: List[InvoiceItemOut] = []
     payments: List[PaymentRecordOut] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RefundCreate(BaseModel):
@@ -361,8 +354,7 @@ class RefundResponse(BaseModel):
     approved_at: Optional[datetime] = None
     paid_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReceptionDashboardStats(BaseModel):
