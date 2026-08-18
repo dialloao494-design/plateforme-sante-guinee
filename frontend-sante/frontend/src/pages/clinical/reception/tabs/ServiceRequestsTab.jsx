@@ -42,7 +42,7 @@ export default function ServiceRequestsTab({
   return (
         <section className="reception-his-panel">
           <PatientContextPanel selectedPatient={selectedPatient} patientPayerLabel={patientPayerLabel} />
-          <div className="clinical-card reception-his-form-sheet service-request-workspace">
+          <div className="clinical-card reception-his-form-sheet service-request-workspace" data-testid="service-request-workspace">
             <header className="service-request-workspace__header">
               <div>
                 <p>Prescription interne</p>
@@ -51,7 +51,7 @@ export default function ServiceRequestsTab({
               <span>Créer une demande et suivre sa facturation</span>
             </header>
 
-            <div className="reception-his-service-request-filters" aria-label="Filtres du registre des demandes">
+            <div className="reception-his-service-request-filters" data-testid="service-request-filters" aria-label="Filtres du registre des demandes">
               <label className="service-request-field service-request-field--search">
                 <span>Rechercher une demande</span>
                 <input
@@ -75,7 +75,7 @@ export default function ServiceRequestsTab({
 
             <form className="reception-his-service-request-form" onSubmit={saveServiceRequest}>
               <FormNotice>{!selectedPatient ? PATIENT_REQUIRED_NOTICE : null}</FormNotice>
-              <div className="service-request-setup">
+              <div className="service-request-setup" data-testid="service-request-setup">
                 <label className="service-request-field">
                   Catégorie
                   <select
@@ -118,7 +118,7 @@ export default function ServiceRequestsTab({
               </div>
 
               {serviceRequestForm.service_category === 'laboratory' && (
-                <fieldset className="reception-his-nested-fieldset">
+                <fieldset className="reception-his-nested-fieldset" data-testid="service-request-catalog">
                   <legend>Tous les examens de laboratoire</legend>
                   <label>
                     Rechercher un examen
@@ -156,7 +156,7 @@ export default function ServiceRequestsTab({
               )}
 
               {serviceRequestForm.service_category === 'imaging' && (
-                <fieldset className="reception-his-nested-fieldset">
+                <fieldset className="reception-his-nested-fieldset" data-testid="service-request-catalog">
                   <legend>Tous les examens d&apos;imagerie</legend>
                   <label>
                     Rechercher un examen
@@ -192,7 +192,7 @@ export default function ServiceRequestsTab({
               )}
 
               {serviceRequestForm.service_category === 'consultation' && (
-                <fieldset className="reception-his-nested-fieldset">
+                <fieldset className="reception-his-nested-fieldset" data-testid="service-request-catalog">
                   <legend>Spécialités (tarifs fiche AASMA)</legend>
                   <label>
                     Rechercher une spécialité
@@ -236,7 +236,7 @@ export default function ServiceRequestsTab({
               )}
 
               {serviceRequestForm.service_category === 'surgery' && (
-                <fieldset className="reception-his-nested-fieldset">
+                <fieldset className="reception-his-nested-fieldset" data-testid="service-request-catalog">
                   <legend>Actes chirurgicaux</legend>
                   <label>
                     Rechercher un acte
@@ -272,7 +272,7 @@ export default function ServiceRequestsTab({
               )}
 
               {serviceRequestForm.service_category === 'service' && (
-                <fieldset className="reception-his-nested-fieldset">
+                <fieldset className="reception-his-nested-fieldset" data-testid="service-request-catalog">
                   <legend>Services / Prestations</legend>
                   <div className="reception-his-service-options">
                     {filteredServicePrestations.map((svc) => (

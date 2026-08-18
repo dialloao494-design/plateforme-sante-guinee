@@ -213,6 +213,17 @@ in the migrated workspaces now use one shared live-region component with alert
 and status semantics; the focused WCAG browser gate reports no serious or
 critical violations (known contrast warnings remain tracked).
 
+Reception service requests now use a compact, scrollable workflow rail and one
+flat prescription workspace instead of nested card controls. Register search,
+category/status setup, catalogue selection, and actions have explicit labels and
+responsive alignment. A new Chromium regression creates a real patient and an
+authorized catalogue-backed request, verifies the active-navigation treatment,
+and proves the form collapses to one column at 390 px without page overflow.
+Local verification is green: lint, **44/44** frontend unit tests, **34/34**
+offline tests, production build, all 6 performance budgets, and the full
+**26/26** Chromium suite. CI and clinic-hardware validation remain open for this
+specific change.
+
 ### P1 — Frontend decomposition and performance
 
 **Status: IN PROGRESS — named decomposition tranche CI verified**
@@ -446,6 +457,7 @@ and a clear escalation contact.
 | 2026-08-18 | Laboratory patient overview and stored-payload domain logic extracted; local unit, build, performance, and cross-role browser gates passed. | Laboratory controller reduced by 130 lines with direct safety-identity regression coverage; broader controller/style decomposition remains open. |
 | 2026-08-18 | Laboratory results/validation, Pharmacy, Nursing, and PEV boundaries extracted; shared presentation expanded; two-clinic browser attack scenario and full local release matrix passed. | Named frontend decomposition tranche is locally code-complete; canonical patient workspace gains direct tenant-isolation evidence. CI rerun and field validation remain open. |
 | 2026-08-18 | CI-only run 32180157974 passed all 5 required jobs at `8922963`, including 22/22 browser tests with the cross-clinic negative scenario. | Canonical patient workspace moves to CI VERIFIED; named decomposition tranche is CI verified. No deployment was triggered. |
+| 2026-08-18 | Reception service-request navigation and prescription workspace redesigned; desktop/mobile request regression added; local 44-unit/34-offline/26-browser release matrix passed. | Clinical UX coherence advances with a responsive, behavior-locked reception pattern; CI and field validation remain open for the tranche. |
 
 ## Related evidence
 
