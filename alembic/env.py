@@ -3,7 +3,8 @@ import os
 import sys
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from alembic.script import ScriptDirectory
+from sqlalchemy import engine_from_config, inspect, pool, text
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -26,6 +27,38 @@ config.set_main_option("sqlalchemy.url", DATABASE_URL)
 target_metadata = Base.metadata
 
 
+def _bootstrap_pristine_database(connection) -> bool:
+    """Create the current schema for a truly empty database and stamp head.
+
+    Revision 0001 intentionally stamps databases that predate Alembic, so the
+    historical chain cannot construct an empty database.  A pristine install
+    is safe to create directly from the complete ORM metadata.  Databases with
+    any application table always use normal incremental migrations.
+    """
+    table_names = set(inspect(connection).get_table_names())
+    application_tables = table_names - {"alembic_version"}
+    if application_tables:
+        return False
+
+    head = ScriptDirectory.from_config(config).get_current_head()
+    if not head:
+        raise RuntimeError("Alembic migration head could not be resolved")
+
+    target_metadata.create_all(bind=connection)
+    connection.execute(
+        text(
+            "CREATE TABLE IF NOT EXISTS alembic_version ("
+            "version_num VARCHAR(64) NOT NULL PRIMARY KEY)"
+        )
+    )
+    connection.execute(text("DELETE FROM alembic_version"))
+    connection.execute(
+        text("INSERT INTO alembic_version (version_num) VALUES (:head)"),
+        {"head": head},
+    )
+    return True
+
+
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
@@ -45,10 +78,11 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
+        with connection.begin():
+            if _bootstrap_pristine_database(connection):
+                return
         context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():
-            from sqlalchemy import inspect, text
-
             if (
                 connection.dialect.name == "postgresql"
                 and inspect(connection).has_table("alembic_version")
