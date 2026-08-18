@@ -21,7 +21,9 @@ import models  # noqa: F401,E402
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Alembic also runs inside the API startup lifecycle.  Keep Uvicorn and
+    # application loggers alive so migration/startup failures are observable.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 target_metadata = Base.metadata
