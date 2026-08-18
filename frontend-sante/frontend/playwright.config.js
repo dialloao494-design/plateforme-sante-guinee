@@ -6,6 +6,9 @@ import { join } from 'node:path';
 const REPO_ROOT = new URL('../../', import.meta.url).pathname;
 const E2E_DB_DIR = mkdtempSync(join(tmpdir(), 'sg-e2e-'));
 const E2E_DB_PATH = join(E2E_DB_DIR, 'e2e.db');
+// actions/setup-python exposes `python3` without creating a repository .venv.
+// Local development keeps using the project's isolated interpreter.
+const E2E_PYTHON = process.env.E2E_PYTHON || (process.env.CI ? 'python3' : './.venv/bin/python');
 
 export default defineConfig({
   testDir: './e2e',
@@ -29,9 +32,7 @@ export default defineConfig({
     {
       // Fresh disposable SQLite DB per run avoids leftover locks / schema drift.
       // Longer timeout: cold Alembic + ensure_* on CI can exceed 60s.
-      command: process.env.E2E_PYTHON
-        ? `${process.env.E2E_PYTHON} -m uvicorn main:app --host 127.0.0.1 --port 8000`
-        : `./.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000`,
+      command: `${E2E_PYTHON} -m uvicorn main:app --host 127.0.0.1 --port 8000`,
       cwd: REPO_ROOT,
       url: 'http://127.0.0.1:8000/health',
       reuseExistingServer: false,
