@@ -5,6 +5,7 @@ import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js'
 import { formatClinicalDate, formatClinicalTime, formatGNF, patientAddress, patientAge, patientGenderLabel } from '../../utils/clinicalPresentation.js';
 import { formatApiError } from '../../utils/apiError.js';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
+import ClinicalWorkflowNav from '../../components/clinical/ClinicalWorkflowNav.jsx';
 import PrintClinicHeader from '../../components/print/PrintClinicHeader.jsx';
 import PharmacyMedicationAutocomplete from './PharmacyMedicationAutocomplete.jsx';
 import PharmacyStockTab from './PharmacyStockTab.jsx';
@@ -317,21 +318,13 @@ export default function PharmacyDashboard() {
         </div>
       </header>
 
-      <nav className="pharmacy-tabs" role="tablist" aria-label="Sections pharmacie">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            data-testid={`pharmacy-tab-${t.id}`}
-            aria-selected={tab === t.id}
-            className={`pharmacy-tab${tab === t.id ? ' active' : ''}`}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <ClinicalWorkflowNav
+        items={TABS}
+        value={tab}
+        onChange={setTab}
+        label="Sections pharmacie"
+        testIdPrefix="pharmacy-tab"
+      />
 
       {error && <p className="clinical-message clinical-message--err" role="alert">{error}</p>}
       {message && <p className="clinical-message clinical-message--ok" role="status">{message}</p>}
@@ -412,10 +405,11 @@ export default function PharmacyDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {lines.map((line) => (
+                    {lines.map((line, index) => (
                       <tr key={line.id}>
                         <td>
                           <PharmacyMedicationAutocomplete
+                            ariaLabel={`Produit ou médicament, ligne ${index + 1}`}
                             value={line.designation}
                             onChange={(v) => updateLine(line.id, { designation: v, inventory_item_id: null })}
                             onSelectItem={(item) => selectStockItem(line.id, item)}
@@ -425,6 +419,7 @@ export default function PharmacyDashboard() {
                         </td>
                         <td>
                           <input
+                            aria-label={`Quantité, ligne ${index + 1}`}
                             type="number"
                             min="1"
                             value={line.quantity}
@@ -434,6 +429,7 @@ export default function PharmacyDashboard() {
                         </td>
                         <td>
                           <input
+                            aria-label={`Prix unitaire, ligne ${index + 1}`}
                             type="number"
                             min="0"
                             step="500"
@@ -592,7 +588,7 @@ export default function PharmacyDashboard() {
                             />
                           </td>
                           <td>
-                            <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => removePaymentLine(line.id)}>×</button>
+                            <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => removePaymentLine(line.id)} aria-label="Supprimer cette ligne de paiement">×</button>
                           </td>
                         </tr>
                       ))}

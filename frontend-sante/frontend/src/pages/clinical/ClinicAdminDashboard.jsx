@@ -9,7 +9,9 @@ import clinicalApi from '../../services/clinicalApi';
 import { formatApiError } from '../../utils/apiError.js';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
+import ClinicalFeedback from '../../components/clinical/ClinicalFeedback.jsx';
 import './clinical.css';
+import './admin.css';
 
 const STAFF_ROLE_OPTIONS = [
   { value: 'receptionist', label: 'Réceptionniste' },
@@ -159,8 +161,7 @@ export default function ClinicAdminDashboard() {
         </p>
       </header>
 
-      {error && <p className="clinical-error">{String(error)}</p>}
-      {message && <p className="clinical-success">{message}</p>}
+      <ClinicalFeedback error={error} message={message} />
 
       <ClinicalStatGrid stats={stats} />
 
@@ -205,7 +206,7 @@ export default function ClinicAdminDashboard() {
       )}
 
       {backupStatus && (
-        <section className="clinical-card" style={{ marginTop: '1rem' }}>
+        <section className="clinical-card admin-section admin-backup-status">
           <h2>Sauvegarde quotidienne</h2>
           <p className={backupStatus.status === 'ok' ? 'clinical-success' : 'clinical-error'}>
             {backupStatus.message}
@@ -213,7 +214,7 @@ export default function ClinicAdminDashboard() {
         </section>
       )}
 
-      <section id="clinic-audit" className="clinical-card" style={{ marginTop: '1rem' }}>
+      <section id="clinic-audit" className="clinical-card admin-section">
         <h2>Journal d&apos;audit</h2>
         <ul className="clinical-list clinical-audit-list">
           {auditLogs.length === 0 && <li>Aucune entrée récente.</li>}
@@ -226,11 +227,12 @@ export default function ClinicAdminDashboard() {
         </ul>
       </section>
 
-      <section id="clinic-staff" className="clinical-card" style={{ marginTop: '1rem' }}>
+      <section id="clinic-staff" className="clinical-card admin-section">
         <h2>Personnel ({clinicStaff.length})</h2>
         {clinicStaff.length === 0 ? (
           <p className="clinical-muted">Aucun membre — créez un compte ci-dessous.</p>
         ) : (
+          <div className="admin-table-scroll" tabIndex="0" role="region" aria-label="Liste du personnel de la clinique">
           <table className="clinical-stock-table">
             <thead>
               <tr>
@@ -264,44 +266,58 @@ export default function ClinicAdminDashboard() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
 
-      <section className="clinical-card" id="create-user" style={{ marginTop: '1rem' }}>
+      <section className="clinical-card admin-section admin-create-staff" id="create-user">
         <h2>Créer un compte personnel</h2>
         <p className="clinical-lead">
           Comptes pour votre clinique : réception, médecin, laboratoire, pharmacie, caisse, nutrition, sage-femme.
         </p>
-        <form onSubmit={createStaff}>
+        <form className="admin-create-staff__form" onSubmit={createStaff}>
           <div className="clinical-field">
-            <label>Clinique</label>
+            <label htmlFor="staff-clinic">Clinique</label>
             <input
+              id="staff-clinic"
+              name="clinic"
               value={user?.clinic_name ? `${user.clinic_name} (#${clinicId})` : `#${clinicId || '—'}`}
               readOnly
               disabled
             />
           </div>
           <div className="clinical-field">
-            <label>Email</label>
+            <label htmlFor="staff-email">Email professionnel</label>
             <input
+              id="staff-email"
+              name="email"
               type="email"
+              inputMode="email"
+              autoComplete="email"
+              spellCheck="false"
               value={staffForm.email}
               onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
               required
             />
           </div>
           <div className="clinical-field">
-            <label>Mot de passe</label>
+            <label htmlFor="staff-password">Mot de passe temporaire</label>
             <input
+              id="staff-password"
+              name="new-password"
               type="password"
+              autoComplete="new-password"
               value={staffForm.password}
               onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
               required
             />
           </div>
           <div className="clinical-field">
-            <label>Rôle</label>
+            <label htmlFor="staff-role">Rôle clinique</label>
             <select
+              id="staff-role"
+              name="role"
+              autoComplete="off"
               value={staffForm.role}
               onChange={(e) => setStaffForm({ ...staffForm, role: e.target.value })}
             >
@@ -310,7 +326,7 @@ export default function ClinicAdminDashboard() {
               ))}
             </select>
           </div>
-          <button type="submit" className="clinical-btn">Créer le compte</button>
+          <button type="submit" className="clinical-btn admin-create-staff__submit">Créer le compte</button>
         </form>
       </section>
     </div>

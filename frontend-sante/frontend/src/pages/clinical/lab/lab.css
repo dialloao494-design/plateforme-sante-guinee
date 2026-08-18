@@ -11,3 +11,24 @@
 .lab-his-patient-field .reception-his-auto-display {
   overflow-wrap: anywhere;
 }
+
+.lab-his-workflow fieldset {
+  border-color: #d8e4e6;
+  box-shadow: none;
+}
+
+.lab-his-workflow .reception-his-nested-fieldset,
+.lab-his-workflow .lab-his-sample-types {
+  margin-top: 0.9rem;
+  padding: 1rem 0 0;
+  border: 0;
+  border-top: 1px solid #d8e4e6;
+  border-radius: 0;
+  background: transparent;
+}
+
+.lab-his-workflow .reception-his-nested-fieldset > legend,
+.lab-his-workflow .lab-his-sample-types > legend {
+  padding: 0 0.65rem 0 0;
+  color: #173a51;
+}

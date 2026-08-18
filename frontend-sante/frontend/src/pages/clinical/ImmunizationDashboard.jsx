@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
 import ClinicalFeedback from '../../components/clinical/ClinicalFeedback.jsx';
+import ClinicalWorkflowNav from '../../components/clinical/ClinicalWorkflowNav.jsx';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 import clinicalApi from '../../services/clinicalApi';
@@ -14,6 +15,11 @@ import './clinical.css';
 import './pev.css';
 
 const GENDER_LABELS = { M: 'M', F: 'F', male: 'M', female: 'F', other: '—' };
+const PEV_VIEWS = [
+  { id: 'record', label: 'Enregistrement' },
+  { id: 'register', label: 'Registre mensuel' },
+  { id: 'schedule', label: 'Calendrier PEV' },
+];
 
 export default function ImmunizationDashboard() {
   const { user } = useAuth();
@@ -241,23 +247,13 @@ export default function ImmunizationDashboard() {
       </p>
       <ClinicalFeedback error={error} message={message} />
 
-      <div className="clinical-tabs pev-view-tabs">
-        {[
-          ['record', 'Enregistrement'],
-          ['register', 'Registre mensuel'],
-          ['schedule', 'Calendrier PEV'],
-        ].map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            data-testid={`pev-tab-${key}`}
-            className={view === key ? 'clinical-tab active' : 'clinical-tab'}
-            onClick={() => setView(key)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <ClinicalWorkflowNav
+        items={PEV_VIEWS}
+        value={view}
+        onChange={setView}
+        label="Sections PEV"
+        testIdPrefix="pev-tab"
+      />
 
       <ClinicalStatGrid stats={stats} />
       <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Patient actif au PEV" />
@@ -304,12 +300,8 @@ export default function ImmunizationDashboard() {
               </ul>
             )}
             {selectedPatient && (
-              <div className="pev-patient-banner">
-                <p className="clinical-selected-patient">
-                  Patient : <strong>{selectedPatient.first_name} {selectedPatient.last_name}</strong>
-                  {' · '}
-                  ID #{selectedPatient.id}
-                </p>
+              <section className="pev-patient-banner" aria-labelledby="pev-patient-details-title">
+                <h3 id="pev-patient-details-title">Informations utiles à la vaccination</h3>
                 <div className="pev-patient-meta">
                   <span>Sexe : {GENDER_LABELS[selectedPatient.gender] || selectedPatient.gender || '—'}</span>
                   <span>Naissance : {patientAgeDisplay}</span>
@@ -322,7 +314,7 @@ export default function ImmunizationDashboard() {
                     Historique central : {patientJourney.immunizations.length} vaccination(s) liée(s) au même dossier.
                   </p>
                 )}
-              </div>
+              </section>
             )}
           </section>
 

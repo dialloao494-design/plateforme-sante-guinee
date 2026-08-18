@@ -1,6 +1,16 @@
 /* Nurse triage dashboard — paper-form layout */
 .nurse-his-clinic-name { font-weight: 700; letter-spacing: 0.04em; color: var(--clinical-accent, #0d6b5c); margin: 0 0 0.25rem; }
 .nurse-his-form-sheet fieldset { margin-bottom: 1rem; }
+.nurse-his-form-sheet > fieldset {
+  margin: 0;
+  padding: 1.15rem 0;
+  border: 0;
+  border-top: 1px solid #d8e4e6;
+  border-radius: 0;
+}
+.nurse-his-form-sheet > fieldset:first-of-type { border-top: 0; }
+.nurse-his-form-sheet > fieldset > legend { padding: 0 0.7rem 0 0; color: #173a51; }
+.nurse-his-form-sheet > fieldset > .nurse-his-textarea-field:last-child textarea { margin-bottom: 0; }
 .nurse-his-display-field { display: flex; min-width: 0; flex-direction: column; gap: 0.35rem; color: #334155; font-size: 0.9rem; font-weight: 600; }
 .nurse-his-header-grid { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: start; }
 .nurse-his-bp-pair { display: flex; align-items: center; gap: 0.35rem; }

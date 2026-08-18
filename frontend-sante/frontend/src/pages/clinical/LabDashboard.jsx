@@ -613,22 +613,6 @@ export default function LabDashboard() {
       {error && <p className="clinical-message clinical-message--err" role="alert">{error}</p>}
       {message && <p className="clinical-message clinical-message--ok" role="status">{message}</p>}
 
-      <nav className="reception-his-tabs" role="tablist" aria-label="Sections laboratoire">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            className={`reception-his-tab${tab === t.id ? ' reception-his-tab--active' : ''}`}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-            <kbd>{t.shortcut}</kbd>
-          </button>
-        ))}
-      </nav>
-
       {tab === 'workflow' && (
         <>
           <ClinicalStatGrid stats={stats} onStatClick={loadQueueBucket} activeKey={activeStatBucket} />

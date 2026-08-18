@@ -224,6 +224,21 @@ offline tests, production build, all 6 performance budgets, and the full
 **26/26** Chromium suite. CI and clinic-hardware validation remain open for this
 specific change.
 
+A second clinical-UX tranche now gives Reception, Pharmacy, and PEV one shared
+semantic workflow navigation instead of competing boxed-tab implementations;
+removes the laboratory's redundant single-item tab bar; flattens nested
+Laboratory, Pharmacy, and Nursing fieldsets into quieter section dividers; and
+removes the duplicate PEV patient-identity banner while retaining vaccination
+details beneath the canonical safety strip. Unified Billing now presents a
+two-step cashier workflow with translated statuses and structured amounts, while
+Clinic Administration has responsive staff management, explicit form metadata,
+shared live-region feedback, and a keyboard-accessible table viewport. Module
+styles are emitted as bounded route assets rather than added to `clinical.css`.
+The expanded accessibility gate found and fixed unnamed Pharmacy quantity/price
+controls. Local focused evidence: **10/10** Chromium responsive/accessibility/
+workflow tests, lint, production build, and all 6 performance budgets. Broader
+CI and clinic-hardware review remain open.
+
 ### P1 — Frontend decomposition and performance
 
 **Status: IN PROGRESS — named decomposition tranche CI verified**
@@ -458,6 +473,7 @@ and a clear escalation contact.
 | 2026-08-18 | Laboratory results/validation, Pharmacy, Nursing, and PEV boundaries extracted; shared presentation expanded; two-clinic browser attack scenario and full local release matrix passed. | Named frontend decomposition tranche is locally code-complete; canonical patient workspace gains direct tenant-isolation evidence. CI rerun and field validation remain open. |
 | 2026-08-18 | CI-only run 32180157974 passed all 5 required jobs at `8922963`, including 22/22 browser tests with the cross-clinic negative scenario. | Canonical patient workspace moves to CI VERIFIED; named decomposition tranche is CI verified. No deployment was triggered. |
 | 2026-08-18 | Reception service-request navigation and prescription workspace redesigned; desktop/mobile request regression added; local 44-unit/34-offline/26-browser release matrix passed. | Clinical UX coherence advances with a responsive, behavior-locked reception pattern; CI and field validation remain open for the tranche. |
+| 2026-08-18 | Shared workflow navigation, flatter clinical forms, cashier/admin workspaces, and Pharmacy accessible grid labels added across Reception, Billing, Lab, Pharmacy, Nursing, PEV, and Administration; focused 10/10 Chromium gate passed. | Cross-role UI coherence advances and new billing/admin module CSS avoids growing the shared stylesheet; full CI and field review remain open. |
 
 ## Related evidence
 

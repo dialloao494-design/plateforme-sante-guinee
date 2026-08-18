@@ -25,6 +25,19 @@
   box-sizing: border-box;
 }
 
+.pharmacy-his-workflow-card > fieldset {
+  margin: 0.85rem 0 0;
+  padding: 1rem 0 0;
+  border: 0;
+  border-top: 1px solid #d8e4e6;
+  border-radius: 0;
+}
+
+.pharmacy-his-workflow-card > fieldset > legend {
+  padding: 0 0.65rem 0 0;
+  color: #173a51;
+}
+
 .pharmacy-his-workflow-card h3 {
   margin: 0 0 1rem;
   padding-bottom: 0.55rem;
@@ -224,15 +237,16 @@
 }
 
 .pharmacy-his-payment-fieldset {
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 0.85rem 1rem;
+  border: 0;
+  border-top: 1px solid #d8e4e6;
+  border-radius: 0;
+  padding: 0.85rem 0 0;
   margin: 0 0 0.5rem;
 }
 
 .pharmacy-his-payment-fieldset legend {
   font-weight: 700;
-  padding: 0 0.35rem;
+  padding: 0 0.65rem 0 0;
 }
 
 .pharmacy-his-receipt-print {

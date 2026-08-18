@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import PatientRegistrationPrint from '../../../components/print/PatientRegistrationPrint.jsx';
+import ClinicalWorkflowNav from '../../../components/clinical/ClinicalWorkflowNav.jsx';
 import '../clinical.css';
-import './receptionWorkspace.css';
 import { TABS } from './constants.js';
 import { useReceptionDashboard } from './hooks/useReceptionDashboard.jsx';
 import AdmissionTab from './tabs/AdmissionTab.jsx';
@@ -115,20 +115,13 @@ export default function ReceptionDashboard() {
       {message && <p className="clinical-message clinical-message--ok" role="status" aria-live="polite">{message}</p>}
       {error && <p className="clinical-message clinical-message--err" role="alert">{error}</p>}
 
-      <nav className="reception-his-tabs" aria-label="Étapes du parcours de réception">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            data-testid={`reception-tab-${t.id}`}
-            className={tab === t.id ? 'active' : ''}
-            onClick={() => setTab(t.id)}
-            aria-current={tab === t.id ? 'page' : undefined}
-          >
-            {t.label}<kbd>{t.shortcut}</kbd>
-          </button>
-        ))}
-      </nav>
+      <ClinicalWorkflowNav
+        items={TABS}
+        value={tab}
+        onChange={setTab}
+        label="Étapes du parcours de réception"
+        testIdPrefix="reception-tab"
+      />
 
       {tab === 'dashboard' && <DashboardTab {...dashboard} openPatient={openPatient} />}
       {tab === 'register' && <RegisterTab {...dashboard} />}

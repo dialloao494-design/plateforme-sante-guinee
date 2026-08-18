@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { loginAsReception, waitForLoginForm } from './helpers.js';
+import { loginAsReception, loginAsRole, waitForLoginForm } from './helpers.js';
 
 /**
  * Fail on critical always; fail on serious except color-contrast.
@@ -45,3 +45,18 @@ test('reception dashboard has no serious or critical a11y violations after login
   await expect(page.getByRole('heading', { name: /Tableau de bord — Réception/ })).toBeVisible();
   await expectNoBlockingA11yViolations(page, 'reception dashboard');
 });
+
+for (const workspace of [
+  { role: 'admin', route: '/clinical/billing', testId: 'billing-dashboard', label: 'unified billing' },
+  { role: 'admin', route: '/clinical/admin', testId: 'admin-dashboard', label: 'clinic administration' },
+  { role: 'pharmacy', route: '/clinical/pharmacy', testId: 'pharmacy-dashboard', label: 'pharmacy' },
+  { role: 'pev', route: '/clinical/pev', testId: 'pev-dashboard', label: 'PEV' },
+]) {
+  test(`${workspace.label} has no serious or critical a11y violations`, async ({ page }) => {
+    test.setTimeout(90_000);
+    await loginAsRole(page, workspace.role);
+    await page.goto(workspace.route);
+    await expect(page.getByTestId(workspace.testId)).toBeVisible({ timeout: 20_000 });
+    await expectNoBlockingA11yViolations(page, `${workspace.label} workspace`);
+  });
+}

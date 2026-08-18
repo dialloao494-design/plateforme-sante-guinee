@@ -355,18 +355,18 @@
   font-variant-numeric: tabular-nums;
 }
 
-.app-shell .app-view :is(.reception-his-tabs, .filter-buttons) {
+.app-shell .app-view .filter-buttons {
   padding: 0.3rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: #eaf0f3;
 }
 
-.app-shell .app-view :is(.reception-his-tabs, .filter-buttons) button {
+.app-shell .app-view .filter-buttons button {
   border-radius: 7px;
 }
 
-.app-shell .app-view :is(.reception-his-tabs, .filter-buttons) button.active {
+.app-shell .app-view .filter-buttons button.active {
   background: #fff;
   color: var(--color-primary-deep);
   box-shadow: var(--shadow-sm);

@@ -7,9 +7,10 @@ import PatientPicker from '../../components/PatientPicker.jsx';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
 import ClinicalFeedback from '../../components/clinical/ClinicalFeedback.jsx';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
-import { formatClinicalDateTime, formatGNF } from '../../utils/clinicalPresentation.js';
+import { formatClinicalDateTime, formatClinicalStatus, formatGNF } from '../../utils/clinicalPresentation.js';
 
 import './clinical.css';
+import './billing.css';
 
 export default function UnifiedBillingDashboard() {
   const { patientId: routePatientId, setPatientId: setRoutePatientId } = useClinicalPatientRoute();
@@ -111,23 +112,30 @@ export default function UnifiedBillingDashboard() {
   ];
 
   return (
-    <div className="clinical-page" data-testid="billing-dashboard">
-      <header className="clinical-header">
+    <div className="clinical-page billing-workspace" data-testid="billing-dashboard">
+      <header className="clinical-header billing-workspace__header">
+        <p className="clinical-eyebrow">Caisse clinique</p>
         <h1>Facturation unifiée</h1>
-        <p>Agrégation consultation, labo, radio, pharmacie et hospitalisation.</p>
+        <p>Centralisez les actes du patient, encaissez et remettez un justificatif.</p>
       </header>
       <ClinicalFeedback error={error} message={message} />
       <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Patient actif à la facturation" />
       <ClinicalStatGrid stats={stats} />
 
-      <section className="clinical-panel">
-        <h2>Générer une facture</h2>
-        <div className="clinical-form">
+      <section className="clinical-panel billing-create-panel" aria-labelledby="billing-create-title">
+        <header className="billing-section-heading">
+          <div>
+            <p>Étape 1</p>
+            <h2 id="billing-create-title">Préparer la facture</h2>
+          </div>
+          <span>Les charges non facturées du dossier seront regroupées.</span>
+        </header>
+        <div className="clinical-form billing-create-form">
           {!selectedPatient && <PatientPicker search={clinicalApi.billingPatientSearch} onSelect={selectPatient} />}
           {selectedPatient && (
             <>
               <label htmlFor="billing-visit">Visite à facturer</label>
-              <select id="billing-visit" value={visitId} onChange={(e) => setVisitId(e.target.value)}>
+              <select id="billing-visit" name="billing_visit" autoComplete="off" value={visitId} onChange={(e) => setVisitId(e.target.value)}>
                 <option value="">Toutes les charges non facturées</option>
                 {patientVisits.map((visit) => (
                   <option key={visit.id} value={visit.id}>
@@ -141,27 +149,42 @@ export default function UnifiedBillingDashboard() {
         </div>
       </section>
 
-      <section className="clinical-panel">
-        <h2>Factures</h2>
-        <div className="clinical-form" style={{ marginBottom: '1rem' }}>
+      <section className="clinical-panel billing-register" aria-labelledby="billing-register-title">
+        <header className="billing-section-heading">
+          <div>
+            <p>Étape 2</p>
+            <h2 id="billing-register-title">Factures à traiter</h2>
+          </div>
+          <span>{pending.length} facture{pending.length > 1 ? 's' : ''} en attente</span>
+        </header>
+        <div className="clinical-form billing-payment-toolbar">
           <label>
             Mode de paiement
-            <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+            <select name="payment_method" autoComplete="off" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
               <option value="cash">Espèces</option>
               <option value="orange_money">Orange Money</option>
               <option value="mobile_money">Mobile Money</option>
             </select>
           </label>
         </div>
-        <ul className="clinical-queue">
-          {invoices.length === 0 && <li>Aucune facture.</li>}
+        {invoices.length === 0 ? (
+          <p className="billing-empty-state">Aucune facture à afficher pour le moment.</p>
+        ) : <ul className="clinical-queue billing-invoice-list">
           {invoices.map((inv) => (
             <li key={inv.id}>
-              <div>
-                <strong>{inv.invoice_number}</strong> — {inv.patient_name}
-                <span className="clinical-badge">{inv.status}</span>
-                <div>{formatGNF(inv.total_amount_gnf)} · payé {formatGNF(inv.paid_amount_gnf)}</div>
-                <ul className="clinical-list">
+              <div className="billing-invoice-main">
+                <div className="billing-invoice-identity">
+                  <strong translate="no">{inv.invoice_number}</strong>
+                  <span>{inv.patient_name || 'Patient non renseigné'}</span>
+                  <span className={`clinical-badge billing-status billing-status--${inv.status || 'unknown'}`}>
+                    {formatClinicalStatus(inv.status)}
+                  </span>
+                </div>
+                <div className="billing-invoice-amounts">
+                  <span><small>Total</small><strong>{formatGNF(inv.total_amount_gnf)}</strong></span>
+                  <span><small>Payé</small><strong>{formatGNF(inv.paid_amount_gnf)}</strong></span>
+                </div>
+                <ul className="clinical-list billing-invoice-items">
                   {(inv.items || []).map((item) => (
                     <li key={item.id}>{item.description}: {formatGNF(item.amount_gnf)}</li>
                   ))}
@@ -175,7 +198,7 @@ export default function UnifiedBillingDashboard() {
               </div>
             </li>
           ))}
-        </ul>
+        </ul>}
       </section>
     </div>
   );

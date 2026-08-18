@@ -1,0 +1,145 @@
+.billing-workspace__header {
+  margin-bottom: 1.25rem;
+}
+
+.billing-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid #dce7e8;
+}
+
+.billing-section-heading p {
+  margin: 0 0 0.15rem;
+  color: #08776e;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.billing-section-heading h2 {
+  margin: 0;
+}
+
+.billing-section-heading > span {
+  color: #64798a;
+  font-size: 0.86rem;
+}
+
+.billing-create-form {
+  display: grid;
+  grid-template-columns: minmax(250px, 1fr) auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.billing-create-form > label,
+.billing-create-form > select {
+  grid-column: 1;
+}
+
+.billing-create-form > button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: end;
+}
+
+.billing-payment-toolbar {
+  max-width: 320px;
+  margin-bottom: 1rem;
+}
+
+.billing-invoice-list > li {
+  align-items: center;
+  gap: 1rem;
+  border-left: 3px solid #b8cfce;
+}
+
+.billing-invoice-main {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(190px, 0.8fr) minmax(250px, 1fr);
+  gap: 0.75rem 1.25rem;
+  min-width: 0;
+}
+
+.billing-invoice-identity,
+.billing-invoice-amounts,
+.billing-invoice-amounts > span {
+  display: flex;
+}
+
+.billing-invoice-identity {
+  align-items: start;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.billing-invoice-identity > span:not(.clinical-badge) {
+  overflow-wrap: anywhere;
+  color: #52677a;
+}
+
+.billing-invoice-amounts {
+  align-items: center;
+  justify-content: end;
+  gap: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.billing-invoice-amounts > span {
+  align-items: end;
+  flex-direction: column;
+}
+
+.billing-invoice-amounts small {
+  color: #687b8b;
+}
+
+.billing-invoice-items {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #536979;
+  font-size: 0.86rem;
+}
+
+.billing-empty-state {
+  margin: 0;
+  padding: 1.75rem;
+  border: 1px dashed #c8d9dc;
+  border-radius: 8px;
+  background: #f8fbfb;
+  color: #607586;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .billing-section-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .billing-create-form,
+  .billing-invoice-main {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-create-form > button,
+  .billing-invoice-items {
+    grid-column: 1;
+  }
+
+  .billing-create-form > button {
+    grid-row: auto;
+    width: 100%;
+  }
+
+  .billing-invoice-amounts {
+    justify-content: start;
+  }
+}

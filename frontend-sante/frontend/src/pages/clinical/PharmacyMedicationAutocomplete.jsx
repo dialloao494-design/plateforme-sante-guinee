@@ -8,6 +8,7 @@ export default function PharmacyMedicationAutocomplete({
   onSelectItem,
   disabled,
   inventory,
+  ariaLabel = 'Produit ou médicament',
 }) {
   const [query, setQuery] = useState(value || '');
   const [remoteHits, setRemoteHits] = useState([]);
@@ -66,6 +67,7 @@ export default function PharmacyMedicationAutocomplete({
   return (
     <div className="pharmacy-med-search" ref={wrapRef}>
       <input
+        aria-label={ariaLabel}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
