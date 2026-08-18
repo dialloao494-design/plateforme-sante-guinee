@@ -10,7 +10,7 @@ import DashboardTab from './tabs/DashboardTab.jsx';
 import RefundTab from './tabs/RefundTab.jsx';
 import RegisterTab from './tabs/RegisterTab.jsx';
 import ServiceRequestsTab from './tabs/ServiceRequestsTab.jsx';
-import PatientSafetyStrip from './components/PatientSafetyStrip.jsx';
+import PatientSafetyStrip from '../../../components/clinical/PatientSafetyStrip.jsx';
 import { readReceptionRouteState } from './routeState.js';
 
 export default function ReceptionDashboard() {

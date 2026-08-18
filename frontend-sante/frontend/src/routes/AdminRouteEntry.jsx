@@ -1,7 +1,9 @@
+import { lazy } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { normalizeRole } from '../utils/roleAccess.js';
-import ClinicAdminDashboard from '../pages/clinical/ClinicAdminDashboard.jsx';
+
+const ClinicAdminDashboard = lazy(() => import('../pages/clinical/ClinicAdminDashboard.jsx'));
 
 /**
  * /clinical/admin — clinic_admin and admin only.

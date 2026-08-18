@@ -11,6 +11,11 @@ export function usePollingQuery(fetcher, { pollMs = 0, enabled = true, initialDa
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(Boolean(enabled));
   const mounted = useRef(true);
+  const dataRef = useRef(initialData);
+
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
 
   const load = useCallback(
     async (forceRefresh = false) => {
@@ -25,7 +30,8 @@ export function usePollingQuery(fetcher, { pollMs = 0, enabled = true, initialDa
         }
       } catch (err) {
         if (mounted.current) {
-          const hasData = Array.isArray(data) ? data.length > 0 : data != null;
+          const currentData = dataRef.current;
+          const hasData = Array.isArray(currentData) ? currentData.length > 0 : currentData != null;
           if (forceRefresh || !hasData) {
             if (!isPermissionDeniedError(err) || forceRefresh) {
               setError(formatApiError(err, 'Chargement impossible'));

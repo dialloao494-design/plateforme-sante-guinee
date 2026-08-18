@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { appointmentsAPI, patientRecordAPI } from '../services/api.js';
@@ -7,6 +7,12 @@ import { formatGNF, getConsultationTypeLabel, getStatusMeta } from '../utils/app
 import { formatDateTimeShort } from '../utils/formatDateTime.js';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import './PatientDetails.css';
+
+const getErrorMessage = (err, fallback) => {
+  const detail = err?.response?.data?.detail;
+  if (typeof detail === 'string' && detail.trim()) return detail;
+  return err?.message || fallback;
+};
 
 const PatientDetails = () => {
   const { user } = useAuth();
@@ -22,17 +28,9 @@ const PatientDetails = () => {
   const [noteType, setNoteType] = useState('suivi');
   const [savingNote, setSavingNote] = useState(false);
 
-  const getErrorMessage = (err, fallback) => {
-    const detail = err?.response?.data?.detail;
-    if (typeof detail === 'string' && detail.trim()) {
-      return detail;
-    }
-    return err?.message || fallback;
-  };
-
   const canWriteClinical = user?.role === 'doctor' || user?.role === 'admin';
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await appointmentsAPI.getAll();
@@ -81,11 +79,11 @@ const PatientDetails = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     loadData();
-  }, [id]);
+  }, [loadData]);
 
   const patientName = useMemo(() => {
     if (!patient) return 'Patient';

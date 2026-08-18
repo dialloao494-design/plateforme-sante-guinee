@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { formatApiError } from '../../utils/apiError.js';
+import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 import { detectLabTemplateId, LAB_TEMPLATES, LAB_TEMPLATE_OPTIONS, templateRowsForExam, templateRowsForTemplateId } from '../../data/labReportTemplates.js';
+import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
 import PrintClinicHeader from '../../components/print/PrintClinicHeader.jsx';
 import PrintDocumentFooter from '../../components/print/PrintDocumentFooter.jsx';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
@@ -150,7 +152,9 @@ const FormNotice = ({ children }) =>
 
 export default function LabDashboard() {
   const { user } = useAuth();
+  const { patientId: routePatientId, setPatientId: setRoutePatientId } = useClinicalPatientRoute();
   const searchRef = useRef(null);
+  const closingPatientIdRef = useRef('');
 
   const [tab, setTab] = useState('workflow');
   const [loading, setLoading] = useState(false);
@@ -259,7 +263,7 @@ export default function LabDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [selectedPatient?.id]);
+  }, [load, selectedPatient?.id]);
 
   const patientOrders = useMemo(() => {
     if (!selectedPatient?.id) return [];
@@ -333,7 +337,7 @@ export default function LabDashboard() {
     }
   };
 
-  const selectPatient = async (p) => {
+  const selectPatient = useCallback(async (p) => {
     if (!p?.id) return;
     let patient = p;
     try {
@@ -343,6 +347,8 @@ export default function LabDashboard() {
       /* keep search payload */
     }
     setSelectedPatient(patient);
+    closingPatientIdRef.current = '';
+    setRoutePatientId(patient.id);
     setSearchQ('');
     setSearchResults([]);
     setActiveOrderId(null);
@@ -353,10 +359,12 @@ export default function LabDashboard() {
     setSampleOther('');
     setMessage(`Patient sélectionné : ${patientFullName(patient)} · N° ${patient.patient_number || patient.id}`);
     setError('');
-  };
+  }, [setRoutePatientId]);
 
   const clearPatient = () => {
+    closingPatientIdRef.current = String(selectedPatient?.id || routePatientId || '');
     setSelectedPatient(null);
+    setRoutePatientId('');
     setServiceRequests([]);
     setActiveOrderId(null);
     setResultRows([{ ...EMPTY_RESULT_ROW }]);
@@ -366,7 +374,16 @@ export default function LabDashboard() {
     setEcbuMacro('');
   };
 
-  const hydrateSampleFromOrder = (order) => {
+  useEffect(() => {
+    if (!routePatientId) {
+      closingPatientIdRef.current = '';
+      return;
+    }
+    if (closingPatientIdRef.current === routePatientId || String(selectedPatient?.id || '') === routePatientId) return;
+    void selectPatient({ id: routePatientId });
+  }, [routePatientId, selectPatient, selectedPatient?.id]);
+
+  const hydrateSampleFromOrder = useCallback((order) => {
     const parsed = parseSampleNotes(order?.clinical_notes);
     if (!parsed) {
       setSavedSampleInfo(null);
@@ -381,9 +398,9 @@ export default function LabDashboard() {
     const codes = sampleCodesFromLabels(parsed.sample_types || []);
     setSampleTypes(codes);
     setSampleOther(parsed.sample_other || '');
-  };
+  }, []);
 
-  const hydrateResultsFromOrder = (order) => {
+  const hydrateResultsFromOrder = useCallback((order) => {
     const payload = parseResultPayload(order?.result_data);
     if (!payload?.rows?.length) return false;
     setActiveTemplateId(payload.template_id || detectLabTemplateId(order.test_name));
@@ -407,7 +424,7 @@ export default function LabDashboard() {
       });
     }
     return true;
-  };
+  }, [selectedPatient]);
 
   const pickOrderForTemplate = (templateId) => {
     if (!actionableOrders.length) return null;
@@ -427,7 +444,7 @@ export default function LabDashboard() {
     return pick;
   };
 
-  const selectOrder = (order) => {
+  const selectOrder = useCallback((order) => {
     if (!order?.id) return;
     setActiveOrderId(order.id);
     setValidationSummary(null);
@@ -457,7 +474,7 @@ export default function LabDashboard() {
     }));
     setMessage(`Examen actif : ${order.test_name}`);
     setError('');
-  };
+  }, [hydrateResultsFromOrder, hydrateSampleFromOrder]);
 
   useEffect(() => {
     if (!selectedPatient?.id || activeOrderId) return undefined;
@@ -465,7 +482,7 @@ export default function LabDashboard() {
       selectOrder(actionableOrders[0]);
     }
     return undefined;
-  }, [selectedPatient?.id, actionableOrders, activeOrderId]);
+  }, [selectedPatient?.id, actionableOrders, activeOrderId, selectOrder]);
 
   const toggleSampleType = (code) => {
     setSampleTypes((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
@@ -697,6 +714,8 @@ export default function LabDashboard() {
           )}
         </div>
       </header>
+
+      <PatientSafetyStrip patient={selectedPatient} onClose={clearPatient} contextLabel="Patient actif au laboratoire" />
 
       {error && <p className="clinical-message clinical-message--err" role="alert">{error}</p>}
       {message && <p className="clinical-message clinical-message--ok" role="status">{message}</p>}

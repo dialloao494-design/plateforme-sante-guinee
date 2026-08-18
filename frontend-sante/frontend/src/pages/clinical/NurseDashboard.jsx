@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { CLINIC_PRINT_NAME } from '../../constants/clinicBranding.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
+import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 import clinicalApi from '../../services/clinicalApi';
 import { formatApiError } from '../../utils/apiError.js';
+import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import './clinical.css';
 
@@ -115,7 +117,9 @@ const TextAreaField = ({ label, value, onChange, rows = 4 }) => (
 
 export default function NurseDashboard() {
   const { user } = useAuth();
+  const { patientId: routePatientId, setPatientId: setRoutePatientId } = useClinicalPatientRoute();
   const searchRef = useRef(null);
+  const closingPatientIdRef = useRef('');
 
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -166,7 +170,7 @@ export default function NurseDashboard() {
     }
   };
 
-  const loadPatientHistory = async (patientId) => {
+  const loadPatientHistory = useCallback(async (patientId) => {
     if (!patientId) return;
     setLoadingPatientHistory(true);
     try {
@@ -177,11 +181,13 @@ export default function NurseDashboard() {
     } finally {
       setLoadingPatientHistory(false);
     }
-  };
+  }, []);
 
-  const selectPatient = async (patient) => {
+  const selectPatient = useCallback(async (patient) => {
     if (!patient?.id) return;
     setSelectedPatient(patient);
+    closingPatientIdRef.current = '';
+    setRoutePatientId(patient.id);
     setSearchResults([]);
     setSearchQ('');
     setMessage('');
@@ -200,9 +206,9 @@ export default function NurseDashboard() {
     } finally {
       setAssessmentLoading(false);
     }
-  };
+  }, [loadPatientHistory, setRoutePatientId]);
 
-  const openPatientById = async (patientId) => {
+  const openPatientById = useCallback(async (patientId) => {
     if (!patientId) return;
     setError('');
     try {
@@ -211,7 +217,16 @@ export default function NurseDashboard() {
     } catch (err) {
       setError(formatApiError(err, 'Ouverture du patient impossible'));
     }
-  };
+  }, [selectPatient]);
+
+  useEffect(() => {
+    if (!routePatientId) {
+      closingPatientIdRef.current = '';
+      return;
+    }
+    if (closingPatientIdRef.current === routePatientId || String(selectedPatient?.id || '') === routePatientId) return;
+    void openPatientById(routePatientId);
+  }, [openPatientById, routePatientId, selectedPatient?.id]);
 
   const loadQueueBucket = async (bucket) => {
     if (activeStatBucket === bucket) {
@@ -281,7 +296,9 @@ export default function NurseDashboard() {
       });
       setMessage('Évaluation infirmière enregistrée — visible par le médecin.');
       setForm(EMPTY_FORM);
+      closingPatientIdRef.current = String(selectedPatient?.id || routePatientId || '');
       setSelectedPatient(null);
+      setRoutePatientId('');
       setPatientAssessments([]);
       setShowPatientHistory(false);
       setSearchQ('');
@@ -350,6 +367,14 @@ export default function NurseDashboard() {
           )}
         </div>
       </header>
+
+      <PatientSafetyStrip patient={selectedPatient} onClose={() => {
+        closingPatientIdRef.current = String(selectedPatient?.id || routePatientId || '');
+        setSelectedPatient(null);
+        setRoutePatientId('');
+        setPatientAssessments([]);
+        setShowPatientHistory(false);
+      }} contextLabel="Patient actif en soins infirmiers" />
 
       {error && <p className="clinical-error">{error}</p>}
       {message && <p className="clinical-success">{message}</p>}

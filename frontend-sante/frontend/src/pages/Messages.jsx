@@ -1,9 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { appointmentsAPI, messagesAPI } from '../services/api.js';
 import { openMessageAttachment } from '../services/attachmentDownload.js';
 import './Messages.css';
+
+const getErrorMessage = (err, fallback) => {
+  const detail = err?.response?.data?.detail;
+  if (typeof detail === 'string' && detail.trim()) return detail;
+  return err?.message || fallback;
+};
 
 const Messages = () => {
   const { appointmentId } = useParams();
@@ -16,15 +22,7 @@ const Messages = () => {
   const [text, setText] = useState('');
   const [file, setFile] = useState(null);
 
-  const getErrorMessage = (err, fallback) => {
-    const detail = err?.response?.data?.detail;
-    if (typeof detail === 'string' && detail.trim()) {
-      return detail;
-    }
-    return err?.message || fallback;
-  };
-
-  const loadMessages = async () => {
+  const loadMessages = useCallback(async () => {
     try {
       const [appointmentResponse, messageResponse] = await Promise.all([
         appointmentsAPI.getById(appointmentId),
@@ -38,12 +36,12 @@ const Messages = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [appointmentId]);
 
   useEffect(() => {
     setLoading(true);
     loadMessages();
-  }, [appointmentId]);
+  }, [loadMessages]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -51,7 +49,7 @@ const Messages = () => {
     }, 12000);
 
     return () => clearInterval(intervalId);
-  }, [appointmentId]);
+  }, [loadMessages]);
 
   const headerTitle = useMemo(() => {
     if (!appointment) return 'Conversation';

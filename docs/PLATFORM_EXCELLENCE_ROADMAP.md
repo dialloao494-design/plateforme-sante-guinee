@@ -112,7 +112,7 @@ finishes successfully, and failures provide actionable artifacts/logs.
 
 ### P1 — One canonical patient workspace
 
-**Status: OPEN — highest architectural priority**
+**Status: IN PROGRESS — first shared context slice locally verified**
 
 The system has multiple independent `selectedPatient` and tab/workflow state
 implementations. Reception has moved toward URL-backed state, while laboratory,
@@ -145,6 +145,19 @@ Required qualities:
 **Exit criterion:** all clinical modules consume the shared patient-context model,
 and cross-module browser tests prove context, navigation, refresh, and tenant safety.
 
+Implemented evidence (2026-08-18):
+
+- Reception, Nursing, Laboratory, and Pharmacy now share the `patient` URL
+  parameter contract through `useClinicalPatientRoute`;
+- deep links and refresh restore the patient in those workspaces;
+- closing a dossier removes URL context without the hydration race reopening it;
+- `clinical-patient-context.spec.js` verifies all 3 newly migrated roles against
+  the same clinic patient in isolated authenticated sessions.
+
+Remaining: migrate Doctor, Billing, Hospitalization, History, Nutrition,
+Immunization/PEV, Nursing Care, Radiology, Discharge, and other patient-bound
+workspaces into the canonical route/context model.
+
 ### P1 — Clinical UX coherence and patient safety
 
 **Status: IN PROGRESS**
@@ -168,9 +181,14 @@ Standardize:
 physician, laboratory, pharmacy, cashier, and administration on clinic hardware
 and realistic network conditions.
 
+Implemented evidence (2026-08-18): the patient identity/safety strip is now a
+shared clinical component used consistently by Reception, Nursing, Laboratory,
+and Pharmacy, with role-specific context labels and a single “Fermer le dossier”
+action. This is locally browser-verified, not yet field-validated.
+
 ### P1 — Frontend decomposition and performance
 
-**Status: OPEN**
+**Status: IN PROGRESS — first performance/closure-risk tranche locally verified**
 
 Known hotspots at the original assessment included a roughly 3,841-line clinical
 stylesheet, 1,200–1,400-line clinical/reception modules, and several 700–820-line
@@ -189,6 +207,24 @@ Work:
 **Exit criterion:** no clinical dashboard is a monolithic workflow controller,
 hook warnings are zero, shared formatters/components have regression tests, and
 performance budgets pass on representative low-bandwidth hardware.
+
+Implemented evidence (2026-08-18):
+
+- all 10 existing React hook warnings were corrected without suppressions;
+- stale polling/message/patient/order callbacks now have explicit dependency or
+  ref semantics;
+- the manual `clinical-pages` bundle rule that defeated route lazy loading was
+  removed;
+- the clinical JavaScript bundle fell from approximately **572 KB minified** to
+  role-level route chunks (Reception approximately **109 KB**, Doctor clinical
+  approximately **41 KB**, Lab approximately **33 KB**, Pharmacy approximately
+  **27 KB**, Nurse approximately **18 KB** in the local production build);
+- the build no longer reports a chunk over 500 KB or an ineffective clinical
+  dashboard dynamic import.
+
+Remaining: split large workflow controllers and the shared clinical stylesheet,
+centralize formatters, establish performance budgets, and validate on clinic
+hardware/network conditions.
 
 ### P1 — Offline release certification
 
@@ -308,6 +344,8 @@ and a clear escalation contact.
 | 2026-08-18 | Patient intake DB constraint, E2E selector, CI interpreter, migration logging, and smoke retry fixes landed in `a819aed` through `343f2c1`. | Immediate release blockers corrected. |
 | 2026-08-18 | CI run 32090605230 succeeded. | Browser release gate has green reference evidence. |
 | 2026-08-18 | Deployment run 32091947808 succeeded at `f6d5635`. | Latest validation deployment and production smoke are green. |
+| 2026-08-18 | Shared patient URL context and safety strip landed locally for Reception, Nursing, Laboratory, and Pharmacy; focused browser regression passed. | Canonical workspace and clinical UX workstreams moved to IN PROGRESS. |
+| 2026-08-18 | Hook warnings reduced from 10 to 0 and forced 572 KB clinical bundle removed. | Frontend maintainability/performance tranche locally verified; workstream remains open overall. |
 
 ## Related evidence
 

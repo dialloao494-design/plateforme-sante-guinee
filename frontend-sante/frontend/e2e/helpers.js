@@ -175,10 +175,10 @@ export async function assertButtonClickable(page, locator, opts = {}) {
 }
 
 export async function fillRegistrationForm(page, { lastName, firstName, phone, dob = '1990-05-15' }) {
-  await page.getByRole('button', { name: /Enregistrement/ }).click();
+  await page.getByTestId('reception-tab-register').click();
   await page.getByLabel('Nom *', { exact: true }).fill(lastName);
   await page.getByLabel('Prénom *', { exact: true }).fill(firstName);
-  await page.locator('.reception-his-birthdate-field input[type="date"]').fill(dob);
+  await page.getByTestId('reception-date-of-birth').fill(dob);
   await page.getByLabel('Adresse *', { exact: true }).fill('123 Rue de Kaloum, Conakry');
   await page.getByLabel('Tél. principal *', { exact: true }).fill(phone);
   await page.getByLabel('Nom du contact *', { exact: true }).fill('Contact Urgence');

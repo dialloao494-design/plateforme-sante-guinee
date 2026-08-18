@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import { useAuth } from '../../contexts/AuthContext.jsx';
+import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
 import { formatApiError } from '../../utils/apiError.js';
+import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
 import PrintClinicHeader from '../../components/print/PrintClinicHeader.jsx';
 import PharmacyMedicationAutocomplete from './PharmacyMedicationAutocomplete.jsx';
 import PharmacyStockTab from './PharmacyStockTab.jsx';
@@ -127,8 +129,10 @@ const formatPrintTime = (d = new Date()) => d.toLocaleTimeString('fr-FR', { hour
 
 export default function PharmacyDashboard() {
   const { user } = useAuth();
+  const { patientId: routePatientId, setPatientId: setRoutePatientId } = useClinicalPatientRoute();
   const searchRef = useRef(null);
   const receiptRef = useRef(null);
+  const closingPatientIdRef = useRef('');
 
   const [tab, setTab] = useState('workflow');
   const [searchQ, setSearchQ] = useState('');
@@ -217,7 +221,7 @@ export default function PharmacyDashboard() {
   const totalPaid = savedRequest?.paid_amount_gnf ?? paymentRows.reduce((s, p) => s + Number(p.amount_gnf || 0), 0);
   const remaining = billingReady ? Math.max(0, billingTotal - totalPaid) : '';
 
-  const selectPatient = async (p) => {
+  const selectPatient = useCallback(async (p) => {
     if (!p?.id) return;
     let patient = p;
     try {
@@ -233,6 +237,8 @@ export default function PharmacyDashboard() {
       }
     }
     setSelectedPatient(patient);
+    closingPatientIdRef.current = '';
+    setRoutePatientId(patient.id);
     setSearchQ('');
     setSearchResults([]);
     setSearchError('');
@@ -241,16 +247,27 @@ export default function PharmacyDashboard() {
     setLines(initialLines());
     setError('');
     setMessage(`Patient sélectionné : ${patient.last_name} ${patient.first_name} · N° ${patient.patient_number || patient.id}`);
-  };
+  }, [setRoutePatientId]);
 
   const clearPatient = () => {
+    closingPatientIdRef.current = String(selectedPatient?.id || routePatientId || '');
     setSelectedPatient(null);
+    setRoutePatientId('');
     setSavedRequest(null);
     prefillPharmacyPayments('');
     setLines(initialLines());
     setMessage('');
     setError('');
   };
+
+  useEffect(() => {
+    if (!routePatientId) {
+      closingPatientIdRef.current = '';
+      return;
+    }
+    if (closingPatientIdRef.current === routePatientId || String(selectedPatient?.id || '') === routePatientId) return;
+    void selectPatient({ id: routePatientId });
+  }, [routePatientId, selectPatient, selectedPatient?.id]);
 
   const updateLine = (id, patch) => {
     setLines((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
@@ -431,15 +448,7 @@ export default function PharmacyDashboard() {
 
       {tab === 'workflow' && (
         <>
-          {selectedPatient && (
-            <div className="reception-his-selected">
-              Patient actif : <strong>{selectedPatient.last_name} {selectedPatient.first_name}</strong> · N° dossier{' '}
-              <strong>{selectedPatient.patient_number || selectedPatient.id}</strong>
-              <button type="button" className="clinical-btn clinical-btn--secondary" onClick={clearPatient}>
-                Effacer
-              </button>
-            </div>
-          )}
+          <PatientSafetyStrip patient={selectedPatient} onClose={clearPatient} contextLabel="Patient actif à la pharmacie" />
 
           <div className="pharmacy-his-workflow">
             <section className="pharmacy-his-workflow-card">

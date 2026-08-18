@@ -485,7 +485,7 @@ export default function ConsultationRoom() {
 
     setRoomStatus(STATUS.ended);
 
-  }, [appointment?.id, appointmentId, roomStatus]);
+  }, [appointment?.id, appointment?.patient_id, appointmentId, roomStatus]);
 
 
 
@@ -1064,5 +1064,4 @@ export default function ConsultationRoom() {
   );
 
 }
-
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { appointmentsAPI, messagesAPI } from '../services/api.js';
 import { openMessageAttachment } from '../services/attachmentDownload.js';
@@ -7,6 +7,12 @@ import { printPrescriptionHtml } from '../utils/printPrescription.js';
 import PageSkeleton from '../components/ui/PageSkeleton.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import './DoctorMessages.css';
+
+const getErrorMessage = (err, fallback) => {
+  const detail = err?.response?.data?.detail;
+  if (typeof detail === 'string' && detail.trim()) return detail;
+  return err?.message || fallback;
+};
 
 const DoctorMessages = () => {
   const { user } = useAuth();
@@ -24,36 +30,30 @@ const DoctorMessages = () => {
   const [prescriptionText, setPrescriptionText] = useState('');
   const [prescriptionFile, setPrescriptionFile] = useState(null);
 
-  const getErrorMessage = (err, fallback) => {
-    const detail = err?.response?.data?.detail;
-    if (typeof detail === 'string' && detail.trim()) {
-      return detail;
-    }
-    return err?.message || fallback;
-  };
+  const requestedAppointmentId = Number(searchParams.get('appointmentId'));
 
-  const loadAppointments = async () => {
+  const loadAppointments = useCallback(async () => {
     setLoadingConversations(true);
     try {
       const { data } = await appointmentsAPI.getAll();
       const list = Array.isArray(data) ? data : [];
       setAppointments(list);
 
-      const fromQuery = Number(searchParams.get('appointmentId'));
-      if (Number.isInteger(fromQuery) && fromQuery > 0 && list.some((a) => a.id === fromQuery)) {
-        setSelectedAppointmentId(fromQuery);
-      } else if (list.length > 0 && !selectedAppointmentId) {
-        setSelectedAppointmentId(list[0].id);
-      }
+      setSelectedAppointmentId((current) => {
+        if (Number.isInteger(requestedAppointmentId) && requestedAppointmentId > 0 && list.some((a) => a.id === requestedAppointmentId)) {
+          return requestedAppointmentId;
+        }
+        return current || list[0]?.id || null;
+      });
       setError('');
     } catch (err) {
       setError(getErrorMessage(err, 'Impossible de charger les conversations.'));
     } finally {
       setLoadingConversations(false);
     }
-  };
+  }, [requestedAppointmentId]);
 
-  const loadMessages = async (appointmentId) => {
+  const loadMessages = useCallback(async (appointmentId) => {
     if (!appointmentId) return;
 
     setLoadingMessages(true);
@@ -66,23 +66,23 @@ const DoctorMessages = () => {
     } finally {
       setLoadingMessages(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadAppointments();
-  }, []);
+  }, [loadAppointments]);
 
   useEffect(() => {
     if (selectedAppointmentId) {
       loadMessages(selectedAppointmentId);
     }
-  }, [selectedAppointmentId]);
+  }, [loadMessages, selectedAppointmentId]);
 
   useEffect(() => {
     if (!selectedAppointmentId) return;
     const intervalId = setInterval(() => loadMessages(selectedAppointmentId), 12000);
     return () => clearInterval(intervalId);
-  }, [selectedAppointmentId]);
+  }, [loadMessages, selectedAppointmentId]);
 
   const selectedAppointment = useMemo(
     () => appointments.find((appointment) => appointment.id === selectedAppointmentId) || null,

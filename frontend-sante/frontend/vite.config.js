@@ -97,9 +97,9 @@ export default defineConfig(({ mode }) => {
               }
               return 'vendor-misc'
             }
-            if (id.includes('/pages/clinical/')) {
-              return 'clinical-pages'
-            }
+            // Clinical pages are route-level lazy imports. Do not force them
+            // back into one bundle; each hospital role should load only its
+            // own workspace and shared dependencies.
           },
         },
       },

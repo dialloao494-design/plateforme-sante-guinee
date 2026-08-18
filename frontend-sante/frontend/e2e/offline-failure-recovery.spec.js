@@ -5,7 +5,7 @@ test('network loss before request queues registration', async ({ page, context }
   test.setTimeout(120_000);
   await loginAsReception(page);
   const unique = Date.now();
-  await page.getByRole('button', { name: /Enregistrement/ }).click();
+  await page.getByTestId('reception-tab-register').click();
   await page.getByLabel('Nom *', { exact: true }).fill(`FailNom${unique}`);
   await page.getByLabel('Prénom *', { exact: true }).fill(`FailPrenom${unique}`);
   await page.getByTestId('reception-date-of-birth').fill('1991-03-03');

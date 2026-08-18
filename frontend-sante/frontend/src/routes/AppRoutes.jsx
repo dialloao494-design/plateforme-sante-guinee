@@ -51,7 +51,6 @@ const DischargeDashboard = lazy(() => import("../pages/clinical/DischargeDashboa
 const RadiologyDashboard = lazy(() => import("../pages/clinical/RadiologyDashboard.jsx"));
 const StaffNotificationCenter = lazy(() => import("../pages/clinical/StaffNotificationCenter.jsx"));
 const ClinicalReportsDashboard = lazy(() => import("../pages/clinical/ClinicalReportsDashboard.jsx"));
-const ClinicAdminDashboard = lazy(() => import("../pages/clinical/ClinicAdminDashboard.jsx"));
 const PlatformFieldOnboard = lazy(() => import("../pages/platform/PlatformFieldOnboard.jsx"));
 const PlatformClinicDirectory = lazy(() => import("../pages/platform/PlatformClinicDirectory.jsx"));
 const PlatformClinicDetail = lazy(() => import("../pages/platform/PlatformClinicDetail.jsx"));
