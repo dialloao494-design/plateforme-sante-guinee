@@ -77,5 +77,6 @@ export {
 export {
   buildOfflineRecoveryExport,
   downloadOfflineRecoveryExport,
+  validateOfflineRecoveryExport,
   recoveryExportFilename,
 } from './recovery.js';

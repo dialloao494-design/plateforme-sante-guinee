@@ -31,18 +31,24 @@ export default function OfflineStatusIndicator() {
   const [conflicts, setConflicts] = useState([]);
   const [deadItems, setDeadItems] = useState([]);
   const [recoveryMessage, setRecoveryMessage] = useState('');
+  const [storageError, setStorageError] = useState('');
 
   const refresh = useCallback(async () => {
-    const [count, last, rows, dead] = await Promise.all([
-      countPendingOutbox(),
-      getLastSyncAt(),
-      listConflicts({ includeResolved: false }),
-      listDeadOutbox(),
-    ]);
-    setPending(count);
-    setLastSync(last);
-    setConflicts(rows.slice(0, 5));
-    setDeadItems(dead.slice(0, 5));
+    try {
+      const [count, last, rows, dead] = await Promise.all([
+        countPendingOutbox(),
+        getLastSyncAt(),
+        listConflicts({ includeResolved: false }),
+        listDeadOutbox(),
+      ]);
+      setPending(count);
+      setLastSync(last);
+      setConflicts(rows.slice(0, 5));
+      setDeadItems(dead.slice(0, 5));
+      setStorageError('');
+    } catch {
+      setStorageError("Le stockage hors ligne est illisible. N'effacez pas les données du navigateur; contactez le support de la clinique.");
+    }
   }, []);
 
   useEffect(() => {
@@ -63,8 +69,15 @@ export default function OfflineStatusIndicator() {
   const handleSyncNow = async () => {
     setSyncing(true);
     try {
-      await flushOutbox();
+      const result = await flushOutbox();
       await refresh();
+      if (result?.failed > 0) {
+        setRecoveryMessage(`${result.failed} opération(s) n'ont pas pu être synchronisées. Exportez-les avant toute intervention sur ce navigateur.`);
+      } else if (result?.synced > 0) {
+        setRecoveryMessage(`${result.synced} opération(s) synchronisée(s) avec succès.`);
+      }
+    } catch {
+      setRecoveryMessage("Synchronisation interrompue. Les opérations restent conservées sur cet appareil; réessayez lorsque la connexion est stable.");
     } finally {
       setSyncing(false);
     }
@@ -90,7 +103,10 @@ export default function OfflineStatusIndicator() {
   const handleExport = async () => {
     try {
       const bundle = await downloadOfflineRecoveryExport();
-      setRecoveryMessage(`${bundle.mutations.length} opération(s) exportée(s). Conservez le fichier en lieu sûr.`);
+      const warning = bundle.integrity_warnings.length
+        ? ` ${bundle.integrity_warnings.length} élément(s) endommagé(s) sont signalés dans le fichier.`
+        : '';
+      setRecoveryMessage(`${bundle.mutations.length} opération(s) exportée(s).${warning} Conservez ce fichier de santé chiffré ou remettez-le uniquement au support autorisé.`);
     } catch (error) {
       setRecoveryMessage(error?.message || 'Export de récupération impossible.');
     }
@@ -110,7 +126,7 @@ export default function OfflineStatusIndicator() {
         : 'En ligne'
       : `Hors ligne${pending > 0 ? ` · ${pending} en file` : ''}`;
 
-  if (online && pending === 0 && conflicts.length === 0 && deadItems.length === 0 && !open) {
+  if (online && pending === 0 && conflicts.length === 0 && deadItems.length === 0 && !storageError && !open) {
     return null;
   }
 
@@ -133,6 +149,8 @@ export default function OfflineStatusIndicator() {
             <span className="offline-status__label">Réseau</span>
             <span>{online ? 'Connecté' : 'Hors ligne'}</span>
           </div>
+
+          {storageError ? <p className="offline-status__recovery-message" role="alert">{storageError}</p> : null}
           <div className="offline-status__row">
             <span className="offline-status__label">File d&apos;attente</span>
             <span>{pending}</span>
@@ -169,9 +187,13 @@ export default function OfflineStatusIndicator() {
               {deadItems.map((item) => (
                 <div key={item.id} className="offline-conflicts__item">
                   <div>{item.entity_type} · {item.last_error || 'Échec de synchronisation'}</div>
-                  <button type="button" className="offline-status__btn" onClick={() => handleRetryDead(item.id)}>
-                    Réessayer
-                  </button>
+                  {String(item.last_error || '').includes('Contenu hors ligne illisible') ? (
+                    <small>Contenu endommagé — exportez-le pour récupération; ne le renvoyez pas.</small>
+                  ) : (
+                    <button type="button" className="offline-status__btn" onClick={() => handleRetryDead(item.id)}>
+                      Réessayer
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

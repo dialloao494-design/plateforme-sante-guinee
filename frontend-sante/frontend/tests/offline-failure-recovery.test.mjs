@@ -5,7 +5,11 @@ import { offlineDb, clearOfflineDatabase } from '../src/offline/db.js';
 import { enqueueMutation, getPendingOutbox } from '../src/offline/outbox.js';
 import { flushOutbox, replayOutboxItem } from '../src/offline/sync.js';
 import { recordConflict, resolveConflict } from '../src/offline/conflict.js';
-import { buildOfflineRecoveryExport } from '../src/offline/recovery.js';
+import {
+  buildOfflineRecoveryExport,
+  OFFLINE_RECOVERY_FORMAT,
+  validateOfflineRecoveryExport,
+} from '../src/offline/recovery.js';
 import { getCachedPatient } from '../src/offline/cache.js';
 
 function mockScope(userId = '42', clinicId = '7') {
@@ -145,4 +149,70 @@ test('corrupted outbox payload is quarantined for export instead of replaying em
   assert.equal(bundle.mutations[0].payload, '{broken');
   assert.equal(bundle.integrity_warnings.length, 1);
   assert.equal(JSON.stringify(bundle).includes('must-not-export'), false);
+});
+
+test('recovery export manifest is valid and remains scoped to the active clinic user', async () => {
+  mockScope('42', '7');
+  await offlineDb.outbox.clear();
+  await offlineDb.conflicts.clear();
+  await enqueueMutation({
+    method: 'post',
+    url: '/clinical/lab/orders',
+    data: { patient_id: 9, exam: 'NFS' },
+    clientRequestId: 'validated-export',
+  });
+  await offlineDb.outbox.add({
+    owner_key: '99:8',
+    client_request_id: 'foreign-export-row',
+    entity_type: 'patient',
+    method: 'POST',
+    url: '/clinical/reception/his/patients',
+    payload_json: '{}',
+    status: 'dead',
+    created_at: Date.now(),
+  });
+
+  const bundle = await buildOfflineRecoveryExport();
+  assert.equal(bundle.format, OFFLINE_RECOVERY_FORMAT);
+  assert.equal(bundle.manifest.mutation_count, 1);
+  assert.equal(bundle.mutations[0].client_request_id, 'validated-export');
+  assert.deepEqual(validateOfflineRecoveryExport(bundle, { userId: '42', clinicId: '7' }), {
+    valid: true,
+    errors: [],
+  });
+});
+
+test('recovery validation blocks tampered manifests and cross-clinic hand-off', async () => {
+  mockScope('42', '7');
+  await offlineDb.outbox.clear();
+  await offlineDb.conflicts.clear();
+  const bundle = await buildOfflineRecoveryExport();
+  bundle.manifest.mutation_count = 99;
+
+  const result = validateOfflineRecoveryExport(bundle, { userId: '42', clinicId: '999' });
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((message) => message.includes('manifeste')));
+  assert.ok(result.errors.some((message) => message.includes("n'appartient pas")));
+});
+
+test('corrupted conflict copies are preserved with explicit integrity warnings', async () => {
+  mockScope('42', '7');
+  await offlineDb.outbox.clear();
+  await offlineDb.conflicts.clear();
+  await offlineDb.conflicts.add({
+    owner_key: '42:7',
+    conflict_id: 'broken-conflict',
+    client_request_id: 'broken-conflict-request',
+    entity_type: 'lab',
+    local_json: '{broken',
+    remote_json: '{also-broken',
+    resolved: false,
+    created_at: Date.now(),
+  });
+
+  const bundle = await buildOfflineRecoveryExport();
+  assert.equal(bundle.conflicts.length, 1);
+  assert.equal(bundle.integrity_warnings.length, 2);
+  assert.equal(bundle.manifest.integrity_warning_count, 2);
+  assert.equal(validateOfflineRecoveryExport(bundle, { userId: '42', clinicId: '7' }).valid, true);
 });

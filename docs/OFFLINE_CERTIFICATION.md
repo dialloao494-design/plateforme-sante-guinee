@@ -16,7 +16,8 @@
   still possible only through the explicit confirmation workflow.
 - Corrupted derived cache entries are discarded. Corrupted durable mutations
   are quarantined and exported; they are never replayed as empty records.
-- Recovery exports are clinic/user scoped and exclude stored request headers.
+- Recovery exports are clinic/user scoped, exclude stored request headers, and
+  carry a versioned manifest whose record counts are validated before download.
   They contain health information and must be handled as confidential records.
 
 ## Automated matrix
@@ -28,9 +29,9 @@
 | Two devices register the same patient concurrently | Same browser spec | One canonical dossier; both devices adopt it; no duplicate patient. |
 | Storage quota exhaustion | `tests/offline-outbox.test.mjs`, `apiError.test.mjs` | Existing work remains intact; new write fails explicitly; staff receive an actionable French message. |
 | Corrupted patient cache | `tests/offline-failure-recovery.test.mjs` | Only the damaged derived cache row is removed; durable mutations remain. |
-| Corrupted queued mutation | Same offline test | Mutation is quarantined as dead-letter, not sent; integrity warning appears in recovery export. |
+| Corrupted queued mutation or conflict | Same offline test | Content is quarantined, not sent, cannot be blindly retried, and every unreadable copy appears in the export integrity warnings. |
 | Interrupted/stale in-flight row | `tests/offline-outbox.test.mjs` | Old in-flight work is recovered; active synchronization is untouched. |
-| Recovery export | `recovery.js` and offline tests | Pending/failed/dead mutations and conflicts export as JSON without authentication headers. |
+| Recovery export validation | `recovery.js` and offline tests | A v2 manifest verifies mutation/conflict/warning counts and active clinic/user ownership; altered or cross-clinic bundles are rejected before hand-off. |
 
 ## Clinic staff validation script
 

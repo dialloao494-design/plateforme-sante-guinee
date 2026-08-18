@@ -360,6 +360,13 @@ Local evidence added 2026-08-18:
 - the offline status panel now exports clinic-scoped recovery JSON without
   authentication headers; the confidential handling/escalation procedure and
   observed staff exercise are in `docs/OFFLINE_CERTIFICATION.md`.
+- recovery export v2 now validates its version, active clinic/user ownership,
+  required mutation identity, and manifest counts before download; corrupt
+  conflicts are preserved with explicit warnings, while the UI prevents a
+  meaningless retry of unreadable payloads and tells staff not to clear storage;
+- the strengthened local gate passed **37/37 offline tests**, **44/44 frontend
+  unit tests**, lint, production build, all six performance budgets, and **4/4**
+  focused real-Chromium loss/restart/concurrent-device cases.
 
 Remaining evidence:
 
@@ -492,6 +499,7 @@ and a clear escalation contact.
 | 2026-08-18 | Shared workflow navigation, flatter clinical forms, cashier/admin workspaces, and Pharmacy accessible grid labels added across Reception, Billing, Lab, Pharmacy, Nursing, PEV, and Administration; focused 10/10 Chromium gate passed. | Cross-role UI coherence advances and new billing/admin module CSS avoids growing the shared stylesheet; full CI and field review remain open. |
 | 2026-08-18 | Laboratory sample collection, PEV vaccination entry, and Pharmacy request editing extracted into bounded components; controller sizes reduced and focused role/WCAG/browser gates passed. | Frontend decomposition advances without relaxing bundle budgets; Reception billing and Nursing assessment remain the principal large view sections. |
 | 2026-08-18 | Production Python CVE audit added to CI; `PYSEC-2026-1917` remediated by upgrading Sentry SDK to 1.45.1; all Pydantic ORM schemas migrated to `ConfigDict`; obsolete frontend configuration aliases removed. Local `pip-audit` reported zero known vulnerabilities and backend tests passed 426/426 with one skip. | Dependency and framework debt substantially reduced; CI verification and direct confirmation of Railway's raw `FRONTEND_URL` remain before closing the workstreams. |
+| 2026-08-18 | Offline recovery export upgraded to a scope-checked v2 manifest; corrupt conflict copies gain integrity warnings; unreadable mutations cannot be blindly retried; restart/network/concurrent-device Chromium cases passed 4/4 with 37/37 offline tests and all performance budgets green. | Automated offline recovery evidence is stronger and safer for clinic support; the observed clinic wording exercise remains the only offline certification exit item. |
 
 ## Related evidence
 
