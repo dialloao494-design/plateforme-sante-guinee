@@ -29,6 +29,8 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
+    first_name = Column(String(128), nullable=True)
+    last_name = Column(String(128), nullable=True)
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False)
     clinic_id = Column(Integer, nullable=True, index=True)  # staff home clinic

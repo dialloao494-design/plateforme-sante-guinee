@@ -28,6 +28,91 @@
   gap: 1rem;
 }
 
+.account-identity-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.account-identity-heading > div {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.account-identity-label {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.account-identity-heading strong {
+  color: #0f172a;
+  font-size: 1.2rem;
+}
+
+.account-edit-button,
+.account-cancel {
+  min-height: 42px;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid #99b8ca;
+  border-radius: 10px;
+  background: #fff;
+  color: #0f4f4a;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.account-edit-button:hover,
+.account-cancel:hover {
+  background: #f0fdfa;
+  border-color: #0d9488;
+}
+
+.account-edit-button:focus-visible,
+.account-cancel:focus-visible,
+.account-submit:focus-visible,
+.account-field input:focus-visible {
+  outline: 3px solid rgba(13, 148, 136, 0.22);
+  outline-offset: 2px;
+}
+
+.account-name-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #b7ded9;
+  border-left: 4px solid #0d9488;
+  border-radius: 12px;
+  background: #f6fbfa;
+}
+
+.account-form-actions {
+  display: flex;
+  gap: 0.65rem;
+  grid-column: 1 / -1;
+}
+
+.account-dl--details {
+  margin-top: 1.25rem;
+}
+
+.account-success {
+  margin: 1rem 0 0;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
 .account-dl dt {
   font-size: 0.72rem;
   font-weight: 700;
@@ -91,6 +176,26 @@
 .account-submit:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.account-cancel:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+  .account-identity-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .account-name-form {
+    grid-template-columns: 1fr;
+  }
+
+  .account-form-actions {
+    flex-direction: column;
+  }
 }
 
 .account-error {

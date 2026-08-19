@@ -315,6 +315,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateProfile = async (profile) => {
+    setActionLoading(true);
+    setError(null);
+    try {
+      const data = await authAPI.updateProfile(profile);
+      invalidateCache('/auth/me');
+      const normalizedUser = normalizeAndStoreUser(data);
+      setUser(normalizedUser);
+      return { success: true, user: normalizedUser };
+    } catch (err) {
+      const message =
+        err?.response?.data?.detail?.[0]?.msg
+        || err?.response?.data?.detail
+        || 'Impossible d’enregistrer le nom. Vérifiez les informations saisies.';
+      setError(message);
+      return { success: false, error: message };
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const value = {
     user,
     loading: actionLoading,
@@ -327,6 +348,7 @@ export const AuthProvider = ({ children }) => {
     refreshUser,
     retrySessionBootstrap,
     changePassword,
+    updateProfile,
     isAuthenticated: Boolean(user),
   };
 

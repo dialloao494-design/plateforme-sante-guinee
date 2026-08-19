@@ -26,6 +26,7 @@ from schemas.user import (
     MfaSetupConfirmRequest,
     MfaVerifyLoginRequest,
     MfaDisableRequest,
+    UserProfileUpdate,
 )
 from security import (
     get_current_user,
@@ -435,7 +436,9 @@ def logout(
 def build_user_response(db: Session, user: User) -> dict:
     """Enrich user profile with display name and clinic context."""
     doctor_id = None
-    full_name = None
+    first_name = (getattr(user, "first_name", None) or "").strip() or None
+    last_name = (getattr(user, "last_name", None) or "").strip() or None
+    full_name = " ".join(part for part in (first_name, last_name) if part) or None
     clinic_id = user.clinic_id
     clinic_name = None
 
@@ -445,13 +448,19 @@ def build_user_response(db: Session, user: User) -> dict:
         doc = db.query(models.Doctor).filter(models.Doctor.user_id == user.id).first()
         if doc:
             doctor_id = doc.id
-            full_name = doc.full_name
+            if not full_name:
+                first_name = doc.first_name
+                last_name = doc.last_name
+                full_name = doc.full_name
             if clinic_id is None:
                 clinic_id = doc.clinic_id
     elif canonical_role == "patient":
         pat = db.query(models.Patient).filter(models.Patient.user_id == user.id).first()
         if pat and pat.first_name:
-            full_name = f"{pat.first_name} {pat.last_name}".strip()
+            if not full_name:
+                first_name = pat.first_name
+                last_name = pat.last_name
+                full_name = f"{pat.first_name} {pat.last_name}".strip()
             if clinic_id is None:
                 clinic_id = pat.clinic_id
 
@@ -484,6 +493,8 @@ def build_user_response(db: Session, user: User) -> dict:
         "role": canonical_role,
         "doctor_id": doctor_id,
         "full_name": full_name,
+        "first_name": first_name,
+        "last_name": last_name,
         "clinic_id": clinic_id,
         "clinic_name": clinic_name,
         "email_verified": bool(getattr(user, "email_verified_at", None)),
@@ -499,6 +510,34 @@ def read_current_user(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    payload = build_user_response(db, current_user)
+    payload["csrf_token"] = ensure_csrf_cookie(response, request)
+    return payload
+
+
+@router.patch("/me", response_model=UserResponse)
+def update_current_user_profile(
+    body: UserProfileUpdate,
+    request: Request,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update the authenticated user's display identity only."""
+    current_user.first_name = body.first_name
+    current_user.last_name = body.last_name
+
+    # Doctor names are operational data used by Reception assignment lists.
+    if effective_role(current_user.role) == "doctor":
+        doctor = db.query(models.Doctor).filter(models.Doctor.user_id == current_user.id).first()
+        if doctor:
+            doctor.first_name = body.first_name
+            doctor.last_name = body.last_name
+            db.add(doctor)
+
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
     payload = build_user_response(db, current_user)
     payload["csrf_token"] = ensure_csrf_cookie(response, request)
     return payload

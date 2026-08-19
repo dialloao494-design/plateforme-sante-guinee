@@ -38,6 +38,10 @@ export const getAuthenticatedUser = async (opts = {}) => {
 export const authAPI = {
   login,
   me: (opts) => getAuthenticatedUser(opts),
+  updateProfile: async (profile) => {
+    const { data } = await httpClient.patch('/auth/me', profile);
+    return data;
+  },
   refresh: () => refreshAuthSession(),
   logout: async () => {
     const { data } = await httpClient.post('/auth/logout');

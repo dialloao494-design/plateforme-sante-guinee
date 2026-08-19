@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional
 import re
 
@@ -233,9 +233,28 @@ class UserResponse(BaseModel):
     role: str
     doctor_id: Optional[int] = None
     full_name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     clinic_id: Optional[int] = None
     clinic_name: Optional[str] = None
     email_verified: bool = False
     must_change_password: bool = False
     mfa_enabled: bool = False
     csrf_token: Optional[str] = None
+
+
+class UserProfileUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    first_name: str = Field(..., min_length=1, max_length=128)
+    last_name: str = Field(..., min_length=1, max_length=128)
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        normalized = " ".join(value.strip().split())
+        if not normalized:
+            raise ValueError("Name cannot be empty")
+        if any(char.isdigit() for char in normalized):
+            raise ValueError("Name cannot contain numbers")
+        return normalized
