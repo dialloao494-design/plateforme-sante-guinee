@@ -499,7 +499,7 @@ export default function BillingTab({
                       ))}
                     </tbody>
                   </table>
-                  <div className="pharmacy-his-actions">
+                  <div className="clinical-actions reception-his-payment-actions">
                     <button type="button" className="clinical-btn clinical-btn--secondary" onClick={addPaymentLine}>
                       + Ligne de paiement
                     </button>
