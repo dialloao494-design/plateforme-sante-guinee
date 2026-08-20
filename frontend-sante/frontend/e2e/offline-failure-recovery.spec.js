@@ -17,6 +17,20 @@ test('network loss before request queues registration', async ({ page, context }
   await context.setOffline(true);
   await page.getByTestId('reception-register-submit').click();
   await expect(page.getByTestId('reception-registration-queued')).toBeVisible({ timeout: 15_000 });
+
+  const patientCreatePattern = '**/clinical/reception/his/patients';
+  await page.route(patientCreatePattern, async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({ status: 503, contentType: 'application/json', body: '{"detail":"temporary"}' });
+      return;
+    }
+    await route.continue();
+  });
   await context.setOffline(false);
+
+  const syncNow = page.getByRole('button', { name: 'Synchroniser maintenant' }).first();
+  await expect(syncNow).toBeVisible({ timeout: 30_000 });
+  await page.unroute(patientCreatePattern);
+  await syncNow.click();
   await expect(page.getByTestId('reception-patient-number')).toContainText(/PAT-\d{3}-\d{6}/, { timeout: 60_000 });
 });

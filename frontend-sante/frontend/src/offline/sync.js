@@ -150,7 +150,7 @@ export async function replayOutboxItem(item, client) {
 }
 
 /** Flush pending outbox mutations to the API. */
-export async function flushOutbox(client = httpClientRef) {
+export async function flushOutbox(client = httpClientRef, { forceRetry = false } = {}) {
   if (!client || flushing) {
     return { synced: 0, failed: 0, conflicts: 0, skipped: true };
   }
@@ -171,7 +171,10 @@ export async function flushOutbox(client = httpClientRef) {
       return { synced: 0, failed: 0, conflicts: 0, skipped: true };
     }
     await recoverStaleInFlight();
-    const pending = await getPendingOutbox(25, { ownerKey: scope.ownerKey });
+    const pending = await getPendingOutbox(25, {
+      ownerKey: scope.ownerKey,
+      includeDeferred: forceRetry,
+    });
     for (const item of pending) {
       // Probe dependency before marking in-flight so blocked dependents stay
       // pending and retry after the patient registration remap completes.

@@ -375,7 +375,7 @@ export default function BillingTab({
                     </label>
                   </div>
                   <button type="submit" className="clinical-btn" disabled={loading || !selectedPatient || billingLineItems.length === 0}>
-                    Créer facture
+                    {loading ? 'Enregistrement…' : 'Créer facture'}
                   </button>
                 </form>
               )}
@@ -394,8 +394,8 @@ export default function BillingTab({
                   <tr key={item.id || `${item.catalog_code || item.description}-${index}`}>
                         <td>{item.description}</td>
                         <td>{item.quantity}</td>
-                        <td>{formatGNF(item.unit_price_gnf)}</td>
-                        <td>{formatGNF(item.amount_gnf)}</td>
+                        <td>{formatGNF(item.unit_price_gnf ?? item.unit_price ?? 0)}</td>
+                        <td>{formatGNF(item.amount_gnf ?? (Number(item.quantity || 1) * Number(item.unit_price_gnf ?? item.unit_price ?? 0)))}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -70,6 +70,38 @@ test('getPendingOutbox ignores legacy rows without owner_key', async () => {
   assert.equal(pending.length, 0);
 });
 
+test('manual retry includes failed rows whose automatic backoff has not elapsed', async () => {
+  mockScope('42', '7');
+  await offlineDb.outbox.clear();
+  const id = await offlineDb.outbox.add({
+    client_request_id: 'deferred-manual-retry',
+    owner_key: '42:7',
+    entity_type: 'billing',
+    method: 'POST',
+    url: '/clinical/reception/his/invoices',
+    payload_json: '{}',
+    status: 'failed',
+    attempt_count: 2,
+    created_at: Date.now(),
+    updated_at: Date.now(),
+    next_retry_at: Date.now() + 300_000,
+  });
+
+  assert.equal((await getPendingOutbox()).length, 0);
+  assert.equal((await getPendingOutbox(50, { includeDeferred: true })).length, 1);
+
+  let calls = 0;
+  const result = await flushOutbox({
+    post: async () => {
+      calls += 1;
+      return { status: 200, data: { id: 9 } };
+    },
+  }, { forceRetry: true });
+  assert.equal(calls, 1);
+  assert.equal(result.synced, 1);
+  assert.equal((await offlineDb.outbox.get(id)).status, 'synced');
+});
+
 test('retry_local conflict resolution restores the original mutation', async () => {
   mockScope('42', '7');
   await offlineDb.outbox.clear();

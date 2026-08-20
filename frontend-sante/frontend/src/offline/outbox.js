@@ -69,6 +69,7 @@ export async function enqueueMutation({
   entityType,
   operation,
   recordVersion = 1,
+  optimisticData,
 }) {
   const reqId = clientRequestId || generateClientRequestId();
   const classified = classifyRequest(url, method);
@@ -88,7 +89,12 @@ export async function enqueueMutation({
   }
 
   const normalizedData = normalizeQueuedPayload(data);
-  const optimistic = buildOptimisticResponse(normalizedData, type);
+  // Keep the replay payload server-safe while allowing the UI to preserve
+  // locally known prices/totals that the server normally calculates.
+  const optimistic = buildOptimisticResponse(
+    optimisticData == null ? normalizedData : normalizeQueuedPayload(optimisticData),
+    type,
+  );
   const now = Date.now();
   const scope = readOfflineOwnerScope();
 
@@ -132,7 +138,7 @@ export async function enqueueMutation({
   return { client_request_id: reqId, optimistic };
 }
 
-export async function getPendingOutbox(limit = 50, { ownerKey } = {}) {
+export async function getPendingOutbox(limit = 50, { ownerKey, includeDeferred = false } = {}) {
   const now = Date.now();
   const scope = ownerKey ? { ownerKey } : readOfflineOwnerScope();
   const rows = await offlineDb.outbox
@@ -143,7 +149,7 @@ export async function getPendingOutbox(limit = 50, { ownerKey } = {}) {
     if (r.owner_key && r.owner_key !== scope.ownerKey) return false;
     // Legacy unscoped rows must never replay under another session.
     if (!r.owner_key) return false;
-    return !r.next_retry_at || r.next_retry_at <= now;
+    return includeDeferred || !r.next_retry_at || r.next_retry_at <= now;
   });
   // Patient registration must sync before dependents that still reference
   // offline_* temp patient ids (admission, billing, lab, pharmacy, …).

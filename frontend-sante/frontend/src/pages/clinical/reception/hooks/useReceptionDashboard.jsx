@@ -1037,7 +1037,7 @@ export function useReceptionDashboard() {
     setError('');
     setMessage('');
     try {
-      const { data } = await clinicalApi.receptionHisCreateInvoice({
+      const serverPayload = {
         patient_id: selectedPatient.id,
         department: billingForm.department,
         items: billingLineItems.map((l) => buildInvoiceItemPayload(l)),
@@ -1047,7 +1047,27 @@ export function useReceptionDashboard() {
             ? (billingForm.exemption_reason || '').trim() || undefined
             : undefined,
         billing_date: billingForm.billing_date || undefined,
-      });
+      };
+      const exemptionPercent = Number(billingForm.exemption_percent || 0);
+      const exemptionAmount = Math.round(billingSubtotal * exemptionPercent / 100);
+      const totalAmount = Math.max(0, billingSubtotal - exemptionAmount);
+      const offlinePreview = {
+        ...serverPayload,
+        items: billingLineItems.map((line) => ({
+          ...line,
+          quantity: Number(line.quantity || 1),
+          unit_price_gnf: Number(line.unit_price_gnf || 0),
+          amount_gnf: Number(line.quantity || 1) * Number(line.unit_price_gnf || 0),
+        })),
+        subtotal_amount_gnf: billingSubtotal,
+        exemption_amount_gnf: exemptionAmount,
+        total_amount_gnf: totalAmount,
+        remaining_balance_gnf: totalAmount,
+        invoice_number: null,
+        patient_number: selectedPatient.patient_number || selectedPatient.id,
+        patient_name: `${selectedPatient.last_name || ''} ${selectedPatient.first_name || ''}`.trim(),
+      };
+      const { data } = await clinicalApi.receptionHisCreateInvoice(serverPayload, offlinePreview);
       setActiveInvoice(data || null);
       setBillingLineItems([]);
       prefillPaymentLines(data?.remaining_balance_gnf ?? data?.total_amount_gnf ?? 0);
@@ -1056,7 +1076,11 @@ export function useReceptionDashboard() {
           ? 'Facture enregistrée hors ligne — synchronisation en attente.'
           : `Facture créée · N° facture ${data?.invoice_number || '—'}`,
       );
-      await Promise.all([loadInvoices(selectedPatient.id), loadDashboard()]);
+      // Cached dashboard/list refreshes are useful online but should never
+      // delay acknowledgement after a durable offline write.
+      if (!data?._offline_queued) {
+        await Promise.all([loadInvoices(selectedPatient.id), loadDashboard()]);
+      }
     } catch (err) {
       setError(formatApiError(err, 'Création de facture impossible'));
     } finally {

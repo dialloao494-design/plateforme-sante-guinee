@@ -89,6 +89,42 @@ test('Axios JSON strings are normalized before durable enqueue and replay', asyn
   assert.equal(normalizeQueuedPayload('plain text'), 'plain text');
 });
 
+test('offline invoice keeps preview prices without contaminating replay payload', async () => {
+  await offlineDb.outbox.clear();
+  const serverPayload = {
+    patient_id: 'offline_patient1',
+    items: [{ catalog_code: 'IMM_AGHBE', description: 'AgHBe', quantity: 1 }],
+  };
+  const optimisticData = {
+    ...serverPayload,
+    items: [{
+      catalog_code: 'IMM_AGHBE',
+      description: 'AgHBe',
+      quantity: 1,
+      unit_price_gnf: 270000,
+      amount_gnf: 270000,
+    }],
+    subtotal_amount_gnf: 270000,
+    total_amount_gnf: 270000,
+    remaining_balance_gnf: 270000,
+  };
+  const result = await enqueueMutation({
+    method: 'post',
+    url: '/clinical/reception/his/invoices',
+    data: serverPayload,
+    optimisticData,
+    clientRequestId: 'offline-invoice-preview',
+  });
+  const stored = await offlineDb.outbox
+    .where('client_request_id')
+    .equals('offline-invoice-preview')
+    .first();
+
+  assert.equal(JSON.parse(stored.payload_json).items[0].unit_price_gnf, undefined);
+  assert.equal(result.optimistic.items[0].unit_price_gnf, 270000);
+  assert.equal(result.optimistic.total_amount_gnf, 270000);
+});
+
 test('stale in-flight work is recovered but active work is untouched', async () => {
   await offlineDb.outbox.clear();
   // Test scope in this file is anonymous; provide a real scoped browser identity.

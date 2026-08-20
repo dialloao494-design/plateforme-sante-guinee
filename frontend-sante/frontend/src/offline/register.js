@@ -9,6 +9,7 @@ let initialized = false;
 
 const statusListeners = new Set();
 let onlineStatus = typeof navigator !== 'undefined' ? navigator.onLine : true;
+const OFFLINE_FALLBACK_TIMEOUT_MS = 4_000;
 
 export function isBrowserOnline() {
   return onlineStatus;
@@ -65,6 +66,17 @@ export function attachOfflineInterceptors(httpClient) {
 
     const classified = classifyRequest(url, method);
 
+    // navigator.onLine can remain true briefly after Wi-Fi loss. Do not leave
+    // hospital staff waiting on the global 60s timeout (and retry chain) before
+    // serving cached reads or placing safe mutations in the durable outbox.
+    if (classified.cacheable || classified.queueable) {
+      config.timeout = Math.min(
+        Number(config.timeout || OFFLINE_FALLBACK_TIMEOUT_MS),
+        OFFLINE_FALLBACK_TIMEOUT_MS,
+      );
+      config.__offlineFallback = true;
+    }
+
     if (method === 'get' && !navigator.onLine && classified.cacheable) {
       const cached = await getCachedGet(url, config.params);
       if (cached !== undefined) {
@@ -92,6 +104,7 @@ export function attachOfflineInterceptors(httpClient) {
         operation: classified.operation,
         clientRequestId: config.headers?.['X-Client-Request-Id']
           || config.headers?.['x-client-request-id'],
+        optimisticData: config.offlineOptimisticData,
       });
 
       config.adapter = () =>
@@ -157,6 +170,7 @@ export function attachOfflineInterceptors(httpClient) {
           operation: classified.operation,
           clientRequestId: config.headers?.['X-Client-Request-Id']
             || config.headers?.['x-client-request-id'],
+          optimisticData: config.offlineOptimisticData,
         });
 
         return {

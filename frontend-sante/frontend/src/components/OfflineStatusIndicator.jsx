@@ -67,14 +67,19 @@ export default function OfflineStatusIndicator() {
   }, [refresh]);
 
   const handleSyncNow = async () => {
+    setRecoveryMessage('');
     setSyncing(true);
     try {
-      const result = await flushOutbox();
+      // A staff-requested retry must not remain hidden behind automatic
+      // exponential backoff from an earlier network failure.
+      const result = await flushOutbox(undefined, { forceRetry: true });
       await refresh();
       if (result?.failed > 0) {
         setRecoveryMessage(`${result.failed} opération(s) n'ont pas pu être synchronisées. Exportez-les avant toute intervention sur ce navigateur.`);
       } else if (result?.synced > 0) {
         setRecoveryMessage(`${result.synced} opération(s) synchronisée(s) avec succès.`);
+      } else {
+        setRecoveryMessage("Aucune opération n'a été envoyée. Ouvrez les détails pour vérifier les conflits ou réessayez dans quelques instants.");
       }
     } catch {
       setRecoveryMessage("Synchronisation interrompue. Les opérations restent conservées sur cet appareil; réessayez lorsque la connexion est stable.");
@@ -132,16 +137,28 @@ export default function OfflineStatusIndicator() {
 
   return (
     <div className="offline-status" aria-live="polite">
-      <button
-        type="button"
-        className="offline-status__pill"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-label={`État réseau: ${label}`}
-      >
-        <span className={`offline-status__dot ${dotClass}`} aria-hidden />
-        <span>{label}</span>
-      </button>
+      <div className={`offline-status__dock${online && pending > 0 ? ' offline-status__dock--attention' : ''}`}>
+        <button
+          type="button"
+          className="offline-status__pill"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-label={`État réseau: ${label}. Afficher les détails.`}
+        >
+          <span className={`offline-status__dot ${dotClass}`} aria-hidden />
+          <span>{label}</span>
+        </button>
+        {online && pending > 0 ? (
+          <button
+            type="button"
+            className="offline-status__sync-now"
+            onClick={handleSyncNow}
+            disabled={syncing}
+          >
+            {syncing ? 'Synchronisation…' : 'Synchroniser maintenant'}
+          </button>
+        ) : null}
+      </div>
 
       {open ? (
         <div className="offline-status__panel" role="region" aria-label="Détails hors ligne">
@@ -206,7 +223,7 @@ export default function OfflineStatusIndicator() {
               onClick={handleSyncNow}
               disabled={!online || syncing}
             >
-              Synchroniser
+              {syncing ? 'Synchronisation…' : 'Synchroniser maintenant'}
             </button>
             {(pending > 0 || conflicts.length > 0 || deadItems.length > 0) && (
               <button type="button" className="offline-status__btn" onClick={handleExport}>

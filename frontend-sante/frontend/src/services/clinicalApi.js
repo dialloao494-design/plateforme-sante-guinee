@@ -136,10 +136,10 @@ const clinicalApi = {
     invalidateApiCache('/clinical/reception/his/');
     return httpClient.post('/clinical/reception/his/admissions', data);
   },
-  receptionHisCreateInvoice: (data) => {
+  receptionHisCreateInvoice: (data, offlineOptimisticData) => {
     invalidateApiCache('/clinical/reception/his/');
     invalidateApiCache('/clinical/billing/');
-    return httpClient.post('/clinical/reception/his/invoices', data);
+    return httpClient.post('/clinical/reception/his/invoices', data, { offlineOptimisticData });
   },
   receptionHisListInvoices: (patientId) =>
     httpClient.get('/clinical/reception/his/invoices', {

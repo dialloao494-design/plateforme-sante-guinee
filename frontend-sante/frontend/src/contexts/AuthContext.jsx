@@ -191,7 +191,12 @@ export const AuthProvider = ({ children }) => {
         setAuthInitError(null);
       } else {
         setAuthInitError(toBootstrapErrorMessage(err));
-        if (!cachedProfile) {
+        if (cachedProfile) {
+          // A clinic may open or refresh the installed app while disconnected.
+          // Keep the reconnect listener alive so queued work starts replaying as
+          // soon as the network/API becomes reachable again.
+          startAutoSync(httpClient);
+        } else {
           setUser(null);
         }
       }

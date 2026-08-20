@@ -41,6 +41,9 @@ test('offline registration queues then reconciles dossier after reconnect', asyn
   await page.getByRole('button', { name: /Consultation externe/ }).click();
   await page.getByRole('button', { name: 'Créer facture', exact: true }).click();
   await expect(page.getByRole('status')).toContainText(/Facture enregistrée hors ligne/i);
+  const invoiceItems = page.locator('.reception-his-billing-lines').first();
+  await expect(invoiceItems).toContainText(/100[\s\u202f]?000 GNF/);
+  await expect(invoiceItems.getByText('0 GNF', { exact: true })).toHaveCount(0);
   await expect.poll(() => countOutboxPending(page)).toBe(2);
 
   // Reconnect and wait for outbox flush + reconciliation.

@@ -346,7 +346,9 @@ httpClient.interceptors.response.use(
       ['post', 'patch', 'put'].includes(method) &&
       statusCode !== 401 &&
       isNetwork &&
-      hasClientRequestId;
+      hasClientRequestId &&
+      !config.__offlineFallback &&
+      !(typeof navigator !== 'undefined' && navigator.onLine === false);
 
     if (retryableMutation) {
       const attempt = Number(config.__networkRetry || 0);
