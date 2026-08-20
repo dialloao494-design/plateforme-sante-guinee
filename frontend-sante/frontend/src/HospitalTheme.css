@@ -254,6 +254,16 @@
   min-height: 42px;
   border-radius: var(--radius-sm);
   font-weight: 700;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 100ms ease;
+}
+
+.app-shell .app-view :is(button, .btn, .clinical-btn, .button-primary, .button-secondary, .action-button):active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.app-shell .app-view :is(button, .btn, .clinical-btn, .button-primary, .button-secondary, .action-button):disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .app-shell .app-view :is(.btn-primary, .clinical-btn, .button-primary, .action-button):not(.clinical-btn--secondary) {
@@ -319,6 +329,11 @@
   border-bottom: 1px solid #e8eef3;
   color: #334e68;
   vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.app-shell .app-view :is(p, li, dd, label, .clinical-card, .clinical-panel) {
+  overflow-wrap: anywhere;
 }
 
 .app-shell .app-view table tbody tr:last-child td {

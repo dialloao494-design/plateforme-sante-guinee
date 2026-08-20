@@ -10,6 +10,7 @@ export function usePollingQuery(fetcher, { pollMs = 0, enabled = true, initialDa
   const [data, setData] = useState(initialData);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(Boolean(enabled));
+  const [updatedAt, setUpdatedAt] = useState(null);
   const mounted = useRef(true);
   const dataRef = useRef(initialData);
 
@@ -22,11 +23,15 @@ export function usePollingQuery(fetcher, { pollMs = 0, enabled = true, initialDa
       if (!enabled) {
         return;
       }
+      if (forceRefresh && mounted.current) {
+        setLoading(true);
+      }
       setError('');
       try {
         const result = await fetcher({ forceRefresh });
         if (mounted.current) {
           setData(result?.data ?? result ?? null);
+          setUpdatedAt(Date.now());
         }
       } catch (err) {
         if (mounted.current) {
@@ -61,5 +66,5 @@ export function usePollingQuery(fetcher, { pollMs = 0, enabled = true, initialDa
 
   const refresh = useCallback(() => load(true), [load]);
 
-  return { data, error, loading, refresh, setData };
+  return { data, error, loading, updatedAt, refresh, setData };
 }

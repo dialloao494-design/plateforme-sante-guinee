@@ -70,7 +70,14 @@ export default function ServiceRequestsTab({
                   ))}
                 </select>
               </label>
-              <button type="button" className="clinical-btn clinical-btn--secondary" onClick={loadServiceRequests}>Actualiser</button>
+              <button
+                type="button"
+                className="clinical-btn clinical-btn--secondary"
+                onClick={loadServiceRequests}
+                disabled={loadingServiceRequests}
+              >
+                {loadingServiceRequests ? 'Actualisation…' : 'Actualiser la liste'}
+              </button>
             </div>
 
             <form className="reception-his-service-request-form" onSubmit={saveServiceRequest}>

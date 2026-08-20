@@ -61,6 +61,9 @@ test('offline registration queues then reconciles dossier after reconnect', asyn
 test('a browser restart recovers an interrupted patient synchronization', async ({ page, context }) => {
   test.setTimeout(120_000);
   await loginAsReception(page);
+  await expect(page.getByRole('heading', { name: 'Vue d’ensemble' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Actualiser les données' })).toBeVisible();
+  await expect(page.getByText(/Mis à jour à|Mise à jour non disponible/)).toBeVisible();
   const unique = Date.now();
   const phone = `625${String(unique).slice(-6)}`;
   await fillRegistrationForm(page, {

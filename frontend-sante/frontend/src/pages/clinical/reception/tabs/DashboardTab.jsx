@@ -3,6 +3,7 @@ import ClinicalStatGrid from '../../ClinicalStatGrid.jsx';
 import { DASHBOARD_BUCKET_TITLES } from '../constants.js';
 import { formatGNF } from '../../../../utils/appointmentPresentation.js';
 import { refundStatusLabel } from '../utils.js';
+import ClinicalSectionToolbar from '../../../../components/clinical/ClinicalSectionToolbar.jsx';
 
 export default function DashboardTab({
   activeStatBucket,
@@ -12,6 +13,7 @@ export default function DashboardTab({
   renderQueueTable,
   statCards,
   stats,
+  dashboardUpdatedAt,
   openPatient,
 }) {
   const queueHeadingRef = useRef(null);
@@ -22,6 +24,13 @@ export default function DashboardTab({
 
   return (
         <section className="reception-his-panel">
+          <ClinicalSectionToolbar
+            title="Vue d’ensemble"
+            description="Activité de la réception et situation financière de la clinique."
+            updatedAt={dashboardUpdatedAt}
+            onRefresh={refresh}
+            refreshing={loading}
+          />
           <ClinicalStatGrid stats={statCards} onStatClick={loadQueueBucket} activeKey={activeStatBucket} />
           {activeStatBucket && (
             <section className="lab-his-queue-panel reception-his-queue-panel" aria-live="polite">
@@ -81,7 +90,6 @@ export default function DashboardTab({
               </ul>
             </article>
           </div>
-          <button type="button" className="clinical-btn" onClick={refresh} disabled={loading}>Actualiser</button>
         </section>
   );
 }

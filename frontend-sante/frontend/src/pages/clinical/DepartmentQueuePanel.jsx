@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import { usePollingQuery } from '../../hooks/usePollingQuery.js';
+import ClinicalSectionToolbar from '../../components/clinical/ClinicalSectionToolbar.jsx';
 import './clinical.css';
 const WORKFLOW_LABELS = {
   child: 'Enfant',
@@ -18,7 +19,7 @@ export default function DepartmentQueuePanel({ department, title, onSelectPatien
     [department]
   );
 
-  const { data: queue, error, loading, refresh } = usePollingQuery(fetchQueue, {
+  const { data: queue, error, loading, updatedAt, refresh } = usePollingQuery(fetchQueue, {
     pollMs: QUEUE_POLL_MS,
     initialData: [],
   });
@@ -49,12 +50,13 @@ export default function DepartmentQueuePanel({ department, title, onSelectPatien
 
   return (
     <section className="clinical-card">
-      <div className="clinical-inline-form" style={{ justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-        <h2>{title || 'File de visite'}</h2>
-        <button type="button" className="clinical-btn secondary clinical-btn-sm" onClick={refresh}>
-          Actualiser
-        </button>
-      </div>
+      <ClinicalSectionToolbar
+        title={title || 'File de visite'}
+        description="Patients actuellement attendus dans ce service."
+        updatedAt={updatedAt}
+        onRefresh={refresh}
+        refreshing={loading}
+      />
       {(error || actionError) && (
         <div className="clinical-retry-bar">
           <p>{String(error || actionError)}</p>

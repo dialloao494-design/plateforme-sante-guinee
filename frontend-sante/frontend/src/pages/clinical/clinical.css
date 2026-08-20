@@ -248,6 +248,64 @@
   margin: 1rem 0;
 }
 
+.clinical-section-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border, #d9e2ec);
+}
+
+.clinical-section-toolbar__copy {
+  min-width: 0;
+}
+
+.clinical-section-toolbar__copy h2 {
+  margin: 0;
+  text-align: left;
+}
+
+.clinical-section-toolbar__copy p {
+  max-width: 66ch;
+  margin: 0.3rem 0 0;
+  color: var(--color-text-muted, #627d98);
+  text-wrap: pretty;
+}
+
+.clinical-section-toolbar__controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.clinical-section-toolbar__timestamp {
+  color: var(--color-text-muted, #627d98);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .clinical-section-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .clinical-section-toolbar__controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .clinical-section-toolbar__controls .clinical-btn {
+    width: 100%;
+  }
+}
+
 /*
  * Clinical action rhythm: independent actions must never visually merge.
  * Keep this contract centralized so Reception, Billing, Pharmacy, Laboratory,

@@ -69,6 +69,7 @@ export function useReceptionDashboard() {
   const [error, setError] = useState('');
 
   const [stats, setStats] = useState(null);
+  const [dashboardUpdatedAt, setDashboardUpdatedAt] = useState(null);
   const [doctors, setDoctors] = useState([]);
   const [searchQ, setSearchQ] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -280,6 +281,7 @@ export function useReceptionDashboard() {
     try {
       const { data } = await clinicalApi.receptionHisDashboard({ forceRefresh: true });
       setStats(data || null);
+      setDashboardUpdatedAt(Date.now());
     } catch (e) {
       setError(formatApiError(e, 'Impossible de charger le tableau de bord'));
     }
@@ -1355,6 +1357,7 @@ export function useReceptionDashboard() {
     setMessage,
     error,
     stats,
+    dashboardUpdatedAt,
     doctors,
     searchQ,
     setSearchQ,

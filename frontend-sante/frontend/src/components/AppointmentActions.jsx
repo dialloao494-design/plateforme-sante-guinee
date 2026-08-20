@@ -45,9 +45,9 @@ const AppointmentActions = ({
             className={buttonClassName}
           >
             {isLoadingConfirm && action.kind === 'confirm'
-              ? 'Confirmation...'
+              ? 'Confirmation…'
               : isLoadingCancel
-                ? 'Annulation...'
+                ? 'Annulation…'
                 : action.label}
           </button>
         );
