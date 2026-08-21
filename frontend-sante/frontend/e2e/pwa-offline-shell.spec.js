@@ -31,5 +31,11 @@ test('production PWA reopens a protected clinical URL after complete network los
     timeout: 15_000,
   });
   await expect(page.getByText(/Hors ligne/).first()).toBeVisible();
+  const cachedLogo = await page.evaluate(async () => {
+    const response = await fetch('/branding/aasma-clinic-logo.png');
+    return { ok: response.ok, size: (await response.blob()).size };
+  });
+  expect(cachedLogo.ok).toBe(true);
+  expect(cachedLogo.size).toBeGreaterThan(1_000);
   expect(await page.title()).not.toContain('ERR_INTERNET_DISCONNECTED');
 });

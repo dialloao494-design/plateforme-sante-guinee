@@ -64,6 +64,14 @@ test('offline registration queues then reconciles dossier after reconnect', asyn
   });
   await page.getByRole('button', { name: 'Imprimer reçu' }).click();
   await expect.poll(() => page.evaluate(() => window.__offlineReceiptPrintCalls)).toBe(1);
+  const localReceipt = page.locator('.reception-invoice-receipt-print');
+  await expect(localReceipt).toContainText('FACTURE');
+  await expect(localReceipt).toContainText('Détail des prestations');
+  await expect(localReceipt).toContainText('Récapitulatif paiement');
+  await expect(localReceipt).toContainText('Détail des paiements');
+  await expect(localReceipt).toContainText(/Consultation externe/);
+  await expect(localReceipt).toContainText(/100[\s\u202f]?000 GNF/);
+  await expect(localReceipt.locator('img')).toHaveAttribute('src', '/branding/aasma-clinic-logo.png');
   await expect(page.getByRole('status')).toContainText(/Reçu local ouvert pour impression/i);
 
   // Reconnect and wait for patient → invoice → payment replay in that order.

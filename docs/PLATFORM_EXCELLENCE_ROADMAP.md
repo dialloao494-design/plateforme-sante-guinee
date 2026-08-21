@@ -424,6 +424,12 @@ Local evidence added 2026-08-21:
   registration → invoice → payment browser regression proves the native print
   action before reconnect; 46/46 unit, 44/44 offline, build, lint, and all six
   frontend budgets remain locally green.
+- receipt parity was then tightened against the canonical server PDF builder:
+  section titles, metadata, cashier/date/time, four-column service table,
+  exemption summary, payment detail, and footer now match its information
+  architecture. The previously broken offline logo is explicitly precached and
+  the production-PWA regression proves its bytes remain available after total
+  network loss (**1/1** PWA Chromium).
 
 This tranche is code-complete and locally/browser verified. CI, deployment,
 production, and clinic field validation have not yet been claimed.

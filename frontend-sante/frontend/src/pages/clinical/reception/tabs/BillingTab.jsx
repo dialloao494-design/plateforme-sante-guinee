@@ -48,6 +48,7 @@ export default function BillingTab({
   patientDossier,
   paymentLines,
   printInvoiceReceipt,
+  receiptPrintTimestamp,
   removeBillingLine,
   removePaymentLine,
   renderSpecialtyPicker,
@@ -550,7 +551,12 @@ export default function BillingTab({
               )}
             </fieldset>
           </div>
-          <InvoiceReceiptPrint invoice={activeInvoice} patient={selectedPatient} user={user} />
+          <InvoiceReceiptPrint
+            invoice={activeInvoice}
+            patient={selectedPatient}
+            user={user}
+            printedAt={receiptPrintTimestamp}
+          />
         </section>
   );
 }

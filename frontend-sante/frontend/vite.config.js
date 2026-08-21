@@ -60,10 +60,10 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.svg', 'icons.svg', 'manifest.webmanifest'],
+        includeAssets: ['favicon.svg', 'icons.svg', 'manifest.webmanifest', 'branding/aasma-clinic-logo.png'],
         manifest: false,
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
+          globPatterns: ['**/*.{js,css,html,ico,svg,png,jpg,jpeg,woff2}'],
           navigateFallback: '/index.html',
           // Do not cache authenticated /clinical responses in the service worker:
           // CacheStorage is not user/tenant-scoped and is not purged on logout.

@@ -85,6 +85,7 @@ export function useReceptionDashboard() {
 
   const [invoices, setInvoices] = useState([]);
   const [activeInvoice, setActiveInvoice] = useState(null);
+  const [receiptPrintTimestamp, setReceiptPrintTimestamp] = useState('');
   const [refunds, setRefunds] = useState([]);
 
   const [regForm, setRegForm] = useState(EMPTY_REG);
@@ -1247,13 +1248,16 @@ export function useReceptionDashboard() {
   const printInvoiceReceipt = async (invoiceId) => {
     const canPrintLocally = activeInvoice && String(activeInvoice.id) === String(invoiceId);
     const printLocalReceipt = () => {
-      window.print();
+      setReceiptPrintTimestamp(new Date().toISOString());
       setMessage(
         activeInvoice?._offline_queued
           ? 'Reçu local ouvert pour impression — la facture reste en attente de synchronisation.'
           : 'Reçu ouvert pour impression.'
       );
       setError('');
+      // Let React commit the official receipt metadata before the browser
+      // snapshots the print tree.
+      window.requestAnimationFrame(() => window.print());
     };
     if (canPrintLocally && (
       typeof navigator !== 'undefined' && navigator.onLine === false
@@ -1521,6 +1525,7 @@ export function useReceptionDashboard() {
     draftPaymentTotal,
     draftRemainingAfterPay,
     printInvoiceReceipt,
+    receiptPrintTimestamp,
     patientDossier,
     patientDisplayName,
     patientPayerLabel,

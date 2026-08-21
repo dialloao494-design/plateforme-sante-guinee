@@ -73,6 +73,13 @@ clinic header, patient/dossier identity, priced line items, totals, payment mode
 cash received, outstanding balance, operator, and an explicit pending-sync note.
 The browser regression disables the network, records payment, stubs the native
 print dialog, and proves one local print invocation before reconnection.
+The local template now mirrors the server PDF sections and labels (`FACTURE`,
+metadata/date/time/cashier, service detail, payment summary, payment detail, and
+page footer). The AASMA logo is included in the production service-worker
+precache; the production-PWA test fetches the full image successfully after
+complete network loss. A provisional offline invoice still correctly says
+“En attente de synchronisation” because only the server may issue its final
+invoice number.
 
 ## Clinic staff validation script
 

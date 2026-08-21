@@ -3219,11 +3219,39 @@
   text-align: left;
 }
 
-.reception-invoice-receipt-print__meta,
-.reception-invoice-receipt-print__totals {
+.reception-invoice-receipt-print__meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.35rem 1rem;
+}
+
+.reception-invoice-receipt-print__meta-right,
+.reception-invoice-receipt-print__summary td,
+.reception-invoice-receipt-print__payments td:last-child {
+  text-align: right;
+}
+
+.reception-invoice-receipt-print h2 {
+  margin: 1rem 0 0.35rem;
+  color: #0f766e;
+  font-size: 10pt;
+}
+
+.reception-invoice-receipt-print thead {
+  background: #ecfdf5;
+  color: #134e4a;
+}
+
+.reception-invoice-receipt-print__summary th {
+  width: 55%;
+}
+
+.reception-invoice-receipt-print__summary tr:last-child {
+  background: #f0fdfa;
+}
+
+.reception-invoice-receipt-print__payments td {
+  border-width: 0 0 1px;
 }
 
 .reception-invoice-receipt-print p {
@@ -3231,10 +3259,18 @@
 }
 
 .reception-invoice-receipt-print footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
   margin-top: 1.5rem;
   border-top: 1px solid #cbd5e1;
   padding-top: 0.75rem;
   font-size: 0.8rem;
+}
+
+.reception-invoice-receipt-print footer strong {
+  margin-top: 0.35rem;
+  color: #92400e;
 }
 .reception-his-specialty-picker {
   display: flex;

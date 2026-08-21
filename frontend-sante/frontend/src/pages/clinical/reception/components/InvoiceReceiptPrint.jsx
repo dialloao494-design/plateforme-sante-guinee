@@ -3,7 +3,7 @@ import { formatGNF } from '../../../../utils/appointmentPresentation.js';
 import { PAYMENT_METHODS } from '../constants.js';
 import { methodLabel, patientFullName } from '../utils.js';
 
-export default function InvoiceReceiptPrint({ invoice, patient, user }) {
+export default function InvoiceReceiptPrint({ invoice, patient, user, printedAt }) {
   if (!invoice) return null;
   const items = invoice.items || [];
   const payments = invoice.payments || [];
@@ -12,18 +12,27 @@ export default function InvoiceReceiptPrint({ invoice, patient, user }) {
   const total = Number(invoice.total_amount_gnf ?? invoice.total_gnf ?? Math.max(0, subtotal - exemption));
   const paid = Number(invoice.paid_amount_gnf ?? payments.reduce((sum, row) => sum + Number(row.amount_gnf || 0), 0));
   const remaining = Number(invoice.remaining_balance_gnf ?? Math.max(0, total - paid));
+  const exemptionPercent = Number(invoice.exemption_percent || 0);
+  const printDate = printedAt ? new Date(printedAt) : null;
 
   return (
     <article className="reception-invoice-receipt-print" aria-hidden="true">
-      <PrintClinicHeader documentTitle="Reçu de paiement" compact />
+      <PrintClinicHeader documentTitle="FACTURE" compact />
       <div className="reception-invoice-receipt-print__meta">
-        <p><strong>Facture :</strong> {invoice.invoice_number || 'En attente de synchronisation'}</p>
-        <p><strong>Dossier :</strong> {patient?.patient_number || invoice.patient_number || patient?.id || '—'}</p>
-        <p><strong>Patient :</strong> {patientFullName(patient) || invoice.patient_name || '—'}</p>
-        <p><strong>Date :</strong> {invoice.issued_at || invoice.created_at ? new Date(invoice.issued_at || invoice.created_at).toLocaleString('fr-FR') : 'En attente de synchronisation'}</p>
+        <div>
+          <p><strong>N° facture :</strong> {invoice.invoice_number || 'En attente de synchronisation'}</p>
+          <p><strong>Patient :</strong> {patientFullName(patient) || invoice.patient_name || '—'}</p>
+          <p><strong>N° dossier :</strong> {patient?.patient_number || invoice.patient_number || patient?.id || '—'}</p>
+        </div>
+        <div className="reception-invoice-receipt-print__meta-right">
+          <p><strong>Date :</strong> {printDate ? printDate.toLocaleDateString('fr-FR') : '—'}</p>
+          <p><strong>Heure :</strong> {printDate ? printDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '—'}</p>
+          <p><strong>Caissier :</strong> {user?.full_name || user?.email || '—'}</p>
+        </div>
       </div>
+      <h2>Détail des prestations</h2>
       <table>
-        <thead><tr><th>Prestation</th><th>Qté</th><th>Prix U</th><th>Total</th></tr></thead>
+        <thead><tr><th>Description</th><th>Qté</th><th>Prix unitaire</th><th>Total</th></tr></thead>
         <tbody>
           {items.map((item, index) => {
             const quantity = Number(item.quantity || 1);
@@ -39,29 +48,33 @@ export default function InvoiceReceiptPrint({ invoice, patient, user }) {
           })}
         </tbody>
       </table>
-      <div className="reception-invoice-receipt-print__totals">
-        <p><strong>Sous-total :</strong> {formatGNF(subtotal)}</p>
-        <p><strong>Exemption :</strong> {formatGNF(exemption)}</p>
-        <p><strong>Total :</strong> {formatGNF(total)}</p>
-        <p><strong>Montant reçu :</strong> {formatGNF(paid)}</p>
-        <p><strong>Reste à payer :</strong> {formatGNF(remaining)}</p>
-      </div>
+      <h2>Récapitulatif paiement</h2>
+      <table className="reception-invoice-receipt-print__summary">
+        <tbody>
+          <tr><th>Montant total</th><td>{formatGNF(subtotal)}</td></tr>
+          <tr><th>Exemption</th><td>{exemptionPercent}%{exemption ? ` (${formatGNF(exemption)})` : ''}</td></tr>
+          <tr><th>Montant payé</th><td>{formatGNF(paid)}</td></tr>
+          <tr><th>Reste à payer</th><td>{formatGNF(remaining)}</td></tr>
+        </tbody>
+      </table>
       {payments.length > 0 && (
         <section>
-          <h2>Paiements</h2>
-          <ul>
+          <h2>Détail des paiements</h2>
+          <table className="reception-invoice-receipt-print__payments"><tbody>
             {payments.map((payment, index) => (
-              <li key={payment.id || index}>
-                {methodLabel(PAYMENT_METHODS, payment.payment_method)} · {formatGNF(payment.amount_gnf || 0)}
-                {payment.reference ? ` · ${payment.reference}` : ''}
-              </li>
+              <tr key={payment.id || index}>
+                <td>{methodLabel(PAYMENT_METHODS, payment.payment_method)}{payment.reference ? ` · ${payment.reference}` : ''}</td>
+                <td>{formatGNF(payment.amount_gnf || 0)}</td>
+              </tr>
             ))}
-          </ul>
+          </tbody></table>
         </section>
       )}
       <footer>
-        Imprimé par {user?.full_name || user?.email || '—'}
-        {invoice._offline_queued ? ' · Document local en attente de synchronisation' : ''}
+        <span>Imprimé par : {user?.full_name || user?.email || '—'}</span>
+        <span>Date : {printDate ? printDate.toLocaleDateString('fr-FR') : '—'} · Heure : {printDate ? printDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '—'}</span>
+        <span>Page 1</span>
+        {invoice._offline_queued && <strong>Document local en attente de synchronisation</strong>}
       </footer>
     </article>
   );
