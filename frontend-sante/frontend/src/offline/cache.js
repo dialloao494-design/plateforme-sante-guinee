@@ -1,11 +1,37 @@
 import { offlineDb } from './db.js';
 import { buildCacheKey } from '../utils/apiCache.js';
-import { isCatalogUrl, isPatientSearchUrl } from './entityTypes.js';
+import { isCatalogUrl, isPatientDetailUrl, isPatientSearchUrl } from './entityTypes.js';
 import { readOfflineOwnerScope } from './sessionScope.js';
 
 const MAX_PATIENT_CACHE = 500;
 const MAX_CATALOG_CACHE = 50;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isPatientDirectoryRequest(url, params) {
+  return /\/clinical\/reception\/his\/dashboard\/queue\/?$/.test(String(url).split('?')[0])
+    && params?.bucket === 'total_patients';
+}
+
+async function readCachedPatientDirectory(ownerKey, now) {
+  const rows = await offlineDb.patients.orderBy('cached_at').reverse().toArray();
+  const patients = [];
+  for (const row of rows) {
+    if (row.owner_key !== ownerKey || !String(row.search_key || '').startsWith('id:')) continue;
+    if (row.expires_at && row.expires_at <= now) continue;
+    const patient = await readCachedJson(offlineDb.patients, row);
+    if (!patient) continue;
+    patients.push({
+      patient_id: patient.id || patient.patient_id,
+      patient_name: patient.full_name || patient.patient_name
+        || [patient.last_name, patient.first_name].filter(Boolean).join(' '),
+      patient_number: patient.patient_number || patient.patient_code || null,
+      phone: patient.phone || null,
+      gender: patient.gender || null,
+      registration_date: patient.registration_date || patient.created_at || null,
+    });
+  }
+  return patients;
+}
 
 export function buildOfflineCacheKey(method, url, params) {
   return buildCacheKey(method, url, params);
@@ -46,6 +72,15 @@ export async function cacheGetResponse(url, params, data) {
     });
     await pruneTable('patients', MAX_PATIENT_CACHE);
     return;
+  }
+
+  if (isPatientDetailUrl(url) && data && !Array.isArray(data)) {
+    await cachePatientRecord(data);
+    return;
+  }
+
+  if (isPatientDirectoryRequest(url, params) && Array.isArray(data)) {
+    await Promise.all(data.map((patient) => cachePatientRecord(patient)));
   }
 
   if (isCatalogUrl(url)) {
@@ -91,14 +126,24 @@ export async function getCachedGet(url, params) {
         if (row.expires_at && row.expires_at <= now) continue;
         const payload = await readCachedJson(offlineDb.patients, row);
         if (payload === undefined) continue;
-        const list = Array.isArray(payload) ? payload : payload?.results || payload?.patients || [];
+        const list = Array.isArray(payload)
+          ? payload
+          : payload?.results || payload?.patients || (payload?.id || payload?.patient_id ? [payload] : []);
         for (const p of list) {
-          const hay = `${p.full_name || ''} ${p.patient_code || ''} ${p.phone || ''}`.toLowerCase();
+          const hay = `${p.full_name || ''} ${p.patient_name || ''} ${p.first_name || ''} ${p.last_name || ''} ${p.patient_number || p.patient_code || ''} ${p.phone || ''}`.toLowerCase();
           if (hay.includes(q)) matches.push(p);
         }
       }
-      if (matches.length) return matches;
+      if (matches.length) {
+        return Array.from(new Map(matches.map((patient) => [String(patient.id || patient.patient_id), patient])).values());
+      }
     }
+    return undefined;
+  }
+
+  if (isPatientDetailUrl(url)) {
+    const patientId = String(url).split('?')[0].match(/\/patients\/([^/]+)\/?$/)?.[1];
+    if (patientId) return getCachedPatient(decodeURIComponent(patientId));
     return undefined;
   }
 
@@ -116,7 +161,19 @@ export async function getCachedGet(url, params) {
 
   const meta = await offlineDb.meta.get(`get:${ownerKey}:${key}`);
   if (meta?.value?.expires_at > now && meta?.value?.owner_key === ownerKey) {
+    if (isPatientDirectoryRequest(url, params)) {
+      const directory = await readCachedPatientDirectory(ownerKey, now);
+      const combined = [...(Array.isArray(meta.value.data) ? meta.value.data : []), ...directory];
+      return Array.from(new Map(combined.map((patient) => [
+        String(patient.patient_id || patient.id),
+        patient,
+      ])).values());
+    }
     return meta.value.data;
+  }
+  if (isPatientDirectoryRequest(url, params)) {
+    const directory = await readCachedPatientDirectory(ownerKey, now);
+    return directory.length ? directory : undefined;
   }
   return undefined;
 }
@@ -126,12 +183,17 @@ export async function cachePatientRecord(patient) {
   const { ownerKey, userId } = readOfflineOwnerScope();
   if (!userId) return;
   const patientId = patient.id || patient.patient_id;
+  const normalizedPatient = {
+    ...patient,
+    id: patientId,
+    full_name: patient.full_name || patient.patient_name || [patient.last_name, patient.first_name].filter(Boolean).join(' '),
+  };
   const now = Date.now();
   await offlineDb.patients.put({
     owner_key: ownerKey,
     patient_id: String(patientId),
     search_key: `id:${patientId}`,
-    payload_json: JSON.stringify(patient),
+    payload_json: JSON.stringify(normalizedPatient),
     cached_at: now,
     expires_at: now + CACHE_TTL_MS,
   });

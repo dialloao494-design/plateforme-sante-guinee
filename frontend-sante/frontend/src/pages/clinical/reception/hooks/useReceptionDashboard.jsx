@@ -51,6 +51,7 @@ import {
 import { onInvoiceReconciled } from '../../../../offline/reconcileInvoice.js';
 import { readReceptionRouteState, updateReceptionRouteState } from '../routeState.js';
 import { useConfirm } from '../../../../contexts/ConfirmContext.jsx';
+import { cachePatientRecord } from '../../../../offline/cache.js';
 
 export function useReceptionDashboard() {
   const { user } = useAuth();
@@ -280,9 +281,15 @@ export function useReceptionDashboard() {
 
   const loadDashboard = useCallback(async () => {
     try {
-      const { data } = await clinicalApi.receptionHisDashboard({ forceRefresh: true });
+      const [{ data }, patientDirectory] = await Promise.all([
+        clinicalApi.receptionHisDashboard({ forceRefresh: true }),
+        clinicalApi.receptionHisDashboardQueue('total_patients').catch(() => null),
+      ]);
       setStats(data || null);
       setDashboardUpdatedAt(Date.now());
+      // Warm the clinic-scoped directory required to find and open an existing
+      // patient after network loss. The offline database caps this at 500 rows.
+      await Promise.all((patientDirectory?.data || []).map((patient) => cachePatientRecord(patient)));
     } catch (e) {
       setError(formatApiError(e, 'Impossible de charger le tableau de bord'));
     }
@@ -1036,8 +1043,15 @@ export function useReceptionDashboard() {
       setAdmissionImagingCode('');
       setAdmissionLabSelection(null);
       setAdmissionLabSearchQ('');
-      setMessage(`Admission créée · N° admission ${data?.admission_number || '—'}`);
-      await loadDashboard();
+      const queuedOffline = Boolean(data?._offline_queued);
+      setMessage(
+        queuedOffline
+          ? 'Admission enregistrée hors ligne — synchronisation en attente.'
+          : `Admission créée · N° admission ${data?.admission_number || '—'}`
+      );
+      // The offline acknowledgement is already durable in IndexedDB. Do not
+      // block the admission → billing hand-off on dashboard network reads.
+      if (!queuedOffline) await loadDashboard();
       setTab('billing');
     } catch (err) {
       setError(formatApiError(err, 'Création de l’admission impossible'));
@@ -1085,7 +1099,7 @@ export function useReceptionDashboard() {
         remaining_balance_gnf: totalAmount,
         invoice_number: null,
         patient_number: selectedPatient.patient_number || selectedPatient.id,
-        patient_name: `${selectedPatient.last_name || ''} ${selectedPatient.first_name || ''}`.trim(),
+        patient_name: patientFullName(selectedPatient),
       };
       const { data } = await clinicalApi.receptionHisCreateInvoice(serverPayload, offlinePreview);
       setActiveInvoice(data || null);

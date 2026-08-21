@@ -107,6 +107,11 @@ export function isPatientSearchUrl(url = '') {
   return /\/patients(\/search)?(\?|$)/.test(String(url)) || /\/patients\/search/.test(String(url));
 }
 
+export function isPatientDetailUrl(url = '') {
+  const path = String(url).split('?')[0];
+  return /\/patients\/[^/]+\/?$/.test(path) && !/\/patients\/search\/?$/.test(path);
+}
+
 export function isCatalogUrl(url = '') {
   return /\/catalog/.test(String(url)) || /billing-catalog/.test(String(url));
 }

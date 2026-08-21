@@ -68,6 +68,59 @@ test('offline registration queues then reconciles dossier after reconnect', asyn
   await expect(page.getByTestId('reception-registration-success')).toBeVisible();
 });
 
+test('an existing cached patient can be found, admitted, and invoiced offline', async ({ page, context }) => {
+  test.setTimeout(150_000);
+  await loginAsReception(page);
+
+  const unique = Date.now();
+  const phone = `627${String(unique).slice(-6)}`;
+  await fillRegistrationForm(page, {
+    lastName: `ExistantNom${unique}`,
+    firstName: `ExistantPrenom${unique}`,
+    phone,
+  });
+  await page.getByTestId('reception-register-submit').click();
+  await expect(page.getByTestId('reception-patient-number')).toContainText(/PAT-\d{3}-\d{6}/, {
+    timeout: 30_000,
+  });
+
+  // Registration opens and caches the canonical patient. Closing the dossier
+  // proves the subsequent selection is served by the offline directory rather
+  // than retained React state.
+  await page.getByRole('button', { name: 'Fermer le dossier' }).click();
+  await context.setOffline(true);
+  await page.getByTestId('reception-tab-dashboard').click();
+  await page.getByRole('button', { name: /Total patients/ }).click();
+  await expect(page.locator('.reception-his-queue-panel')).toContainText(phone, { timeout: 5_000 });
+
+  await page.getByLabel('Recherche patient').fill(phone);
+  await page.getByRole('button', { name: 'Rechercher' }).click();
+  const result = page.locator('.reception-his-search-results li').first();
+  await expect(result).toContainText(phone, { timeout: 5_000 });
+  await result.getByRole('button').click();
+  await expect(page.getByRole('heading', { name: 'Nouvelle admission' })).toBeVisible();
+
+  await page.getByRole('checkbox', { name: 'Consultation externe' }).check();
+  const admissionStartedAt = Date.now();
+  await page.getByRole('button', { name: 'Créer l’admission' }).click();
+  await expect(page.getByRole('status')).toContainText(/Admission enregistrée hors ligne/i);
+  expect(Date.now() - admissionStartedAt).toBeLessThan(2_500);
+  await expect(page.getByRole('heading', { name: 'Facturation' })).toBeVisible();
+
+  await page.getByRole('button', { name: /Consultation externe.*100/ }).click();
+  const invoiceStartedAt = Date.now();
+  await page.getByRole('button', { name: 'Créer facture', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText(/Facture enregistrée hors ligne/i);
+  expect(Date.now() - invoiceStartedAt).toBeLessThan(2_500);
+  const invoiceItems = page.locator('.reception-his-billing-lines').first();
+  await expect(invoiceItems).toContainText(/100[\s\u202f]?000 GNF/);
+  await expect(invoiceItems.getByText('0 GNF', { exact: true })).toHaveCount(0);
+  await expect.poll(() => countOutboxPending(page)).toBe(2);
+
+  await context.setOffline(false);
+  await expect.poll(() => countOutboxPending(page), { timeout: 60_000 }).toBe(0);
+});
+
 test('a browser restart recovers an interrupted patient synchronization', async ({ page, context }) => {
   test.setTimeout(120_000);
   await loginAsReception(page);

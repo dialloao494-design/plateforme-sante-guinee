@@ -63,7 +63,12 @@ export const patientAge = (patient) => {
 
 export const patientFullName = (patient) => {
   if (!patient) return '';
-  return `${patient.last_name || ''} ${patient.first_name || ''}`.trim();
+  return (
+    `${patient.last_name || ''} ${patient.first_name || ''}`.trim()
+    || patient.full_name
+    || patient.patient_name
+    || ''
+  );
 };
 
 export const lineTotalGnf = (line) => Number(line.quantity || 1) * Number(line.unit_price_gnf || 0);

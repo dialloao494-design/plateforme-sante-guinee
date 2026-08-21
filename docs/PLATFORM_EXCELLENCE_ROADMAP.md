@@ -410,6 +410,13 @@ Local evidence added 2026-08-21:
   sent” result captured in clinic testing; result messages now distinguish
   dependent-patient blocking, offline state, and wrong-session ownership. The
   exact recent-in-flight browser regression and **42/42** offline tests pass.
+- the Reception dashboard now warms and locally reconstructs its clinic-scoped
+  patient directory instead of caching only summary counters. Patient detail,
+  dossier/name/phone search, and the “Total patients” queue therefore remain
+  available after network loss. The exact existing-patient → admission → invoice
+  browser flow preserves the 100,000 GNF tariff, acknowledges both writes below
+  2.5 seconds, and replays both after reconnect. Locally verified with **44/44**
+  offline tests and **4/4** Reception loss/restart/concurrent-device browser cases.
 
 This tranche is code-complete and locally/browser verified. CI, deployment,
 production, and clinic field validation have not yet been claimed.
@@ -585,6 +592,7 @@ and a clear escalation contact.
 | 2026-08-20 | Hospital workstation UX hardening established a shared 16 px action rhythm, responsive action stacking, explicit offline manual synchronization, reconnect-after-offline-bootstrap recovery, and price-preserving provisional invoices. Header-level refresh controls now state their scope and expose last-update context; shared polling exposes refresh progress. Local offline/unit/browser/build/performance gates pass for the completed tranche. | UI consistency and offline recoverability materially improve. A structured representative-staff validation session and remaining per-module form/accessibility cleanup are still required before closing observed workflow validation. |
 | 2026-08-21 | Production-PWA certification reproduced a protected offline deep link that rendered only the shell while auth waited on an unreachable server. Cached, session-scoped clinic identity now unlocks offline startup immediately; a real service-worker regression passes in 2.0 seconds. Final local gates: frontend 46/46, offline 41/41, general Chromium 35/35, production-PWA Chromium 1/1, lint/build and six budgets green. | Offline startup is locally code- and browser-verified against the production artifact, not merely Vite development mode. CI/deployment verification and the observed clinic wording/recovery exercise remain explicitly open. |
 | 2026-08-21 | Clinic evidence reproduced “one queued / zero sent” after manual sync: a recent interrupted row remained `in_flight` until the one-minute stale threshold. Staff-triggered retry now safely reclaims stranded in-flight rows immediately, and feedback distinguishes dependency, connectivity, and session blockers. Exact browser regression, 42/42 offline tests, lint/build, and all budgets pass locally. | The reported manual-sync blocker is code-complete and locally browser-verified. CI, deployment, and confirmation against the clinic’s existing queued record remain open. |
+| 2026-08-21 | Clinic evidence reproduced an offline Reception dashboard with cached counters but an empty patient list. Reception now warms and reconstructs its scoped directory from patient records; cached patients can be searched/opened, admitted, and invoiced offline without a network wait. Exact 4/4 Reception browser matrix, 44/44 offline tests, lint/build, and six budgets pass locally. | The existing-patient continuity blocker is code-complete and locally browser-verified. CI, deployment, production verification, and the observed clinic exercise remain open. |
 
 ## Related evidence
 

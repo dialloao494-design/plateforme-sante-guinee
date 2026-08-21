@@ -10,7 +10,7 @@ import {
   OFFLINE_RECOVERY_FORMAT,
   validateOfflineRecoveryExport,
 } from '../src/offline/recovery.js';
-import { getCachedPatient } from '../src/offline/cache.js';
+import { cachePatientRecord, getCachedGet, getCachedPatient } from '../src/offline/cache.js';
 
 function mockScope(userId = '42', clinicId = '7') {
   const storage = {
@@ -180,6 +180,36 @@ test('corrupted cached patient is removed without touching durable mutations', a
   assert.equal(await getCachedPatient(9), undefined);
   assert.equal(await offlineDb.patients.count(), 0);
   assert.equal(await offlineDb.outbox.count(), 1);
+});
+
+test('warmed directory patients remain searchable and openable offline', async () => {
+  mockScope('42', '7');
+  await offlineDb.patients.clear();
+  await cachePatientRecord({
+    patient_id: 55,
+    patient_name: 'Diallo Aissatou',
+    patient_number: 'PAT-007-000055',
+    phone: '622123456',
+    gender: 'F',
+  });
+
+  const byDossier = await getCachedGet('/clinical/reception/his/patients/search', {
+    q: 'PAT-007-000055',
+  });
+  assert.equal(byDossier.length, 1);
+  assert.equal(byDossier[0].id, 55);
+  assert.equal(byDossier[0].full_name, 'Diallo Aissatou');
+
+  const byPhone = await getCachedGet('/clinical/reception/his/patients/search', { q: '622123' });
+  assert.equal(byPhone.length, 1);
+  const detail = await getCachedGet('/clinical/reception/his/patients/55');
+  assert.equal(detail.patient_number, 'PAT-007-000055');
+
+  const directory = await getCachedGet('/clinical/reception/his/dashboard/queue', {
+    bucket: 'total_patients',
+  });
+  assert.equal(directory.length, 1);
+  assert.equal(directory[0].patient_name, 'Diallo Aissatou');
 });
 
 test('corrupted outbox payload is quarantined for export instead of replaying empty data', async () => {

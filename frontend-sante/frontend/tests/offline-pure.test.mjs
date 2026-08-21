@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   classifyRequest,
+  isPatientDetailUrl,
   isPatientSearchUrl,
 } from '../src/offline/entityTypes.js';
 import { computeBackoffMs, buildOptimisticResponse } from '../src/offline/outbox.js';
@@ -61,6 +62,12 @@ test('classifyRequest maps hospitalization and nursing mutations as queueable', 
 test('isPatientSearchUrl detects search endpoints', () => {
   assert.equal(isPatientSearchUrl('/clinical/reception/his/patients/search'), true);
   assert.equal(isPatientSearchUrl('/clinical/consultations'), false);
+});
+
+test('isPatientDetailUrl detects a patient record but not search', () => {
+  assert.equal(isPatientDetailUrl('/clinical/reception/his/patients/55'), true);
+  assert.equal(isPatientDetailUrl('/clinical/reception/his/patients/55/'), true);
+  assert.equal(isPatientDetailUrl('/clinical/reception/his/patients/search'), false);
 });
 
 test('computeBackoffMs grows exponentially with cap', () => {

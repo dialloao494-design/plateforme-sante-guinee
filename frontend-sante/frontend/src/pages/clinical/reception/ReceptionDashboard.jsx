@@ -100,7 +100,7 @@ export default function ReceptionDashboard() {
                     type="button"
                     onClick={() => openPatient(p)}
                   >
-                    <strong>{p.last_name} {p.first_name}</strong>
+                    <strong>{p.last_name || p.first_name ? `${p.last_name || ''} ${p.first_name || ''}`.trim() : (p.full_name || p.patient_name)}</strong>
                     <span>N° dossier {p.patient_number || 'Non attribué'} · {p.phone || 'Téléphone non renseigné'}</span>
                   </button>
                 </li>

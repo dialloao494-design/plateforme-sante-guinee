@@ -49,6 +49,7 @@ export {
 export {
   classifyRequest,
   isPatientSearchUrl,
+  isPatientDetailUrl,
   isCatalogUrl,
   isHisPatientRegisterUrl,
   isHisInvoiceCreateUrl,

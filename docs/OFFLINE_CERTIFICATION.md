@@ -25,6 +25,7 @@
 | Scenario | Automated evidence | Expected result |
 |---|---|---|
 | Browser network loss → registration → invoice → reconnect | `e2e/reception-offline-registration.spec.js` | Local patient ID is usable for billing; one patient and one invoice replay; canonical dossier replaces all patient references. |
+| Existing patient → offline directory/search → admission → invoice → reconnect | Same browser spec | “Total patients” and phone search use the clinic-scoped local directory; admission and invoice acknowledge below 2.5 seconds; the 100,000 GNF price remains visible; both replay. |
 | Production PWA protected deep link after complete network loss | `e2e/pwa-offline-shell.spec.js` via `npm run test:pwa` | The installed/cached build serves `/clinical/reception`, restores the session-scoped clinic identity, renders Reception without an auth-network timeout, and shows offline state. |
 | Restart while synchronization is in flight | Same browser spec | Stale in-flight work returns to pending and synchronizes after a new page/runtime starts. |
 | Two devices register the same patient concurrently | Same browser spec | One canonical dossier; both devices adopt it; no duplicate patient. |
@@ -55,6 +56,16 @@ zero until the normal one-minute recovery age elapsed. An explicit staff retry
 now safely reclaims every stranded in-flight row after any active replay has
 finished. The browser regression marks a fresh registration in-flight, clicks
 manual synchronization, and verifies the canonical dossier and completed queue.
+
+The clinic then reproduced cached dashboard totals with an empty operational
+patient list. Reception now preloads patient-directory rows while online and can
+reconstruct “Total patients” from individually cached records if the list copy
+is stale or missing. The exact browser regression closes the active dossier,
+disables the network, reopens the patient through phone search, queues an
+admission and a correctly priced invoice, reconnects, and verifies an empty
+outbox. Current local evidence for this correction is **44/44 offline tests**,
+**4/4 Reception offline browser cases**, lint, production build, and all six
+performance budgets. CI/deployment/production and staff observation remain open.
 
 ## Clinic staff validation script
 
