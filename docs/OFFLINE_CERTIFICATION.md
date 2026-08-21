@@ -1,7 +1,7 @@
 # Offline certification and clinic exercise
 
 **Owner:** platform maintainers and clinic lead  
-**Last code evidence:** 2026-08-18  
+**Last code evidence:** 2026-08-21
 **Field status:** open until the clinic exercise below is observed and signed
 
 ## Safety contract
@@ -25,6 +25,7 @@
 | Scenario | Automated evidence | Expected result |
 |---|---|---|
 | Browser network loss → registration → invoice → reconnect | `e2e/reception-offline-registration.spec.js` | Local patient ID is usable for billing; one patient and one invoice replay; canonical dossier replaces all patient references. |
+| Production PWA protected deep link after complete network loss | `e2e/pwa-offline-shell.spec.js` via `npm run test:pwa` | The installed/cached build serves `/clinical/reception`, restores the session-scoped clinic identity, renders Reception without an auth-network timeout, and shows offline state. |
 | Restart while synchronization is in flight | Same browser spec | Stale in-flight work returns to pending and synchronizes after a new page/runtime starts. |
 | Two devices register the same patient concurrently | Same browser spec | One canonical dossier; both devices adopt it; no duplicate patient. |
 | Storage quota exhaustion | `tests/offline-outbox.test.mjs`, `apiError.test.mjs` | Existing work remains intact; new write fails explicitly; staff receive an actionable French message. |
@@ -32,6 +33,21 @@
 | Corrupted queued mutation or conflict | Same offline test | Content is quarantined, not sent, cannot be blindly retried, and every unreadable copy appears in the export integrity warnings. |
 | Interrupted/stale in-flight row | `tests/offline-outbox.test.mjs` | Old in-flight work is recovered; active synchronization is untouched. |
 | Recovery export validation | `recovery.js` and offline tests | A v2 manifest verifies mutation/conflict/warning counts and active clinic/user ownership; altered or cross-clinic bundles are rejected before hand-off. |
+
+## Latest local release evidence
+
+On 2026-08-21, the production-build PWA regression first reproduced a protected
+route that showed only the cached shell while session bootstrap waited up to 15
+seconds for an unreachable `/auth/me`. Offline bootstrap now immediately uses
+the existing session-scoped cached profile and resumes server validation/sync on
+reconnect. The corrected protected deep link rendered in 2.0 seconds with the
+browser network fully disabled.
+
+Local gates after the correction: 46/46 frontend unit tests, 41/41 offline
+tests, 35/35 general Chromium tests, 1/1 production-service-worker Chromium
+test, lint, production build, and all six performance budgets. This is local
+verification only; CI, deployed production, and the observed clinic exercise
+remain separate evidence states.
 
 ## Clinic staff validation script
 

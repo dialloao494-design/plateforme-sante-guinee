@@ -77,8 +77,12 @@ test('admission laboratory picker stays compact and exposes a clear selection', 
   });
   await page.getByTestId('reception-register-submit').click();
   await expect(page.getByTestId('reception-patient-number')).toContainText(/PAT-\d{3}-\d{6}/);
+  await expect(page.getByTestId('reception-register-submit')).toHaveText('Enregistrer le patient', {
+    timeout: 20_000,
+  });
 
   await page.getByTestId('reception-tab-admission').click();
+  await expect(page.getByTestId('reception-tab-admission')).toHaveAttribute('aria-current', 'page');
   await page.getByText('Laboratoire', { exact: true }).click();
   const picker = page.locator('.reception-admission-lab-picker');
   await expect(picker).toBeVisible();

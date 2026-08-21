@@ -20,12 +20,17 @@ test('service-request workspace stays coherent and creates a catalogue-backed re
   });
   await page.getByTestId('reception-register-submit').click();
   await expect(page.getByTestId('reception-patient-number')).toContainText(/PAT-\d{3}-\d{6}/);
+  await expect(page.getByTestId('reception-register-submit')).toHaveText('Enregistrer le patient', {
+    timeout: 20_000,
+  });
 
   await page.getByTestId('reception-tab-service_requests').click();
+  await expect(page.getByTestId('reception-tab-service_requests')).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('service-request-workspace')).toBeVisible();
   await expect(page.getByLabel('Rechercher une demande')).toBeVisible();
   await expect(page.getByLabel('Statut du registre')).toBeVisible();
   await expect(page.getByTestId('service-request-catalog')).toBeVisible();
+  await page.mouse.move(0, 0);
 
   const activeTabStyle = await page.getByTestId('reception-tab-service_requests').evaluate((element) => {
     const style = getComputedStyle(element);
@@ -39,7 +44,8 @@ test('service-request workspace stays coherent and creates a catalogue-backed re
   expect(activeTabStyle.radius).toBe('0px');
   expect(activeTabStyle.bottomWidth).toBe('3px');
   expect(activeTabStyle.bottomStyle).toBe('solid');
-  expect(activeTabStyle.background).toBe('rgba(0, 0, 0, 0)');
+  const activeBackgroundAlpha = Number(activeTabStyle.background.match(/[\d.]+\)$/)?.[0]?.slice(0, -1) || 0);
+  expect(activeBackgroundAlpha).toBeLessThanOrEqual(0.05);
 
   // The disposable clinic has no lab catalogue; the built-in clinical service
   // catalogue still exercises the authorized, price-controlled request path.

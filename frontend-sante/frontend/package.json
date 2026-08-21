@@ -14,6 +14,7 @@
     "preview": "vite preview",
     "test:unit": "node --test src/utils/apiError.test.mjs src/utils/loginErrors.test.mjs src/utils/authStorage.test.mjs src/utils/clinicalPatientRoute.test.mjs src/utils/clinicalPresentation.test.mjs src/pages/clinical/lab/labDomain.test.mjs src/pages/clinical/reception/registrationConflict.test.mjs src/pages/clinical/reception/registrationSuccess.test.mjs src/pages/clinical/reception/routeState.test.mjs src/pages/clinical/reception/hooks/buildInvoiceItemPayload.test.mjs src/offline/reconcilePatient.test.mjs src/offline/remapPatientRefs.test.mjs",
     "test:e2e": "playwright test",
+    "test:pwa": "playwright test --config=e2e/pwa.config.js",
     "test:offline": "node --test tests/offline-pure.test.mjs tests/offline-outbox.test.mjs tests/offline-failure-recovery.test.mjs src/offline/reconcilePatient.test.mjs src/offline/remapPatientRefs.test.mjs"
   },
   "dependencies": {

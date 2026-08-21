@@ -396,6 +396,15 @@ Local evidence added 2026-08-21:
   and asks Reception to refresh affected clinical data in place. The focused
   real-Chromium regression proves loading feedback, canonical dossier refresh,
   success confirmation, and disappearance of the completed sync action (**1/1**).
+- a production-build/service-worker regression now opens the protected
+  `/clinical/reception` deep link after complete browser network loss. It exposed
+  and fixed a 15-second offline authentication bootstrap wait; an already
+  authenticated workstation now renders from its session-scoped cached clinic
+  identity immediately and resumes server validation/sync on reconnect;
+- final local evidence for this certification pass is **46/46 frontend unit**,
+  **41/41 offline**, **35/35 general Chromium**, and **1/1 production-PWA
+  Chromium**, plus lint, production build, and all six performance budgets. The
+  PWA protected route rendered in 2.0 seconds with the browser network disabled.
 
 This tranche is code-complete and locally/browser verified. CI, deployment,
 production, and clinic field validation have not yet been claimed.
@@ -569,6 +578,7 @@ and a clear escalation contact.
 | 2026-08-18 | Final local release matrix exposed and fixed a logout/re-login revocation race, duplicate refresh rotation, a stale registration assertion, and clinic-admin billing permission mismatch. Final gates: backend 435 passed/1 skipped; frontend 44/44; offline 37/37; Chromium 34/34; lint/build and six budgets green; Python and npm production audits clean. | Requested code-based tranche is locally release-green. Current commits still require remote CI/deployment verification; field/offline wording, production restore, MFA/access review, and operational drills are not claimed complete. |
 | 2026-08-18 | [CI run 32191243319](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32191243319) passed all six jobs at `31ff30d`: backend, clinic regressions, frontend, browser E2E, secrets, and the new Python dependency audit. | The complete requested code tranche is CI verified. No production deployment was triggered; field validation and operational exercises remain explicitly open. |
 | 2026-08-20 | Hospital workstation UX hardening established a shared 16 px action rhythm, responsive action stacking, explicit offline manual synchronization, reconnect-after-offline-bootstrap recovery, and price-preserving provisional invoices. Header-level refresh controls now state their scope and expose last-update context; shared polling exposes refresh progress. Local offline/unit/browser/build/performance gates pass for the completed tranche. | UI consistency and offline recoverability materially improve. A structured representative-staff validation session and remaining per-module form/accessibility cleanup are still required before closing observed workflow validation. |
+| 2026-08-21 | Production-PWA certification reproduced a protected offline deep link that rendered only the shell while auth waited on an unreachable server. Cached, session-scoped clinic identity now unlocks offline startup immediately; a real service-worker regression passes in 2.0 seconds. Final local gates: frontend 46/46, offline 41/41, general Chromium 35/35, production-PWA Chromium 1/1, lint/build and six budgets green. | Offline startup is locally code- and browser-verified against the production artifact, not merely Vite development mode. CI/deployment verification and the observed clinic wording/recovery exercise remain explicitly open. |
 
 ## Related evidence
 

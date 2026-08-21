@@ -12,9 +12,12 @@ const E2E_PYTHON = process.env.E2E_PYTHON || (process.env.CI ? 'python3' : './.v
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: ['pwa-offline-shell.spec.js'],
   fullyParallel: true,
-  // Cap workers in CI: many parallel logins hammer the shared e2e API + SQLite.
-  workers: process.env.CI ? 2 : undefined,
+  // The suite shares one disposable API + SQLite database. Keep local and CI
+  // concurrency identical so simultaneous staff logins do not turn database
+  // contention into browser-only flakes that cannot reproduce in CI.
+  workers: 2,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? [['html', { open: 'never' }]] : 'list',

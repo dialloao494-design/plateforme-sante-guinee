@@ -170,6 +170,18 @@ export const AuthProvider = ({ children }) => {
     setAuthInitError(null);
     setAuthLoading(true);
 
+    // A disconnected workstation cannot refresh its server session. When a
+    // profile from this browser session is available, unlock the offline app
+    // immediately instead of blocking every cold start on the 15-second auth
+    // request timeout. Server validation resumes on reconnect through auto
+    // sync, and logout still purges the identity-bound offline stores.
+    if (cachedProfile && typeof navigator !== 'undefined' && navigator.onLine === false) {
+      startAutoSync(httpClient);
+      setAuthLoading(false);
+      setAuthSessionReady(true);
+      return;
+    }
+
     try {
       // Use refresh when the short-lived access cookie expired but refresh is still valid.
       const data = await fetchCurrentUser({ allowRefresh: true });
