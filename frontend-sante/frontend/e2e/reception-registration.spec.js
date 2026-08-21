@@ -58,3 +58,35 @@ test('reception duplicate patient shows matches and allow confirm', async ({ pag
   await page.getByTestId('confirm-duplicate-register').click();
   await expect(page.getByTestId('reception-patient-number')).toContainText(/PAT-\d{3}-\d{6}/);
 });
+
+test('admission laboratory picker stays compact and exposes a clear selection', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.route('**/clinical/reception/his/billing-catalog*', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      lab_tests: [{ code: 'IMM_aghbe', name: 'AgHBe', price_gnf: 270000 }],
+    }),
+  }));
+  await loginAsReception(page);
+  const unique = Date.now();
+  await fillRegistrationForm(page, {
+    lastName: `AdmissionNom${unique}`,
+    firstName: `AdmissionPrenom${unique}`,
+    phone: `627${String(unique).slice(-6)}`,
+  });
+  await page.getByTestId('reception-register-submit').click();
+  await expect(page.getByTestId('reception-patient-number')).toContainText(/PAT-\d{3}-\d{6}/);
+
+  await page.getByTestId('reception-tab-admission').click();
+  await page.getByText('Laboratoire', { exact: true }).click();
+  const picker = page.locator('.reception-admission-lab-picker');
+  await expect(picker).toBeVisible();
+  await expect(picker.locator('.reception-admission-lab-results')).toHaveCount(0);
+  await picker.getByLabel('Rechercher dans le catalogue').fill('AgHBe');
+  await expect(picker.locator('.reception-admission-lab-results')).toBeVisible();
+  await picker.locator('.reception-admission-lab-results button').first().click();
+  await expect(picker.locator('.reception-admission-selection')).toBeVisible();
+  await expect(picker.locator('.reception-admission-selection')).toContainText('Sélectionné');
+  await expect(picker.locator('.reception-admission-lab-results')).toHaveCount(0);
+});

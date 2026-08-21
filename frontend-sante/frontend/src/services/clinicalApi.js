@@ -146,10 +146,10 @@ const clinicalApi = {
       params: patientId ? { patient_id: patientId } : {},
     }),
   receptionHisGetInvoice: (id) => httpClient.get(`/clinical/reception/his/invoices/${id}`),
-  receptionHisAddPayment: (invoiceId, data) => {
+  receptionHisAddPayment: (invoiceId, data, offlineOptimisticData) => {
     invalidateApiCache('/clinical/reception/his/');
     invalidateApiCache('/clinical/billing/');
-    return httpClient.post(`/clinical/reception/his/invoices/${invoiceId}/payments`, data);
+    return httpClient.post(`/clinical/reception/his/invoices/${invoiceId}/payments`, data, { offlineOptimisticData });
   },
   receptionHisInvoiceReceipt: (invoiceId) =>
     httpClient.get(`/clinical/reception/his/invoices/${invoiceId}/receipt`, { responseType: 'blob' }),

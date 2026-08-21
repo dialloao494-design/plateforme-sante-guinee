@@ -9,7 +9,9 @@ let initialized = false;
 
 const statusListeners = new Set();
 let onlineStatus = typeof navigator !== 'undefined' ? navigator.onLine : true;
-const OFFLINE_FALLBACK_TIMEOUT_MS = 4_000;
+const OFFLINE_FALLBACK_TIMEOUT_MS = 1_500;
+const DEGRADED_NETWORK_WINDOW_MS = 15_000;
+let networkDegradedUntil = 0;
 
 export function isBrowserOnline() {
   return onlineStatus;
@@ -77,7 +79,9 @@ export function attachOfflineInterceptors(httpClient) {
       config.__offlineFallback = true;
     }
 
-    if (method === 'get' && !navigator.onLine && classified.cacheable) {
+    const useOfflinePath = !navigator.onLine || Date.now() < networkDegradedUntil;
+
+    if (method === 'get' && useOfflinePath && classified.cacheable) {
       const cached = await getCachedGet(url, config.params);
       if (cached !== undefined) {
         config.adapter = () =>
@@ -93,7 +97,7 @@ export function attachOfflineInterceptors(httpClient) {
       return config;
     }
 
-    if (isMutationMethod(method) && !navigator.onLine && classified.queueable) {
+    if (isMutationMethod(method) && useOfflinePath && classified.queueable) {
       const { optimistic, client_request_id } = await enqueueMutation({
         method,
         url,
@@ -131,6 +135,9 @@ export function attachOfflineInterceptors(httpClient) {
       const config = response.config || {};
       const method = String(config.method || 'get').toLowerCase();
       const url = config.url || '';
+      if (!response?.data?._offline_queued && !response?.headers?.['x-offline-cache']) {
+        networkDegradedUntil = 0;
+      }
       if (method === 'get' && !shouldSkipOffline(url)) {
         await cacheOnlineGet(url, config.params, response.data);
       }
@@ -144,6 +151,10 @@ export function attachOfflineInterceptors(httpClient) {
 
       const method = String(config.method || 'get').toLowerCase();
       const classified = classifyRequest(config.url, method);
+
+      if (isNetworkError(error)) {
+        networkDegradedUntil = Date.now() + DEGRADED_NETWORK_WINDOW_MS;
+      }
 
       if (method === 'get' && isNetworkError(error) && classified.cacheable) {
         const cached = await getCachedGet(config.url, config.params);
@@ -231,6 +242,7 @@ function hookBrowserConnectivity() {
   if (typeof window === 'undefined') return;
 
   const handleOnline = () => {
+    networkDegradedUntil = 0;
     setOnlineStatus(true);
     flushOutbox();
   };

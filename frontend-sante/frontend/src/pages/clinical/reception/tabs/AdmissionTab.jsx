@@ -1,6 +1,7 @@
 import { ADMISSION_CONFIRMATIONS, ADMISSION_TYPES, FIELD_HINTS, PATIENT_REQUIRED_NOTICE } from '../constants.js';
 import PatientContextPanel from '../components/PatientContextPanel.jsx';
 import { DisplayField, FormNotice, GeneratedIdBanner } from '../components/FormPrimitives.jsx';
+import { formatGNF } from '../../../../utils/appointmentPresentation.js';
 
 export default function AdmissionTab({
   patientPayerLabel,
@@ -97,31 +98,65 @@ export default function AdmissionTab({
                       </div>
                     )}
                     {(admissionForm.services || []).includes('Laboratoire') && (
-                      <div className="reception-his-specialty-picker">
-                        <label>
-                          Examen de laboratoire *
+                      <section className="reception-admission-service-detail reception-admission-lab-picker" aria-labelledby="admission-lab-title">
+                        <div className="reception-admission-service-detail__head">
+                          <div>
+                            <span>Laboratoire</span>
+                            <h3 id="admission-lab-title">Choisir un examen</h3>
+                          </div>
+                          {admissionLabSelection && (
+                            <button
+                              type="button"
+                              className="reception-admission-selection"
+                              onClick={() => {
+                                setAdmissionLabSelection(null);
+                                setAdmissionLabSearchQ('');
+                              }}
+                              aria-label={`Retirer ${admissionLabSelection.name}`}
+                            >
+                              <span>Sélectionné</span>
+                              <strong>{admissionLabSelection.name}</strong>
+                              <b aria-hidden="true">×</b>
+                            </button>
+                          )}
+                        </div>
+                        <label className="reception-admission-lab-search">
+                          Rechercher dans le catalogue
                           <input
                             type="search"
+                            name="admission_lab_search"
+                            autoComplete="off"
                             value={admissionLabSearchQ}
                             onChange={(e) => setAdmissionLabSearchQ(e.target.value)}
-                            placeholder="Rechercher un examen…"
+                            placeholder="Nom ou code de l’examen…"
+                            aria-controls="admission-lab-results"
                           />
                         </label>
-                        {admissionLabSelection && (
-                          <p className="clinical-hint">Sélectionné : <strong>{admissionLabSelection.name}</strong></p>
+                        {!admissionLabSearchQ.trim() && !admissionLabSelection && (
+                          <p className="reception-admission-search-guidance">Saisissez au moins quelques lettres pour afficher les examens.</p>
                         )}
                         {filteredAdmissionLabTests.length > 0 && (
-                          <ul className="reception-his-lab-search-results">
+                          <ul id="admission-lab-results" className="reception-admission-lab-results" aria-label="Résultats des examens">
                             {filteredAdmissionLabTests.map((test) => (
                               <li key={test.code}>
-                                <button type="button" onClick={() => setAdmissionLabSelection(test)}>
-                                  {test.name} ({test.code})
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAdmissionLabSelection(test);
+                                    setAdmissionLabSearchQ('');
+                                  }}
+                                >
+                                  <span><strong>{test.name}</strong><small>{test.code}</small></span>
+                                  <b>{formatGNF(test.price_gnf ?? test.unit_price_gnf ?? test.price ?? 0)}</b>
                                 </button>
                               </li>
                             ))}
                           </ul>
                         )}
-                      </div>
+                        {admissionLabSearchQ.trim() && filteredAdmissionLabTests.length === 0 && (
+                          <p className="reception-admission-search-guidance" role="status">Aucun examen trouvé. Vérifiez le nom ou le code.</p>
+                        )}
+                      </section>
                     )}
                   </div>
                 )}

@@ -12,8 +12,9 @@ import {
 import { detectAndRecordConflict } from './conflict.js';
 import { cacheGetResponse } from './cache.js';
 import { readOfflineOwnerScope } from './sessionScope.js';
-import { isHisPatientRegisterUrl } from './entityTypes.js';
+import { isHisInvoiceCreateUrl, isHisPatientRegisterUrl } from './entityTypes.js';
 import { reconcilePatientCreate } from './reconcilePatient.js';
+import { reconcileInvoiceCreate } from './reconcileInvoice.js';
 import { resolveOutboxItemPatientRefs } from './remapPatientRefs.js';
 
 let flushing = false;
@@ -143,6 +144,14 @@ export async function replayOutboxItem(item, client) {
       clientRequestId: playable.client_request_id,
       localOptimistic,
       serverPatient: serverData,
+    });
+  }
+
+  if (playable.entity_type === 'billing' && isHisInvoiceCreateUrl(playable.url)) {
+    await reconcileInvoiceCreate({
+      clientRequestId: playable.client_request_id,
+      localOptimistic,
+      serverInvoice: serverData,
     });
   }
 

@@ -32,6 +32,7 @@ import {
   collectTempPatientIds,
   sortOutboxForPatientDependencies,
   remapDependentRecords,
+  remapDependentOutboxReferences,
   resolveOutboxItemPatientRefs,
   outboxItemTempPatientIds,
 } from './remapPatientRefs.js';
@@ -92,6 +93,64 @@ test('sortOutboxForPatientDependencies puts registration before dependents', () 
   assert.equal(sorted[0].client_request_id, 'reg');
   assert.equal(sorted[1].client_request_id, 'bill');
   assert.equal(sorted[2].client_request_id, 'admit');
+});
+
+test('sortOutboxForPatientDependencies puts invoice creation before its payment', () => {
+  const sorted = sortOutboxForPatientDependencies([
+    {
+      client_request_id: 'payment',
+      entity_type: 'billing',
+      url: '/clinical/reception/his/invoices/offline_inv9/payments',
+      created_at: 1,
+    },
+    {
+      client_request_id: 'invoice',
+      entity_type: 'billing',
+      url: '/clinical/reception/his/invoices',
+      created_at: 2,
+    },
+  ]);
+  assert.deepEqual(sorted.map((row) => row.client_request_id), ['invoice', 'payment']);
+});
+
+test('invoice reconciliation rewrites a queued payment URL', async () => {
+  await offlineDb.open();
+  await offlineDb.outbox.clear();
+  await offlineDb.meta.clear();
+  const { setAuthItem } = await import('../utils/authStorage.js');
+  setAuthItem('user_id', '155');
+  setAuthItem('sg_auth_profile', JSON.stringify({ id: 155, clinic_id: 17 }));
+
+  await offlineDb.outbox.add({
+    client_request_id: 'offline-payment',
+    owner_key: '155:17',
+    user_id: '155',
+    clinic_id: '17',
+    entity_type: 'billing',
+    operation: 'create',
+    method: 'POST',
+    url: '/clinical/reception/his/invoices/offline_inv9/payments',
+    payload_json: JSON.stringify({ amount_gnf: 100000, payment_method: 'cash' }),
+    params_json: null,
+    headers_json: '{}',
+    record_version: 1,
+    optimistic_json: JSON.stringify({ id: 'offline_inv9', remaining_balance_gnf: 0 }),
+    status: 'pending',
+    attempt_count: 0,
+    created_at: Date.now(),
+    updated_at: Date.now(),
+    next_retry_at: Date.now(),
+    last_error: null,
+  });
+
+  const result = await remapDependentOutboxReferences('offline_inv9', 901, {
+    entity_type: 'billing',
+  });
+  assert.equal(result.rewrittenOutbox, 1);
+  const payment = await offlineDb.outbox.where('client_request_id').equals('offline-payment').first();
+  assert.equal(payment.url, '/clinical/reception/his/invoices/901/payments');
+  const mapped = await getMeta('idmap:155:17:offline_inv9');
+  assert.equal(mapped.server_id, 901);
 });
 
 test('outboxItemTempPatientIds ignores non-patient optimistic entity id', () => {

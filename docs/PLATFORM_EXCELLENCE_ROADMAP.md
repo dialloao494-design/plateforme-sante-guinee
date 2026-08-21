@@ -370,6 +370,30 @@ Local evidence added 2026-08-18:
   unit tests**, lint, production build, all six performance budgets, and **4/4**
   focused real-Chromium loss/restart/concurrent-device cases.
 
+Local evidence added 2026-08-21:
+
+- provisional invoice creation now reconciles its local invoice ID before any
+  queued payment replays, preventing payments from remaining blocked against an
+  `offline_*` URL;
+- offline payment uses the complete invoice as its optimistic response, so
+  prices, paid amount, remaining balance, and payment history update immediately
+  without an online refresh replacing the invoice with an incomplete payload;
+- known browser disconnection bypasses the network probe entirely; an
+  unexpectedly degraded connection is capped at 1.5 seconds for its first safe
+  clinical request and subsequent writes use the local queue during a bounded
+  degraded-network window;
+- the Admission laboratory control is now a compact search-and-select workflow:
+  it no longer dumps arbitrary catalog rows, and separates examination name,
+  internal code, price, and current selection with responsive behavior;
+- locally verified: **46/46 frontend unit tests**, **41/41 offline tests**, lint,
+  production build, all six performance budgets, and **2/2** focused
+  real-Chromium regressions: the compact Admission catalog selection and the
+  patient → invoice → payment → reconnect workflow (4.1 seconds in browser;
+  offline payment acknowledgement asserted below 2.5 seconds).
+
+This tranche is code-complete and locally/browser verified. CI, deployment,
+production, and clinic field validation have not yet been claimed.
+
 Remaining evidence:
 
 - clinic staff must complete and sign the observed wording/recovery exercise on

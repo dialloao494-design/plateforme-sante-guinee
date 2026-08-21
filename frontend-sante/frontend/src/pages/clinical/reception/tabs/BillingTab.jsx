@@ -504,7 +504,7 @@ export default function BillingTab({
                       + Ligne de paiement
                     </button>
                     <button type="submit" className="clinical-btn" disabled={loading || !selectedPatient}>
-                      Enregistrer le(s) paiement(s)
+                      Enregistrer les paiements
                     </button>
                   </div>
                 </form>

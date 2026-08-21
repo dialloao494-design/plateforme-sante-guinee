@@ -41,8 +41,8 @@ export function useBillingCatalogFilters(billingCatalog, {
   const filteredAdmissionLabTests = useMemo(() => {
     const tests = billingCatalog?.lab_tests ?? EMPTY_ARRAY;
     const q = admissionLabSearchQ.trim().toLowerCase();
-    if (!q) return tests.slice(0, 12);
-    return tests.filter((t) => `${t.name} ${t.code}`.toLowerCase().includes(q)).slice(0, 12);
+    if (!q) return EMPTY_ARRAY;
+    return tests.filter((t) => `${t.name} ${t.code}`.toLowerCase().includes(q)).slice(0, 8);
   }, [billingCatalog?.lab_tests, admissionLabSearchQ]);
 
   const filteredLabTests = useMemo(() => {

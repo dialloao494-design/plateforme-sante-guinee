@@ -8,7 +8,7 @@
  * keys stay intact without duplication or data loss.
  */
 import { offlineDb, getMeta, setMeta } from './db.js';
-import { isHisPatientRegisterUrl } from './entityTypes.js';
+import { isHisInvoiceCreateUrl, isHisPatientRegisterUrl } from './entityTypes.js';
 import { readOfflineOwnerScope } from './sessionScope.js';
 
 // Local status literals avoid a circular import with outbox.js.
@@ -131,11 +131,31 @@ export function isPatientRegistrationOutboxItem(item) {
  */
 export function sortOutboxForPatientDependencies(rows) {
   return [...rows].sort((a, b) => {
-    const aReg = isPatientRegistrationOutboxItem(a) ? 0 : 1;
-    const bReg = isPatientRegistrationOutboxItem(b) ? 0 : 1;
+    const priority = (row) => {
+      if (isPatientRegistrationOutboxItem(row)) return 0;
+      if (row?.entity_type === 'billing' && isHisInvoiceCreateUrl(row?.url || '')) return 1;
+      return 2;
+    };
+    const aReg = priority(a);
+    const bReg = priority(b);
     if (aReg !== bReg) return aReg - bReg;
     return (a.created_at || 0) - (b.created_at || 0);
   });
+}
+
+/** Persist a temp entity mapping and rewrite mutations that depend on it. */
+export async function remapDependentOutboxReferences(tempId, serverId, metadata = {}) {
+  if (!isTempPatientId(tempId) || serverId == null) return { rewrittenOutbox: 0 };
+  const scope = readOfflineOwnerScope();
+  if (!scope.userId) return { rewrittenOutbox: 0 };
+  await setMeta(`idmap:${scope.ownerKey}:${tempId}`, {
+    server_id: serverId,
+    ...metadata,
+    reconciled_at: Date.now(),
+  });
+  return {
+    rewrittenOutbox: await rewritePendingOutboxForPatient(tempId, serverId, scope.ownerKey),
+  };
 }
 
 function parseJson(raw, fallback) {

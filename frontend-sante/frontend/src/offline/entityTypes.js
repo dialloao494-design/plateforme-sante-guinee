@@ -55,6 +55,10 @@ export function isHisPatientRegisterUrl(url = '') {
   return /\/clinical\/reception\/his\/patients\/?$/.test(String(url).split('?')[0]);
 }
 
+export function isHisInvoiceCreateUrl(url = '') {
+  return /\/clinical\/reception\/his\/invoices\/?$/.test(String(url).split('?')[0]);
+}
+
 export function classifyRequest(url = '', method = 'get') {
   const path = String(url).split('?')[0];
   const verb = String(method).toLowerCase();

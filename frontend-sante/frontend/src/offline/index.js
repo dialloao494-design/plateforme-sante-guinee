@@ -51,6 +51,7 @@ export {
   isPatientSearchUrl,
   isCatalogUrl,
   isHisPatientRegisterUrl,
+  isHisInvoiceCreateUrl,
 } from './entityTypes.js';
 export {
   initOfflineSupport,
@@ -67,10 +68,12 @@ export {
   isTempPatientId,
   lookupIdMap,
 } from './reconcilePatient.js';
+export { onInvoiceReconciled, reconcileInvoiceCreate } from './reconcileInvoice.js';
 export {
   rewritePatientRefs,
   collectTempPatientIds,
   remapDependentRecords,
+  remapDependentOutboxReferences,
   resolveOutboxItemPatientRefs,
   sortOutboxForPatientDependencies,
 } from './remapPatientRefs.js';

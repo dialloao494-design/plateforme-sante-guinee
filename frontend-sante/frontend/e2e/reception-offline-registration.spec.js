@@ -46,7 +46,17 @@ test('offline registration queues then reconciles dossier after reconnect', asyn
   await expect(invoiceItems.getByText('0 GNF', { exact: true })).toHaveCount(0);
   await expect.poll(() => countOutboxPending(page)).toBe(2);
 
-  // Reconnect and wait for outbox flush + reconciliation.
+  // Payment is a local-first write too: acknowledgement and invoice totals
+  // update immediately, while replay waits for the invoice ID reconciliation.
+  const paymentStartedAt = Date.now();
+  await page.getByRole('button', { name: 'Enregistrer les paiements' }).click();
+  await expect(page.getByRole('status')).toContainText(/Paiement enregistré hors ligne/i);
+  expect(Date.now() - paymentStartedAt).toBeLessThan(2_500);
+  await expect(page.getByText('Historique des paiements')).toBeVisible();
+  await expect(page.locator('.reception-his-payment-history')).toContainText(/100[\s\u202f]?000 GNF/);
+  await expect.poll(() => countOutboxPending(page)).toBe(3);
+
+  // Reconnect and wait for patient → invoice → payment replay in that order.
   await context.setOffline(false);
   // Trigger sync (auto-sync may take up to 15s; also rely on online event).
   await page.waitForTimeout(500);

@@ -48,6 +48,7 @@ import {
   isTempPatientId,
   onPatientReconciled,
 } from '../../../../offline/reconcilePatient.js';
+import { onInvoiceReconciled } from '../../../../offline/reconcileInvoice.js';
 import { readReceptionRouteState, updateReceptionRouteState } from '../routeState.js';
 import { useConfirm } from '../../../../contexts/ConfirmContext.jsx';
 
@@ -326,6 +327,15 @@ export function useReceptionDashboard() {
     clinicalApi.clinicDoctors().then((r) => setDoctors(r.data || [])).catch(() => setDoctors([]));
     clinicalApi.receptionHisBillingCatalog().then((r) => setBillingCatalog(r.data || null)).catch(() => setBillingCatalog(null));
   }, [loadDashboard]);
+
+  useEffect(() => onInvoiceReconciled((event) => {
+    setActiveInvoice((current) => (
+      current && String(current.id) === String(event.tempId) ? event.merged : current
+    ));
+    setInvoices((current) => current.map((invoice) => (
+      String(invoice.id) === String(event.tempId) ? event.merged : invoice
+    )));
+  }), []);
 
 
   const loadServiceRequests = useCallback(async () => {
@@ -1117,18 +1127,47 @@ export function useReceptionDashboard() {
     setMessage('');
     try {
       let lastData = activeInvoice;
+      let queuedOffline = false;
       for (const line of lines) {
-        const { data } = await clinicalApi.receptionHisAddPayment(activeInvoice.id, {
-          amount_gnf: Number(line.amount_gnf),
+        const amount = Number(line.amount_gnf);
+        const previousPaid = Number(lastData?.paid_amount_gnf || 0);
+        const previousRemaining = Number(lastData?.remaining_balance_gnf || 0);
+        const paymentPayload = {
+          amount_gnf: amount,
           payment_method: line.payment_method,
           reference: line.reference || undefined,
-        });
+        };
+        const offlinePreview = {
+          ...lastData,
+          paid_amount_gnf: previousPaid + amount,
+          remaining_balance_gnf: Math.max(0, previousRemaining - amount),
+          payment_status: previousRemaining - amount <= 0 ? 'paid' : 'partial',
+          payments: [
+            ...(lastData?.payments || []),
+            {
+              id: `offline_payment_${line.id}`,
+              ...paymentPayload,
+              paid_at: new Date().toISOString(),
+              _offline_queued: true,
+            },
+          ],
+        };
+        const { data } = await clinicalApi.receptionHisAddPayment(
+          activeInvoice.id,
+          paymentPayload,
+          offlinePreview,
+        );
+        queuedOffline ||= Boolean(data?._offline_queued);
         lastData = data || lastData;
       }
-      setMessage(`Paiement(s) enregistré(s) · reste ${formatGNF(lastData?.remaining_balance_gnf || 0)}`);
+      setMessage(queuedOffline
+        ? 'Paiement enregistré hors ligne — synchronisation en attente.'
+        : `Paiement enregistré · reste ${formatGNF(lastData?.remaining_balance_gnf || 0)}`);
       prefillPaymentLines(lastData?.remaining_balance_gnf ?? 0);
       setActiveInvoice(lastData || null);
-      await Promise.all([loadInvoices(selectedPatient?.id), loadDashboard()]);
+      if (!queuedOffline) {
+        await Promise.all([loadInvoices(selectedPatient?.id), loadDashboard()]);
+      }
     } catch (err) {
       setError(formatApiError(err, 'Enregistrement du paiement impossible'));
     } finally {
