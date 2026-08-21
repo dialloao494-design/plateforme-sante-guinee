@@ -174,13 +174,18 @@ async function performFlush(client = httpClientRef, { forceRetry = false } = {})
   let synced = 0;
   let failed = 0;
   let conflicts = 0;
+  let blocked = 0;
+  let recovered = 0;
 
   try {
     const scope = readOfflineOwnerScope();
     if (!scope.userId) {
       return { synced: 0, failed: 0, conflicts: 0, skipped: true };
     }
-    await recoverStaleInFlight();
+    // A manual retry only starts once any active flush promise has completed.
+    // At that point every remaining in-flight row is stranded, even if it is
+    // younger than the normal one-minute crash-recovery threshold.
+    recovered = await recoverStaleInFlight(forceRetry ? 0 : undefined);
     const pending = await getPendingOutbox(25, {
       ownerKey: scope.ownerKey,
       includeDeferred: forceRetry,
@@ -190,6 +195,7 @@ async function performFlush(client = httpClientRef, { forceRetry = false } = {})
       // pending and retry after the patient registration remap completes.
       const preflight = await resolveOutboxItemPatientRefs(item);
       if (preflight.blockedTempIds.length) {
+        blocked += 1;
         continue;
       }
 
@@ -259,10 +265,10 @@ async function performFlush(client = httpClientRef, { forceRetry = false } = {})
     await setMeta(SYNC_META_KEY, Date.now());
   } finally {
     flushing = false;
-    notifySyncState({ flushing: false, synced, failed, conflicts });
+    notifySyncState({ flushing: false, synced, failed, conflicts, blocked, recovered });
   }
 
-  return { synced, failed, conflicts };
+  return { synced, failed, conflicts, blocked, recovered };
 }
 
 /**

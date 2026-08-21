@@ -18,6 +18,16 @@ test('network loss before request queues registration', async ({ page, context }
   await page.getByTestId('reception-register-submit').click();
   await expect(page.getByTestId('reception-registration-queued')).toBeVisible({ timeout: 15_000 });
 
+  // Model an interrupted automatic replay that left a very recent row marked
+  // in-flight. The explicit staff action must reclaim it immediately instead
+  // of reporting "zero sent" until the one-minute crash timer expires.
+  await page.evaluate(async () => {
+    const { offlineDb } = await import('/src/offline/db.js');
+    const row = await offlineDb.outbox.where('status').equals('pending').first();
+    if (!row) throw new Error('Expected one queued offline registration');
+    await offlineDb.outbox.update(row.id, { status: 'in_flight', updated_at: Date.now() });
+  });
+
   const patientCreatePattern = '**/clinical/reception/his/patients';
   await page.route(patientCreatePattern, async (route) => {
     if (route.request().method() === 'POST') {

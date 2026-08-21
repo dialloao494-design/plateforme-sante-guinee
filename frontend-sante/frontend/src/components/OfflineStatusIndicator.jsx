@@ -94,8 +94,23 @@ export default function OfflineStatusIndicator() {
         window.dispatchEvent(new CustomEvent('clinical:offline-sync-complete', {
           detail: result,
         }));
+      } else if (result?.blocked > 0) {
+        const text = `${result.blocked} opération(s) attendent d'abord la synchronisation du dossier patient. Réessayez; si le blocage persiste, exportez les données pour le support.`;
+        setRecoveryMessage(text);
+        setSyncFeedback({ kind: 'error', text: 'Dossier patient en attente' });
+        setOpen(true);
+      } else if (result?.offline) {
+        const text = 'Le navigateur est encore hors ligne. Reconnectez le réseau avant de synchroniser.';
+        setRecoveryMessage(text);
+        setSyncFeedback({ kind: 'error', text: 'Connexion requise' });
+        setOpen(true);
+      } else if (result?.skipped) {
+        const text = 'La session ne permet pas de synchroniser cette file. Reconnectez-vous avec le compte qui a créé ces opérations.';
+        setRecoveryMessage(text);
+        setSyncFeedback({ kind: 'error', text: 'Session à vérifier' });
+        setOpen(true);
       } else {
-        const text = "Aucune opération n'a été envoyée. Vérifiez les détails ou réessayez dans quelques instants.";
+        const text = "La file n'a pas avancé. Les données restent conservées sur cet appareil. Exportez-les pour récupération si une nouvelle tentative échoue.";
         setRecoveryMessage(text);
         setSyncFeedback({ kind: 'error', text: 'Synchronisation non terminée' });
         setOpen(true);

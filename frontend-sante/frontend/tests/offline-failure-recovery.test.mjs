@@ -102,6 +102,37 @@ test('manual retry includes failed rows whose automatic backoff has not elapsed'
   assert.equal((await offlineDb.outbox.get(id)).status, 'synced');
 });
 
+test('manual retry immediately recovers a recently stranded in-flight row', async () => {
+  mockScope('42', '7');
+  await offlineDb.outbox.clear();
+  const id = await offlineDb.outbox.add({
+    client_request_id: 'recent-interrupted-sync',
+    owner_key: '42:7',
+    entity_type: 'billing',
+    method: 'POST',
+    url: '/clinical/reception/his/invoices',
+    payload_json: '{}',
+    status: 'in_flight',
+    attempt_count: 0,
+    created_at: Date.now(),
+    updated_at: Date.now(),
+    next_retry_at: Date.now(),
+  });
+
+  let calls = 0;
+  const result = await flushOutbox({
+    post: async () => {
+      calls += 1;
+      return { status: 200, data: { id: 10 } };
+    },
+  }, { forceRetry: true });
+
+  assert.equal(result.recovered, 1);
+  assert.equal(result.synced, 1);
+  assert.equal(calls, 1);
+  assert.equal((await offlineDb.outbox.get(id)).status, 'synced');
+});
+
 test('retry_local conflict resolution restores the original mutation', async () => {
   mockScope('42', '7');
   await offlineDb.outbox.clear();

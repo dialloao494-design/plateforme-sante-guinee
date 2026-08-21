@@ -43,11 +43,18 @@ the existing session-scoped cached profile and resumes server validation/sync on
 reconnect. The corrected protected deep link rendered in 2.0 seconds with the
 browser network fully disabled.
 
-Local gates after the correction: 46/46 frontend unit tests, 41/41 offline
+Local gates after the correction: 46/46 frontend unit tests, 42/42 offline
 tests, 35/35 general Chromium tests, 1/1 production-service-worker Chromium
 test, lint, production build, and all six performance budgets. This is local
 verification only; CI, deployed production, and the observed clinic exercise
 remain separate evidence states.
+
+The same pass subsequently reproduced a recently interrupted mutation that was
+still marked `in_flight`: the queue displayed one item but a manual retry sent
+zero until the normal one-minute recovery age elapsed. An explicit staff retry
+now safely reclaims every stranded in-flight row after any active replay has
+finished. The browser regression marks a fresh registration in-flight, clicks
+manual synchronization, and verifies the canonical dossier and completed queue.
 
 ## Clinic staff validation script
 
