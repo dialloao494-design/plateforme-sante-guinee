@@ -56,6 +56,16 @@ test('offline registration queues then reconciles dossier after reconnect', asyn
   await expect(page.locator('.reception-his-payment-history')).toContainText(/100[\s\u202f]?000 GNF/);
   await expect.poll(() => countOutboxPending(page)).toBe(3);
 
+  // Receipt printing must be entirely local while the invoice and payment are
+  // still provisional; no PDF endpoint is available without the network.
+  await page.evaluate(() => {
+    window.__offlineReceiptPrintCalls = 0;
+    window.print = () => { window.__offlineReceiptPrintCalls += 1; };
+  });
+  await page.getByRole('button', { name: 'Imprimer reçu' }).click();
+  await expect.poll(() => page.evaluate(() => window.__offlineReceiptPrintCalls)).toBe(1);
+  await expect(page.getByRole('status')).toContainText(/Reçu local ouvert pour impression/i);
+
   // Reconnect and wait for patient → invoice → payment replay in that order.
   await context.setOffline(false);
   // Trigger sync (auto-sync may take up to 15s; also rely on online event).

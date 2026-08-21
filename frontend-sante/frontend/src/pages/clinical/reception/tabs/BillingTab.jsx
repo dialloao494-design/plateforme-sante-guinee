@@ -13,6 +13,7 @@ import {
   ReadOnlyDisplay,
 } from '../components/FormPrimitives.jsx';
 import { invoiceStatusLabel, methodLabel } from '../utils.js';
+import InvoiceReceiptPrint from '../components/InvoiceReceiptPrint.jsx';
 
 export default function BillingTab({
   patientPayerLabel,
@@ -63,6 +64,7 @@ export default function BillingTab({
   syncSpecialtyCode,
   updateBilling,
   updatePaymentLine,
+  user,
 }) {
   return (
         <section className="reception-his-panel">
@@ -548,6 +550,7 @@ export default function BillingTab({
               )}
             </fieldset>
           </div>
+          <InvoiceReceiptPrint invoice={activeInvoice} patient={selectedPatient} user={user} />
         </section>
   );
 }

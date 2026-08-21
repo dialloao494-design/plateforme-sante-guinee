@@ -24,7 +24,7 @@
 
 | Scenario | Automated evidence | Expected result |
 |---|---|---|
-| Browser network loss → registration → invoice → reconnect | `e2e/reception-offline-registration.spec.js` | Local patient ID is usable for billing; one patient and one invoice replay; canonical dossier replaces all patient references. |
+| Browser network loss → registration → invoice/payment/receipt → reconnect | `e2e/reception-offline-registration.spec.js` | Local patient ID is usable for billing; prices and payment remain visible; a complete local receipt prints without the PDF API; patient, invoice, and payment replay; canonical dossier replaces all patient references. |
 | Existing patient → offline directory/search → admission → invoice → reconnect | Same browser spec | “Total patients” and phone search use the clinic-scoped local directory; admission and invoice acknowledge below 2.5 seconds; the 100,000 GNF price remains visible; both replay. |
 | Production PWA protected deep link after complete network loss | `e2e/pwa-offline-shell.spec.js` via `npm run test:pwa` | The installed/cached build serves `/clinical/reception`, restores the session-scoped clinic identity, renders Reception without an auth-network timeout, and shows offline state. |
 | Restart while synchronization is in flight | Same browser spec | Stale in-flight work returns to pending and synchronizes after a new page/runtime starts. |
@@ -66,6 +66,13 @@ admission and a correctly priced invoice, reconnects, and verifies an empty
 outbox. Current local evidence for this correction is **44/44 offline tests**,
 **4/4 Reception offline browser cases**, lint, production build, and all six
 performance budgets. CI/deployment/production and staff observation remain open.
+
+Offline receipt printing no longer depends on the server PDF endpoint. Reception
+renders a print-only receipt from the durable provisional invoice and payment:
+clinic header, patient/dossier identity, priced line items, totals, payment mode,
+cash received, outstanding balance, operator, and an explicit pending-sync note.
+The browser regression disables the network, records payment, stubs the native
+print dialog, and proves one local print invocation before reconnection.
 
 ## Clinic staff validation script
 

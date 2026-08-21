@@ -1245,10 +1245,32 @@ export function useReceptionDashboard() {
   };
 
   const printInvoiceReceipt = async (invoiceId) => {
+    const canPrintLocally = activeInvoice && String(activeInvoice.id) === String(invoiceId);
+    const printLocalReceipt = () => {
+      window.print();
+      setMessage(
+        activeInvoice?._offline_queued
+          ? 'Reçu local ouvert pour impression — la facture reste en attente de synchronisation.'
+          : 'Reçu ouvert pour impression.'
+      );
+      setError('');
+    };
+    if (canPrintLocally && (
+      typeof navigator !== 'undefined' && navigator.onLine === false
+      || String(invoiceId).startsWith('offline_')
+      || activeInvoice?._offline_queued
+    )) {
+      printLocalReceipt();
+      return;
+    }
     try {
       const { data } = await clinicalApi.receptionHisInvoiceReceipt(invoiceId);
       window.open(URL.createObjectURL(data), '_blank');
     } catch (err) {
+      if (canPrintLocally) {
+        printLocalReceipt();
+        return;
+      }
       const status = err?.response?.status;
       setError(
         status === 401 || status === 403

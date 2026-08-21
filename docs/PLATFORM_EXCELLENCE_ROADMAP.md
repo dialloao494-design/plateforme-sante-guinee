@@ -417,6 +417,13 @@ Local evidence added 2026-08-21:
   browser flow preserves the 100,000 GNF tariff, acknowledges both writes below
   2.5 seconds, and replays both after reconnect. Locally verified with **44/44**
   offline tests and **4/4** Reception loss/restart/concurrent-device browser cases.
+- Reception receipt printing now has a complete local print document and no
+  longer requires the server PDF endpoint while offline. The printed document
+  includes priced services, totals, payment history/mode, patient and operator
+  identity, outstanding balance, and pending-sync status. The disconnected
+  registration → invoice → payment browser regression proves the native print
+  action before reconnect; 46/46 unit, 44/44 offline, build, lint, and all six
+  frontend budgets remain locally green.
 
 This tranche is code-complete and locally/browser verified. CI, deployment,
 production, and clinic field validation have not yet been claimed.
@@ -593,6 +600,7 @@ and a clear escalation contact.
 | 2026-08-21 | Production-PWA certification reproduced a protected offline deep link that rendered only the shell while auth waited on an unreachable server. Cached, session-scoped clinic identity now unlocks offline startup immediately; a real service-worker regression passes in 2.0 seconds. Final local gates: frontend 46/46, offline 41/41, general Chromium 35/35, production-PWA Chromium 1/1, lint/build and six budgets green. | Offline startup is locally code- and browser-verified against the production artifact, not merely Vite development mode. CI/deployment verification and the observed clinic wording/recovery exercise remain explicitly open. |
 | 2026-08-21 | Clinic evidence reproduced “one queued / zero sent” after manual sync: a recent interrupted row remained `in_flight` until the one-minute stale threshold. Staff-triggered retry now safely reclaims stranded in-flight rows immediately, and feedback distinguishes dependency, connectivity, and session blockers. Exact browser regression, 42/42 offline tests, lint/build, and all budgets pass locally. | The reported manual-sync blocker is code-complete and locally browser-verified. CI, deployment, and confirmation against the clinic’s existing queued record remain open. |
 | 2026-08-21 | Clinic evidence reproduced an offline Reception dashboard with cached counters but an empty patient list. Reception now warms and reconstructs its scoped directory from patient records; cached patients can be searched/opened, admitted, and invoiced offline without a network wait. Exact 4/4 Reception browser matrix, 44/44 offline tests, lint/build, and six budgets pass locally. | The existing-patient continuity blocker is code-complete and locally browser-verified. CI, deployment, production verification, and the observed clinic exercise remain open. |
+| 2026-08-21 | Reception “Imprimer reçu” depended only on an online PDF endpoint. A print-only local receipt now uses the durable provisional invoice/payment and prints while disconnected; the exact browser action passes with 46/46 unit, 44/44 offline, lint/build, and six budgets green. | Offline receipt printing is code-complete and locally browser-verified. CI, deployment, production verification, and physical-printer clinic validation remain open. |
 
 ## Related evidence
 

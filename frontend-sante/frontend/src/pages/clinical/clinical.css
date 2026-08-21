@@ -3170,6 +3170,7 @@
 }
 
 .reception-his-registration-print,
+.reception-invoice-receipt-print,
 .doctor-discharge-print-root {
   display: none;
 }
@@ -3181,6 +3182,8 @@
 
   .reception-his-registration-print,
   .reception-his-registration-print *,
+  .reception-invoice-receipt-print,
+  .reception-invoice-receipt-print *,
   .pharmacy-his-receipt-print,
   .pharmacy-his-receipt-print *,
   .lab-his-validation-summary-print,
@@ -3191,6 +3194,7 @@
   }
 
   .reception-his-registration-print,
+  .reception-invoice-receipt-print,
   .pharmacy-his-receipt-print,
   .lab-his-validation-summary-print,
   .doctor-discharge-print-root {
@@ -3200,6 +3204,37 @@
     top: 0;
     width: 100%;
   }
+}
+
+.reception-invoice-receipt-print table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.reception-invoice-receipt-print th,
+.reception-invoice-receipt-print td {
+  border: 1px solid #cbd5e1;
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.reception-invoice-receipt-print__meta,
+.reception-invoice-receipt-print__totals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 1rem;
+}
+
+.reception-invoice-receipt-print p {
+  margin: 0;
+}
+
+.reception-invoice-receipt-print footer {
+  margin-top: 1.5rem;
+  border-top: 1px solid #cbd5e1;
+  padding-top: 0.75rem;
+  font-size: 0.8rem;
 }
 .reception-his-specialty-picker {
   display: flex;
