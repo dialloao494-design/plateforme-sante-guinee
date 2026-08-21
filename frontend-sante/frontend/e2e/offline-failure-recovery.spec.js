@@ -31,6 +31,15 @@ test('network loss before request queues registration', async ({ page, context }
   const syncNow = page.getByRole('button', { name: 'Synchroniser maintenant' }).first();
   await expect(syncNow).toBeVisible({ timeout: 30_000 });
   await page.unroute(patientCreatePattern);
+  await page.route(patientCreatePattern, async (route) => {
+    if (route.request().method() === 'POST') {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    }
+    await route.continue();
+  });
   await syncNow.click();
+  await expect(page.getByRole('button', { name: 'Synchronisation…', exact: true })).toBeVisible();
   await expect(page.getByTestId('reception-patient-number')).toContainText(/PAT-\d{3}-\d{6}/, { timeout: 60_000 });
+  await expect(page.getByText('Synchronisation terminée', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Synchroniser maintenant' })).toHaveCount(0);
 });

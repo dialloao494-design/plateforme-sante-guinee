@@ -390,6 +390,12 @@ Local evidence added 2026-08-21:
   real-Chromium regressions: the compact Admission catalog selection and the
   patient → invoice → payment → reconnect workflow (4.1 seconds in browser;
   offline payment acknowledgement asserted below 2.5 seconds).
+- manual synchronization no longer silently exits when an automatic replay is
+  already active: it joins that run, performs a forced follow-up pass, exposes
+  loading/success/failure states, removes the action when the queue is empty,
+  and asks Reception to refresh affected clinical data in place. The focused
+  real-Chromium regression proves loading feedback, canonical dossier refresh,
+  success confirmation, and disappearance of the completed sync action (**1/1**).
 
 This tranche is code-complete and locally/browser verified. CI, deployment,
 production, and clinic field validation have not yet been claimed.

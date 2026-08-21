@@ -323,6 +323,14 @@ export function useReceptionDashboard() {
   }, [loadDashboard, loadInvoices, loadRefunds, selectedPatient?.id]);
 
   useEffect(() => {
+    const handleOfflineSyncComplete = () => {
+      refresh();
+    };
+    window.addEventListener('clinical:offline-sync-complete', handleOfflineSyncComplete);
+    return () => window.removeEventListener('clinical:offline-sync-complete', handleOfflineSyncComplete);
+  }, [refresh]);
+
+  useEffect(() => {
     loadDashboard();
     clinicalApi.clinicDoctors().then((r) => setDoctors(r.data || [])).catch(() => setDoctors([]));
     clinicalApi.receptionHisBillingCatalog().then((r) => setBillingCatalog(r.data || null)).catch(() => setBillingCatalog(null));

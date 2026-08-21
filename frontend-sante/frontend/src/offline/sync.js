@@ -18,6 +18,7 @@ import { reconcileInvoiceCreate } from './reconcileInvoice.js';
 import { resolveOutboxItemPatientRefs } from './remapPatientRefs.js';
 
 let flushing = false;
+let activeFlushPromise = null;
 let syncTimer = null;
 let httpClientRef = null;
 let onlineListeners = new Set();
@@ -159,8 +160,8 @@ export async function replayOutboxItem(item, client) {
 }
 
 /** Flush pending outbox mutations to the API. */
-export async function flushOutbox(client = httpClientRef, { forceRetry = false } = {}) {
-  if (!client || flushing) {
+async function performFlush(client = httpClientRef, { forceRetry = false } = {}) {
+  if (!client) {
     return { synced: 0, failed: 0, conflicts: 0, skipped: true };
   }
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -262,6 +263,26 @@ export async function flushOutbox(client = httpClientRef, { forceRetry = false }
   }
 
   return { synced, failed, conflicts };
+}
+
+/**
+ * Share one active replay instead of making a manual click silently no-op.
+ * A staff-requested retry joins any automatic run, then performs one fresh pass
+ * so work deferred by that run is handled deterministically.
+ */
+export function flushOutbox(client = httpClientRef, options = {}) {
+  if (activeFlushPromise) {
+    if (options.forceRetry) {
+      return activeFlushPromise.then(() => flushOutbox(client, options));
+    }
+    return activeFlushPromise;
+  }
+
+  const run = performFlush(client, options);
+  activeFlushPromise = run.finally(() => {
+    activeFlushPromise = null;
+  });
+  return activeFlushPromise;
 }
 
 export function startAutoSync(client = httpClientRef) {

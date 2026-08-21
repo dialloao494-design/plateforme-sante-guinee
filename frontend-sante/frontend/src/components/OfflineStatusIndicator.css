@@ -20,6 +20,18 @@
   outline-offset: 2px;
 }
 
+.offline-status__dock--success {
+  background: #075e54;
+  outline: 2px solid rgba(34, 197, 94, 0.3);
+  outline-offset: 2px;
+}
+
+.offline-status__dock--error {
+  background: #7f1d1d;
+  outline: 2px solid rgba(239, 68, 68, 0.35);
+  outline-offset: 2px;
+}
+
 .offline-status__pill {
   display: inline-flex;
   align-items: center;

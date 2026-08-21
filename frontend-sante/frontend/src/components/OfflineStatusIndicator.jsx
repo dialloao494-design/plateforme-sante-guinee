@@ -32,6 +32,7 @@ export default function OfflineStatusIndicator() {
   const [deadItems, setDeadItems] = useState([]);
   const [recoveryMessage, setRecoveryMessage] = useState('');
   const [storageError, setStorageError] = useState('');
+  const [syncFeedback, setSyncFeedback] = useState(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -66,8 +67,15 @@ export default function OfflineStatusIndicator() {
     };
   }, [refresh]);
 
+  useEffect(() => {
+    if (!syncFeedback || syncFeedback.kind !== 'success') return undefined;
+    const timer = window.setTimeout(() => setSyncFeedback(null), 4_000);
+    return () => window.clearTimeout(timer);
+  }, [syncFeedback]);
+
   const handleSyncNow = async () => {
     setRecoveryMessage('');
+    setSyncFeedback(null);
     setSyncing(true);
     try {
       // A staff-requested retry must not remain hidden behind automatic
@@ -75,14 +83,28 @@ export default function OfflineStatusIndicator() {
       const result = await flushOutbox(undefined, { forceRetry: true });
       await refresh();
       if (result?.failed > 0) {
-        setRecoveryMessage(`${result.failed} opération(s) n'ont pas pu être synchronisées. Exportez-les avant toute intervention sur ce navigateur.`);
+        const text = `${result.failed} opération(s) n'ont pas pu être synchronisées. Exportez-les avant toute intervention sur ce navigateur.`;
+        setRecoveryMessage(text);
+        setSyncFeedback({ kind: 'error', text: 'Synchronisation incomplète' });
+        setOpen(true);
       } else if (result?.synced > 0) {
-        setRecoveryMessage(`${result.synced} opération(s) synchronisée(s) avec succès.`);
+        const text = `${result.synced} opération(s) synchronisée(s) avec succès.`;
+        setRecoveryMessage(text);
+        setSyncFeedback({ kind: 'success', text: 'Synchronisation terminée' });
+        window.dispatchEvent(new CustomEvent('clinical:offline-sync-complete', {
+          detail: result,
+        }));
       } else {
-        setRecoveryMessage("Aucune opération n'a été envoyée. Ouvrez les détails pour vérifier les conflits ou réessayez dans quelques instants.");
+        const text = "Aucune opération n'a été envoyée. Vérifiez les détails ou réessayez dans quelques instants.";
+        setRecoveryMessage(text);
+        setSyncFeedback({ kind: 'error', text: 'Synchronisation non terminée' });
+        setOpen(true);
       }
     } catch {
-      setRecoveryMessage("Synchronisation interrompue. Les opérations restent conservées sur cet appareil; réessayez lorsque la connexion est stable.");
+      const text = "Synchronisation interrompue. Les opérations restent conservées sur cet appareil; réessayez lorsque la connexion est stable.";
+      setRecoveryMessage(text);
+      setSyncFeedback({ kind: 'error', text: 'Synchronisation interrompue' });
+      setOpen(true);
     } finally {
       setSyncing(false);
     }
@@ -131,22 +153,24 @@ export default function OfflineStatusIndicator() {
         : 'En ligne'
       : `Hors ligne${pending > 0 ? ` · ${pending} en file` : ''}`;
 
-  if (online && pending === 0 && conflicts.length === 0 && deadItems.length === 0 && !storageError && !open) {
+  const dockLabel = syncFeedback?.text || label;
+
+  if (online && pending === 0 && conflicts.length === 0 && deadItems.length === 0 && !storageError && !open && !syncFeedback) {
     return null;
   }
 
   return (
     <div className="offline-status" aria-live="polite">
-      <div className={`offline-status__dock${online && pending > 0 ? ' offline-status__dock--attention' : ''}`}>
+      <div className={`offline-status__dock${online && pending > 0 ? ' offline-status__dock--attention' : ''}${syncFeedback ? ` offline-status__dock--${syncFeedback.kind}` : ''}`}>
         <button
           type="button"
           className="offline-status__pill"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          aria-label={`État réseau: ${label}. Afficher les détails.`}
+          aria-label={`État réseau: ${dockLabel}. Afficher les détails.`}
         >
           <span className={`offline-status__dot ${dotClass}`} aria-hidden />
-          <span>{label}</span>
+          <span>{dockLabel}</span>
         </button>
         {online && pending > 0 ? (
           <button
@@ -155,7 +179,7 @@ export default function OfflineStatusIndicator() {
             onClick={handleSyncNow}
             disabled={syncing}
           >
-            {syncing ? 'Synchronisation…' : 'Synchroniser maintenant'}
+            {syncing ? 'Synchronisation…' : syncFeedback?.kind === 'error' ? 'Réessayer' : 'Synchroniser maintenant'}
           </button>
         ) : null}
       </div>
