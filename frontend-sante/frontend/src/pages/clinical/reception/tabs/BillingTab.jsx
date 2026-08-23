@@ -18,6 +18,7 @@ import InvoiceReceiptPrint from '../components/InvoiceReceiptPrint.jsx';
 export default function BillingTab({
   patientPayerLabel,
   activeInvoice,
+  activePrintDocument,
   activeMeta,
   addBillingLine,
   addEmergencyConsultation,
@@ -556,6 +557,7 @@ export default function BillingTab({
             patient={selectedPatient}
             user={user}
             printedAt={receiptPrintTimestamp}
+            active={activePrintDocument === 'invoice'}
           />
         </section>
   );

@@ -81,6 +81,14 @@ complete network loss. A provisional offline invoice still correctly says
 “En attente de synchronisation” because only the server may issue its final
 invoice number.
 
+A clinic print-preview then exposed that Reception's hidden registration sheet
+and invoice were both made visible by the same global `@media print` rule. This
+caused their titles, tables, and footers to overlap. Reception now selects
+exactly one print root before opening the browser dialog, and the same canonical
+invoice component is used online and offline. The browser regression switches
+to print media and proves the invoice is `display: block` while the registration
+sheet remains `display: none`.
+
 ## Clinic staff validation script
 
 Run this on the clinic’s real workstation, browser, printer and normal network.

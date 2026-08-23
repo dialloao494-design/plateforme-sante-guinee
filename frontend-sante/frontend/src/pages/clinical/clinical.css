@@ -3180,10 +3180,8 @@
     visibility: hidden !important;
   }
 
-  .reception-his-registration-print,
-  .reception-his-registration-print *,
-  .reception-invoice-receipt-print,
-  .reception-invoice-receipt-print *,
+  .clinical-print-target,
+  .clinical-print-target *,
   .pharmacy-his-receipt-print,
   .pharmacy-his-receipt-print *,
   .lab-his-validation-summary-print,
@@ -3193,8 +3191,7 @@
     visibility: visible !important;
   }
 
-  .reception-his-registration-print,
-  .reception-invoice-receipt-print,
+  .clinical-print-target,
   .pharmacy-his-receipt-print,
   .lab-his-validation-summary-print,
   .doctor-discharge-print-root {

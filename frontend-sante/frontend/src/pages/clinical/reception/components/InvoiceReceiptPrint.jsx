@@ -3,7 +3,7 @@ import { formatGNF } from '../../../../utils/appointmentPresentation.js';
 import { PAYMENT_METHODS } from '../constants.js';
 import { methodLabel, patientFullName } from '../utils.js';
 
-export default function InvoiceReceiptPrint({ invoice, patient, user, printedAt }) {
+export default function InvoiceReceiptPrint({ invoice, patient, user, printedAt, active = false }) {
   if (!invoice) return null;
   const items = invoice.items || [];
   const payments = invoice.payments || [];
@@ -16,7 +16,7 @@ export default function InvoiceReceiptPrint({ invoice, patient, user, printedAt 
   const printDate = printedAt ? new Date(printedAt) : null;
 
   return (
-    <article className="reception-invoice-receipt-print" aria-hidden="true">
+    <article className={`reception-invoice-receipt-print${active ? ' clinical-print-target' : ''}`} aria-hidden="true">
       <PrintClinicHeader documentTitle="FACTURE" compact />
       <div className="reception-invoice-receipt-print__meta">
         <div>

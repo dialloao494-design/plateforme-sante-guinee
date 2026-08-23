@@ -80,6 +80,7 @@ export function useReceptionDashboard() {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [registeredPatient, setRegisteredPatient] = useState(null);
   const [registrationPrintForm, setRegistrationPrintForm] = useState(null);
+  const [activePrintDocument, setActivePrintDocument] = useState('');
   const [lastAdmission, setLastAdmission] = useState(null);
   const [lastRefund, setLastRefund] = useState(null);
 
@@ -646,9 +647,24 @@ export function useReceptionDashboard() {
     reader.readAsDataURL(file);
   };
 
+  const printSelectedDocument = useCallback((documentName) => {
+    setActivePrintDocument(documentName);
+    // Two frames guarantee that the selected print root is committed and laid
+    // out before the browser snapshots the A4 document.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => window.print());
+    });
+  }, []);
+
+  useEffect(() => {
+    const clearPrintDocument = () => setActivePrintDocument('');
+    window.addEventListener('afterprint', clearPrintDocument);
+    return () => window.removeEventListener('afterprint', clearPrintDocument);
+  }, []);
+
   const printRegistrationSheet = () => {
     if (!registeredPatient) return;
-    window.print();
+    printSelectedDocument('registration');
   };
 
   const resolveRelationship = (form) => {
@@ -1255,33 +1271,15 @@ export function useReceptionDashboard() {
           : 'Reçu ouvert pour impression.'
       );
       setError('');
-      // Let React commit the official receipt metadata before the browser
-      // snapshots the print tree.
-      window.requestAnimationFrame(() => window.print());
+      printSelectedDocument('invoice');
     };
-    if (canPrintLocally && (
-      typeof navigator !== 'undefined' && navigator.onLine === false
-      || String(invoiceId).startsWith('offline_')
-      || activeInvoice?._offline_queued
-    )) {
+    // One canonical browser template is used online and offline. This prevents
+    // the local document from drifting away from the online staff experience.
+    if (canPrintLocally) {
       printLocalReceipt();
       return;
     }
-    try {
-      const { data } = await clinicalApi.receptionHisInvoiceReceipt(invoiceId);
-      window.open(URL.createObjectURL(data), '_blank');
-    } catch (err) {
-      if (canPrintLocally) {
-        printLocalReceipt();
-        return;
-      }
-      const status = err?.response?.status;
-      setError(
-        status === 401 || status === 403
-          ? 'Session expirée : reconnectez-vous puis réessayez l’impression du reçu.'
-          : formatApiError(err, 'Impossible d’imprimer le reçu.')
-      );
-    }
+    setError('Impossible d’imprimer : aucune facture active ne correspond à ce reçu.');
   };
 
   const printRefundReceipt = async (refundId) => {
@@ -1456,6 +1454,7 @@ export function useReceptionDashboard() {
     selectPatient,
     registeredPatient,
     registrationPrintForm,
+    activePrintDocument,
     setRegisteredPatient,
     setRegistrationPrintForm,
     regForm,

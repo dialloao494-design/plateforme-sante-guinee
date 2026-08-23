@@ -37,6 +37,7 @@ export default function ReceptionDashboard() {
     selectPatient,
     registeredPatient,
     registrationPrintForm,
+    activePrintDocument,
     resolveRelationship,
   } = dashboard;
 
@@ -131,7 +132,10 @@ export default function ReceptionDashboard() {
       {tab === 'service_requests' && <ServiceRequestsTab {...dashboard} />}
 
       {registeredPatient && registrationPrintForm && (
-        <div className="reception-his-registration-print" ref={regPrintRef}>
+        <div
+          className={`reception-his-registration-print${activePrintDocument === 'registration' ? ' clinical-print-target' : ''}`}
+          ref={regPrintRef}
+        >
           <PatientRegistrationPrint
             patient={{
               ...registeredPatient,

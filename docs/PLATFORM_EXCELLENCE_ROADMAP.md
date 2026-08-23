@@ -430,6 +430,12 @@ Local evidence added 2026-08-21:
   architecture. The previously broken offline logo is explicitly precached and
   the production-PWA regression proves its bytes remain available after total
   network loss (**1/1** PWA Chromium).
+- clinic print-preview evidence exposed overlapping registration and invoice
+  templates because the global print stylesheet revealed every hidden document.
+  Reception now has an explicit single-document print target and uses one
+  invoice component online/offline. The exact print-media browser regression
+  proves only the invoice renders; unit **46/46**, offline **44/44**, build,
+  lint, and all six performance budgets remain locally green.
 
 This tranche is code-complete and locally/browser verified. CI, deployment,
 production, and clinic field validation have not yet been claimed.
@@ -607,6 +613,7 @@ and a clear escalation contact.
 | 2026-08-21 | Clinic evidence reproduced “one queued / zero sent” after manual sync: a recent interrupted row remained `in_flight` until the one-minute stale threshold. Staff-triggered retry now safely reclaims stranded in-flight rows immediately, and feedback distinguishes dependency, connectivity, and session blockers. Exact browser regression, 42/42 offline tests, lint/build, and all budgets pass locally. | The reported manual-sync blocker is code-complete and locally browser-verified. CI, deployment, and confirmation against the clinic’s existing queued record remain open. |
 | 2026-08-21 | Clinic evidence reproduced an offline Reception dashboard with cached counters but an empty patient list. Reception now warms and reconstructs its scoped directory from patient records; cached patients can be searched/opened, admitted, and invoiced offline without a network wait. Exact 4/4 Reception browser matrix, 44/44 offline tests, lint/build, and six budgets pass locally. | The existing-patient continuity blocker is code-complete and locally browser-verified. CI, deployment, production verification, and the observed clinic exercise remain open. |
 | 2026-08-21 | Reception “Imprimer reçu” depended only on an online PDF endpoint. A print-only local receipt now uses the durable provisional invoice/payment and prints while disconnected; the exact browser action passes with 46/46 unit, 44/44 offline, lint/build, and six budgets green. | Offline receipt printing is code-complete and locally browser-verified. CI, deployment, production verification, and physical-printer clinic validation remain open. |
+| 2026-08-23 | Clinic print preview exposed the registration sheet and invoice superimposed. Reception now activates one print root at a time and uses the same invoice component online/offline; print-media regression proves invoice visible and registration hidden. | The overlapping-document defect is code-complete and locally browser-verified. Deployment and physical-printer clinic confirmation remain open. |
 
 ## Related evidence
 
