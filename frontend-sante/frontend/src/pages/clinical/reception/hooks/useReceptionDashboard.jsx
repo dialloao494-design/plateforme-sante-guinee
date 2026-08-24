@@ -61,6 +61,7 @@ export function useReceptionDashboard() {
   const regPrintRef = useRef(null);
   const pendingRegClientRequestIds = useRef(new Set());
   const registeredPatientRef = useRef(null);
+  const patientContextVersion = useRef(0);
 
   const { tab } = readReceptionRouteState(routeSearchParams);
   const setTab = useCallback((nextTab) => {
@@ -559,6 +560,7 @@ export function useReceptionDashboard() {
 
   const selectPatient = async (p, { silent = false, targetTab } = {}) => {
     if (!p?.id) return;
+    const contextVersion = ++patientContextVersion.current;
     let patient = p;
     try {
       const { data } = await clinicalApi.receptionHisGetPatient(p.id);
@@ -572,6 +574,7 @@ export function useReceptionDashboard() {
         /* keep partial payload */
       }
     }
+    if (contextVersion !== patientContextVersion.current) return;
     setSelectedPatient(patient);
     setRouteSearchParams((current) => updateReceptionRouteState(current, {
       patientId: patient.id,
@@ -591,6 +594,7 @@ export function useReceptionDashboard() {
       recipient_phone: prev.recipient_phone || patient.phone || '',
     }));
     await Promise.all([loadInvoices(patient.id), loadRefunds(patient.id)]);
+    if (contextVersion !== patientContextVersion.current) return;
     if (!silent) {
       setMessage(`Dossier de ${patientFullName(patient)} ouvert.`);
     } else {
@@ -599,6 +603,7 @@ export function useReceptionDashboard() {
   };
 
   const activateQueuedPatient = (patient) => {
+    patientContextVersion.current += 1;
     setSelectedPatient(patient);
     setRouteSearchParams((current) => updateReceptionRouteState(current, { patientId: patient.id }));
     setLastAdmission(null);
@@ -639,12 +644,25 @@ export function useReceptionDashboard() {
   }, [loadDashboard]);
 
   const clearPatient = () => {
+    patientContextVersion.current += 1;
     setSelectedPatient(null);
-    setRouteSearchParams((current) => updateReceptionRouteState(current, { patientId: '' }));
+    setRouteSearchParams((current) => updateReceptionRouteState(current, { patientId: '', tab: 'dashboard' }));
+    setRegisteredPatient(null);
+    setRegistrationPrintForm(null);
+    setActivePrintDocument('');
+    setEditingPatientId(null);
+    setRegForm({ ...EMPTY_REG });
+    setDuplicateMatches([]);
+    setPendingRegPayload(null);
     setInvoices([]);
     setRefunds([]);
     setActiveInvoice(null);
+    setLastAdmission(null);
+    setLastRefund(null);
+    setSearchResults([]);
     setRefundForm((prev) => ({ ...prev, invoice_id: '' }));
+    setError('');
+    setMessage('Dossier fermé. Recherchez un patient pour commencer une nouvelle opération.');
   };
 
   const onPhotoFile = (file) => {

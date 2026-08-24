@@ -147,6 +147,14 @@ test('an existing cached patient can be found, admitted, and invoiced offline', 
   // proves the subsequent selection is served by the offline directory rather
   // than retained React state.
   await page.getByRole('button', { name: 'Fermer le dossier' }).click();
+  await expect(page).not.toHaveURL(/patient=/);
+  await expect(page).not.toHaveURL(/tab=register/);
+  await expect(page.getByTestId('patient-safety-strip')).toHaveCount(0);
+  await expect(page.getByTestId('reception-tab-dashboard')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('status')).toContainText('Dossier fermé');
+  await expect(page.getByLabel('Recherche patient')).toBeFocused();
+  await page.waitForTimeout(250);
+  await expect(page.getByTestId('patient-safety-strip')).toHaveCount(0);
   await context.setOffline(true);
   await page.getByTestId('reception-tab-dashboard').click();
   await page.getByRole('button', { name: /Total patients/ }).click();

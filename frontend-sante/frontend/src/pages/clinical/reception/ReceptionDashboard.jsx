@@ -18,6 +18,7 @@ export default function ReceptionDashboard() {
   const [searchParams] = useSearchParams();
   const routeState = readReceptionRouteState(searchParams);
   const hydratedPatientId = useRef('');
+  const closingPatientId = useRef('');
   const dashboard = useReceptionDashboard();
   const {
     user,
@@ -43,17 +44,28 @@ export default function ReceptionDashboard() {
   } = dashboard;
 
   const openPatient = async (patient, targetTab = 'admission') => {
+    closingPatientId.current = '';
     await selectPatient(patient, { silent: true, targetTab });
     hydratedPatientId.current = String(patient.id);
   };
 
   const closePatient = () => {
-    clearPatient();
+    closingPatientId.current = String(selectedPatient?.id || routeState.patientId || '');
     hydratedPatientId.current = '';
+    clearPatient();
+    searchRef.current?.focus();
   };
 
   useEffect(() => {
-    if (!routeState.patientId || selectedPatient?.id || hydratedPatientId.current === routeState.patientId) return;
+    if (!routeState.patientId) {
+      closingPatientId.current = '';
+      return;
+    }
+    if (
+      closingPatientId.current === routeState.patientId
+      || selectedPatient?.id
+      || hydratedPatientId.current === routeState.patientId
+    ) return;
     hydratedPatientId.current = routeState.patientId;
     void selectPatient({ id: routeState.patientId }, { silent: true });
   }, [routeState.patientId, selectedPatient?.id, selectPatient]);
