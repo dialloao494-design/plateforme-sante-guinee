@@ -20,6 +20,8 @@ export default function UnifiedBillingDashboard() {
   const [patientVisits, setPatientVisits] = useState([]);
   const [visitId, setVisitId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [invoiceView, setInvoiceView] = useState('pending');
+  const [busyInvoice, setBusyInvoice] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -86,25 +88,33 @@ export default function UnifiedBillingDashboard() {
   };
 
   const pay = async (invoiceId) => {
+    setBusyInvoice(`pay-${invoiceId}`);
     try {
       await clinicalApi.payInvoice(invoiceId, { payment_method: paymentMethod });
       setMessage('Paiement enregistré');
       load();
     } catch (err) {
       setError(err?.response?.data?.detail || 'Paiement impossible');
+    } finally {
+      setBusyInvoice('');
     }
   };
 
   const downloadPdf = async (invoiceId, invoiceNumber) => {
+    setBusyInvoice(`pdf-${invoiceId}`);
     try {
       await clinicalApi.downloadInvoicePdf(invoiceId, `${invoiceNumber}.pdf`);
       setMessage(`PDF ${invoiceNumber} téléchargé`);
     } catch (err) {
       setError(err?.response?.data?.detail || 'PDF indisponible');
+    } finally {
+      setBusyInvoice('');
     }
   };
 
   const pending = invoices.filter((i) => i.status !== 'paid');
+  const paid = invoices.filter((i) => i.status === 'paid');
+  const visibleInvoices = invoiceView === 'pending' ? pending : paid;
   const stats = [
     { label: 'Factures', value: invoices.length, hint: 'Total émis' },
     { label: 'En attente', value: pending.length, hint: formatGNF(pending.reduce((s, i) => s + (i.total_amount_gnf - i.paid_amount_gnf), 0)), variant: 'warning' },
@@ -153,51 +163,76 @@ export default function UnifiedBillingDashboard() {
         <header className="billing-section-heading">
           <div>
             <p>Étape 2</p>
-            <h2 id="billing-register-title">Factures à traiter</h2>
+            <h2 id="billing-register-title">Encaisser et remettre le reçu</h2>
           </div>
-          <span>{pending.length} facture{pending.length > 1 ? 's' : ''} en attente</span>
+          <span>{pending.length} facture{pending.length > 1 ? 's' : ''} à encaisser</span>
         </header>
-        <div className="clinical-form billing-payment-toolbar">
-          <label>
-            Mode de paiement
-            <select name="payment_method" autoComplete="off" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-              <option value="cash">Espèces</option>
-              <option value="orange_money">Orange Money</option>
-              <option value="mobile_money">Mobile Money</option>
-            </select>
-          </label>
+        <div className="billing-register-toolbar">
+          <div className="billing-view-tabs" role="tablist" aria-label="Afficher les factures">
+            <button type="button" role="tab" aria-selected={invoiceView === 'pending'} onClick={() => setInvoiceView('pending')}>
+              À encaisser <span>{pending.length}</span>
+            </button>
+            <button type="button" role="tab" aria-selected={invoiceView === 'paid'} onClick={() => setInvoiceView('paid')}>
+              Payées <span>{paid.length}</span>
+            </button>
+          </div>
+          {invoiceView === 'pending' && (
+            <label className="billing-payment-method">
+              Mode de paiement
+              <select name="payment_method" autoComplete="off" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                <option value="cash">Espèces</option>
+                <option value="orange_money">Orange Money</option>
+                <option value="mobile_money">Mobile Money</option>
+              </select>
+            </label>
+          )}
         </div>
-        {invoices.length === 0 ? (
-          <p className="billing-empty-state">Aucune facture à afficher pour le moment.</p>
-        ) : <ul className="clinical-queue billing-invoice-list">
-          {invoices.map((inv) => (
-            <li key={inv.id}>
+        {visibleInvoices.length === 0 ? (
+          <p className="billing-empty-state">
+            {invoiceView === 'pending' ? 'Aucune facture en attente de paiement.' : 'Aucune facture payée à afficher.'}
+          </p>
+        ) : <ul className="billing-invoice-list" aria-label={invoiceView === 'pending' ? 'Factures à encaisser' : 'Factures payées'}>
+          {visibleInvoices.map((inv) => {
+            const remaining = Math.max(0, Number(inv.total_amount_gnf || 0) - Number(inv.paid_amount_gnf || 0));
+            return (
+            <li key={inv.id} className={`billing-invoice-card billing-invoice-card--${inv.status || 'unknown'}`}>
               <div className="billing-invoice-main">
-                <div className="billing-invoice-identity">
-                  <strong translate="no">{inv.invoice_number}</strong>
-                  <span>{inv.patient_name || 'Patient non renseigné'}</span>
+                <header className="billing-invoice-identity">
+                  <div>
+                    <span className="billing-invoice-label">Facture</span>
+                    <strong translate="no">{inv.invoice_number}</strong>
+                  </div>
                   <span className={`clinical-badge billing-status billing-status--${inv.status || 'unknown'}`}>
                     {formatClinicalStatus(inv.status)}
                   </span>
-                </div>
+                  <span className="billing-invoice-patient">{inv.patient_name || 'Patient non renseigné'}</span>
+                </header>
                 <div className="billing-invoice-amounts">
                   <span><small>Total</small><strong>{formatGNF(inv.total_amount_gnf)}</strong></span>
                   <span><small>Payé</small><strong>{formatGNF(inv.paid_amount_gnf)}</strong></span>
+                  <span className="billing-invoice-balance"><small>Reste</small><strong>{formatGNF(remaining)}</strong></span>
                 </div>
-                <ul className="clinical-list billing-invoice-items">
+                <ul className="billing-invoice-items" aria-label="Prestations facturées">
                   {(inv.items || []).map((item) => (
-                    <li key={item.id}>{item.description}: {formatGNF(item.amount_gnf)}</li>
+                    <li key={item.id}>
+                      <span>{item.description}</span>
+                      <strong>{formatGNF(item.amount_gnf)}</strong>
+                    </li>
                   ))}
                 </ul>
               </div>
-              <div className="clinical-actions">
+              <footer className="billing-invoice-actions">
                 {inv.status !== 'paid' && (
-                  <button type="button" className="clinical-btn" onClick={() => pay(inv.id)}>Encaisser</button>
+                  <button type="button" className="clinical-btn" disabled={Boolean(busyInvoice)} onClick={() => pay(inv.id)}>
+                    {busyInvoice === `pay-${inv.id}` ? 'Encaissement…' : `Encaisser ${formatGNF(remaining)}`}
+                  </button>
                 )}
-                <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => downloadPdf(inv.id, inv.invoice_number)}>PDF</button>
-              </div>
+                <button type="button" className="clinical-btn clinical-btn--secondary" disabled={Boolean(busyInvoice)} onClick={() => downloadPdf(inv.id, inv.invoice_number)}>
+                  {busyInvoice === `pdf-${inv.id}` ? 'Préparation…' : 'Télécharger la facture'}
+                </button>
+              </footer>
             </li>
-          ))}
+          );})}
         </ul>}
       </section>
     </div>

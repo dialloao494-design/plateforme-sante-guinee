@@ -24,9 +24,45 @@ test('billing and administration forms reflow on a narrow clinic screen', async 
   await page.setViewportSize({ width: 390, height: 844 });
   await loginAsRole(page, 'admin');
 
+  await page.route('**/clinical/billing/unified/invoices*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 901,
+          invoice_number: 'INV-RESP-0001',
+          patient_name: 'Patient Exemple',
+          status: 'pending',
+          total_amount_gnf: 250000,
+          paid_amount_gnf: 0,
+          items: [{ id: 1, description: 'Consultation spécialisée — Médecine', amount_gnf: 250000 }],
+        },
+        {
+          id: 902,
+          invoice_number: 'INV-RESP-0002',
+          patient_name: 'Patient Réglé',
+          status: 'paid',
+          total_amount_gnf: 150000,
+          paid_amount_gnf: 150000,
+          items: [{ id: 2, description: 'Consultation externe', amount_gnf: 150000 }],
+        },
+      ]),
+    });
+  });
+
   await page.goto('/clinical/billing');
   await expect(page.getByTestId('billing-dashboard')).toBeVisible();
+  await expect(page.getByRole('tab', { name: /À encaisser/ })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByLabel('Mode de paiement')).toBeVisible();
+  await expect(page.locator('.billing-invoice-list')).toHaveCSS('list-style-type', 'none');
+  await expect(page.getByText('INV-RESP-0001')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Encaisser 250 000 GNF' })).toBeVisible();
+  await page.getByRole('tab', { name: /Payées/ }).click();
+  await expect(page.getByRole('tab', { name: /Payées/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByLabel('Mode de paiement')).toHaveCount(0);
+  await expect(page.getByText('INV-RESP-0002')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Télécharger la facture' }).first()).toBeVisible();
   await expectNoPageOverflow(page);
 
   await page.goto('/clinical/admin#create-user');
