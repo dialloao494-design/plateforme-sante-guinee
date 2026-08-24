@@ -40,6 +40,8 @@ class StaffCreate(BaseModel):
     password: str = Field(..., min_length=8)
     role: str
     clinic_id: int
+    first_name: Optional[str] = Field(None, max_length=128)
+    last_name: Optional[str] = Field(None, max_length=128)
 
 
 class StaffResponse(BaseModel):
@@ -48,6 +50,10 @@ class StaffResponse(BaseModel):
     role: str
     clinic_id: Optional[int]
     is_active: bool = True
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    last_login_at: Optional[datetime] = None
+    must_change_password: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -64,6 +70,46 @@ class StaffPasswordReset(BaseModel):
 
     clinic_id: int
     new_password: str = Field(..., min_length=8)
+
+
+class ClinicOnboardingUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Optional[str] = Field(None, min_length=2, max_length=255)
+    address: Optional[str] = None
+    city: Optional[str] = Field(None, max_length=128)
+    phone: Optional[str] = Field(None, max_length=32)
+    email: Optional[str] = Field(None, max_length=255)
+    enabled_modules: Optional[list[str]] = None
+    payment_methods: Optional[list[str]] = None
+    receipt_format: Optional[str] = None
+    printing_tested: Optional[bool] = None
+    offline_workstation_tested: Optional[bool] = None
+    test_journey_completed: Optional[bool] = None
+    current_step: Optional[str] = None
+
+
+class ClinicReadinessItem(BaseModel):
+    key: str
+    label: str
+    complete: bool
+    blocking: bool
+    detail: str
+    target: str
+
+
+class ClinicOnboardingResponse(BaseModel):
+    clinic_id: int
+    clinic_name: str
+    identity: dict
+    configuration: dict
+    checklist: list[ClinicReadinessItem]
+    completed_count: int
+    total_count: int
+    percent: int
+    is_operational: bool
+    current_step: str
+    completed_at: Optional[datetime] = None
 
 
 # --- Patient (reception intake) ---

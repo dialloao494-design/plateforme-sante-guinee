@@ -10,6 +10,8 @@ import { formatApiError } from '../../utils/apiError.js';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import ClinicalFeedback from '../../components/clinical/ClinicalFeedback.jsx';
+import AdminReadinessPanel from './admin/AdminReadinessPanel.jsx';
+import { ROLE_LABELS, buildAttentionItems } from './admin/adminDomain.js';
 import './clinical.css';
 import './admin.css';
 
@@ -35,12 +37,18 @@ export default function ClinicAdminDashboard() {
   const [backupStatus, setBackupStatus] = useState(null);
   const [activity, setActivity] = useState(null);
   const [clinicStaff, setClinicStaff] = useState([]);
+  const [onboarding, setOnboarding] = useState(null);
+  const [setupBusy, setSetupBusy] = useState(false);
   const [staffForm, setStaffForm] = useState({
+    first_name: '',
+    last_name: '',
     email: '',
     password: '',
     role: 'receptionist',
   });
   const [resetBusyId, setResetBusyId] = useState(null);
+  const [resetTarget, setResetTarget] = useState(null);
+  const [temporaryPassword, setTemporaryPassword] = useState('');
 
   const loadClinicStaff = async (id) => {
     if (!id) return;
@@ -80,30 +88,55 @@ export default function ClinicAdminDashboard() {
     }
   };
 
+  const loadOnboarding = async () => {
+    try {
+      const { data } = await clinicalApi.clinicOnboarding();
+      setOnboarding(data);
+    } catch (err) {
+      setError(formatApiError(err, 'Impossible de charger la préparation de la clinique.'));
+    }
+  };
+
   useEffect(() => {
     loadCompliance();
+    loadOnboarding();
     if (clinicId) {
       loadClinicStaff(clinicId);
     }
   }, [clinicId]);
 
-  const resetStaffPassword = async (staffUser) => {
+  const saveOnboarding = async (changes) => {
+    setSetupBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const { data } = await clinicalApi.updateClinicOnboarding(changes);
+      setOnboarding(data);
+      setMessage(data.is_operational ? 'Configuration enregistrée. La clinique est prête.' : 'Étape enregistrée. Vous pourrez reprendre ici plus tard.');
+    } catch (err) {
+      setError(formatApiError(err, "L'étape n'a pas pu être enregistrée."));
+    } finally {
+      setSetupBusy(false);
+    }
+  };
+
+  const resetStaffPassword = async (event) => {
+    event.preventDefault();
+    const staffUser = resetTarget;
     if (!clinicId || !staffUser?.id) return;
-    const temporary = window.prompt(
-      `Nouveau mot de passe temporaire pour ${staffUser.email} (min. 8 caractères) :`,
-    );
-    if (!temporary) return;
     setError('');
     setMessage('');
     setResetBusyId(staffUser.id);
     try {
       await clinicalApi.resetStaffPassword(staffUser.id, {
         clinic_id: Number(clinicId),
-        new_password: temporary,
+        new_password: temporaryPassword,
       });
       setMessage(
         `Mot de passe réinitialisé pour ${staffUser.email}. L’utilisateur devra le changer à la prochaine connexion.`,
       );
+      setResetTarget(null);
+      setTemporaryPassword('');
     } catch (err) {
       setError(formatApiError(err) || 'Réinitialisation impossible.');
     } finally {
@@ -127,9 +160,10 @@ export default function ClinicAdminDashboard() {
       setMessage(
         `Compte ${data.role} créé : ${data.email} — mot de passe : ${chosenPassword}`
       );
-      setStaffForm((prev) => ({ ...prev, email: '', password: '' }));
+      setStaffForm((prev) => ({ ...prev, first_name: '', last_name: '', email: '', password: '' }));
       loadCompliance();
       loadClinicStaff(clinicId);
+      loadOnboarding();
     } catch (err) {
       setError(formatApiError(err, 'Création compte impossible'));
     }
@@ -150,6 +184,8 @@ export default function ClinicAdminDashboard() {
     ];
   }, [activity, clinicStaff.length]);
 
+  const attentionItems = useMemo(() => buildAttentionItems(onboarding, activity), [onboarding, activity]);
+
   return (
     <div className="clinical-page clinical-page--clinic-admin" data-testid="admin-dashboard">
       <header className="clinical-page-header">
@@ -162,6 +198,25 @@ export default function ClinicAdminDashboard() {
       </header>
 
       <ClinicalFeedback error={error} message={message} />
+
+      <AdminReadinessPanel onboarding={onboarding} busy={setupBusy} onSave={saveOnboarding} />
+
+      <section className="admin-handoff" aria-labelledby="admin-attention-title">
+        <div className="admin-handoff__heading">
+          <p className="clinical-eyebrow">Relève administrative</p>
+          <h2 id="admin-attention-title">À traiter aujourd’hui</h2>
+        </div>
+        {attentionItems.length === 0 ? (
+          <p className="admin-handoff__clear"><span aria-hidden="true">✓</span> Aucun blocage administratif détecté.</p>
+        ) : (
+          <ul>{attentionItems.slice(0, 6).map((item) => (
+            <li key={item.key}>
+              <div><strong>{item.label}</strong><span>{item.detail}</span></div>
+              {item.href ? <Link to={item.href}>Ouvrir</Link> : <button type="button" onClick={() => document.getElementById('readiness-title')?.scrollIntoView({ behavior: 'smooth' })}>Configurer</button>}
+            </li>
+          ))}</ul>
+        )}
+      </section>
 
       <ClinicalStatGrid stats={stats} />
 
@@ -236,6 +291,7 @@ export default function ClinicAdminDashboard() {
           <table className="clinical-stock-table">
             <thead>
               <tr>
+                <th>Nom</th>
                 <th>Email</th>
                 <th>Rôle</th>
                 <th>Actif</th>
@@ -245,8 +301,9 @@ export default function ClinicAdminDashboard() {
             <tbody>
               {clinicStaff.map((u) => (
                 <tr key={u.id}>
+                  <td>{[u.first_name, u.last_name].filter(Boolean).join(' ') || 'Nom à compléter'}</td>
                   <td>{u.email}</td>
-                  <td><span className="clinical-badge">{u.role}</span></td>
+                  <td><span className="clinical-badge">{ROLE_LABELS[u.role] || u.role}</span></td>
                   <td>{u.is_active ? 'Oui' : 'Non'}</td>
                   <td>
                     {u.id !== user?.id && u.is_active ? (
@@ -254,7 +311,7 @@ export default function ClinicAdminDashboard() {
                         type="button"
                         className="clinical-btn clinical-btn--secondary"
                         disabled={resetBusyId === u.id}
-                        onClick={() => resetStaffPassword(u)}
+                        onClick={() => { setResetTarget(u); setTemporaryPassword(''); }}
                       >
                         {resetBusyId === u.id ? '…' : 'Réinit. MDP'}
                       </button>
@@ -270,12 +327,39 @@ export default function ClinicAdminDashboard() {
         )}
       </section>
 
+      {resetTarget && (
+        <div className="admin-dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setResetTarget(null); }}>
+          <section className="admin-dialog" role="dialog" aria-modal="true" aria-labelledby="reset-password-title">
+            <p className="clinical-eyebrow">Accès du personnel</p>
+            <h2 id="reset-password-title">Réinitialiser le mot de passe</h2>
+            <p>Compte : <strong>{[resetTarget.first_name, resetTarget.last_name].filter(Boolean).join(' ') || resetTarget.email}</strong></p>
+            <form onSubmit={resetStaffPassword}>
+              <label htmlFor="reset-temporary-password">Nouveau mot de passe temporaire</label>
+              <input id="reset-temporary-password" type="password" minLength="8" autoComplete="new-password" value={temporaryPassword} onChange={(event) => setTemporaryPassword(event.target.value)} autoFocus required />
+              <p className="clinical-muted">L’utilisateur devra choisir son propre mot de passe à la prochaine connexion.</p>
+              <div className="admin-dialog__actions">
+                <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => setResetTarget(null)}>Annuler</button>
+                <button type="submit" className="clinical-btn" disabled={resetBusyId === resetTarget.id}>{resetBusyId === resetTarget.id ? 'Réinitialisation…' : 'Réinitialiser'}</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
       <section className="clinical-card admin-section admin-create-staff" id="create-user">
         <h2>Créer un compte personnel</h2>
         <p className="clinical-lead">
           Comptes pour votre clinique : réception, médecin, laboratoire, pharmacie, caisse, nutrition, sage-femme.
         </p>
         <form className="admin-create-staff__form" onSubmit={createStaff}>
+          <div className="clinical-field">
+            <label htmlFor="staff-first-name">Prénom</label>
+            <input id="staff-first-name" value={staffForm.first_name} onChange={(e) => setStaffForm({ ...staffForm, first_name: e.target.value })} required />
+          </div>
+          <div className="clinical-field">
+            <label htmlFor="staff-last-name">Nom</label>
+            <input id="staff-last-name" value={staffForm.last_name} onChange={(e) => setStaffForm({ ...staffForm, last_name: e.target.value })} required />
+          </div>
           <div className="clinical-field">
             <label htmlFor="staff-clinic">Clinique</label>
             <input

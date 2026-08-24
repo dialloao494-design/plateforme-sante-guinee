@@ -17,6 +17,8 @@ class Clinic(Base):
     city = Column(String(128), nullable=True, index=True)
     phone = Column(String(32), nullable=True)
     email = Column(String(255), nullable=True)
+    onboarding_config_json = Column(Text, nullable=True)
+    onboarding_completed_at = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

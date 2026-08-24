@@ -38,6 +38,8 @@ from schemas.clinical import (
     ClinicOperationsSummary,
     ClinicChargeResponse,
     ClinicCreate,
+    ClinicOnboardingResponse,
+    ClinicOnboardingUpdate,
     ClinicResponse,
     ClinicalAppointmentCreate,
     ClinicalAppointmentResponse,
@@ -82,6 +84,7 @@ from schemas import medical_history as mh_schemas
 from services.cis_audit import log_cis_denied
 from services.backup_validation_service import default_backup_dir, validate_backup_directory
 from services.user_provisioning import EmailAlreadyRegisteredError, create_staff_user
+from services.clinic_onboarding_service import readiness, update_onboarding
 from models.user import User
 
 router = APIRouter(prefix="/clinical", tags=["Clinical CIS"])
@@ -275,11 +278,13 @@ def provision_staff(
             clinic_id=clinic_id,
             channel="admin_api",
             actor_user_id=current_user.id,
+            first_name=body.first_name,
+            last_name=body.last_name,
         )
     except EmailAlreadyRegisteredError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     user = provisioned.user
-    return StaffResponse(id=user.id, email=user.email, role=user.role, clinic_id=user.clinic_id, is_active=user.is_active)
+    return StaffResponse.model_validate(user)
 
 
 @router.get("/staff", response_model=List[StaffResponse])
@@ -310,7 +315,7 @@ def list_staff(
     )
     rows = q.filter(models.User.role.in_(staff_roles)).order_by(models.User.role, models.User.email).all()
     return [
-        StaffResponse(id=u.id, email=u.email, role=u.role, clinic_id=u.clinic_id, is_active=u.is_active)
+        StaffResponse.model_validate(u)
         for u in rows
     ]
 
@@ -1586,6 +1591,47 @@ def daily_revenue(
     _require_role(db, current_user, BILLING_REVENUE_ROLES, request, clinic_id=clinic.id, resource_type="billing")
     summary = ClinicBillingService.daily_summary(db, clinic_id=clinic.id, day=day)
     return DailyRevenueSummary(**summary)
+
+
+# --- Guided clinic readiness ---
+
+
+@router.get("/admin/onboarding", response_model=ClinicOnboardingResponse)
+def clinic_onboarding(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("clinic_admin", "admin"))
+    clinic = resolve_clinic_for_user(db, current_user)
+    result = readiness(db, clinic)
+    db.commit()
+    return result
+
+
+@router.patch("/admin/onboarding", response_model=ClinicOnboardingResponse)
+def patch_clinic_onboarding(
+    body: ClinicOnboardingUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("clinic_admin", "admin"))
+    clinic = resolve_clinic_for_user(db, current_user)
+    try:
+        result = update_onboarding(db, clinic, body.model_dump(exclude_unset=True))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    from services.cis_audit import log_cis
+    log_cis(
+        db,
+        actor=current_user,
+        clinic_id=clinic.id,
+        action="update",
+        resource_type="clinic_onboarding",
+        resource_id=clinic.id,
+        client_ip=client_ip(request),
+    )
+    return result
 
 
 # --- Backup validation ---

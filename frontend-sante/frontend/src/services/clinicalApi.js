@@ -30,6 +30,8 @@ const clinicalApi = {
     httpClient.patch(`/clinical/staff/${userId}/deactivate`, null, { params: { clinic_id: clinicId } }),
   resetStaffPassword: (userId, data) =>
     httpClient.post(`/clinical/staff/${userId}/reset-password`, data),
+  clinicOnboarding: () => httpClient.get('/clinical/admin/onboarding'),
+  updateClinicOnboarding: (data) => httpClient.patch('/clinical/admin/onboarding', data),
 
   // Nutrition
   nutritionHistory: (patientId) => httpClient.get(`/clinical/nutrition/patients/${patientId}/history`),

@@ -3,6 +3,70 @@
   scroll-margin-top: 1rem;
 }
 
+.admin-readiness {
+  margin: 1.25rem 0;
+  overflow: hidden;
+  border: 1px solid #d5e2e8;
+  border-left: 6px solid #d49a22;
+  border-radius: 18px;
+  background: #fffdf8;
+  box-shadow: 0 10px 30px rgba(10, 43, 64, 0.06);
+}
+
+.admin-readiness.is-ready { border-left-color: #078b7e; background: #fbfffe; }
+.admin-readiness__summary { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 1.5rem; align-items: center; padding: 1.5rem; }
+.admin-readiness__summary h2 { margin: .15rem 0 .35rem; color: #082e49; }
+.admin-readiness__summary p { margin: 0; color: #5b7286; }
+.admin-readiness__score { min-width: 74px; text-align: center; color: #0a6f67; }
+.admin-readiness__score strong { display: block; font-size: 1.65rem; line-height: 1; }
+.admin-readiness__score span { font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; }
+.admin-readiness__bar { height: 5px; background: #e7edf0; }
+.admin-readiness__bar span { display: block; height: 100%; background: #078b7e; transition: width .2s ease; }
+
+.admin-setup { display: grid; grid-template-columns: minmax(260px, .75fr) minmax(0, 1.7fr); border-top: 1px solid #dce8ec; background: #fff; }
+.admin-setup__route { margin: 0; padding: 1.25rem; list-style: none; border-right: 1px solid #dce8ec; background: #f6fafb; }
+.admin-setup__route li { position: relative; }
+.admin-setup__route li:not(:last-child)::after { content: ''; position: absolute; top: 42px; bottom: -6px; left: 17px; width: 2px; background: #d5e2e8; }
+.admin-setup__route li.is-complete:not(:last-child)::after { background: #89d8ce; }
+.admin-setup__route button { width: 100%; display: grid; grid-template-columns: 36px 1fr; gap: .7rem; align-items: start; padding: .62rem .5rem; border: 0; border-radius: 10px; background: transparent; color: #183b53; text-align: left; cursor: pointer; }
+.admin-setup__route button:hover, .admin-setup__route button[aria-current='step'] { background: #e7f5f3; }
+.admin-setup__route button > span:first-child { position: relative; z-index: 1; display: grid; place-items: center; width: 34px; height: 34px; border: 2px solid #a9bfce; border-radius: 50%; background: #fff; font-weight: 800; }
+.admin-setup__route .is-complete button > span:first-child { border-color: #078b7e; background: #078b7e; color: #fff; }
+.admin-setup__route strong, .admin-setup__route small { display: block; }
+.admin-setup__route small { margin-top: .16rem; color: #668095; line-height: 1.35; }
+.admin-setup__work { min-height: 420px; padding: 1.75rem; }
+.admin-setup__work h3 { margin: .15rem 0 1.25rem; font-size: 1.5rem; color: #082e49; }
+.admin-setup__work form > .clinical-btn { margin-top: 1.25rem; }
+.admin-setup__fields { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.admin-setup__fields label, .admin-setup__select { display: grid; gap: .4rem; color: #294b63; font-weight: 700; }
+.admin-setup__fields input, .admin-setup__select select { min-height: 46px; padding: .7rem .8rem; border: 1px solid #a9bfd0; border-radius: 9px; background: #fff; color: #102f46; font: inherit; }
+.admin-choice-grid, .admin-verification { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; margin: 0; padding: 0; border: 0; }
+.admin-choice-grid legend, .admin-verification legend { grid-column: 1 / -1; margin-bottom: .25rem; color: #294b63; font-weight: 800; }
+.admin-choice-grid label, .admin-verification label { display: flex; gap: .65rem; align-items: center; min-height: 52px; padding: .75rem; border: 1px solid #d5e2e8; border-radius: 10px; background: #f9fbfc; }
+.admin-choice-grid input, .admin-verification input { width: 20px; height: 20px; accent-color: #078b7e; }
+.admin-verification { grid-template-columns: 1fr; }
+.admin-setup__select { max-width: 340px; margin-top: 1rem; }
+.admin-setup__instruction { padding: 1rem; border-left: 4px solid #078b7e; background: #eef9f7; }
+.admin-setup__instruction .clinical-btn { margin-top: .5rem; }
+
+.admin-handoff { margin: 1.25rem 0; padding: 1.35rem 1.5rem; border-top: 1px solid #c8dbe3; border-bottom: 1px solid #c8dbe3; }
+.admin-handoff__heading { display: flex; justify-content: space-between; align-items: end; gap: 1rem; }
+.admin-handoff__heading h2 { margin: .15rem 0 .75rem; color: #082e49; }
+.admin-handoff ul { margin: 0; padding: 0; list-style: none; }
+.admin-handoff li { display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: .85rem 0; border-top: 1px solid #e0eaee; }
+.admin-handoff li div span { display: block; margin-top: .15rem; color: #60798c; }
+.admin-handoff li a, .admin-handoff li button { border: 0; background: transparent; color: #007c72; font: inherit; font-weight: 800; cursor: pointer; }
+.admin-handoff__clear { margin: 0; color: #126b62; font-weight: 700; }
+.admin-handoff__clear span { display: inline-grid; place-items: center; width: 26px; height: 26px; margin-right: .5rem; border-radius: 50%; background: #dff6ef; }
+
+.admin-dialog-backdrop { position: fixed; z-index: 1200; inset: 0; display: grid; place-items: center; padding: 1rem; background: rgba(4, 29, 47, .56); }
+.admin-dialog { width: min(100%, 520px); padding: 1.6rem; border-radius: 16px; background: #fff; box-shadow: 0 24px 80px rgba(4, 29, 47, .3); }
+.admin-dialog h2 { margin: .15rem 0 .75rem; color: #082e49; }
+.admin-dialog form { display: grid; gap: .55rem; margin-top: 1.25rem; }
+.admin-dialog label { color: #294b63; font-weight: 800; }
+.admin-dialog input { min-height: 48px; padding: .7rem .8rem; border: 1px solid #9fb7c8; border-radius: 9px; font: inherit; }
+.admin-dialog__actions { display: flex; justify-content: flex-end; gap: .75rem; margin-top: .8rem; }
+
 .admin-backup-status {
   border-left: 4px solid #0b8c82;
 }
@@ -36,6 +100,16 @@
 }
 
 @media (max-width: 680px) {
+  .admin-readiness__summary { grid-template-columns: 1fr auto; }
+  .admin-readiness__summary .clinical-btn { grid-column: 1 / -1; width: 100%; }
+  .admin-setup { grid-template-columns: 1fr; }
+  .admin-setup__route { display: flex; gap: .35rem; overflow-x: auto; border-right: 0; border-bottom: 1px solid #dce8ec; }
+  .admin-setup__route li:not(:last-child)::after, .admin-setup__route small { display: none; }
+  .admin-setup__route button { min-width: 155px; }
+  .admin-setup__fields, .admin-choice-grid { grid-template-columns: 1fr; }
+  .admin-setup__work { min-height: 0; padding: 1.2rem; }
+  .admin-dialog__actions { flex-direction: column-reverse; }
+  .admin-dialog__actions .clinical-btn { width: 100%; }
   .admin-create-staff__form {
     grid-template-columns: 1fr;
   }

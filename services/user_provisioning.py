@@ -309,6 +309,8 @@ def create_staff_user(
     clinic_id: int,
     channel: str = "admin_api",
     actor_user_id: int | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
 ) -> ProvisionedUser:
     """Create clinic staff (receptionist, cashier, lab_technician, pharmacist, doctor, admin)."""
     from core.roles import CLINICAL_STAFF_ROLES
@@ -346,6 +348,8 @@ def create_staff_user(
         raise UserProvisioningError("Error creating staff user.") from exc
 
     user.clinic_id = clinic_id
+    user.first_name = (first_name or "").strip() or None
+    user.last_name = (last_name or "").strip() or None
     user.must_change_password = True
     db.add(
         models.ClinicStaff(clinic_id=clinic_id, user_id=user.id, is_active=True)
@@ -353,6 +357,10 @@ def create_staff_user(
     if normalized == "doctor":
         doc = _ensure_doctor_profile(db, user)
         doc.clinic_id = clinic_id
+        if user.first_name:
+            doc.first_name = user.first_name
+        if user.last_name:
+            doc.last_name = user.last_name
     db.commit()
     db.refresh(user)
 

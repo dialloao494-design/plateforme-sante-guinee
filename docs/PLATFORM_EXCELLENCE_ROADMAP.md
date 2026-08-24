@@ -573,6 +573,39 @@ a patient without double-booking, see trustworthy real-time availability, and
 recover safely from offline/concurrent updates; CI, production smoke, and an
 observed clinic exercise all pass.
 
+### P1 — Simplified clinic onboarding and daily administration
+
+**Status: IN PROGRESS — foundation code-complete and locally verified**
+
+- [x] Persist a resumable, clinic-scoped setup state instead of relying on staff
+  memory or a one-time wizard.
+- [x] Derive readiness on the server from identity, enabled services, active
+  personnel, configured payment methods, required bed capacity, printing,
+  offline-workstation, and test-patient evidence.
+- [x] Replace the generic administration landing experience with a visible
+  readiness route and a daily administrative handoff list.
+- [x] Capture staff first and last names during account creation and use readable
+  French role labels in the personnel view.
+- [ ] Add shift-oriented daily checks, role-specific opening/closing routines,
+  and direct remediation for every warning.
+- [x] Replace the legacy prompt-based password reset with an accessible,
+  confirmation-oriented dialog that explains the forced first-login change.
+- [ ] Add a delivery-safe temporary-credential workflow so administrators do not
+  need to communicate credentials through an insecure channel.
+- [ ] Complete browser coverage using a deployed clinic-admin account, including
+  narrow screens, keyboard navigation, cross-clinic denial, and resume-after-login.
+- [ ] Validate setup wording and daily priorities with a clinic administrator.
+
+Local evidence: full backend suite **449 passed / 1 skipped**, frontend unit
+tests **50/50**, focused accessibility/responsive Chromium checks **10/10**,
+lint, production build, and all six performance budgets pass. Remote CI,
+deployment, production smoke, and clinic validation are not yet claimed.
+
+**Exit criterion:** a new clinic administrator can configure the establishment,
+create the working team, verify billing/printing/offline operation, complete a
+test patient journey, and run the daily administrative handoff without developer
+assistance; tenant, accessibility, browser, CI, production, and field evidence pass.
+
 ### P3 — Future clinic expense and cash management
 
 **Status: FUTURE ADD — documented, not scheduled**
@@ -682,6 +715,7 @@ and a clear escalation contact.
 | 2026-08-24 | Clinic-admin navigation exposed “Administration” and “Utilisateurs” as separate top-level choices even though both opened the same administration page and both appeared active. The duplicate route is removed; staff listing and account creation remain explicit anchored sections inside Administration. The navigation contract passes 2/2, frontend unit suite 48/48, focused Chromium 1/1, lint/build, and all six performance budgets locally. | The false navigation choice is code-complete and locally browser-verified; CI, deployment, and clinic confirmation remain open. |
 | 2026-08-24 | Clinic clarification established that the two pediatric hospitalization prices represent different accommodation types: berceau nouveau-né (80,000 GNF/day) and lit pédiatrique standard (120,000 GNF/day). Reception now exposes both only for pediatric specialties, resets incompatible selections when specialty changes, and the API rejects specialty/bed/catalog mismatches while applying the authoritative tariff. Focused backend tests pass 10/10; frontend 48/48, exact Reception Chromium 2/2, lint/build, and all six performance budgets pass locally. | Pediatric hospitalization pricing is code-complete and locally browser-verified. CI, deployment, production catalog verification, and clinic validation remain open. |
 | 2026-08-24 | Competitive feature review selected complete ward/room/bed management as the preferred next product initiative and recorded clinic-scoped expense/cash management as a future addition. The accommodation roadmap explicitly separates physical beds, clinical suitability, and tariffs; the finance roadmap preserves existing billing as the patient-revenue source. | Product direction is documented only; neither capability is represented as implemented, tested, or scheduled. |
+| 2026-08-24 | Clinic administration gained a persistent readiness model, guided setup route, daily handoff list, real-name staff provisioning, prompt-free password reset, and derived checks for staffing, payments, bed capacity, printing, offline operation, and a test patient journey. Full backend suite passes 449/449 with one skip; frontend unit tests pass 50/50; accessibility/responsive Chromium checks pass 10/10 with lint, production build, and all six performance budgets green. | Simplified onboarding foundation is code-complete, locally regression-verified, and browser-verified. Remote CI/deployment, secure credential delivery, and clinic-admin field validation remain open. |
 
 ## Related evidence
 

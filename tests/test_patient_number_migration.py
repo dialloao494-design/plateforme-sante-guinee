@@ -51,7 +51,7 @@ class TestBackfillPatientNumbers:
 def test_single_alembic_head_includes_patient_number_integrity():
     script = ScriptDirectory.from_config(Config(str(ROOT / "alembic.ini")))
     heads = script.get_heads()
-    assert heads == ["20260824_0032_hospitalization_stay_fields"], heads
+    assert heads == ["20260824_0033_clinic_onboarding"], heads
 
 
 def test_upgrade_0028_backfills_null_patient_number(tmp_path):
@@ -109,7 +109,7 @@ def test_upgrade_0028_backfills_null_patient_number(tmp_path):
             text("SELECT id, patient_number FROM patients ORDER BY id")
         ).fetchall()
         version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
-    assert version == "20260824_0032_hospitalization_stay_fields"
+    assert version == "20260824_0033_clinic_onboarding"
     assert rows[0].patient_number == "PAT-003-000007"
     assert rows[1].patient_number == "PAT-003-000008"
     indexes = {idx["name"] for idx in inspect(engine).get_indexes("patients")}
