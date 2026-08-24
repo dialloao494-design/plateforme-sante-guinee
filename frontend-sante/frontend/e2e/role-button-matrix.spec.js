@@ -120,6 +120,7 @@ const ROLE_MATRIX = [
       role: 'button',
       name: 'Rechercher',
       prepare: async (page) => {
+        await page.getByRole('tab', { name: 'Admissions et transferts' }).click();
         await page.locator('input[type="search"]').first().fill('Diallo');
       },
     }],
