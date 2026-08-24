@@ -78,7 +78,7 @@ const CLINICAL_STATUS_LABELS = {
   ordered: 'Commandé', pending: 'En attente', sample_collected: 'Prélèvement effectué',
   in_sampling: 'En prélèvement', in_analysis: 'En analyse', in_progress: 'En cours',
   completed: 'Terminé', validated: 'Validé', rejected: 'Rejeté', cancelled: 'Annulé',
-  paid: 'Payé', unpaid: 'Impayé', partially_paid: 'Partiellement payé',
+  issued: 'Émise', paid: 'Payé', unpaid: 'Impayé', partially_paid: 'Partiellement payé',
 };
 
 export function formatClinicalStatus(value, fallback = '—') {

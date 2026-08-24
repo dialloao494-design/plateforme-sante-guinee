@@ -51,7 +51,7 @@
 .billing-register-toolbar {
   display: flex;
   align-items: end;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 1rem;
   margin-bottom: 1.25rem;
   padding: 0.75rem;
@@ -107,6 +107,37 @@
   color: #30495d;
   font-size: 0.82rem;
   font-weight: 700;
+}
+
+.billing-collection-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 280px) auto;
+  align-items: end;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #b8dcd7;
+  background: #eef9f7;
+}
+
+.billing-collection-summary {
+  display: grid;
+  gap: 0.3rem;
+  color: #30495d;
+}
+
+.billing-collection-summary strong {
+  color: #075f58;
+  font-size: 1rem;
+}
+
+.billing-collection-summary b {
+  color: #102f49;
+  font-variant-numeric: tabular-nums;
+}
+
+.billing-collection-actions {
+  display: flex;
+  gap: 0.65rem;
 }
 
 .billing-payment-method select {
@@ -264,6 +295,19 @@
   .billing-register-toolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .billing-collection-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-collection-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .billing-collection-actions .clinical-btn {
+    width: 100%;
   }
 
   .billing-view-tabs {

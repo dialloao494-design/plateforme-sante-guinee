@@ -23,6 +23,7 @@ test('shared hospital workflow navigation stays usable on a narrow pharmacy scre
 test('billing and administration forms reflow on a narrow clinic screen', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await loginAsRole(page, 'admin');
+  let submittedPayment = null;
 
   await page.route('**/clinical/billing/unified/invoices*', async (route) => {
     await route.fulfill({
@@ -50,14 +51,32 @@ test('billing and administration forms reflow on a narrow clinic screen', async 
       ]),
     });
   });
+  await page.route('**/clinical/billing/unified/invoices/901/pay', async (route) => {
+    submittedPayment = route.request().postDataJSON();
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+  });
 
   await page.goto('/clinical/billing');
   await expect(page.getByTestId('billing-dashboard')).toBeVisible();
   await expect(page.getByRole('tab', { name: /À encaisser/ })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByLabel('Mode de paiement')).toBeVisible();
+  await expect(page.getByLabel('Mode de paiement')).toHaveCount(0);
   await expect(page.locator('.billing-invoice-list')).toHaveCSS('list-style-type', 'none');
   await expect(page.getByText('INV-RESP-0001')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Encaisser 250 000 GNF' })).toBeVisible();
+  await page.getByRole('button', { name: 'Encaisser 250 000 GNF' }).click();
+  await expect(page.getByText('Confirmer l’encaissement')).toBeVisible();
+  await expect(page.getByText('Montant à recevoir : 250 000 GNF')).toBeVisible();
+  await expect(page.getByLabel('Mode de paiement')).toHaveValue('cash');
+  await page.getByLabel('Mode de paiement').selectOption('orange_money');
+  await expect(page.getByLabel('Mode de paiement')).toHaveValue('orange_money');
+  await expect(page.getByRole('button', { name: 'Confirmer 250 000 GNF' })).toBeVisible();
+  await page.getByRole('button', { name: 'Annuler' }).click();
+  await expect(page.getByLabel('Mode de paiement')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Encaisser 250 000 GNF' }).click();
+  await page.getByLabel('Mode de paiement').selectOption('orange_money');
+  await page.getByRole('button', { name: 'Confirmer 250 000 GNF' }).click();
+  await expect.poll(() => submittedPayment).toEqual({ payment_method: 'orange_money' });
+  await expect(page.getByText('Paiement enregistré')).toBeVisible();
+  await expect(page.getByLabel('Mode de paiement')).toHaveCount(0);
   await page.getByRole('tab', { name: /Payées/ }).click();
   await expect(page.getByRole('tab', { name: /Payées/ })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByLabel('Mode de paiement')).toHaveCount(0);

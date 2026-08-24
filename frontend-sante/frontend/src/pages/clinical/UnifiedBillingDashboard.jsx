@@ -21,6 +21,7 @@ export default function UnifiedBillingDashboard() {
   const [visitId, setVisitId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [invoiceView, setInvoiceView] = useState('pending');
+  const [collectingInvoiceId, setCollectingInvoiceId] = useState(null);
   const [busyInvoice, setBusyInvoice] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -92,6 +93,7 @@ export default function UnifiedBillingDashboard() {
     try {
       await clinicalApi.payInvoice(invoiceId, { payment_method: paymentMethod });
       setMessage('Paiement enregistré');
+      setCollectingInvoiceId(null);
       load();
     } catch (err) {
       setError(err?.response?.data?.detail || 'Paiement impossible');
@@ -176,16 +178,6 @@ export default function UnifiedBillingDashboard() {
               Payées <span>{paid.length}</span>
             </button>
           </div>
-          {invoiceView === 'pending' && (
-            <label className="billing-payment-method">
-              Mode de paiement
-              <select name="payment_method" autoComplete="off" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                <option value="cash">Espèces</option>
-                <option value="orange_money">Orange Money</option>
-                <option value="mobile_money">Mobile Money</option>
-              </select>
-            </label>
-          )}
         </div>
         {visibleInvoices.length === 0 ? (
           <p className="billing-empty-state">
@@ -221,10 +213,43 @@ export default function UnifiedBillingDashboard() {
                   ))}
                 </ul>
               </div>
+              {inv.status !== 'paid' && collectingInvoiceId === inv.id && (
+                <div className="billing-collection-panel" role="group" aria-labelledby={`billing-collect-title-${inv.id}`}>
+                  <div className="billing-collection-summary">
+                    <strong id={`billing-collect-title-${inv.id}`}>Confirmer l’encaissement</strong>
+                    <span>Montant à recevoir : <b>{formatGNF(remaining)}</b></span>
+                  </div>
+                  <label className="billing-payment-method" htmlFor={`payment-method-${inv.id}`}>
+                    Mode de paiement
+                    <select
+                      id={`payment-method-${inv.id}`}
+                      name={`payment_method_${inv.id}`}
+                      autoComplete="off"
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                    >
+                      <option value="cash">Espèces</option>
+                      <option value="orange_money">Orange Money</option>
+                      <option value="mobile_money">Mobile Money</option>
+                    </select>
+                  </label>
+                  <div className="billing-collection-actions">
+                    <button type="button" className="clinical-btn clinical-btn--secondary" disabled={Boolean(busyInvoice)} onClick={() => setCollectingInvoiceId(null)}>
+                      Annuler
+                    </button>
+                    <button type="button" className="clinical-btn" disabled={Boolean(busyInvoice)} onClick={() => pay(inv.id)}>
+                      {busyInvoice === `pay-${inv.id}` ? 'Encaissement…' : `Confirmer ${formatGNF(remaining)}`}
+                    </button>
+                  </div>
+                </div>
+              )}
               <footer className="billing-invoice-actions">
-                {inv.status !== 'paid' && (
-                  <button type="button" className="clinical-btn" disabled={Boolean(busyInvoice)} onClick={() => pay(inv.id)}>
-                    {busyInvoice === `pay-${inv.id}` ? 'Encaissement…' : `Encaisser ${formatGNF(remaining)}`}
+                {inv.status !== 'paid' && collectingInvoiceId !== inv.id && (
+                  <button type="button" className="clinical-btn" disabled={Boolean(busyInvoice)} onClick={() => {
+                    setPaymentMethod('cash');
+                    setCollectingInvoiceId(inv.id);
+                  }}>
+                    Encaisser {formatGNF(remaining)}
                   </button>
                 )}
                 <button type="button" className="clinical-btn clinical-btn--secondary" disabled={Boolean(busyInvoice)} onClick={() => downloadPdf(inv.id, inv.invoice_number)}>
