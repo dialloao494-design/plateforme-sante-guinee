@@ -46,5 +46,7 @@ from .clinic_lab_test import ClinicLabTest
 from .clinic_refund import ClinicRefund
 from .clinic_service_request import ClinicServiceRequest
 from .api_idempotency import ApiClientIdempotencyKey
+from .staff_activation_token import StaffActivationToken
+from .clinic_operational_shift import ClinicOperationalShift
 
 from . import user_hooks as _user_hooks  # noqa: F401

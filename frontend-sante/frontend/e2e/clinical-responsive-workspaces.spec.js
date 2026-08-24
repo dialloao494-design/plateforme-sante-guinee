@@ -32,6 +32,8 @@ test('billing and administration forms reflow on a narrow clinic screen', async 
   await page.goto('/clinical/admin#create-user');
   await expect(page.getByTestId('admin-dashboard')).toBeVisible();
   await expect(page.getByLabel('Email professionnel')).toBeVisible();
-  await expect(page.getByLabel('Mot de passe temporaire')).toBeVisible();
+  await expect(page.getByText('Aucun mot de passe à transmettre')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ouverture et relève du poste' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Ouvrir le poste|Clôturer et transmettre/ })).toBeVisible();
   await expectNoPageOverflow(page);
 });

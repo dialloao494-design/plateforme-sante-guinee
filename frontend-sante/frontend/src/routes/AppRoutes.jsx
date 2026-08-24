@@ -66,6 +66,7 @@ const ImmunizationDashboard = lazy(() => import("../pages/clinical/ImmunizationD
 const NursingCareDashboard = lazy(() => import("../pages/clinical/NursingCareDashboard.jsx"));
 const NurseDashboard = lazy(() => import("../pages/clinical/NurseDashboard.jsx"));
 const PatientHistoryDashboard = lazy(() => import("../pages/clinical/PatientHistoryDashboard.jsx"));
+const ActivateStaff = lazy(() => import("../pages/ActivateStaff.jsx"));
 
 const AppRoutes = () => {
   return (
@@ -75,6 +76,7 @@ const AppRoutes = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/activate-staff" element={<ActivateStaff />} />
       <Route path="/platform/setup" element={<PlatformOwnerSetup />} />
       <Route path="/signup" element={<Signup />} />
 

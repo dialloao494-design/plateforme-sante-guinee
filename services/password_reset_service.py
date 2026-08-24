@@ -89,11 +89,12 @@ def build_reset_link(raw_token: str) -> str:
     return f"{frontend}/reset-password?token={raw_token}"
 
 
-def send_reset_email(email: str, raw_token: str) -> None:
-    """Send password reset email via SMTP/Resend; log link when email is not configured."""
+def send_reset_email(email: str, raw_token: str) -> bool:
+    """Send a password-reset link without logging or returning the raw secret."""
     from services.email_service import send_password_reset_email
 
     link = build_reset_link(raw_token)
     sent = send_password_reset_email(email, link)
     if not sent:
-        logger.info("Password reset link for %s (email not configured): %s", email, link)
+        logger.warning("Password reset email could not be delivered to %s", email)
+    return sent

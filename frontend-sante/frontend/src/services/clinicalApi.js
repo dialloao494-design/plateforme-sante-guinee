@@ -21,6 +21,9 @@ const clinicalApi = {
       forceRefresh: opts.forceRefresh,
     }),
   createStaff: (data) => httpClient.post('/clinical/staff', data),
+  inviteStaff: (data) => httpClient.post('/clinical/staff/invitations', data),
+  resendStaffInvitation: (userId, clinicId) =>
+    httpClient.post(`/clinical/staff/${userId}/invitation/resend`, null, { params: { clinic_id: clinicId } }),
   listStaff: (clinicId, role) =>
     httpClient.get('/clinical/staff', {
       params: { clinic_id: clinicId, ...(role ? { role } : {}) },
@@ -30,8 +33,14 @@ const clinicalApi = {
     httpClient.patch(`/clinical/staff/${userId}/deactivate`, null, { params: { clinic_id: clinicId } }),
   resetStaffPassword: (userId, data) =>
     httpClient.post(`/clinical/staff/${userId}/reset-password`, data),
+  sendStaffPasswordReset: (userId, clinicId) =>
+    httpClient.post(`/clinical/staff/${userId}/password-reset-link`, null, { params: { clinic_id: clinicId } }),
   clinicOnboarding: () => httpClient.get('/clinical/admin/onboarding'),
   updateClinicOnboarding: (data) => httpClient.patch('/clinical/admin/onboarding', data),
+  currentClinicShift: () => httpClient.get('/clinical/admin/shifts/current'),
+  clinicShiftHistory: () => httpClient.get('/clinical/admin/shifts', { params: { limit: 8 } }),
+  openClinicShift: (data) => httpClient.post('/clinical/admin/shifts/open', data),
+  closeClinicShift: (shiftId, data) => httpClient.post(`/clinical/admin/shifts/${shiftId}/close`, data),
 
   // Nutrition
   nutritionHistory: (patientId) => httpClient.get(`/clinical/nutrition/patients/${patientId}/history`),

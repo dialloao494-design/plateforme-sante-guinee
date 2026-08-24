@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { getRoleHomePath } from '../utils/rolePaths.js';
 import { platformSetupAPI } from '../services/api.js';
@@ -23,6 +23,7 @@ const Login = () => {
   const [submitError, setSubmitError] = useState('');
   const { login, loading, user, authLoading, error: authError } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -101,6 +102,7 @@ const Login = () => {
         <p className="login-eyebrow">Plateforme Santé · Guinée</p>
         <h1 className="login-title">Connexion</h1>
         <p className="login-lead">Accédez à votre espace selon votre rôle.</p>
+        {location.state?.activationSuccess ? <p className="login-success" role="status">Compte activé. Vous pouvez maintenant vous connecter avec votre mot de passe.</p> : null}
         <form onSubmit={handleSubmit} className="login-form">
           <div className="login-field">
             <label htmlFor="email">Email</label>

@@ -99,6 +99,28 @@
   min-height: 44px;
 }
 
+.admin-create-staff__delivery { display: grid; gap: .18rem; align-self: end; min-height: 54px; padding: .65rem .8rem; border-left: 4px solid #078b7e; background: #eef9f7; color: #294b63; }
+.admin-create-staff__delivery span { color: #60798c; font-size: .88rem; }
+
+.admin-shift { margin: 1.25rem 0; padding: 1.5rem; border: 1px solid #cfe0e6; border-left: 6px solid #0a887c; border-radius: 18px; background: #fff; box-shadow: 0 10px 30px rgba(10,43,64,.06); }
+.admin-shift__header { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
+.admin-shift__header h2 { margin: .15rem 0 .35rem; color: #082e49; }
+.admin-shift__state { padding: .38rem .7rem; border-radius: 999px; background: #edf2f5; color: #526c7e; font-weight: 800; white-space: nowrap; }
+.admin-shift__state.is-open { background: #dcf6ef; color: #087065; }
+.admin-shift__open-summary { display: flex; justify-content: space-between; gap: 1rem; margin: 1rem 0; padding: .85rem 0; border-top: 1px solid #dce8ec; border-bottom: 1px solid #dce8ec; color: #315169; }
+.admin-shift form { display: grid; gap: 1rem; margin-top: 1rem; }
+.admin-shift__checks { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .75rem; }
+.admin-shift__checks label, .admin-shift__queue { display: flex; align-items: center; gap: .75rem; min-height: 70px; padding: .85rem; border: 1px solid #d5e2e8; border-radius: 11px; background: #f8fbfc; }
+.admin-shift__checks input, .admin-shift__ack input { width: 21px; height: 21px; accent-color: #078b7e; }
+.admin-shift__checks span, .admin-shift__checks small { display: block; }
+.admin-shift__checks small { margin-top: .14rem; color: #657e90; }
+.admin-shift__queue { justify-content: space-between; }.admin-shift__queue.has-warning { border-color: #e7bd5d; background: #fffaf0; }
+.admin-shift__ack { display: flex; align-items: start; gap: .6rem; color: #294b63; font-weight: 700; }
+.admin-shift__notes { display: grid; gap: .4rem; color: #294b63; font-weight: 800; }
+.admin-shift__notes textarea { padding: .75rem; border: 1px solid #a9bfd0; border-radius: 9px; resize: vertical; font: inherit; }
+.admin-shift form > .clinical-btn { justify-self: start; }
+.admin-shift__history { margin-top: 1.25rem; border-top: 1px solid #dce8ec; padding-top: 1rem; }.admin-shift__history summary { color: #08776e; font-weight: 800; cursor: pointer; }.admin-shift__history ol { padding-left: 1.4rem; }.admin-shift__history li { padding: .45rem 0; }.admin-shift__history li span { display: block; color: #60798c; }
+
 @media (max-width: 680px) {
   .admin-readiness__summary { grid-template-columns: 1fr auto; }
   .admin-readiness__summary .clinical-btn { grid-column: 1 / -1; width: 100%; }
@@ -117,4 +139,7 @@
   .admin-create-staff__submit {
     width: 100%;
   }
+  .admin-shift__header, .admin-shift__open-summary { align-items: stretch; flex-direction: column; }
+  .admin-shift__checks { grid-template-columns: 1fr; }
+  .admin-shift form > .clinical-btn { width: 100%; }
 }

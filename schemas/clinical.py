@@ -54,6 +54,8 @@ class StaffResponse(BaseModel):
     last_name: Optional[str] = None
     last_login_at: Optional[datetime] = None
     must_change_password: bool = False
+    invitation_status: Optional[str] = None
+    invitation_expires_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -70,6 +72,55 @@ class StaffPasswordReset(BaseModel):
 
     clinic_id: int
     new_password: str = Field(..., min_length=8)
+
+
+class StaffInvitationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str
+    role: str
+    clinic_id: int
+    first_name: str = Field(..., min_length=1, max_length=128)
+    last_name: str = Field(..., min_length=1, max_length=128)
+
+
+class StaffInvitationResponse(BaseModel):
+    staff: StaffResponse
+    delivery_status: str
+    expires_at: datetime
+
+
+class ClinicShiftOpenRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    printer_ready: bool
+    offline_ready: bool
+    offline_pending_count: int = Field(0, ge=0)
+    notes: Optional[str] = Field(None, max_length=2000)
+
+
+class ClinicShiftCloseRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    printer_ready: bool
+    offline_pending_count: int = Field(0, ge=0)
+    acknowledge_unresolved: bool = False
+    notes: Optional[str] = Field(None, max_length=4000)
+
+
+class ClinicShiftResponse(BaseModel):
+    id: int
+    clinic_id: int
+    status: str
+    opened_by_user_id: int
+    opened_at: datetime
+    opening_snapshot: dict
+    opening_notes: Optional[str] = None
+    closed_by_user_id: Optional[int] = None
+    closed_at: Optional[datetime] = None
+    closing_snapshot: Optional[dict] = None
+    closing_notes: Optional[str] = None
+    unresolved_acknowledged: bool = False
 
 
 class ClinicOnboardingUpdate(BaseModel):

@@ -64,6 +64,19 @@ def test_clinic_admin_cannot_provision_staff_for_other_clinic(client, db_session
     )
     assert response.status_code == 403, response.text
 
+    invitation = client.post(
+        "/clinical/staff/invitations",
+        json={
+            "email": "rbac.cross.invitation@test.gn",
+            "role": "nurse",
+            "clinic_id": clinic_b.id,
+            "first_name": "Cross",
+            "last_name": "Clinic",
+        },
+        headers=_auth(admin),
+    )
+    assert invitation.status_code == 403, invitation.text
+
     existing_owner = (
         db_session.query(models.User).filter(models.User.role == "platform_owner").first()
     )
@@ -107,3 +120,66 @@ def test_platform_admin_can_create_clinic(client, db_session):
     )
     assert response.status_code == 201, response.text
     assert response.json()["name"] == "Platform Admin Clinic"
+
+
+def test_clinic_invitation_response_never_exposes_secret(client, db_session, monkeypatch):
+    import services.staff_activation_service as activation
+
+    clinic = models.Clinic(name="Secure Invitation Clinic", is_active=True)
+    db_session.add(clinic)
+    db_session.commit()
+    admin = _clinic_admin(db_session, clinic.id, email=f"secure.invite.admin.{clinic.id}@test.gn")
+    captured = {}
+    monkeypatch.setattr(
+        activation,
+        "send_staff_activation_email",
+        lambda email, link, **kwargs: captured.update(email=email, link=link) or True,
+    )
+    response = client.post(
+        "/clinical/staff/invitations",
+        json={
+            "email": f"secure.invited.nurse.{clinic.id}@test.gn",
+            "role": "nurse",
+            "clinic_id": clinic.id,
+            "first_name": "Hawa",
+            "last_name": "Barry",
+        },
+        headers=_auth(admin),
+    )
+    assert response.status_code == 201, response.text
+    payload = response.json()
+    assert payload["staff"]["is_active"] is False
+    assert payload["delivery_status"] == "sent"
+    assert "token" not in response.text.lower()
+    assert "password" not in payload
+    assert "password" not in payload["staff"]
+    assert "token=" in captured["link"]
+
+
+def test_clinic_admin_sends_reset_link_without_seeing_it(client, db_session, monkeypatch):
+    import routers.clinical as clinical_router
+
+    clinic = models.Clinic(name="Secure Reset Clinic", is_active=True)
+    db_session.add(clinic)
+    db_session.commit()
+    admin = _clinic_admin(db_session, clinic.id, email=f"secure.reset.admin.{clinic.id}@test.gn")
+    with provisioning_channel("test_fixture"):
+        staff = models.User(
+            email=f"secure.reset.staff.{clinic.id}@test.gn",
+            hashed_password=hash_password("Secret12Pass!"),
+            role="nurse",
+            clinic_id=clinic.id,
+        )
+        db_session.add(staff)
+        db_session.commit()
+    captured = {}
+    monkeypatch.setattr(clinical_router, "send_reset_email", lambda email, raw: captured.update(email=email, raw=raw) or True)
+    response = client.post(
+        f"/clinical/staff/{staff.id}/password-reset-link",
+        params={"clinic_id": clinic.id},
+        headers=_auth(admin),
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["delivery_status"] == "sent"
+    assert "raw" not in response.text and "token" not in response.text
+    assert len(captured["raw"]) >= 32

@@ -66,6 +66,11 @@ from schemas.clinical import (
     StaffResponse,
     StaffPasswordReset,
     StaffRoleUpdate,
+    StaffInvitationCreate,
+    StaffInvitationResponse,
+    ClinicShiftOpenRequest,
+    ClinicShiftCloseRequest,
+    ClinicShiftResponse,
 )
 from schemas.pharmacy_inventory import (
     PharmacyInventoryAdjust,
@@ -81,13 +86,29 @@ from services.clinical_workflow_service import ClinicalWorkflowService
 from services.lab_clinical_service import LabClinicalService
 from services.medical_history_service import MedicalHistoryService
 from schemas import medical_history as mh_schemas
-from services.cis_audit import log_cis_denied
+from services.cis_audit import log_cis, log_cis_denied
 from services.backup_validation_service import default_backup_dir, validate_backup_directory
-from services.user_provisioning import EmailAlreadyRegisteredError, create_staff_user
+from services.user_provisioning import EmailAlreadyRegisteredError, UserProvisioningError, create_staff_user
 from services.clinic_onboarding_service import readiness, update_onboarding
+from services.staff_activation_service import ActivationError, invite_staff, resend_invitation
+from services.clinic_shift_service import ShiftConflict, close_shift, current_shift, open_shift, serialize_shift
+from services.password_reset_service import create_reset_token, send_reset_email
 from models.user import User
 
 router = APIRouter(prefix="/clinical", tags=["Clinical CIS"])
+
+
+def _staff_response(db: Session, user: User) -> StaffResponse:
+    latest = db.query(models.StaffActivationToken).filter(
+        models.StaffActivationToken.user_id == user.id,
+    ).order_by(models.StaffActivationToken.created_at.desc()).first()
+    return StaffResponse(
+        id=user.id, email=user.email, role=user.role, clinic_id=user.clinic_id,
+        is_active=user.is_active, first_name=user.first_name, last_name=user.last_name,
+        last_login_at=user.last_login_at, must_change_password=user.must_change_password,
+        invitation_status=latest.delivery_status if latest and not user.is_active else None,
+        invitation_expires_at=latest.expires_at if latest and not user.is_active else None,
+    )
 
 
 def _require_role(
@@ -283,8 +304,62 @@ def provision_staff(
         )
     except EmailAlreadyRegisteredError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except UserProvisioningError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     user = provisioned.user
     return StaffResponse.model_validate(user)
+
+
+@router.post("/staff/invitations", response_model=StaffInvitationResponse, status_code=status.HTTP_201_CREATED)
+def create_staff_invitation(
+    body: StaffInvitationCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    clinic_id = body.clinic_id
+    if current_user.role in ("clinic_admin", "admin"):
+        own_clinic = user_clinic_id(current_user, db)
+        if own_clinic != clinic_id:
+            raise HTTPException(status_code=403, detail="Clinic administrators can only invite staff to their own clinic")
+        if body.role in ("clinic_admin", "admin", "platform_admin", "platform_owner"):
+            raise HTTPException(status_code=403, detail="Clinic administrators cannot assign privileged roles")
+    assert_clinic_access(current_user, clinic_id)
+    if not db.query(models.Clinic).filter(models.Clinic.id == clinic_id, models.Clinic.is_active.is_(True)).first():
+        raise HTTPException(status_code=404, detail="Clinic not found")
+    try:
+        user, token, _sent = invite_staff(
+            db, actor_id=current_user.id, clinic_id=clinic_id, email=body.email,
+            role=body.role, first_name=body.first_name, last_name=body.last_name,
+        )
+    except EmailAlreadyRegisteredError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except UserProvisioningError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    log_cis(db, actor=current_user, clinic_id=clinic_id, action="invite", resource_type="staff", resource_id=user.id, client_ip=client_ip(request))
+    return StaffInvitationResponse(staff=_staff_response(db, user), delivery_status=token.delivery_status, expires_at=token.expires_at)
+
+
+@router.post("/staff/{user_id}/invitation/resend", response_model=StaffInvitationResponse)
+def resend_staff_invitation(
+    user_id: int,
+    request: Request,
+    clinic_id: int = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    assert_clinic_access(current_user, clinic_id)
+    user = db.query(models.User).filter(models.User.id == user_id, models.User.clinic_id == clinic_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    try:
+        token, _sent = resend_invitation(db, actor_id=current_user.id, user=user)
+    except ActivationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    log_cis(db, actor=current_user, clinic_id=clinic_id, action="resend", resource_type="staff_invitation", resource_id=user.id, client_ip=client_ip(request))
+    return StaffInvitationResponse(staff=_staff_response(db, user), delivery_status=token.delivery_status, expires_at=token.expires_at)
 
 
 @router.get("/staff", response_model=List[StaffResponse])
@@ -315,7 +390,7 @@ def list_staff(
     )
     rows = q.filter(models.User.role.in_(staff_roles)).order_by(models.User.role, models.User.email).all()
     return [
-        StaffResponse.model_validate(u)
+        _staff_response(db, u)
         for u in rows
     ]
 
@@ -376,6 +451,29 @@ def reset_staff_password(
     return {"id": user.id, "email": user.email, "reset": True, "must_change_password": True}
 
 
+@router.post("/staff/{user_id}/password-reset-link")
+def send_staff_password_reset_link(
+    user_id: int,
+    request: Request,
+    clinic_id: int = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    assert_clinic_access(current_user, clinic_id)
+    user = db.query(models.User).filter(
+        models.User.id == user_id,
+        models.User.clinic_id == clinic_id,
+        models.User.is_active.is_(True),
+    ).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Active staff member not found")
+    raw = create_reset_token(db, email=user.email)
+    delivered = bool(raw and send_reset_email(user.email, raw))
+    log_cis(db, actor=current_user, clinic_id=clinic_id, action="reset_link", resource_type="staff", resource_id=user.id, client_ip=client_ip(request))
+    return {"id": user.id, "email": user.email, "delivery_status": "sent" if delivered else "failed"}
+
+
 @router.patch("/staff/{user_id}/role", response_model=StaffResponse)
 def update_staff_role(
     user_id: int,
@@ -425,6 +523,68 @@ def operations_summary(
     assert_role(current_user, CLINIC_OPS_ROLES)
     clinic = resolve_clinic_for_user(db, current_user)
     return ClinicOperationsSummary(**clinic_operations_summary(db, clinic_id=clinic.id))
+
+
+@router.get("/admin/shifts/current")
+def get_current_operational_shift(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    clinic = resolve_clinic_for_user(db, current_user)
+    return {"shift": serialize_shift(current_shift(db, clinic.id))}
+
+
+@router.get("/admin/shifts", response_model=List[ClinicShiftResponse])
+def list_operational_shifts(
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    clinic = resolve_clinic_for_user(db, current_user)
+    rows = db.query(models.ClinicOperationalShift).filter(
+        models.ClinicOperationalShift.clinic_id == clinic.id,
+    ).order_by(models.ClinicOperationalShift.opened_at.desc()).limit(limit).all()
+    return [serialize_shift(row) for row in rows]
+
+
+@router.post("/admin/shifts/open", response_model=ClinicShiftResponse, status_code=status.HTTP_201_CREATED)
+def open_operational_shift(
+    body: ClinicShiftOpenRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    clinic = resolve_clinic_for_user(db, current_user)
+    try:
+        row = open_shift(db, clinic_id=clinic.id, actor_id=current_user.id, **body.model_dump())
+    except ShiftConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    log_cis(db, actor=current_user, clinic_id=clinic.id, action="open", resource_type="operational_shift", resource_id=row.id, client_ip=client_ip(request))
+    return serialize_shift(row)
+
+
+@router.post("/admin/shifts/{shift_id}/close", response_model=ClinicShiftResponse)
+def close_operational_shift(
+    shift_id: int,
+    body: ClinicShiftCloseRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    clinic = resolve_clinic_for_user(db, current_user)
+    active = current_shift(db, clinic.id)
+    if not active or active.id != shift_id:
+        raise HTTPException(status_code=404, detail="Open shift not found")
+    try:
+        row = close_shift(db, clinic_id=clinic.id, actor_id=current_user.id, **body.model_dump())
+    except ShiftConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    log_cis(db, actor=current_user, clinic_id=clinic.id, action="close", resource_type="operational_shift", resource_id=row.id, client_ip=client_ip(request))
+    return serialize_shift(row)
 
 
 # --- Reception ---

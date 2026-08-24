@@ -27,6 +27,8 @@ from schemas.user import (
     MfaVerifyLoginRequest,
     MfaDisableRequest,
     UserProfileUpdate,
+    StaffActivationInspectRequest,
+    StaffActivationCompleteRequest,
 )
 from security import (
     get_current_user,
@@ -53,6 +55,7 @@ from services.password_reset_service import (
 )
 from services.email_verification_service import verify_email_with_token, resend_verification
 from services.email_service import email_config_status
+from services.staff_activation_service import ActivationError, complete_activation, inspect_activation
 from services.auth_session_service import (
     issue_refresh_token,
     rotate_refresh_token,
@@ -80,6 +83,25 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
+
+
+@router.post("/staff-activation/inspect")
+@limiter.limit("20/minute")
+def inspect_staff_activation(request: Request, body: StaffActivationInspectRequest, db: Session = Depends(get_db)):
+    try:
+        return inspect_activation(db, body.token)
+    except ActivationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/staff-activation/complete")
+@limiter.limit("10/minute")
+def activate_staff_account(request: Request, body: StaffActivationCompleteRequest, db: Session = Depends(get_db)):
+    try:
+        user = complete_activation(db, token=body.token, password=body.password)
+    except (ActivationError, ValueError) as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return {"activated": True, "email": user.email}
 
 
 def _enforce_mfa_on_login(user: User, mfa_code: str | None) -> None:

@@ -575,7 +575,7 @@ observed clinic exercise all pass.
 
 ### P1 — Simplified clinic onboarding and daily administration
 
-**Status: IN PROGRESS — foundation production-verified; field validation open**
+**Status: IN PROGRESS — secure onboarding and shift routines code-complete; CI/production/field validation open**
 
 - [x] Persist a resumable, clinic-scoped setup state instead of relying on staff
   memory or a one-time wizard.
@@ -586,11 +586,11 @@ observed clinic exercise all pass.
   readiness route and a daily administrative handoff list.
 - [x] Capture staff first and last names during account creation and use readable
   French role labels in the personnel view.
-- [ ] Add shift-oriented daily checks, role-specific opening/closing routines,
+- [x] Add shift-oriented daily checks, role-specific opening/closing routines,
   and direct remediation for every warning.
 - [x] Replace the legacy prompt-based password reset with an accessible,
   confirmation-oriented dialog that explains the forced first-login change.
-- [ ] Add a delivery-safe temporary-credential workflow so administrators do not
+- [x] Add a delivery-safe temporary-credential workflow so administrators do not
   need to communicate credentials through an insecure channel.
 - [ ] Complete browser coverage using a deployed clinic-admin account, including
   narrow screens, keyboard navigation, cross-clinic denial, and resume-after-login.
@@ -603,6 +603,21 @@ run **32753005661** passed all six jobs. Gated deployment run **32753287391**
 passed Railway, Vercel, and post-deploy smoke; Railway `/health/build` reports
 commit `839864e`, and the production Vercel asset fingerprint matches the new
 administration bundle. Clinic validation is not yet claimed.
+
+Code-complete evidence (2026-08-24, current uncommitted tranche): clinic staff
+onboarding now creates an inactive account and delivers a hashed, expiring,
+single-use activation link; neither API nor administration UI reveals or sends a
+temporary password. Existing-account resets use the same delivery-safe principle,
+with expiring reset links and no raw-link logging. Resending revokes the prior
+link, failed delivery remains visible and retryable, and activation atomically
+enables both the user and clinic membership. Administration now includes an online-authoritative opening/closing
+handoff register with printer/offline checks, server-derived clinical and billing
+snapshots, one-open-shift enforcement, and explicit acknowledgement plus notes for
+unresolved work. It is intentionally separate from future cash-drawer
+reconciliation. Local verification is green: backend **456 passed / 1 skipped**,
+frontend unit **50/50**, offline **45/45**, lint, production build, all six
+performance budgets, and the focused **2/2** narrow-screen browser checks.
+Remote CI, deployment, and field validation are not yet claimed.
 
 **Exit criterion:** a new clinic administrator can configure the establishment,
 create the working team, verify billing/printing/offline operation, complete a
@@ -720,6 +735,7 @@ and a clear escalation contact.
 | 2026-08-24 | Competitive feature review selected complete ward/room/bed management as the preferred next product initiative and recorded clinic-scoped expense/cash management as a future addition. The accommodation roadmap explicitly separates physical beds, clinical suitability, and tariffs; the finance roadmap preserves existing billing as the patient-revenue source. | Product direction is documented only; neither capability is represented as implemented, tested, or scheduled. |
 | 2026-08-24 | Clinic administration gained a persistent readiness model, guided setup route, daily handoff list, real-name staff provisioning, prompt-free password reset, and derived checks for staffing, payments, bed capacity, printing, offline operation, and a test patient journey. Full backend suite passes 449/449 with one skip; frontend unit tests pass 50/50; accessibility/responsive Chromium checks pass 10/10 with lint, production build, and all six performance budgets green. | Simplified onboarding foundation is code-complete, locally regression-verified, and browser-verified. Remote CI/deployment, secure credential delivery, and clinic-admin field validation remain open. |
 | 2026-08-24 | [CI run 32753005661](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32753005661) passed all six jobs for `839864e`; [deployment run 32753287391](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32753287391) passed Railway/Vercel readiness and production smoke. Railway identifies `839864e`, and Vercel serves the new administration bundle. | The onboarding foundation is CI- and production-verified. Secure credential delivery, shift routines, broader browser scenarios, and observed clinic-admin validation remain open. |
+| 2026-08-24 | Secure one-time staff activation and clinic opening/closing handoff routines were implemented with migration, tenant-scoped APIs, audit events, responsive administration UI, and focused security/shift regression coverage. Local backend 456/456 (plus one skip), frontend 50/50, offline 45/45, focused browser 2/2, lint, build, and six performance budgets pass. | Code-complete and locally verified. CI, production, and clinic-field validation remain open. |
 
 ## Related evidence
 

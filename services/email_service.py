@@ -176,6 +176,32 @@ def send_password_reset_email(email: str, link: str) -> bool:
     return send_email(to=email, subject=subject, text_body=text, html_body=html)
 
 
+def send_staff_activation_email(
+    email: str,
+    link: str,
+    *,
+    clinic_name: str,
+    first_name: str | None = None,
+) -> bool:
+    """Deliver an activation link without ever transmitting a password."""
+    greeting = f"Bonjour {first_name.strip()}," if first_name and first_name.strip() else "Bonjour,"
+    subject = f"Activez votre compte — {clinic_name}"
+    text = (
+        f"{greeting}\n\n"
+        f"Votre établissement {clinic_name} vous invite sur Plateforme Santé Guinée.\n"
+        "Créez vous-même votre mot de passe avec ce lien à usage unique "
+        f"(valide {48} heures) : {link}\n\n"
+        "Si vous n'attendiez pas cette invitation, ne l'utilisez pas et contactez votre clinique.\n"
+    )
+    html = (
+        f"<p>{greeting}</p><p><strong>{clinic_name}</strong> vous invite sur Plateforme Santé Guinée.</p>"
+        f'<p><a href="{link}">Activer mon compte et choisir mon mot de passe</a></p>'
+        "<p>Ce lien personnel est valable 48 heures et ne fonctionne qu'une fois. "
+        "Si vous n'attendiez pas cette invitation, contactez votre clinique.</p>"
+    )
+    return send_email(to=email, subject=subject, text_body=text, html_body=html)
+
+
 def send_email_verification_email(email: str, link: str) -> bool:
     subject = "Confirmez votre adresse email — Plateforme Santé Guinée"
     text = (

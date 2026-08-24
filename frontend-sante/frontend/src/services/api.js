@@ -65,6 +65,9 @@ export const authAPI = {
   verifyEmail: (token) => httpClient.post('/auth/verify-email', { token }),
   resendVerification: (email) =>
     httpClient.post('/auth/resend-verification', { email: String(email || '').trim().toLowerCase() }),
+  inspectStaffActivation: (token) => httpClient.post('/auth/staff-activation/inspect', { token }),
+  completeStaffActivation: (token, password) =>
+    httpClient.post('/auth/staff-activation/complete', { token, password }),
 };
 
 export const patientsAPI = {

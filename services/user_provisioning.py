@@ -138,6 +138,8 @@ def _persist_user(
     password: str,
     role: str,
     channel: str,
+    active: bool = True,
+    auto_verify_override: bool | None = None,
 ) -> User:
     """
     Insert a user row after policy checks. Caller must handle IntegrityError → 409.
@@ -173,6 +175,8 @@ def _persist_user(
         "platform_owner_setup",
         "clinic_node_bootstrap",
     }
+    if auto_verify_override is not None:
+        auto_verify = auto_verify_override
 
     with authorized_channel(channel):
         user = User(
@@ -180,6 +184,7 @@ def _persist_user(
             hashed_password=hash_password(password),
             role=normalized_role,
             email_verified_at=datetime.utcnow() if auto_verify else None,
+            is_active=active,
         )
         db.add(user)
         db.commit()
@@ -311,6 +316,8 @@ def create_staff_user(
     actor_user_id: int | None = None,
     first_name: str | None = None,
     last_name: str | None = None,
+    active: bool = True,
+    email_verified: bool = True,
 ) -> ProvisionedUser:
     """Create clinic staff (receptionist, cashier, lab_technician, pharmacist, doctor, admin)."""
     from core.roles import CLINICAL_STAFF_ROLES
@@ -335,6 +342,8 @@ def create_staff_user(
             password=password,
             role=normalized,
             channel=channel,
+            active=active,
+            auto_verify_override=email_verified,
         )
     except IntegrityError as exc:
         db.rollback()
@@ -350,9 +359,9 @@ def create_staff_user(
     user.clinic_id = clinic_id
     user.first_name = (first_name or "").strip() or None
     user.last_name = (last_name or "").strip() or None
-    user.must_change_password = True
+    user.must_change_password = active
     db.add(
-        models.ClinicStaff(clinic_id=clinic_id, user_id=user.id, is_active=True)
+        models.ClinicStaff(clinic_id=clinic_id, user_id=user.id, is_active=active)
     )
     if normalized == "doctor":
         doc = _ensure_doctor_profile(db, user)

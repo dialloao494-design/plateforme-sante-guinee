@@ -211,6 +211,23 @@ class VerifyEmailRequest(BaseModel):
     token: str
 
 
+class StaffActivationInspectRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(..., min_length=20)
+
+
+class StaffActivationCompleteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(..., min_length=20)
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def validate_activation_password(cls, value: str) -> str:
+        validate_password(value)
+        return value
+
+
 class ResendVerificationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

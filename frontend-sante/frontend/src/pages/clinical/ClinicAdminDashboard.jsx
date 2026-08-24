@@ -11,6 +11,7 @@ import { formatGNF } from '../../utils/appointmentPresentation.js';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import ClinicalFeedback from '../../components/clinical/ClinicalFeedback.jsx';
 import AdminReadinessPanel from './admin/AdminReadinessPanel.jsx';
+import AdminShiftHandoff from './admin/AdminShiftHandoff.jsx';
 import { ROLE_LABELS, buildAttentionItems } from './admin/adminDomain.js';
 import './clinical.css';
 import './admin.css';
@@ -43,12 +44,10 @@ export default function ClinicAdminDashboard() {
     first_name: '',
     last_name: '',
     email: '',
-    password: '',
     role: 'receptionist',
   });
+  const [invitationBusyId, setInvitationBusyId] = useState(null);
   const [resetBusyId, setResetBusyId] = useState(null);
-  const [resetTarget, setResetTarget] = useState(null);
-  const [temporaryPassword, setTemporaryPassword] = useState('');
 
   const loadClinicStaff = async (id) => {
     if (!id) return;
@@ -120,23 +119,16 @@ export default function ClinicAdminDashboard() {
     }
   };
 
-  const resetStaffPassword = async (event) => {
-    event.preventDefault();
-    const staffUser = resetTarget;
+  const resetStaffPassword = async (staffUser) => {
     if (!clinicId || !staffUser?.id) return;
     setError('');
     setMessage('');
     setResetBusyId(staffUser.id);
     try {
-      await clinicalApi.resetStaffPassword(staffUser.id, {
-        clinic_id: Number(clinicId),
-        new_password: temporaryPassword,
-      });
-      setMessage(
-        `Mot de passe réinitialisé pour ${staffUser.email}. L’utilisateur devra le changer à la prochaine connexion.`,
-      );
-      setResetTarget(null);
-      setTemporaryPassword('');
+      const { data } = await clinicalApi.sendStaffPasswordReset(staffUser.id, Number(clinicId));
+      setMessage(data.delivery_status === 'sent'
+        ? `Lien de réinitialisation envoyé à ${staffUser.email}. Les liens précédents ont été annulés.`
+        : `Le lien a été préparé mais l’email n’a pas pu être livré à ${staffUser.email}.`);
     } catch (err) {
       setError(formatApiError(err) || 'Réinitialisation impossible.');
     } finally {
@@ -151,16 +143,15 @@ export default function ClinicAdminDashboard() {
       setError('Aucune clinique assignée à votre compte.');
       return;
     }
-    const chosenPassword = staffForm.password;
     try {
-      const { data } = await clinicalApi.createStaff({
+      const { data } = await clinicalApi.inviteStaff({
         ...staffForm,
         clinic_id: Number(clinicId),
       });
-      setMessage(
-        `Compte ${data.role} créé : ${data.email} — mot de passe : ${chosenPassword}`
-      );
-      setStaffForm((prev) => ({ ...prev, first_name: '', last_name: '', email: '', password: '' }));
+      setMessage(data.delivery_status === 'sent'
+        ? `Invitation envoyée à ${data.staff.email}. Le compte restera inactif jusqu’au choix du mot de passe.`
+        : `Compte préparé pour ${data.staff.email}, mais l’email n’a pas pu être livré. Utilisez « Renvoyer » après vérification du service email.`);
+      setStaffForm((prev) => ({ ...prev, first_name: '', last_name: '', email: '' }));
       loadCompliance();
       loadClinicStaff(clinicId);
       loadOnboarding();
@@ -168,6 +159,18 @@ export default function ClinicAdminDashboard() {
       setError(formatApiError(err, 'Création compte impossible'));
     }
   };
+
+  const resendInvitation = async (staffUser) => {
+    setInvitationBusyId(staffUser.id); setError(''); setMessage('');
+    try {
+      const { data } = await clinicalApi.resendStaffInvitation(staffUser.id, Number(clinicId));
+      setMessage(data.delivery_status === 'sent' ? `Nouvelle invitation envoyée à ${staffUser.email}. L’ancien lien a été annulé.` : `L’invitation n’a pas pu être livrée à ${staffUser.email}.`);
+      await loadClinicStaff(clinicId);
+    } catch (err) { setError(formatApiError(err, 'Renvoi impossible.')); }
+    finally { setInvitationBusyId(null); }
+  };
+
+  const shiftFeedback = (kind, text) => { setError(kind === 'error' ? text : ''); setMessage(kind === 'message' ? text : ''); };
 
   const stats = useMemo(() => {
     if (!activity) return [];
@@ -200,6 +203,8 @@ export default function ClinicAdminDashboard() {
       <ClinicalFeedback error={error} message={message} />
 
       <AdminReadinessPanel onboarding={onboarding} busy={setupBusy} onSave={saveOnboarding} />
+
+      <AdminShiftHandoff onFeedback={shiftFeedback} />
 
       <section className="admin-handoff" aria-labelledby="admin-attention-title">
         <div className="admin-handoff__heading">
@@ -294,7 +299,7 @@ export default function ClinicAdminDashboard() {
                 <th>Nom</th>
                 <th>Email</th>
                 <th>Rôle</th>
-                <th>Actif</th>
+                <th>Accès</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -304,14 +309,14 @@ export default function ClinicAdminDashboard() {
                   <td>{[u.first_name, u.last_name].filter(Boolean).join(' ') || 'Nom à compléter'}</td>
                   <td>{u.email}</td>
                   <td><span className="clinical-badge">{ROLE_LABELS[u.role] || u.role}</span></td>
-                  <td>{u.is_active ? 'Oui' : 'Non'}</td>
+                  <td>{u.is_active ? 'Actif' : u.invitation_status === 'sent' ? 'Invitation envoyée' : 'Livraison à vérifier'}</td>
                   <td>
-                    {u.id !== user?.id && u.is_active ? (
+                    {!u.is_active ? <button type="button" className="clinical-btn clinical-btn--secondary" disabled={invitationBusyId === u.id} onClick={() => resendInvitation(u)}>{invitationBusyId === u.id ? 'Envoi…' : 'Renvoyer'}</button> : u.id !== user?.id ? (
                       <button
                         type="button"
                         className="clinical-btn clinical-btn--secondary"
                         disabled={resetBusyId === u.id}
-                        onClick={() => { setResetTarget(u); setTemporaryPassword(''); }}
+                        onClick={() => resetStaffPassword(u)}
                       >
                         {resetBusyId === u.id ? '…' : 'Réinit. MDP'}
                       </button>
@@ -326,25 +331,6 @@ export default function ClinicAdminDashboard() {
           </div>
         )}
       </section>
-
-      {resetTarget && (
-        <div className="admin-dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setResetTarget(null); }}>
-          <section className="admin-dialog" role="dialog" aria-modal="true" aria-labelledby="reset-password-title">
-            <p className="clinical-eyebrow">Accès du personnel</p>
-            <h2 id="reset-password-title">Réinitialiser le mot de passe</h2>
-            <p>Compte : <strong>{[resetTarget.first_name, resetTarget.last_name].filter(Boolean).join(' ') || resetTarget.email}</strong></p>
-            <form onSubmit={resetStaffPassword}>
-              <label htmlFor="reset-temporary-password">Nouveau mot de passe temporaire</label>
-              <input id="reset-temporary-password" type="password" minLength="8" autoComplete="new-password" value={temporaryPassword} onChange={(event) => setTemporaryPassword(event.target.value)} autoFocus required />
-              <p className="clinical-muted">L’utilisateur devra choisir son propre mot de passe à la prochaine connexion.</p>
-              <div className="admin-dialog__actions">
-                <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => setResetTarget(null)}>Annuler</button>
-                <button type="submit" className="clinical-btn" disabled={resetBusyId === resetTarget.id}>{resetBusyId === resetTarget.id ? 'Réinitialisation…' : 'Réinitialiser'}</button>
-              </div>
-            </form>
-          </section>
-        </div>
-      )}
 
       <section className="clinical-card admin-section admin-create-staff" id="create-user">
         <h2>Créer un compte personnel</h2>
@@ -385,18 +371,6 @@ export default function ClinicAdminDashboard() {
             />
           </div>
           <div className="clinical-field">
-            <label htmlFor="staff-password">Mot de passe temporaire</label>
-            <input
-              id="staff-password"
-              name="new-password"
-              type="password"
-              autoComplete="new-password"
-              value={staffForm.password}
-              onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
-              required
-            />
-          </div>
-          <div className="clinical-field">
             <label htmlFor="staff-role">Rôle clinique</label>
             <select
               id="staff-role"
@@ -410,7 +384,8 @@ export default function ClinicAdminDashboard() {
               ))}
             </select>
           </div>
-          <button type="submit" className="clinical-btn admin-create-staff__submit">Créer le compte</button>
+          <div className="admin-create-staff__delivery"><strong>Aucun mot de passe à transmettre</strong><span>Le personnel recevra un lien personnel valable 48 heures.</span></div>
+          <button type="submit" className="clinical-btn admin-create-staff__submit">Envoyer l’invitation</button>
         </form>
       </section>
     </div>
