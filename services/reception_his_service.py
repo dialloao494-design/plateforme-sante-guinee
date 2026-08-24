@@ -44,6 +44,49 @@ def _normalize_phone(phone: str | None) -> str:
     return "".join(c for c in phone if c.isdigit())[-9:]
 
 
+_PEDIATRIC_HOSPITALIZATION_SPECIALTIES = {"pediatrics", "pediatric_surgery"}
+_HOSPITALIZATION_CATALOG_BY_ACCOMMODATION = {
+    "standard_bed": "hospitalization_standard",
+    "private_cabin": "hospitalization_private_cabin",
+    "pediatric_cradle": "hospitalization_pediatric_cradle",
+    "pediatric_bed": "hospitalization_pediatric_bed",
+}
+
+
+def _hospitalization_selection(
+    specialty_code: str | None,
+    accommodation: str | None,
+    catalog_code: str | None,
+) -> tuple[dict, dict]:
+    """Validate the clinical accommodation and return authoritative catalog data."""
+    from data.aasma_billing_catalog import SPECIALIZED_SPECIALTIES, resolve_billing_catalog_item
+
+    specialty = next(
+        (item for item in SPECIALIZED_SPECIALTIES if item["code"] == specialty_code),
+        None,
+    )
+    if not specialty:
+        raise HTTPException(status_code=400, detail="Spécialité d'hospitalisation invalide")
+
+    pediatric = specialty_code in _PEDIATRIC_HOSPITALIZATION_SPECIALTIES
+    allowed = {"pediatric_cradle", "pediatric_bed"} if pediatric else {"standard_bed", "private_cabin"}
+    if accommodation not in allowed:
+        detail = (
+            "Choisissez un berceau nouveau-né ou un lit pédiatrique standard"
+            if pediatric
+            else "Choisissez un lit standard ou une cabine privée"
+        )
+        raise HTTPException(status_code=400, detail=detail)
+
+    expected_code = _HOSPITALIZATION_CATALOG_BY_ACCOMMODATION[accommodation]
+    if catalog_code != expected_code:
+        raise HTTPException(status_code=400, detail="Le type de lit ne correspond pas au tarif sélectionné")
+    catalog = resolve_billing_catalog_item(expected_code)
+    if not catalog:
+        raise HTTPException(status_code=400, detail="Tarif d'hospitalisation introuvable")
+    return specialty, catalog
+
+
 def _registration_dedupe_key(clinic_id: int, payload: PatientRegistrationCreate) -> str:
     identity = "|".join(
         (
@@ -1581,10 +1624,7 @@ class ReceptionHisService:
         if payload.service_category == "hospitalization":
             if not payload.duration_value or payload.duration_unit not in ("days", "months"):
                 raise HTTPException(status_code=400, detail="Durée d'hospitalisation requise")
-            if not payload.specialty_code or payload.specialty_code == "pediatrics":
-                raise HTTPException(status_code=400, detail="Sélectionnez une spécialité non pédiatrique")
-            if payload.accommodation_type not in ("standard_bed", "private_cabin"):
-                raise HTTPException(status_code=400, detail="Choisissez un lit standard ou une cabine privée")
+            _hospitalization_selection(payload.specialty_code, payload.accommodation_type, catalog_code)
 
         if catalog_code:
             cat = resolve_billing_catalog_item(catalog_code)
@@ -1630,10 +1670,9 @@ class ReceptionHisService:
         quantity = payload.quantity
         if payload.service_category == "hospitalization":
             quantity = int(payload.duration_value) * (30 if payload.duration_unit == "months" else 1)
-            from data.aasma_billing_catalog import SPECIALIZED_SPECIALTIES
-            specialty = next((s for s in SPECIALIZED_SPECIALTIES if s["code"] == payload.specialty_code), None)
-            if not specialty or specialty["code"] == "pediatrics":
-                raise HTTPException(status_code=400, detail="Spécialité d'hospitalisation invalide")
+            specialty, _catalog = _hospitalization_selection(
+                payload.specialty_code, payload.accommodation_type, catalog_code
+            )
             duration_label = "mois" if payload.duration_unit == "months" else "jour(s)"
             service_name = f"{service_name} — {specialty['label']} · {payload.duration_value} {duration_label}"
 
@@ -1780,18 +1819,18 @@ class ReceptionHisService:
             duration_unit = data.get("duration_unit", row.duration_unit)
             specialty_code = data.get("specialty_code", row.specialty_code)
             accommodation = data.get("accommodation_type", row.accommodation_type)
+            resulting_catalog_code = data.get("catalog_code", row.catalog_code)
             if not duration_value or duration_unit not in ("days", "months"):
                 raise HTTPException(status_code=400, detail="Durée d'hospitalisation requise")
-            if specialty_code == "pediatrics" or not specialty_code:
-                raise HTTPException(status_code=400, detail="Spécialité non pédiatrique requise")
-            if accommodation not in ("standard_bed", "private_cabin"):
-                raise HTTPException(status_code=400, detail="Type d'hébergement requis")
             data["quantity"] = int(duration_value) * (30 if duration_unit == "months" else 1)
-            from data.aasma_billing_catalog import SPECIALIZED_SPECIALTIES
-            specialty = next((s for s in SPECIALIZED_SPECIALTIES if s["code"] == specialty_code), None)
-            if not specialty:
-                raise HTTPException(status_code=400, detail="Spécialité d'hospitalisation invalide")
-            base_label = "Hospitalisation — cabine privée" if accommodation == "private_cabin" else "Hospitalisation — lit standard"
+            specialty, catalog = _hospitalization_selection(
+                specialty_code, accommodation, resulting_catalog_code
+            )
+            data["catalog_code"] = catalog["code"]
+            data["charge_type"] = catalog["charge_type"]
+            if not override_reason:
+                data["unit_price_gnf"] = int(catalog["price_gnf"])
+            base_label = catalog["label"]
             duration_label = "mois" if duration_unit == "months" else "jour(s)"
             data["service_name"] = f"{base_label} — {specialty['label']} · {duration_value} {duration_label}"
 

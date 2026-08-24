@@ -427,7 +427,7 @@ export function useReceptionDashboard() {
       duration_value: Number(row.duration_value || 1),
       duration_unit: row.duration_unit || 'days',
       specialty_code: row.specialty_code || '',
-      accommodation_type: row.accommodation_type || 'standard_bed',
+      accommodation_type: row.accommodation_type || '',
       status: row.status,
     });
     setServiceRequestExamSearchQ(row.service_name || '');

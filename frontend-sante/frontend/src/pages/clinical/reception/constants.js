@@ -222,7 +222,7 @@ export const EMPTY_SERVICE_REQUEST = {
   duration_value: 1,
   duration_unit: 'days',
   specialty_code: '',
-  accommodation_type: 'standard_bed',
+  accommodation_type: '',
   status: 'pending',
 };
 

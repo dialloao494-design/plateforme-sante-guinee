@@ -225,7 +225,9 @@ class ServiceRequestCreate(BaseModel):
     duration_value: Optional[int] = Field(None, ge=1, le=120)
     duration_unit: Optional[Literal["days", "months"]] = None
     specialty_code: Optional[str] = Field(None, max_length=64)
-    accommodation_type: Optional[Literal["standard_bed", "private_cabin"]] = None
+    accommodation_type: Optional[Literal[
+        "standard_bed", "private_cabin", "pediatric_cradle", "pediatric_bed"
+    ]] = None
     # Required when client wants a non-catalog negotiated unit price.
     price_override_reason: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
@@ -243,7 +245,9 @@ class ServiceRequestUpdate(BaseModel):
     duration_value: Optional[int] = Field(None, ge=1, le=120)
     duration_unit: Optional[Literal["days", "months"]] = None
     specialty_code: Optional[str] = Field(None, max_length=64)
-    accommodation_type: Optional[Literal["standard_bed", "private_cabin"]] = None
+    accommodation_type: Optional[Literal[
+        "standard_bed", "private_cabin", "pediatric_cradle", "pediatric_bed"
+    ]] = None
     # Required when changing to a non-catalog negotiated unit price.
     price_override_reason: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None

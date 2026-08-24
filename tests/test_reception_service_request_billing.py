@@ -159,12 +159,54 @@ def test_hospitalization_request_uses_confirmed_rate_and_duration(client, db_ses
     assert invoice.json()["items"][0]["quantity"] == 2
 
 
-def test_private_cabin_rate_and_pediatric_hospitalization_exclusion(client, db_session):
+def test_hospitalization_catalog_includes_adult_and_pediatric_bed_rates(client, db_session):
     _clinic, admin, patient = _seed_clinic_admin(db_session)
     headers = _auth(admin)
     catalog = client.get("/clinical/reception/his/billing-catalog", headers=headers).json()
     prices = {row["code"]: row["price_gnf"] for row in catalog["hospitalization_services"]}
-    assert prices == {"hospitalization_standard": 200_000, "hospitalization_private_cabin": 500_000}
+    assert prices == {
+        "hospitalization_standard": 200_000,
+        "hospitalization_private_cabin": 500_000,
+        "hospitalization_pediatric_cradle": 80_000,
+        "hospitalization_pediatric_bed": 120_000,
+    }
+
+
+def test_pediatric_hospitalization_uses_selected_bed_rate(client, db_session):
+    _clinic, admin, patient = _seed_clinic_admin(db_session)
+    headers = _auth(admin)
+    cradle = client.post(
+        "/clinical/reception/his/service-requests",
+        json={
+            "patient_id": patient.id, "service_category": "hospitalization",
+            "service_name": "Hospitalisation pédiatrie", "catalog_code": "hospitalization_pediatric_cradle",
+            "duration_value": 2, "duration_unit": "days", "specialty_code": "pediatrics",
+            "accommodation_type": "pediatric_cradle",
+        },
+        headers=headers,
+    )
+    assert cradle.status_code == 201, cradle.text
+    assert cradle.json()["unit_price_gnf"] == 80_000
+    assert cradle.json()["quantity"] == 2
+    assert "berceau nouveau-né" in cradle.json()["service_name"]
+
+    regular_bed = client.post(
+        "/clinical/reception/his/service-requests",
+        json={
+            "patient_id": patient.id, "service_category": "hospitalization",
+            "service_name": "Hospitalisation pédiatrie", "catalog_code": "hospitalization_pediatric_bed",
+            "duration_value": 1, "duration_unit": "days", "specialty_code": "pediatrics",
+            "accommodation_type": "pediatric_bed",
+        },
+        headers=headers,
+    )
+    assert regular_bed.status_code == 201, regular_bed.text
+    assert regular_bed.json()["unit_price_gnf"] == 120_000
+
+
+def test_hospitalization_rejects_bed_tariff_mismatch(client, db_session):
+    _clinic, admin, patient = _seed_clinic_admin(db_session)
+    headers = _auth(admin)
     pediatric = client.post(
         "/clinical/reception/his/service-requests",
         json={
@@ -176,6 +218,18 @@ def test_private_cabin_rate_and_pediatric_hospitalization_exclusion(client, db_s
         headers=headers,
     )
     assert pediatric.status_code == 400
+
+    mismatched_tariff = client.post(
+        "/clinical/reception/his/service-requests",
+        json={
+            "patient_id": patient.id, "service_category": "hospitalization",
+            "service_name": "Hospitalisation pédiatrique", "catalog_code": "hospitalization_pediatric_bed",
+            "duration_value": 1, "duration_unit": "days", "specialty_code": "pediatrics",
+            "accommodation_type": "pediatric_cradle",
+        },
+        headers=headers,
+    )
+    assert mismatched_tariff.status_code == 400
 
 
 def test_reception_admission_persists_one_placement(client, db_session):

@@ -49,11 +49,13 @@ CONSULTATION_SERVICES = [
     },
 ]
 
-# Confirmed adult/general hospitalization tariffs. Pediatric hospitalization is
-# deliberately excluded until the clinic clarifies its two conflicting rates.
+# Hospitalization tariffs confirmed by the clinic. Pediatric prices correspond
+# to distinct accommodation types, not competing prices for the same bed.
 HOSPITALIZATION_SERVICES = [
     {"code": "hospitalization_standard", "label": "Hospitalisation — lit standard", "charge_type": "hospitalization", "price_gnf": 200_000},
     {"code": "hospitalization_private_cabin", "label": "Hospitalisation — cabine privée", "charge_type": "hospitalization", "price_gnf": 500_000},
+    {"code": "hospitalization_pediatric_cradle", "label": "Hospitalisation pédiatrique — berceau nouveau-né", "charge_type": "hospitalization", "price_gnf": 80_000},
+    {"code": "hospitalization_pediatric_bed", "label": "Hospitalisation pédiatrique — lit standard", "charge_type": "hospitalization", "price_gnf": 120_000},
 ]
 
 # Clinic tariff sheet (20-07-26):

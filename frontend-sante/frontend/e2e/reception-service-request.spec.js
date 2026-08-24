@@ -56,6 +56,17 @@ test('service-request workspace stays coherent and creates a catalogue-backed re
   await expect(page.getByText(/Demande enregistrée \(DSR-/)).toBeVisible();
   await expect(page.locator('.service-request-item')).toHaveCount(1);
 
+  await page.getByLabel('Catégorie').selectOption('hospitalization');
+  await expect(page.getByTestId('hospitalization-service-plan')).toBeVisible();
+  await page.getByLabel('Spécialité *').selectOption('pediatrics');
+  await expect(page.getByText('Berceau nouveau-né', { exact: true })).toBeVisible();
+  await expect(page.getByText('Lit pédiatrique standard', { exact: true })).toBeVisible();
+  await page.getByText('Berceau nouveau-né', { exact: true }).click();
+  await expect(page.getByTestId('hospitalization-service-plan')).toContainText('80 000 GNF');
+  await page.getByRole('button', { name: 'Créer la demande' }).click();
+  await expect(page.getByText(/Demande enregistrée \(DSR-/)).toBeVisible();
+  await expect(page.locator('.service-request-item')).toHaveCount(2);
+
   consoleGuard.assertClean();
 });
 

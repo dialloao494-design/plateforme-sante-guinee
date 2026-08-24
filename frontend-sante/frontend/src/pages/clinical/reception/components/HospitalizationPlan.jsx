@@ -1,29 +1,52 @@
 import { formatGNF } from '../../../../utils/appointmentPresentation.js';
 
+const PEDIATRIC_SPECIALTIES = new Set(['pediatrics', 'pediatric_surgery']);
+const ACCOMMODATIONS = {
+  hospitalization_standard: { type: 'standard_bed', title: 'Lit standard', guidance: 'Hospitalisation générale' },
+  hospitalization_private_cabin: { type: 'private_cabin', title: 'Cabine privée', guidance: 'Hospitalisation générale' },
+  hospitalization_pediatric_cradle: { type: 'pediatric_cradle', title: 'Berceau nouveau-né', guidance: 'Pour un nouveau-né' },
+  hospitalization_pediatric_bed: { type: 'pediatric_bed', title: 'Lit pédiatrique standard', guidance: 'Pour un enfant après la période néonatale' },
+};
+
 export default function HospitalizationPlan({ form, specialties, options, setForm }) {
-  const availableSpecialties = specialties.filter((item) => item.code !== 'pediatrics');
+  const pediatric = PEDIATRIC_SPECIALTIES.has(form.specialty_code);
+  const availableOptions = form.specialty_code
+    ? options.filter((option) => pediatric
+      ? option.code.startsWith('hospitalization_pediatric_')
+      : ['hospitalization_standard', 'hospitalization_private_cabin'].includes(option.code))
+    : [];
+
   const selectAccommodation = (option) => {
-    const type = option.code === 'hospitalization_private_cabin' ? 'private_cabin' : 'standard_bed';
-    setForm((previous) => ({ ...previous, accommodation_type: type, catalog_code: option.code,
-      charge_type: 'hospitalization', unit_price_gnf: option.price_gnf,
-      service_name: previous.specialty_code ? `${option.label} — ${availableSpecialties.find((item) => item.code === previous.specialty_code)?.label || ''}` : option.label }));
+    const accommodation = ACCOMMODATIONS[option.code];
+    const specialty = specialties.find((item) => item.code === form.specialty_code);
+    if (!accommodation || !specialty) return;
+    setForm((previous) => ({
+      ...previous,
+      accommodation_type: accommodation.type,
+      catalog_code: option.code,
+      charge_type: 'hospitalization',
+      unit_price_gnf: option.price_gnf,
+      service_name: `${option.label} — ${specialty.label}`,
+    }));
   };
+
   return (
     <fieldset className="reception-his-nested-fieldset hospitalization-plan" data-testid="hospitalization-service-plan">
       <legend>Plan de séjour</legend>
-      <p className="clinical-hint">La pédiatrie reste indisponible jusqu’à confirmation de son tarif.</p>
+      <p className="clinical-hint">La spécialité et le type de lit déterminent le tarif journalier.</p>
       <div className="hospitalization-plan__grid">
         <label>Spécialité *
-          <select required value={form.specialty_code} onChange={(event) => {
-            const specialty = availableSpecialties.find((item) => item.code === event.target.value);
-            const code = form.accommodation_type === 'private_cabin' ? 'hospitalization_private_cabin' : 'hospitalization_standard';
-            const selected = options.find((item) => item.code === code);
-            setForm((previous) => ({ ...previous, specialty_code: event.target.value,
-              service_name: specialty && selected ? `${selected.label} — ${specialty.label}` : '',
-              catalog_code: selected?.code || '', charge_type: 'hospitalization', unit_price_gnf: selected?.price_gnf || 0 }));
-          }}>
+          <select required value={form.specialty_code} onChange={(event) => setForm((previous) => ({
+            ...previous,
+            specialty_code: event.target.value,
+            accommodation_type: '',
+            catalog_code: '',
+            service_name: '',
+            unit_price_gnf: 0,
+            charge_type: 'hospitalization',
+          }))}>
             <option value="">Choisir une spécialité…</option>
-            {availableSpecialties.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
+            {specialties.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
           </select>
         </label>
         <label>Durée *
@@ -38,18 +61,26 @@ export default function HospitalizationPlan({ form, specialties, options, setFor
           </select>
         </label>
       </div>
-      <div className="hospitalization-plan__choices" role="radiogroup" aria-label="Type d’hébergement">
-        {options.map((option) => {
-          const type = option.code === 'hospitalization_private_cabin' ? 'private_cabin' : 'standard_bed';
-          return <label key={option.code} className={form.accommodation_type === type ? 'is-selected' : ''}>
-            <input type="radio" name="hospitalization-accommodation" checked={form.accommodation_type === type} onChange={() => selectAccommodation(option)} />
-            <span><strong>{type === 'private_cabin' ? 'Cabine privée' : 'Lit standard'}</strong><small>{formatGNF(option.price_gnf)} / jour</small></span>
-          </label>;
-        })}
-      </div>
+      {form.specialty_code ? (
+        <div className="hospitalization-plan__choices" role="radiogroup" aria-label="Type de lit">
+          {availableOptions.map((option) => {
+            const accommodation = ACCOMMODATIONS[option.code];
+            return <label key={option.code} className={form.accommodation_type === accommodation.type ? 'is-selected' : ''}>
+              <input required type="radio" name="hospitalization-accommodation" checked={form.accommodation_type === accommodation.type} onChange={() => selectAccommodation(option)} />
+              <span>
+                <strong>{accommodation.title}</strong>
+                <small>{accommodation.guidance}</small>
+                <small>{formatGNF(option.price_gnf)} / jour</small>
+              </span>
+            </label>;
+          })}
+        </div>
+      ) : <p className="clinical-hint">Choisissez d’abord la spécialité pour afficher les lits disponibles.</p>}
       <div className="hospitalization-plan__total" role="status">
         <span>{form.quantity || 1} jour(s) facturable(s)</span>
-        <strong>{formatGNF(Number(form.unit_price_gnf || 0) * Number(form.quantity || 1))}</strong>
+        <strong>{form.accommodation_type
+          ? formatGNF(Number(form.unit_price_gnf || 0) * Number(form.quantity || 1))
+          : 'Choisissez un type de lit'}</strong>
       </div>
     </fieldset>
   );
