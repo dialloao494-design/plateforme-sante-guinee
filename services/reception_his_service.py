@@ -454,19 +454,37 @@ class ReceptionHisService:
 
         assert_patient_in_clinic(db, patient_id=payload.patient_id, clinic_id=clinic_id)
 
-        if payload.admission_type == "hospitalization":
+        is_hospitalization = payload.admission_type == "hospitalization" or "Hospitalisation" in payload.services
+        if is_hospitalization:
             existing = (
                 db.query(models.Admission)
                 .filter(
                     models.Admission.patient_id == payload.patient_id,
                     models.Admission.clinic_id == clinic_id,
-                    models.Admission.admission_type == "hospitalization",
+                    models.Admission.services_json.contains("Hospitalisation")
+                    | (models.Admission.admission_type == "hospitalization"),
                     models.Admission.status.notin_(["discharged", "cancelled"]),
                 )
                 .first()
             )
             if existing:
                 raise HTTPException(status_code=409, detail="Hospitalisation active déjà en cours")
+            placement_filter = None
+            if payload.bed_number:
+                placement_filter = models.Admission.bed_number == payload.bed_number
+            elif payload.cabin_number:
+                placement_filter = models.Admission.cabin_number == payload.cabin_number
+            if placement_filter is not None:
+                occupied = db.query(models.Admission).filter(
+                    models.Admission.clinic_id == clinic_id,
+                    models.Admission.services_json.contains("Hospitalisation")
+                    | (models.Admission.admission_type == "hospitalization"),
+                    models.Admission.status.in_(["pending", "admitted", "in_care", "transferred"]),
+                    placement_filter,
+                ).first()
+                if occupied:
+                    label = f"Lit n° {payload.bed_number}" if payload.bed_number else f"Cabine n° {payload.cabin_number}"
+                    raise HTTPException(status_code=409, detail=f"{label} déjà occupé")
 
         adm_time = payload.admission_time or datetime.utcnow().time()
         admitted_at = datetime.combine(payload.admission_date, adm_time)
@@ -518,6 +536,8 @@ class ReceptionHisService:
             notes=combined_notes,
             specialty_code=specialty_code,
             specialty_other=specialty_other,
+            bed_number=payload.bed_number,
+            cabin_number=payload.cabin_number,
             admitted_by_user_id=actor.id,
             admitted_at=admitted_at,
         )
@@ -600,6 +620,8 @@ class ReceptionHisService:
                     detail=f"Demande {dsr.request_number} déjà facturée",
                 )
             seen_dsr_ids.add(dsr.id)
+            if dsr.service_category == "hospitalization":
+                quantity = int(getattr(dsr, "quantity", 1) or 1)
             # Prefer catalog re-resolve; otherwise trust DSR stored price (already privilege-gated).
             unit = int(dsr.unit_price_gnf or 0)
             code = catalog_code or dsr.catalog_code
@@ -1494,6 +1516,11 @@ class ReceptionHisService:
             "catalog_code": getattr(row, "catalog_code", None),
             "charge_type": getattr(row, "charge_type", None),
             "unit_price_gnf": getattr(row, "unit_price_gnf", None),
+            "quantity": getattr(row, "quantity", 1) or 1,
+            "duration_value": getattr(row, "duration_value", None),
+            "duration_unit": getattr(row, "duration_unit", None),
+            "specialty_code": getattr(row, "specialty_code", None),
+            "accommodation_type": getattr(row, "accommodation_type", None),
             "status": row.status,
             "notes": row.notes,
             "created_at": row.created_at,
@@ -1551,6 +1578,14 @@ class ReceptionHisService:
         notes = (payload.notes or "").strip() or None
         price_audit_kind = None
 
+        if payload.service_category == "hospitalization":
+            if not payload.duration_value or payload.duration_unit not in ("days", "months"):
+                raise HTTPException(status_code=400, detail="Durée d'hospitalisation requise")
+            if not payload.specialty_code or payload.specialty_code == "pediatrics":
+                raise HTTPException(status_code=400, detail="Sélectionnez une spécialité non pédiatrique")
+            if payload.accommodation_type not in ("standard_bed", "private_cabin"):
+                raise HTTPException(status_code=400, detail="Choisissez un lit standard ou une cabine privée")
+
         if catalog_code:
             cat = resolve_billing_catalog_item(catalog_code)
             if not cat:
@@ -1592,6 +1627,16 @@ class ReceptionHisService:
         if not service_name:
             raise HTTPException(status_code=400, detail="service_name requis")
 
+        quantity = payload.quantity
+        if payload.service_category == "hospitalization":
+            quantity = int(payload.duration_value) * (30 if payload.duration_unit == "months" else 1)
+            from data.aasma_billing_catalog import SPECIALIZED_SPECIALTIES
+            specialty = next((s for s in SPECIALIZED_SPECIALTIES if s["code"] == payload.specialty_code), None)
+            if not specialty or specialty["code"] == "pediatrics":
+                raise HTTPException(status_code=400, detail="Spécialité d'hospitalisation invalide")
+            duration_label = "mois" if payload.duration_unit == "months" else "jour(s)"
+            service_name = f"{service_name} — {specialty['label']} · {payload.duration_value} {duration_label}"
+
         row = models.ClinicServiceRequest(
             clinic_id=clinic_id,
             patient_id=payload.patient_id,
@@ -1603,6 +1648,11 @@ class ReceptionHisService:
             catalog_code=catalog_code,
             charge_type=charge_type,
             unit_price_gnf=unit_price,
+            quantity=quantity,
+            duration_value=payload.duration_value,
+            duration_unit=payload.duration_unit,
+            specialty_code=payload.specialty_code,
+            accommodation_type=payload.accommodation_type,
             status=payload.status,
             notes=notes,
             created_by_user_id=actor.id,
@@ -1723,6 +1773,27 @@ class ReceptionHisService:
                 data["catalog_code"] = None
                 data["unit_price_gnf"] = int(unit_price)
                 price_audit_kind = "free_text_charge"
+
+        resulting_category = data.get("service_category", row.service_category)
+        if resulting_category == "hospitalization":
+            duration_value = data.get("duration_value", row.duration_value)
+            duration_unit = data.get("duration_unit", row.duration_unit)
+            specialty_code = data.get("specialty_code", row.specialty_code)
+            accommodation = data.get("accommodation_type", row.accommodation_type)
+            if not duration_value or duration_unit not in ("days", "months"):
+                raise HTTPException(status_code=400, detail="Durée d'hospitalisation requise")
+            if specialty_code == "pediatrics" or not specialty_code:
+                raise HTTPException(status_code=400, detail="Spécialité non pédiatrique requise")
+            if accommodation not in ("standard_bed", "private_cabin"):
+                raise HTTPException(status_code=400, detail="Type d'hébergement requis")
+            data["quantity"] = int(duration_value) * (30 if duration_unit == "months" else 1)
+            from data.aasma_billing_catalog import SPECIALIZED_SPECIALTIES
+            specialty = next((s for s in SPECIALIZED_SPECIALTIES if s["code"] == specialty_code), None)
+            if not specialty:
+                raise HTTPException(status_code=400, detail="Spécialité d'hospitalisation invalide")
+            base_label = "Hospitalisation — cabine privée" if accommodation == "private_cabin" else "Hospitalisation — lit standard"
+            duration_label = "mois" if duration_unit == "months" else "jour(s)"
+            data["service_name"] = f"{base_label} — {specialty['label']} · {duration_value} {duration_label}"
 
         data.pop("price_override_reason", None)
         for key, value in data.items():

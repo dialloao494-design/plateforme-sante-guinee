@@ -116,6 +116,94 @@ def test_billing_catalog_includes_surgical_acts(client, db_session):
     assert "Chirurgie" in (r.json().get("billing_departments") or [])
 
 
+def test_hospitalization_request_uses_confirmed_rate_and_duration(client, db_session):
+    _clinic, admin, patient = _seed_clinic_admin(db_session)
+    headers = _auth(admin)
+    created = client.post(
+        "/clinical/reception/his/service-requests",
+        json={
+            "patient_id": patient.id,
+            "service_category": "hospitalization",
+            "service_name": "Hospitalisation médecine",
+            "catalog_code": "hospitalization_standard",
+            "duration_value": 2,
+            "duration_unit": "days",
+            "specialty_code": "medicine",
+            "accommodation_type": "standard_bed",
+        },
+        headers=headers,
+    )
+    assert created.status_code == 201, created.text
+    request = created.json()
+    assert request["unit_price_gnf"] == 200_000
+    assert request["quantity"] == 2
+    assert request["duration_value"] == 2
+    assert "Médecine" in request["service_name"]
+
+    invoice = client.post(
+        "/clinical/reception/his/invoices",
+        json={
+            "patient_id": patient.id,
+            "department": "Hospitalisation",
+            "items": [{
+                "source_type": "service_request",
+                "source_ref": request["request_number"],
+                "catalog_code": request["catalog_code"],
+                "quantity": 1,
+            }],
+        },
+        headers=headers,
+    )
+    assert invoice.status_code == 201, invoice.text
+    assert invoice.json()["subtotal_amount_gnf"] == 400_000
+    assert invoice.json()["items"][0]["quantity"] == 2
+
+
+def test_private_cabin_rate_and_pediatric_hospitalization_exclusion(client, db_session):
+    _clinic, admin, patient = _seed_clinic_admin(db_session)
+    headers = _auth(admin)
+    catalog = client.get("/clinical/reception/his/billing-catalog", headers=headers).json()
+    prices = {row["code"]: row["price_gnf"] for row in catalog["hospitalization_services"]}
+    assert prices == {"hospitalization_standard": 200_000, "hospitalization_private_cabin": 500_000}
+    pediatric = client.post(
+        "/clinical/reception/his/service-requests",
+        json={
+            "patient_id": patient.id, "service_category": "hospitalization",
+            "service_name": "Hospitalisation pédiatrie", "catalog_code": "hospitalization_standard",
+            "duration_value": 1, "duration_unit": "days", "specialty_code": "pediatrics",
+            "accommodation_type": "standard_bed",
+        },
+        headers=headers,
+    )
+    assert pediatric.status_code == 400
+
+
+def test_reception_admission_persists_one_placement(client, db_session):
+    _clinic, admin, patient = _seed_clinic_admin(db_session)
+    response = client.post(
+        "/clinical/reception/his/admissions",
+        json={
+            "patient_id": patient.id, "admission_date": "2026-08-24",
+            "services": ["Hospitalisation"], "admission_type": "hospitalization",
+            "bed_number": "7",
+        },
+        headers=_auth(admin),
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["bed_number"] == "7"
+    assert response.json()["cabin_number"] is None
+
+    missing_placement = client.post(
+        "/clinical/reception/his/admissions",
+        json={
+            "patient_id": patient.id, "admission_date": "2026-08-24",
+            "services": ["Hospitalisation"], "admission_type": "outpatient",
+        },
+        headers=_auth(admin),
+    )
+    assert missing_placement.status_code == 422
+
+
 def test_invoice_pdf_footer_keeps_printed_by_without_address():
     pdf = build_hospital_invoice_pdf(
         invoice_number="FAC-TEST-001",

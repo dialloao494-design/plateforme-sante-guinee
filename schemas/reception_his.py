@@ -182,9 +182,16 @@ class ReceptionAdmissionCreate(BaseModel):
     specialty_code: Optional[str] = None
     specialty_other: Optional[str] = None
     notes: Optional[str] = None
+    bed_number: Optional[str] = Field(None, pattern="^(?:[1-9]|1[0-2])$")
+    cabin_number: Optional[str] = Field(None, pattern="^[12]$")
 
     @model_validator(mode="after")
     def _require_service(self):
+        if self.bed_number and self.cabin_number:
+            raise ValueError("Choisissez un lit ou une cabine, pas les deux")
+        is_hospitalization = self.admission_type == "hospitalization" or "Hospitalisation" in self.services
+        if is_hospitalization and not (self.bed_number or self.cabin_number):
+            raise ValueError("Choisissez un numéro de lit ou de cabine")
         if self.services or (self.department and self.department.strip()):
             return self
         raise ValueError("Sélectionnez au moins un service")
@@ -199,6 +206,7 @@ SERVICE_REQUEST_CATEGORIES = Literal[
     "service",
     "surgery",
     "consultation",
+    "hospitalization",
     "other",
 ]
 
@@ -213,6 +221,11 @@ class ServiceRequestCreate(BaseModel):
     catalog_code: Optional[str] = Field(None, max_length=64)
     charge_type: Optional[str] = Field(None, max_length=64)
     unit_price_gnf: Optional[int] = Field(None, ge=0)
+    quantity: int = Field(1, ge=1, le=3650)
+    duration_value: Optional[int] = Field(None, ge=1, le=120)
+    duration_unit: Optional[Literal["days", "months"]] = None
+    specialty_code: Optional[str] = Field(None, max_length=64)
+    accommodation_type: Optional[Literal["standard_bed", "private_cabin"]] = None
     # Required when client wants a non-catalog negotiated unit price.
     price_override_reason: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
@@ -226,6 +239,11 @@ class ServiceRequestUpdate(BaseModel):
     catalog_code: Optional[str] = Field(None, max_length=64)
     charge_type: Optional[str] = Field(None, max_length=64)
     unit_price_gnf: Optional[int] = Field(None, ge=0)
+    quantity: Optional[int] = Field(None, ge=1, le=3650)
+    duration_value: Optional[int] = Field(None, ge=1, le=120)
+    duration_unit: Optional[Literal["days", "months"]] = None
+    specialty_code: Optional[str] = Field(None, max_length=64)
+    accommodation_type: Optional[Literal["standard_bed", "private_cabin"]] = None
     # Required when changing to a non-catalog negotiated unit price.
     price_override_reason: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = None
@@ -245,6 +263,11 @@ class ServiceRequestResponse(BaseModel):
     catalog_code: Optional[str] = None
     charge_type: Optional[str] = None
     unit_price_gnf: Optional[int] = None
+    quantity: int = 1
+    duration_value: Optional[int] = None
+    duration_unit: Optional[str] = None
+    specialty_code: Optional[str] = None
+    accommodation_type: Optional[str] = None
     status: str
     notes: Optional[str] = None
     created_at: datetime
@@ -264,6 +287,8 @@ class ReceptionAdmissionResponse(BaseModel):
     status: str
     admitted_at: Optional[datetime] = None
     attending_clinician_user_id: Optional[int] = None
+    bed_number: Optional[str] = None
+    cabin_number: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

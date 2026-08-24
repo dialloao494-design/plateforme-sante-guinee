@@ -23,6 +23,11 @@ class ClinicServiceRequest(Base):
     catalog_code = Column(String(64), nullable=True, index=True)
     charge_type = Column(String(64), nullable=True)
     unit_price_gnf = Column(Integer, nullable=True)
+    quantity = Column(Integer, nullable=False, default=1)
+    duration_value = Column(Integer, nullable=True)
+    duration_unit = Column(String(16), nullable=True)
+    specialty_code = Column(String(64), nullable=True)
+    accommodation_type = Column(String(32), nullable=True)
     status = Column(String(32), nullable=False, default="pending", index=True)
     # pending | approved | completed | cancelled
     notes = Column(Text, nullable=True)

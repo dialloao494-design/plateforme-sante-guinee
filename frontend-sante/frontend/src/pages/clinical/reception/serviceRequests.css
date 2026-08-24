@@ -112,6 +112,16 @@
   background: transparent;
 }
 
+.hospitalization-plan__grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.85rem; margin: 0.8rem 0 1rem; }
+.hospitalization-plan__grid label { display: grid; gap: 0.35rem; color: #314b5e; font-size: 0.85rem; font-weight: 750; }
+.hospitalization-plan__choices { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+.hospitalization-plan__choices label { display: flex; gap: 0.75rem; padding: 0.95rem; border: 1px solid #cbd9e2; border-radius: 12px; background: #fff; cursor: pointer; }
+.hospitalization-plan__choices label.is-selected { border-color: #078b7f; background: #eaf8f6; box-shadow: inset 3px 0 #078b7f; }
+.hospitalization-plan__choices span { display: grid; gap: 0.2rem; }
+.hospitalization-plan__choices small { color: #60778a; }
+.hospitalization-plan__total { display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.9rem; padding: 0.85rem 1rem; border-radius: 10px; background: #0c334b; color: #fff; }
+.hospitalization-plan__total strong { font-size: 1.2rem; }
+
 @media (max-width: 900px) {
   .reception-his-service-request-filters,
   .service-request-setup {
@@ -147,4 +157,5 @@
   .service-request-workspace .reception-his-nested-fieldset > label {
     grid-template-columns: 1fr;
   }
+  .hospitalization-plan__grid, .hospitalization-plan__choices { grid-template-columns: 1fr; }
 }

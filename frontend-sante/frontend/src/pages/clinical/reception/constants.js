@@ -139,6 +139,9 @@ export const EMPTY_ADMISSION = {
   specialty_code: '',
   specialty_other: '',
   notes: '',
+  accommodation_type: 'standard_bed',
+  bed_number: '',
+  cabin_number: '',
 };
 
 export const EMPTY_BILLING = {
@@ -167,6 +170,7 @@ export const SERVICE_REQUEST_CATEGORIES = [
   { value: 'laboratory', label: 'Laboratoire' },
   { value: 'imaging', label: 'Imagerie' },
   { value: 'consultation', label: 'Consultation spécialisée' },
+  { value: 'hospitalization', label: 'Hospitalisation' },
   { value: 'surgery', label: 'Actes chirurgicaux' },
   { value: 'nursing', label: 'Soins infirmiers' },
   { value: 'pharmacy', label: 'Pharmacie' },
@@ -186,6 +190,7 @@ export const SERVICE_REQUEST_CHARGE_TYPES = {
   laboratory: 'laboratory',
   imaging: 'imaging',
   consultation: 'consultation',
+  hospitalization: 'hospitalization',
   surgery: 'procedure',
   nursing: 'procedure',
   pharmacy: 'pharmacy',
@@ -198,6 +203,7 @@ export const SERVICE_REQUEST_DEPARTMENTS = {
   laboratory: 'Laboratoire',
   imaging: 'Imagerie médicale',
   consultation: 'Consultation spécialisée',
+  hospitalization: 'Hospitalisation',
   surgery: 'Chirurgie',
   nursing: 'Soins infirmiers',
   pharmacy: 'Pharmacie',
@@ -212,6 +218,11 @@ export const EMPTY_SERVICE_REQUEST = {
   catalog_code: '',
   charge_type: 'laboratory',
   unit_price_gnf: 0,
+  quantity: 1,
+  duration_value: 1,
+  duration_unit: 'days',
+  specialty_code: '',
+  accommodation_type: 'standard_bed',
   status: 'pending',
 };
 

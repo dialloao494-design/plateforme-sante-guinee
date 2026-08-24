@@ -49,6 +49,13 @@ CONSULTATION_SERVICES = [
     },
 ]
 
+# Confirmed adult/general hospitalization tariffs. Pediatric hospitalization is
+# deliberately excluded until the clinic clarifies its two conflicting rates.
+HOSPITALIZATION_SERVICES = [
+    {"code": "hospitalization_standard", "label": "Hospitalisation — lit standard", "charge_type": "hospitalization", "price_gnf": 200_000},
+    {"code": "hospitalization_private_cabin", "label": "Hospitalisation — cabine privée", "charge_type": "hospitalization", "price_gnf": 500_000},
+]
+
 # Clinic tariff sheet (20-07-26):
 # Médecine / Neurochirurgie / Chirurgie / MIT / Gynéco / Traumato :
 #   spécialisée 250 000 · urgences 150 000
@@ -197,6 +204,11 @@ def resolve_billing_catalog_item(
     variant = (price_variant or "").strip().lower() or None
     if variant not in (None, "specialized", "emergency"):
         variant = None
+
+    for row in HOSPITALIZATION_SERVICES:
+        if row.get("code") == code:
+            return {"code": code, "label": row["label"], "price_gnf": int(row["price_gnf"]),
+                    "charge_type": "hospitalization", "bucket": "hospitalization"}
 
     for row in CONSULTATION_SERVICES:
         if row.get("code") == code:

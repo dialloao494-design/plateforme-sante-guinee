@@ -22,6 +22,10 @@ export function useBillingCatalogFilters(billingCatalog, {
     () => billingCatalog?.surgical_acts ?? EMPTY_ARRAY,
     [billingCatalog?.surgical_acts]
   );
+  const hospitalizationServices = useMemo(
+    () => billingCatalog?.hospitalization_services ?? EMPTY_ARRAY,
+    [billingCatalog?.hospitalization_services]
+  );
 
   const admissionServices = useMemo(
     () => billingCatalog?.admission_services?.map((s) => s.label) ?? DEFAULT_ADMISSION_SERVICES,
@@ -99,6 +103,7 @@ export function useBillingCatalogFilters(billingCatalog, {
     specializedSpecialties,
     imagingExaminations,
     surgicalActs,
+    hospitalizationServices,
     admissionServices,
     billingDepartments,
     servicePrestations,

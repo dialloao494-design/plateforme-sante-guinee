@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import {
   PATIENT_REQUIRED_NOTICE,
   SERVICE_REQUEST_CATEGORIES,
@@ -10,6 +11,8 @@ import { formatGNF } from '../../../../utils/appointmentPresentation.js';
 import { formatDateTime, serviceRequestCategoryLabel, serviceRequestStatusLabel } from '../utils.js';
 import '../serviceRequests.css';
 
+const HospitalizationPlan = lazy(() => import('../components/HospitalizationPlan.jsx'));
+
 export default function ServiceRequestsTab({
   patientPayerLabel,
   applyServiceRequestToBilling,
@@ -21,6 +24,7 @@ export default function ServiceRequestsTab({
   filteredServiceRequestLabTests,
   filteredServiceRequestSpecialties,
   filteredSurgicalActs,
+  hospitalizationServices,
   lastCreatedServiceRequest,
   loadServiceRequests,
   loading,
@@ -278,6 +282,12 @@ export default function ServiceRequestsTab({
                 </fieldset>
               )}
 
+              {serviceRequestForm.service_category === 'hospitalization' && (
+                <Suspense fallback={<p className="clinical-hint">Chargement du plan de séjour…</p>}>
+                  <HospitalizationPlan form={serviceRequestForm} specialties={filteredServiceRequestSpecialties} options={hospitalizationServices} setForm={setServiceRequestForm} />
+                </Suspense>
+              )}
+
               {serviceRequestForm.service_category === 'service' && (
                 <fieldset className="reception-his-nested-fieldset" data-testid="service-request-catalog">
                   <legend>Services / Prestations</legend>
@@ -320,7 +330,7 @@ export default function ServiceRequestsTab({
                 <p className="clinical-hint">
                   Sélection enregistrée : <strong>{serviceRequestForm.service_name}</strong>
                   {' · '}
-                  {formatGNF(serviceRequestForm.unit_price_gnf || 0)}
+                  {formatGNF(Number(serviceRequestForm.unit_price_gnf || 0) * Number(serviceRequestForm.quantity || 1))}
                   {' — cliquez « Créer la demande » pour la conserver.'}
                 </p>
               ) : null}

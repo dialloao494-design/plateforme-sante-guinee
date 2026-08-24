@@ -1,0 +1,24 @@
+.reception-admission-placement {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr);
+  gap: 1rem 1.25rem;
+  padding: 1.25rem;
+  border: 1px solid #c8dfe0;
+  border-left: 4px solid #078b7f;
+  border-radius: 14px;
+  background: #f7fbfb;
+}
+
+.reception-admission-placement legend { padding: 0 0.5rem; color: #0c334b; font-weight: 800; }
+.reception-admission-placement > p { grid-column: 1 / -1; margin: 0; color: #587087; }
+.reception-admission-placement__choice { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.reception-admission-placement__choice label { display: flex; gap: 0.7rem; padding: 0.9rem; border: 1px solid #cbd9e2; border-radius: 11px; background: #fff; cursor: pointer; }
+.reception-admission-placement__choice label.is-selected { border-color: #078b7f; background: #eaf8f6; box-shadow: inset 3px 0 #078b7f; }
+.reception-admission-placement__choice span { display: grid; gap: 0.2rem; }
+.reception-admission-placement__choice small { color: #60778a; font-weight: 500; }
+.reception-admission-placement > label { display: grid; gap: 0.4rem; align-content: end; color: #29465b; font-weight: 750; }
+
+@media (max-width: 760px) {
+  .reception-admission-placement { grid-template-columns: 1fr; }
+  .reception-admission-placement__choice { grid-template-columns: 1fr; }
+}

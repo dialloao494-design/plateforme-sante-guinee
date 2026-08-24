@@ -64,6 +64,8 @@ class Admission(Base):
     notes = Column(Text, nullable=True)
     specialty_code = Column(String(64), nullable=True)
     specialty_other = Column(String(255), nullable=True)
+    bed_number = Column(String(32), nullable=True)
+    cabin_number = Column(String(32), nullable=True)
     admitted_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     attending_clinician_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     admitted_at = Column(DateTime, nullable=True)

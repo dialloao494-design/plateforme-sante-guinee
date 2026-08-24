@@ -1,7 +1,11 @@
+import { lazy, Suspense } from 'react';
 import { ADMISSION_CONFIRMATIONS, ADMISSION_TYPES, FIELD_HINTS, PATIENT_REQUIRED_NOTICE } from '../constants.js';
 import PatientContextPanel from '../components/PatientContextPanel.jsx';
 import { DisplayField, FormNotice, GeneratedIdBanner } from '../components/FormPrimitives.jsx';
 import { formatGNF } from '../../../../utils/appointmentPresentation.js';
+import '../admission.css';
+
+const AdmissionPlacement = lazy(() => import('../components/AdmissionPlacement.jsx'));
 
 export default function AdmissionTab({
   patientPayerLabel,
@@ -159,6 +163,12 @@ export default function AdmissionTab({
                       </section>
                     )}
                   </div>
+                )}
+
+                {((admissionForm.services || []).includes('Hospitalisation') || admissionForm.admission_type === 'hospitalization') && (
+                  <Suspense fallback={<p className="clinical-hint">Chargement des emplacements…</p>}>
+                    <AdmissionPlacement form={admissionForm} updateAdmission={updateAdmission} />
+                  </Suspense>
                 )}
 
                 <div className="reception-his-admission-meta">

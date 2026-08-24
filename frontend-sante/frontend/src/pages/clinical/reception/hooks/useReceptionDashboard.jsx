@@ -126,6 +126,7 @@ export function useReceptionDashboard() {
     specializedSpecialties,
     imagingExaminations,
     surgicalActs,
+    hospitalizationServices,
     admissionServices,
     billingDepartments,
     servicePrestations,
@@ -422,6 +423,11 @@ export function useReceptionDashboard() {
       catalog_code: row.catalog_code || '',
       charge_type: row.charge_type || SERVICE_REQUEST_CHARGE_TYPES[row.service_category] || 'other',
       unit_price_gnf: Number(row.unit_price_gnf || 0),
+      quantity: Number(row.quantity || 1),
+      duration_value: Number(row.duration_value || 1),
+      duration_unit: row.duration_unit || 'days',
+      specialty_code: row.specialty_code || '',
+      accommodation_type: row.accommodation_type || 'standard_bed',
       status: row.status,
     });
     setServiceRequestExamSearchQ(row.service_name || '');
@@ -444,6 +450,11 @@ export function useReceptionDashboard() {
           || SERVICE_REQUEST_CHARGE_TYPES[serviceRequestForm.service_category]
           || 'other',
         unit_price_gnf: Number(serviceRequestForm.unit_price_gnf || 0),
+        quantity: Number(serviceRequestForm.quantity || 1),
+        duration_value: Number(serviceRequestForm.duration_value || 1),
+        duration_unit: serviceRequestForm.duration_unit || undefined,
+        specialty_code: serviceRequestForm.specialty_code || undefined,
+        accommodation_type: serviceRequestForm.accommodation_type || undefined,
         status: serviceRequestForm.status,
       };
       if (editingServiceRequestId) {
@@ -1105,6 +1116,8 @@ export function useReceptionDashboard() {
         specialty_code: admissionForm.specialty_code || undefined,
         specialty_other: admissionForm.specialty_other || undefined,
         notes: admissionForm.notes || undefined,
+        bed_number: admissionForm.accommodation_type === 'standard_bed' ? admissionForm.bed_number || undefined : undefined,
+        cabin_number: admissionForm.accommodation_type === 'private_cabin' ? admissionForm.cabin_number || undefined : undefined,
       });
       setLastAdmission(data || null);
       setAdmissionImagingCode('');
@@ -1409,7 +1422,7 @@ export function useReceptionDashboard() {
     addBillingLine({
       charge_type: chargeType,
       description: `${request.service_name} [${request.request_number}]`,
-      quantity: 1,
+      quantity: Number(request.quantity || 1),
       unit_price_gnf: Number(request.unit_price_gnf || 0),
       source_type: 'service_request',
       source_ref: request.request_number,
@@ -1608,6 +1621,7 @@ export function useReceptionDashboard() {
     setServiceRequestExamSearchQ,
     filteredServiceRequestLabTests,
     filteredServiceRequestSpecialties,
+    hospitalizationServices,
     filteredServiceRequestImaging,
     filteredServicePrestations,
     filteredSurgicalActs,

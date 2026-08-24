@@ -232,6 +232,7 @@ def billing_catalog(
         CONSULTATION_SERVICES,
         IMAGING_EXAMINATIONS,
         BILLING_DEPARTMENTS,
+        HOSPITALIZATION_SERVICES,
         SERVICE_PRESTATIONS,
         SPECIALIZED_SPECIALTIES,
         SURGICAL_ACTS,
@@ -264,6 +265,7 @@ def billing_catalog(
         "service_prestations": SERVICE_PRESTATIONS,
         "surgical_acts": SURGICAL_ACTS,
         "billing_departments": BILLING_DEPARTMENTS,
+        "hospitalization_services": HOSPITALIZATION_SERVICES,
         "lab_tests": lab_tests,
     }
 
@@ -487,6 +489,8 @@ def create_admission(
         status=admission.status,
         admitted_at=admission.admitted_at,
         attending_clinician_user_id=admission.attending_clinician_user_id,
+        bed_number=admission.bed_number,
+        cabin_number=admission.cabin_number,
     )
 
 
