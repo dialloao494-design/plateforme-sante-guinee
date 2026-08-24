@@ -49,6 +49,7 @@ test('reception dashboard has no serious or critical a11y violations after login
 for (const workspace of [
   { role: 'admin', route: '/clinical/billing', testId: 'billing-dashboard', label: 'unified billing' },
   { role: 'admin', route: '/clinical/admin', testId: 'admin-dashboard', label: 'clinic administration' },
+  { role: 'admin', route: '/clinical/reports', testId: 'clinical-reports-dashboard', label: 'clinical reports' },
   { role: 'pharmacy', route: '/clinical/pharmacy', testId: 'pharmacy-dashboard', label: 'pharmacy' },
   { role: 'lab', route: '/clinical/lab', testId: 'lab-dashboard', label: 'laboratory' },
   { role: 'nurse', route: '/clinical/nurse', testId: 'nurse-dashboard', label: 'nursing triage' },

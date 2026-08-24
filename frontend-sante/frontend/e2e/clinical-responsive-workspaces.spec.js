@@ -104,3 +104,25 @@ test('ward census and configuration remain operable on a narrow hospital screen'
   await expect(page.getByRole('button', { name: 'Créer le service' })).toBeVisible();
   await expectNoPageOverflow(page);
 });
+
+test('clinical reports keep a clear decision hierarchy and explicit period workflow on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await loginAsRole(page, 'admin');
+  await page.goto('/clinical/reports');
+
+  const dashboard = page.getByTestId('clinical-reports-dashboard');
+  await expect(dashboard).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Rapports cliniques' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Les chiffres à retenir' })).toBeVisible();
+  await expect(page.getByText('Encaissements nets', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Activité clinique' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Encaissements' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Répartition par service' })).toBeVisible();
+
+  await page.getByRole('button', { name: '7 jours' }).click();
+  await expect(page).toHaveURL(/clinical\/reports\?start=\d{4}-\d{2}-\d{2}&end=\d{4}-\d{2}-\d{2}/);
+  await expect(page.getByText('Période appliquée.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'PDF' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'CSV' })).toBeVisible();
+  await expectNoPageOverflow(page);
+});
