@@ -15,7 +15,6 @@ export const PATIENT_NAV_ITEMS = [
 const CLINIC_ADMIN_NAV = [
   { path: '/clinical', label: 'Opérations', icon: 'dash' },
   { path: '/clinical/admin', label: 'Administration', icon: 'shield' },
-  { path: '/clinical/admin#create-user', label: 'Utilisateurs', icon: 'people' },
   { path: '/clinical/pev', label: 'PEV / Vaccination', icon: 'calendar' },
   { path: '/clinical/nursing-care', label: 'Soins infirmiers', icon: 'board' },
   { path: '/clinical/patient-history', label: 'Dossier patient', icon: 'board' },

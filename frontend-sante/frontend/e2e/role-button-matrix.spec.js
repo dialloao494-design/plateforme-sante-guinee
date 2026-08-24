@@ -198,6 +198,11 @@ for (const entry of ROLE_MATRIX) {
       : { name: entry.heading };
     await expect(page.getByRole('heading', headingOpts)).toBeVisible();
 
+    if (entry.roleKey === 'admin') {
+      await expect(page.getByRole('link', { name: 'Administration', exact: true })).toHaveCount(1);
+      await expect(page.getByRole('link', { name: 'Utilisateurs', exact: true })).toHaveCount(0);
+    }
+
     if (entry.roleKey === 'pev') {
       const queueStatus = await page.evaluate(async () => {
         const token = sessionStorage.getItem('access_token') || sessionStorage.getItem('token');

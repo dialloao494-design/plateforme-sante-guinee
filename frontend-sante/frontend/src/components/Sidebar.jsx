@@ -104,9 +104,6 @@ function NavIcon({ name }) {
 }
 
 function pathIsActive(pathname, itemPath) {
-  if (itemPath === '/clinical/admin#create-user') {
-    return pathname === '/clinical/admin' || pathname.startsWith('/clinical/admin/');
-  }
   if (itemPath === '/clinical') {
     return pathname === '/clinical';
   }
