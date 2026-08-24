@@ -1,6 +1,6 @@
 {
   "id": "DOS-01",
-  "timestamp": "2026-08-18T20:38:03.690601+00:00",
+  "timestamp": "2026-08-24T15:22:50.198508+00:00",
   "operator": "wave6-automated-harness",
   "environment": "lab-sqlite-testclient",
   "result": "BLOCKED",
