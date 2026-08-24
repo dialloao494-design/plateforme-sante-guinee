@@ -545,7 +545,7 @@ configuration matches canonical documentation, and schema startup is determinist
 
 ### P2 — Complete ward, room, and bed management
 
-**Status: CODE COMPLETE / LOCALLY VERIFIED — CI, production, and clinic exercise open**
+**Status: PRODUCTION VERIFIED — clinic exercise and cross-module follow-through open**
 
 The current system records hospitalization accommodation tariffs and basic
 admission placement. It does not yet provide a complete operational inventory of
@@ -576,8 +576,13 @@ Local evidence (2026-08-24): Alembic `0035` passes clean-schema, partial stamped
 schema recovery, and create-all-before-upgrade paths. Full backend tests pass
 **458/458 with 1 skipped**. Frontend unit **50/50**, offline
 **45/45**, responsive Chromium **3/3**, lint, production build, and all six
-performance budgets pass. Remote CI, production migration/smoke, and clinic-field
-validation are not yet claimed.
+performance budgets pass. [CI run 32760744306](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32760744306)
+passes every required job, including the complete browser suite after its
+Hospitalization navigation was aligned with the census-first workflow.
+[Deployment run 32760965996](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32760965996)
+passes Railway, Vercel, and post-deployment smoke. Railway `/health/build`
+reports exact commit `a61e30b`, and the public Hospitalization route returns
+HTTP 200. Clinic-field validation is not yet claimed.
 
 **Exit criterion:** authorized staff can configure capacity, allocate and transfer
 a patient without double-booking, see trustworthy real-time availability, and
@@ -752,6 +757,7 @@ and a clear escalation contact.
 | 2026-08-24 | Secure one-time staff activation and clinic opening/closing handoff routines were implemented with migration, tenant-scoped APIs, audit events, responsive administration UI, and focused security/shift regression coverage. Local backend 456/456 (plus one skip), frontend 50/50, offline 45/45, focused browser 2/2, lint, build, and six performance budgets pass. | Code-complete and locally verified. CI, production, and clinic-field validation remain open. |
 | 2026-08-24 | [CI run 32756121047](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32756121047) passed all six jobs for `7807b08`; [deployment run 32756387226](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32756387226) passed. Railway reports exact commit `7807b08`, and Vercel serves `/activate-staff`. | Secure staff activation and operational shift handoff are production-verified. Observed clinic-admin validation remains open. |
 | 2026-08-24 | Complete ward-management foundation added real clinic wards, stable regular-bed/berceau inventory, suitability attributes, six-state lifecycle, expected discharge and reservation metadata, immutable turnover events, transactional/versioned allocation, database overlap guards, and a responsive census/configuration workspace. Focused backend 28/28, frontend 50/50, offline 45/45, responsive Chromium 3/3, lint/build/budgets pass locally. | Core ward management is code-complete and locally verified. CI/deployment, two-user browser concurrency/reconnect proof, embedded Nursing/Reception summaries, and observed clinic turnover exercise remain open. |
+| 2026-08-24 | [CI run 32760744306](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32760744306) passed every required job for `a61e30b`; [deployment run 32760965996](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32760965996) passed Railway, Vercel, and post-deployment smoke. Railway `/health/build` reports the exact commit and the public Hospitalization route returns HTTP 200. | Core ward management is production-verified. Embedded Nursing/Reception summaries, real-browser two-user concurrency/reconnect proof, and an observed clinic turnover exercise remain open. |
 
 ## Related evidence
 
