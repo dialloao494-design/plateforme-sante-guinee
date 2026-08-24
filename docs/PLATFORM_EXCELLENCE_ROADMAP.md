@@ -543,6 +543,67 @@ Code audit evidence added 2026-08-18:
 **Exit criterion:** no runtime compatibility warning in supported paths, deployment
 configuration matches canonical documentation, and schema startup is deterministic.
 
+### P2 — Complete ward, room, and bed management
+
+**Status: OPEN — preferred next product initiative**
+
+The current system records hospitalization accommodation tariffs and basic
+admission placement. It does not yet provide a complete operational inventory of
+wards, rooms, beds, berceaux, occupancy, transfers, or availability over time.
+
+Build a clinic-scoped accommodation model with:
+
+- configurable wards/services, rooms, and accommodation types;
+- individual beds and newborn berceaux with stable identifiers;
+- available, reserved, occupied, cleaning, maintenance, and unavailable states;
+- admission allocation with start/end dates and overlap prevention;
+- safe transfers between rooms/beds with a preserved movement history;
+- pediatric, isolation, accessibility, and other placement attributes without
+  encoding clinical suitability only in a price;
+- occupancy, expected-discharge, turnover, and capacity views;
+- explicit separation between the physical accommodation, its clinical
+  suitability, and the billable tariff;
+- clinic isolation, permission checks, audit events, and offline-safe/idempotent
+  allocation behavior;
+- responsive Reception, Nursing, and Hospitalization workflows with conflict,
+  stale-state, and concurrent-allocation browser tests.
+
+**Exit criterion:** authorized staff can configure capacity, allocate and transfer
+a patient without double-booking, see trustworthy real-time availability, and
+recover safely from offline/concurrent updates; CI, production smoke, and an
+observed clinic exercise all pass.
+
+### P3 — Future clinic expense and cash management
+
+**Status: FUTURE ADD — documented, not scheduled**
+
+This capability belongs to each clinic, not to the shared platform ledger. Every
+financial record must be scoped by `clinic_id`; clinic staff must never see
+another clinic's expenses or cash position. Platform-owner access should remain
+aggregate/operational unless a separate, explicitly authorized support path is
+defined and audited.
+
+Future scope:
+
+- expense categories and expense entry with supplier/payee, date, amount,
+  payment method, notes, and supporting documents;
+- approval thresholds and separation of requester, approver, and cashier roles;
+- cashier shift opening/closing balances and cash-drawer reconciliation;
+- reconciliation across cash, Orange Money, transfer, insurance, and other
+  configured payment methods;
+- shortage/surplus recording with required reason and immutable audit history;
+- daily/monthly revenue-versus-expense, cash movement, and exportable reports;
+- attachment authorization, tenant-isolation, accounting-integrity, and
+  concurrent-update regression coverage.
+
+Patient billing remains the source of patient revenue. Expense/cash management
+must reconcile against billing and payments rather than duplicate or rewrite
+those records.
+
+**Exit criterion:** a clinic can close a cashier shift and produce an auditable
+reconciliation from patient payments through cash position and approved expenses,
+with tenant isolation, accounting integrity, and clinic acceptance proven.
+
 ### P2 — Observed hospital workflow validation
 
 **Status: OPEN**
@@ -620,6 +681,7 @@ and a clear escalation contact.
 | 2026-08-24 | CI run 32743844262 exposed stale migration-head assertions and an age backfill that assumed every recovery fixture retained the legacy `patients.age` column; the independent push-triggered deployment nevertheless completed in run 32743845716. The migration is now defensive, head assertions track `0032`, and automatic deployment waits for successful CI while preserving explicit manual dispatch. The exact local gates now pass: backend 444/444 with one skip and clinic regressions 246/246 with one skip. | The immediate CI compatibility defect and CI/deployment ordering gap are code-complete and locally verified; remote CI, gated redeployment, and production verification remain required before this fix is considered deployed. |
 | 2026-08-24 | Clinic-admin navigation exposed “Administration” and “Utilisateurs” as separate top-level choices even though both opened the same administration page and both appeared active. The duplicate route is removed; staff listing and account creation remain explicit anchored sections inside Administration. The navigation contract passes 2/2, frontend unit suite 48/48, focused Chromium 1/1, lint/build, and all six performance budgets locally. | The false navigation choice is code-complete and locally browser-verified; CI, deployment, and clinic confirmation remain open. |
 | 2026-08-24 | Clinic clarification established that the two pediatric hospitalization prices represent different accommodation types: berceau nouveau-né (80,000 GNF/day) and lit pédiatrique standard (120,000 GNF/day). Reception now exposes both only for pediatric specialties, resets incompatible selections when specialty changes, and the API rejects specialty/bed/catalog mismatches while applying the authoritative tariff. Focused backend tests pass 10/10; frontend 48/48, exact Reception Chromium 2/2, lint/build, and all six performance budgets pass locally. | Pediatric hospitalization pricing is code-complete and locally browser-verified. CI, deployment, production catalog verification, and clinic validation remain open. |
+| 2026-08-24 | Competitive feature review selected complete ward/room/bed management as the preferred next product initiative and recorded clinic-scoped expense/cash management as a future addition. The accommodation roadmap explicitly separates physical beds, clinical suitability, and tariffs; the finance roadmap preserves existing billing as the patient-revenue source. | Product direction is documented only; neither capability is represented as implemented, tested, or scheduled. |
 
 ## Related evidence
 
