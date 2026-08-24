@@ -575,7 +575,7 @@ observed clinic exercise all pass.
 
 ### P1 — Simplified clinic onboarding and daily administration
 
-**Status: IN PROGRESS — secure onboarding and shift routines code-complete; CI/production/field validation open**
+**Status: IN PROGRESS — secure onboarding and shift routines production-verified; field validation open**
 
 - [x] Persist a resumable, clinic-scoped setup state instead of relying on staff
   memory or a one-time wizard.
@@ -617,7 +617,10 @@ unresolved work. It is intentionally separate from future cash-drawer
 reconciliation. Local verification is green: backend **456 passed / 1 skipped**,
 frontend unit **50/50**, offline **45/45**, lint, production build, all six
 performance budgets, and the focused **2/2** narrow-screen browser checks.
-Remote CI, deployment, and field validation are not yet claimed.
+CI run **32756121047** passed all six required jobs for `7807b08`; gated
+deployment run **32756387226** succeeded. Railway `/health/build` reports the
+exact commit, and Vercel serves the public staff-activation route. Clinic field
+validation is not yet claimed.
 
 **Exit criterion:** a new clinic administrator can configure the establishment,
 create the working team, verify billing/printing/offline operation, complete a
@@ -736,6 +739,7 @@ and a clear escalation contact.
 | 2026-08-24 | Clinic administration gained a persistent readiness model, guided setup route, daily handoff list, real-name staff provisioning, prompt-free password reset, and derived checks for staffing, payments, bed capacity, printing, offline operation, and a test patient journey. Full backend suite passes 449/449 with one skip; frontend unit tests pass 50/50; accessibility/responsive Chromium checks pass 10/10 with lint, production build, and all six performance budgets green. | Simplified onboarding foundation is code-complete, locally regression-verified, and browser-verified. Remote CI/deployment, secure credential delivery, and clinic-admin field validation remain open. |
 | 2026-08-24 | [CI run 32753005661](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32753005661) passed all six jobs for `839864e`; [deployment run 32753287391](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32753287391) passed Railway/Vercel readiness and production smoke. Railway identifies `839864e`, and Vercel serves the new administration bundle. | The onboarding foundation is CI- and production-verified. Secure credential delivery, shift routines, broader browser scenarios, and observed clinic-admin validation remain open. |
 | 2026-08-24 | Secure one-time staff activation and clinic opening/closing handoff routines were implemented with migration, tenant-scoped APIs, audit events, responsive administration UI, and focused security/shift regression coverage. Local backend 456/456 (plus one skip), frontend 50/50, offline 45/45, focused browser 2/2, lint, build, and six performance budgets pass. | Code-complete and locally verified. CI, production, and clinic-field validation remain open. |
+| 2026-08-24 | [CI run 32756121047](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32756121047) passed all six jobs for `7807b08`; [deployment run 32756387226](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32756387226) passed. Railway reports exact commit `7807b08`, and Vercel serves `/activate-staff`. | Secure staff activation and operational shift handoff are production-verified. Observed clinic-admin validation remains open. |
 
 ## Related evidence
 
