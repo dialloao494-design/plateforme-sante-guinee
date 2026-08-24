@@ -298,6 +298,8 @@ class ReceptionInvoiceResponse(BaseModel):
     invoice_number: str
     patient_id: int
     patient_name: Optional[str] = None
+    patient_number: Optional[str] = None
+    cashier_name: Optional[str] = None
     department: Optional[str] = None
     status: str
     subtotal_amount_gnf: int = 0

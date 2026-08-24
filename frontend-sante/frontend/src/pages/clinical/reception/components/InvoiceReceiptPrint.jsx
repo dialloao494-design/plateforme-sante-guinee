@@ -1,5 +1,6 @@
 import PrintClinicHeader from '../../../../components/print/PrintClinicHeader.jsx';
 import { formatGNF } from '../../../../utils/appointmentPresentation.js';
+import { formatClinicalDate, formatClinicalTime } from '../../../../utils/clinicalPresentation.js';
 import { PAYMENT_METHODS } from '../constants.js';
 import { methodLabel, patientFullName } from '../utils.js';
 
@@ -13,7 +14,17 @@ export default function InvoiceReceiptPrint({ invoice, patient, user, printedAt,
   const paid = Number(invoice.paid_amount_gnf ?? payments.reduce((sum, row) => sum + Number(row.amount_gnf || 0), 0));
   const remaining = Number(invoice.remaining_balance_gnf ?? Math.max(0, total - paid));
   const exemptionPercent = Number(invoice.exemption_percent || 0);
-  const printDate = printedAt ? new Date(printedAt) : null;
+  const userName = user?.full_name
+    || [user?.first_name, user?.last_name].filter(Boolean).join(' ')
+    || user?.email
+    || '';
+  const cashierName = invoice.cashier_name || userName || 'Utilisateur';
+  const patientNumber = invoice.patient_number
+    || patient?.patient_number
+    || (String(patient?.id || '').startsWith('offline_') ? patient.id : '')
+    || 'En attente de synchronisation';
+  const issuedAt = invoice.issued_at || invoice.created_at || printedAt;
+  const printedOn = printedAt || issuedAt;
 
   return (
     <article className={`reception-invoice-receipt-print${active ? ' clinical-print-target' : ''}`} aria-hidden="true">
@@ -22,12 +33,12 @@ export default function InvoiceReceiptPrint({ invoice, patient, user, printedAt,
         <div>
           <p><strong>N° facture :</strong> {invoice.invoice_number || 'En attente de synchronisation'}</p>
           <p><strong>Patient :</strong> {patientFullName(patient) || invoice.patient_name || '—'}</p>
-          <p><strong>N° dossier :</strong> {patient?.patient_number || invoice.patient_number || patient?.id || '—'}</p>
+          <p><strong>N° dossier :</strong> {patientNumber}</p>
         </div>
         <div className="reception-invoice-receipt-print__meta-right">
-          <p><strong>Date :</strong> {printDate ? printDate.toLocaleDateString('fr-FR') : '—'}</p>
-          <p><strong>Heure :</strong> {printDate ? printDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '—'}</p>
-          <p><strong>Caissier :</strong> {user?.full_name || user?.email || '—'}</p>
+          <p><strong>Date :</strong> {formatClinicalDate(issuedAt, 'Non disponible')}</p>
+          <p><strong>Heure :</strong> {formatClinicalTime(issuedAt, 'Non disponible')}</p>
+          <p><strong>Caissier :</strong> {cashierName}</p>
         </div>
       </div>
       <h2>Détail des prestations</h2>
@@ -71,8 +82,8 @@ export default function InvoiceReceiptPrint({ invoice, patient, user, printedAt,
         </section>
       )}
       <footer>
-        <span>Imprimé par : {user?.full_name || user?.email || '—'}</span>
-        <span>Date : {printDate ? printDate.toLocaleDateString('fr-FR') : '—'} · Heure : {printDate ? printDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '—'}</span>
+        <span>Imprimé par : {userName || cashierName}</span>
+        <span>Date : {formatClinicalDate(printedOn, 'Non disponible')} · Heure : {formatClinicalTime(printedOn, 'Non disponible')}</span>
         <span>Page 1</span>
         {invoice._offline_queued && <strong>Document local en attente de synchronisation</strong>}
       </footer>

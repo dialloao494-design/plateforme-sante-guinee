@@ -105,8 +105,15 @@ def _service_request_out(row: models.ClinicServiceRequest) -> ServiceRequestResp
 
 def _invoice_out(invoice: models.Invoice) -> ReceptionInvoiceResponse:
     patient_name = None
+    patient_number = None
     if invoice.patient:
         patient_name = f"{invoice.patient.first_name} {invoice.patient.last_name}".strip()
+        patient_number = invoice.patient.patient_number
+    cashier_name = None
+    if invoice.created_by_user:
+        from services.pdf_service import printed_by_label
+
+        cashier_name = printed_by_label(invoice.created_by_user)
     remaining = max(0, invoice.total_amount_gnf - invoice.paid_amount_gnf)
     description = invoice.items[0].description if invoice.items else None
     payments = [
@@ -145,6 +152,8 @@ def _invoice_out(invoice: models.Invoice) -> ReceptionInvoiceResponse:
         invoice_number=invoice.invoice_number,
         patient_id=invoice.patient_id,
         patient_name=patient_name,
+        patient_number=patient_number,
+        cashier_name=cashier_name,
         department=invoice.department,
         status=status,
         subtotal_amount_gnf=subtotal,

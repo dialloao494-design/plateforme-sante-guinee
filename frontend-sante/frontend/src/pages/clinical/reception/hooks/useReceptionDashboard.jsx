@@ -1117,6 +1117,11 @@ export function useReceptionDashboard() {
         invoice_number: null,
         patient_number: selectedPatient.patient_number || selectedPatient.id,
         patient_name: patientFullName(selectedPatient),
+        cashier_name: user?.full_name
+          || [user?.first_name, user?.last_name].filter(Boolean).join(' ')
+          || user?.email
+          || 'Utilisateur',
+        issued_at: new Date().toISOString(),
       };
       const { data } = await clinicalApi.receptionHisCreateInvoice(serverPayload, offlinePreview);
       setActiveInvoice(data || null);

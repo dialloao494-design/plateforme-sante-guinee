@@ -14,12 +14,19 @@ PAGE_HEIGHT = 842
 
 
 def printed_by_label(user) -> str:
-    """Display name for PDF footers (User ORM has no full_name column)."""
+    """Return the staff member's human name, with email as a final fallback."""
     if user is None:
         return "—"
     name = getattr(user, "full_name", None)
     if name:
         return str(name)
+    name = " ".join(
+        part.strip()
+        for part in (getattr(user, "first_name", None), getattr(user, "last_name", None))
+        if part and part.strip()
+    )
+    if name:
+        return name
     email = getattr(user, "email", None) or ""
     if not email:
         return "—"

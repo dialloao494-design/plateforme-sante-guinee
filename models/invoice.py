@@ -33,6 +33,7 @@ class Invoice(Base):
 
     clinic = relationship("Clinic", back_populates="invoices")
     patient = relationship("Patient", back_populates="invoices")
+    created_by_user = relationship("User", foreign_keys=[created_by_user_id])
     visit = relationship("ClinicalVisit", back_populates="invoices")
     items = relationship("InvoiceItem", back_populates="invoice", cascade="all, delete-orphan")
     payments = relationship("PaymentRecord", back_populates="invoice", cascade="all, delete-orphan")

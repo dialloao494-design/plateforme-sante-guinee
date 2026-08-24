@@ -13,6 +13,36 @@ async function fillRegistrationForm(page, { lastName, firstName, phone, dob = '1
   await page.getByLabel('Téléphone *', { exact: true }).fill('622000000');
 }
 
+async function expectCompleteInvoicePrint(receipt, { dossierPattern }) {
+  await expect(receipt).toContainText(dossierPattern);
+  await expect(receipt).not.toContainText(/N° dossier\s*:\s*—|Date\s*:\s*—|Heure\s*:\s*—|Caissier\s*:\s*—|Imprimé par\s*:\s*—/);
+  await expect(receipt).not.toContainText('Non disponible');
+}
+
+test('online invoice print includes dossier, issue time, cashier, and print audit fields', async ({ page }) => {
+  test.setTimeout(90_000);
+  await loginAsReception(page);
+  const unique = Date.now();
+  await fillRegistrationForm(page, {
+    lastName: `PrintOnlineNom${unique}`,
+    firstName: `PrintOnlinePrenom${unique}`,
+    phone: `628${String(unique).slice(-6)}`,
+  });
+  await page.getByTestId('reception-register-submit').click();
+  const patientNumber = page.getByTestId('reception-patient-number');
+  await expect(patientNumber).toContainText(/PAT-\d{3}-\d{6}/, { timeout: 30_000 });
+  const dossier = (await patientNumber.textContent()).match(/PAT-\d{3}-\d{6}/)?.[0];
+
+  await page.getByTestId('reception-tab-billing').click();
+  await page.getByRole('button', { name: /Consultation externe/ }).click();
+  await page.getByRole('button', { name: 'Créer facture', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText(/Facture créée/i);
+  await page.evaluate(() => { window.print = () => {}; });
+  await page.getByRole('button', { name: 'Imprimer reçu' }).click();
+  const receipt = page.locator('.reception-invoice-receipt-print');
+  await expectCompleteInvoicePrint(receipt, { dossierPattern: dossier });
+});
+
 test('offline registration queues then reconciles dossier after reconnect', async ({ page, context }) => {
   test.setTimeout(120_000);
   await loginAsReception(page);
@@ -73,6 +103,7 @@ test('offline registration queues then reconciles dossier after reconnect', asyn
   await expect(localReceipt).toContainText('Détail des paiements');
   await expect(localReceipt).toContainText(/Consultation externe/);
   await expect(localReceipt).toContainText(/100[\s\u202f]?000 GNF/);
+  await expectCompleteInvoicePrint(localReceipt, { dossierPattern: /offline_/ });
   await expect(localReceipt.locator('img')).toHaveAttribute('src', '/branding/aasma-clinic-logo.png');
   await page.emulateMedia({ media: 'print' });
   const printVisibility = await page.evaluate(() => ({

@@ -1,7 +1,7 @@
 # Offline certification and clinic exercise
 
 **Owner:** platform maintainers and clinic lead  
-**Last code evidence:** 2026-08-21
+**Last code evidence:** 2026-08-24
 **Field status:** open until the clinic exercise below is observed and signed
 
 ## Safety contract
@@ -88,6 +88,16 @@ exactly one print root before opening the browser dialog, and the same canonical
 invoice component is used online and offline. The browser regression switches
 to print media and proves the invoice is `display: block` while the registration
 sheet remains `display: none`.
+
+Clinic evidence on 2026-08-24 then showed invoice metadata rendered as dashes.
+The invoice response now carries the canonical patient dossier and creator name;
+the offline optimistic invoice snapshots the provisional dossier, cashier, and
+issue time. The shared print component separates invoice issue time from print
+time and uses staff full names before email fallback. Focused backend contract
+tests pass **14/14**, and two real-browser scenarios prove that dossier, invoice
+date/time, cashier, printed-by, and print date/time are populated both online
+and while fully disconnected. Lint, production build, and all six performance
+budgets pass locally. Deployment and physical-printer confirmation remain open.
 
 ## Clinic staff validation script
 

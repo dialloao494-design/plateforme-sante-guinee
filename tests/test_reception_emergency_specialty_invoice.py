@@ -88,6 +88,10 @@ def test_invoice_create_infers_emergency_from_department_without_variant(client,
 
 def test_invoice_create_specialized_still_uses_specialized_tariff(client, db_session):
     _clinic, admin, patient, *_ = _seed(db_session)
+    patient.patient_number = "PAT-017-009901"
+    admin.first_name = "Oumar"
+    admin.last_name = "Balde"
+    db_session.commit()
     r = client.post(
         "/clinical/reception/his/invoices",
         json={
@@ -109,6 +113,9 @@ def test_invoice_create_specialized_still_uses_specialized_tariff(client, db_ses
     body = r.json()
     assert body["total_amount_gnf"] == 250_000
     assert body["items"][0]["description"] == "Consultation spécialisée — Médecine"
+    assert body["patient_number"] == "PAT-017-009901"
+    assert body["cashier_name"] == "Oumar Balde"
+    assert body["issued_at"]
 
 
 def test_invoice_rejects_emergency_variant_under_specialized_department(client, db_session):

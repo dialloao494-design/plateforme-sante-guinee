@@ -871,6 +871,7 @@ class ReceptionHisService:
                 joinedload(models.Invoice.payments),
                 joinedload(models.Invoice.patient),
                 joinedload(models.Invoice.items),
+                joinedload(models.Invoice.created_by_user),
             )
             .filter(models.Invoice.id == invoice_id, models.Invoice.clinic_id == clinic_id)
             .first()
@@ -882,7 +883,12 @@ class ReceptionHisService:
     ) -> list[models.Invoice]:
         q = (
             db.query(models.Invoice)
-            .options(joinedload(models.Invoice.payments), joinedload(models.Invoice.patient), joinedload(models.Invoice.items))
+            .options(
+                joinedload(models.Invoice.payments),
+                joinedload(models.Invoice.patient),
+                joinedload(models.Invoice.items),
+                joinedload(models.Invoice.created_by_user),
+            )
             .filter(models.Invoice.clinic_id == clinic_id)
         )
         if patient_id:
@@ -1254,7 +1260,9 @@ class ReceptionHisService:
         if not q:
             return None
         base = db.query(models.Invoice).options(
-            joinedload(models.Invoice.payments), joinedload(models.Invoice.patient)
+            joinedload(models.Invoice.payments),
+            joinedload(models.Invoice.patient),
+            joinedload(models.Invoice.created_by_user),
         ).filter(models.Invoice.clinic_id == clinic_id)
         if patient_id:
             base = base.filter(models.Invoice.patient_id == patient_id)
