@@ -6,8 +6,30 @@ correctly, but « Créer la facture » rewrote it as Consultation spécialisée.
 
 from __future__ import annotations
 
+from datetime import date, datetime
+from types import SimpleNamespace
+
 from data.aasma_billing_catalog import resolve_billing_catalog_item
+from services.reception_his_service import invoice_issued_at, invoice_issued_at_for_date
 from tests.test_billing_integrity_hardening import _auth, _seed
+
+
+def test_selected_billing_date_preserves_actual_issuance_time():
+    now = datetime(2026, 8, 24, 14, 37, 52, 123456)
+
+    issued_at = invoice_issued_at_for_date(date(2026, 8, 20), now=now)
+
+    assert issued_at == datetime(2026, 8, 20, 14, 37, 52, 123456)
+
+
+def test_legacy_midnight_invoice_recovers_created_at_for_printing():
+    created_at = datetime(2026, 8, 24, 16, 42, 9)
+    invoice = SimpleNamespace(
+        issued_at=datetime(2026, 8, 24, 0, 0, 0),
+        created_at=created_at,
+    )
+
+    assert invoice_issued_at(invoice) == created_at
 
 
 def test_resolve_emergency_variant_uses_emergency_tariff():

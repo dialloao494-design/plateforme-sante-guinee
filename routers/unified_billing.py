@@ -17,7 +17,7 @@ from schemas.billing_unified import InvoiceGenerateRequest, InvoicePayRequest, I
 from security import get_current_user
 from services.pdf_service import invoice_pdf_legacy
 from services.unified_billing_service import UnifiedBillingService
-from services.reception_his_service import ReceptionHisService
+from services.reception_his_service import ReceptionHisService, invoice_issued_at
 
 router = APIRouter(prefix="/clinical/billing/unified", tags=["Unified Billing"])
 
@@ -53,7 +53,7 @@ def _invoice_response(invoice: models.Invoice) -> InvoiceResponse:
         status=invoice.status,
         total_amount_gnf=invoice.total_amount_gnf,
         paid_amount_gnf=invoice.paid_amount_gnf,
-        issued_at=invoice.issued_at,
+        issued_at=invoice_issued_at(invoice),
         paid_at=invoice.paid_at,
         patient_name=patient_name,
         items=items,

@@ -44,6 +44,23 @@ def _normalize_phone(phone: str | None) -> str:
     return "".join(c for c in phone if c.isdigit())[-9:]
 
 
+def invoice_issued_at(invoice: models.Invoice) -> datetime | None:
+    """Return the real issuance instant, including recovery for legacy midnight rows."""
+    issued_at = getattr(invoice, "issued_at", None)
+    created_at = getattr(invoice, "created_at", None)
+    if issued_at and issued_at.time() == time.min and created_at:
+        return created_at
+    return issued_at or created_at
+
+
+def invoice_issued_at_for_date(billing_date: date | None, *, now: datetime | None = None) -> datetime:
+    """Apply a user-selected invoice date without discarding the creation time."""
+    issued_now = now or datetime.utcnow()
+    if not billing_date:
+        return issued_now
+    return datetime.combine(billing_date, issued_now.time())
+
+
 _PEDIATRIC_HOSPITALIZATION_SPECIALTIES = {"pediatrics", "pediatric_surgery"}
 _HOSPITALIZATION_CATALOG_BY_ACCOMMODATION = {
     "standard_bed": "hospitalization_standard",
@@ -802,12 +819,8 @@ class ReceptionHisService:
         client_ip: str | None = None,
     ) -> models.Invoice:
         from core.tenant import assert_patient_in_clinic
-        from datetime import time
-
         assert_patient_in_clinic(db, patient_id=payload.patient_id, clinic_id=clinic_id)
-        issued_at = datetime.utcnow()
-        if payload.billing_date:
-            issued_at = datetime.combine(payload.billing_date, time.min)
+        issued_at = invoice_issued_at_for_date(payload.billing_date)
 
         if not payload.items:
             raise HTTPException(

@@ -43,7 +43,7 @@ from schemas.reception_his import (
     ServiceRequestResponse,
 )
 from security import get_current_user
-from services.reception_his_service import ReceptionHisService
+from services.reception_his_service import ReceptionHisService, invoice_issued_at
 
 router = APIRouter(prefix="/clinical/reception/his", tags=["Reception HIS"])
 
@@ -183,7 +183,7 @@ def _invoice_out(invoice: models.Invoice) -> ReceptionInvoiceResponse:
         total_amount_gnf=invoice.total_amount_gnf,
         paid_amount_gnf=invoice.paid_amount_gnf,
         remaining_balance_gnf=remaining,
-        issued_at=invoice.issued_at,
+        issued_at=invoice_issued_at(invoice),
         description=description,
         items=items_out,
         payments=payments,

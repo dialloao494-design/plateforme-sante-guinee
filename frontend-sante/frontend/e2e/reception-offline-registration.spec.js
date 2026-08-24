@@ -16,6 +16,7 @@ async function fillRegistrationForm(page, { lastName, firstName, phone, dob = '1
 async function expectCompleteInvoicePrint(receipt, { dossierPattern }) {
   await expect(receipt).toContainText(dossierPattern);
   await expect(receipt).not.toContainText(/N° dossier\s*:\s*—|Date\s*:\s*—|Heure\s*:\s*—|Caissier\s*:\s*—|Imprimé par\s*:\s*—/);
+  await expect(receipt).not.toContainText(/Heure\s*:\s*00:00/);
   await expect(receipt).not.toContainText('Non disponible');
 }
 
