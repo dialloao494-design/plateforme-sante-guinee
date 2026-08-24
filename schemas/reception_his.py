@@ -45,6 +45,8 @@ class PatientRegistrationCreate(BaseModel):
     date_of_birth: Optional[date] = None
     date_of_birth_precision: Literal["full", "year", "unknown"] = "full"
     age_years: Optional[int] = Field(None, ge=0, le=130)
+    age_value: Optional[int] = Field(None, ge=0, le=365)
+    age_unit: Literal["days", "weeks", "months", "years"] = "years"
     phone: str = Field(..., min_length=1, max_length=32)
     address: str = Field(..., min_length=1)
     photo_url: Optional[str] = None
@@ -67,6 +69,24 @@ class PatientRegistrationCreate(BaseModel):
     is_newborn: bool = False
     registration_date: Optional[date] = None
 
+    @model_validator(mode="after")
+    def _require_birth_or_reported_age(self):
+        if self.date_of_birth is not None:
+            return self
+        value = self.age_value if self.age_value is not None else self.age_years
+        if value is None:
+            raise ValueError("Indiquez une date de naissance ou l'âge du patient")
+        limits = {"days": 365, "weeks": 104, "months": 240, "years": 130}
+        if value > limits[self.age_unit]:
+            raise ValueError("Âge invalide pour l'unité sélectionnée")
+        return self
+
+
+class PatientRegistrationUpdate(PatientRegistrationCreate):
+    """Full editable reception record; server-owned identity fields stay immutable."""
+
+    confirm_duplicate: bool = False
+
 
 class PatientRegistrationResponse(BaseModel):
     id: int
@@ -75,6 +95,8 @@ class PatientRegistrationResponse(BaseModel):
     first_name: str
     last_name: str
     age: int
+    age_value: Optional[int] = None
+    age_unit: Optional[str] = None
     gender: str
     date_of_birth: Optional[date] = None
     date_of_birth_precision: str = "full"
@@ -118,10 +140,30 @@ class PatientSearchResult(BaseModel):
     last_name: str
     phone: Optional[str] = None
     age: int
+    age_value: Optional[int] = None
+    age_unit: Optional[str] = None
     gender: Optional[str] = None
     date_of_birth: Optional[date] = None
     date_of_birth_precision: Optional[str] = None
     payer_json: Optional[str] = None
+    phone_secondary: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    commune: Optional[str] = None
+    city: Optional[str] = None
+    region: Optional[str] = None
+    country: Optional[str] = None
+    place_of_birth: Optional[str] = None
+    nationality: Optional[str] = None
+    marital_status: Optional[str] = None
+    mother_first_name: Optional[str] = None
+    mother_last_name: Optional[str] = None
+    profession: Optional[str] = None
+    preferred_language: Optional[str] = None
+    photo_url: Optional[str] = None
+    emergency_contact_json: Optional[str] = None
+    is_newborn: bool = False
+    registration_date: Optional[date] = None
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

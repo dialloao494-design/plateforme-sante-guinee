@@ -19,6 +19,7 @@ from schemas.reception_his import (
     DuplicateCheckRequest,
     DuplicatePatientMatch,
     PatientRegistrationCreate,
+    PatientRegistrationUpdate,
     ReceptionAdmissionCreate,
     ReceptionInvoiceCreate,
     ReceptionPaymentCreate,
@@ -199,13 +200,12 @@ class ReceptionHisService:
 
         if payload.date_of_birth:
             age = _calc_age(payload.date_of_birth)
-        elif payload.age_years is not None:
-            age = payload.age_years
+            age_value = age
+            age_unit = "years"
         else:
-            raise HTTPException(
-                status_code=422,
-                detail="Indiquez une date de naissance ou saisissez l'âge du patient.",
-            )
+            age_value = payload.age_value if payload.age_value is not None else payload.age_years
+            age_unit = payload.age_unit
+            age = age_value if age_unit == "years" else 0
         emergency_json = payload.emergency_contact.model_dump()
         if payload.emergency_contact.same_address_as_patient:
             emergency_json["address"] = payload.address
@@ -234,6 +234,8 @@ class ReceptionHisService:
             first_name=payload.first_name.strip(),
             last_name=payload.last_name.strip(),
             age=age,
+            age_value=age_value,
+            age_unit=age_unit,
             gender=payload.gender,
             date_of_birth=payload.date_of_birth,
             date_of_birth_precision=payload.date_of_birth_precision,
@@ -315,6 +317,75 @@ class ReceptionHisService:
                 resource_id=patient.id,
                 client_ip=client_ip,
             )
+        return patient
+
+    @staticmethod
+    def update_patient(
+        db: Session,
+        *,
+        clinic_id: int,
+        patient_id: int,
+        payload: PatientRegistrationUpdate,
+        actor: User | None = None,
+        client_ip: str | None = None,
+    ) -> models.Patient:
+        patient = db.query(models.Patient).filter(
+            models.Patient.id == patient_id,
+            models.Patient.clinic_id == clinic_id,
+            models.Patient.is_archived.is_(False),
+        ).first()
+        if not patient:
+            raise HTTPException(status_code=404, detail="Patient introuvable")
+
+        if payload.date_of_birth:
+            age = _calc_age(payload.date_of_birth)
+            age_value, age_unit = age, "years"
+        else:
+            age_value = payload.age_value if payload.age_value is not None else payload.age_years
+            age_unit = payload.age_unit
+            age = age_value if age_unit == "years" else 0
+
+        emergency = payload.emergency_contact.model_dump()
+        if payload.emergency_contact.same_address_as_patient:
+            emergency.update(address=payload.address, commune=payload.commune,
+                             region=payload.region, country=payload.country)
+        payer = payload.payer
+        if payer.payer_type == "insurance" and not payer.insurance_company:
+            raise HTTPException(status_code=400, detail="Assurance : nom de la compagnie requis")
+        if payer.payer_type == "company" and not payer.company_name:
+            raise HTTPException(status_code=400, detail="Entreprise : nom requis")
+
+        scalar = {
+            "first_name": payload.first_name.strip(), "last_name": payload.last_name.strip(),
+            "gender": payload.gender, "date_of_birth": payload.date_of_birth,
+            "date_of_birth_precision": payload.date_of_birth_precision, "age": age,
+            "age_value": age_value, "age_unit": age_unit, "phone": payload.phone.strip(),
+            "phone_secondary": (payload.phone_secondary or "").strip() or None,
+            "email": (payload.email or "").strip() or None, "address": payload.address.strip(),
+            "commune": (payload.commune or "").strip() or None, "city": (payload.city or "").strip() or None,
+            "region": (payload.region or "").strip() or None, "country": (payload.country or "").strip() or None,
+            "place_of_birth": (payload.place_of_birth or "").strip() or None,
+            "nationality": (payload.nationality or "").strip() or None,
+            "marital_status": (payload.marital_status or "").strip() or None,
+            "preferred_language": (payload.preferred_language or "").strip() or None,
+            "photo_url": (payload.photo_url or "").strip() or None,
+            "mother_first_name": (payload.mother_first_name or "").strip() or None,
+            "mother_last_name": (payload.mother_last_name or "").strip() or None,
+            "profession": (payload.profession or "").strip() or None,
+            "emergency_contact": payload.emergency_contact.full_name,
+            "emergency_contact_json": json.dumps(emergency, ensure_ascii=False),
+            "payer_json": json.dumps(payer.model_dump(), ensure_ascii=False),
+            "is_newborn": bool(payload.is_newborn), "registration_date": payload.registration_date,
+        }
+        scalar["mother_name"] = " ".join(filter(None, (scalar["mother_first_name"], scalar["mother_last_name"]))) or None
+        for name, value in scalar.items():
+            setattr(patient, name, value)
+        db.commit()
+        db.refresh(patient)
+        if actor:
+            log_cis(db, actor=actor, clinic_id=clinic_id, patient_id=patient.id,
+                    action="update", resource_type="patient", resource_id=patient.id,
+                    client_ip=client_ip)
         return patient
 
     @staticmethod

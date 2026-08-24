@@ -34,7 +34,7 @@ export function computeBackoffMs(attempt, baseMs = 2000, maxMs = 300_000) {
   return Math.floor(exp);
 }
 
-export function buildOptimisticResponse(payload, entityType) {
+export function buildOptimisticResponse(payload, entityType, operation = 'create') {
   const now = new Date().toISOString();
   const tempId = `offline_${generateClientRequestId().slice(0, 8)}`;
   const base = {
@@ -48,7 +48,7 @@ export function buildOptimisticResponse(payload, entityType) {
     ...((typeof payload === 'object' && payload !== null) ? payload : {}),
   };
   // Never invent a server dossier number offline — UI shows pending sync state.
-  if (entityType === 'patient') {
+  if (entityType === 'patient' && operation === 'create') {
     base.patient_number = null;
     base._pending_dossier = true;
   }
@@ -94,6 +94,7 @@ export async function enqueueMutation({
   const optimistic = buildOptimisticResponse(
     optimisticData == null ? normalizedData : normalizeQueuedPayload(optimisticData),
     type,
+    op,
   );
   const now = Date.now();
   const scope = readOfflineOwnerScope();

@@ -94,6 +94,8 @@ export const EMPTY_REG = {
   date_of_birth_precision: 'full',
   birth_year: '',
   age_years: '',
+  age_value: '',
+  age_unit: 'years',
   gender: 'F',
   marital_status: '',
   nationality: 'Guinéenne',

@@ -23,6 +23,7 @@ from schemas.reception_his import (
     DuplicateCheckRequest,
     DuplicatePatientMatch,
     PatientRegistrationCreate,
+    PatientRegistrationUpdate,
     PatientRegistrationResponse,
     PatientSearchResult,
     ReceptionAdmissionCreate,
@@ -90,10 +91,30 @@ def _patient_out(patient: models.Patient) -> PatientSearchResult:
         last_name=patient.last_name,
         phone=patient.phone,
         age=patient.age or 0,
+        age_value=getattr(patient, "age_value", None),
+        age_unit=getattr(patient, "age_unit", None),
         gender=patient.gender,
         date_of_birth=patient.date_of_birth,
         date_of_birth_precision=getattr(patient, "date_of_birth_precision", None),
         payer_json=patient.payer_json,
+        phone_secondary=patient.phone_secondary,
+        email=patient.email,
+        address=patient.address,
+        commune=patient.commune,
+        city=patient.city,
+        region=patient.region,
+        country=patient.country,
+        place_of_birth=patient.place_of_birth,
+        nationality=patient.nationality,
+        marital_status=patient.marital_status,
+        mother_first_name=patient.mother_first_name,
+        mother_last_name=patient.mother_last_name,
+        profession=patient.profession,
+        preferred_language=patient.preferred_language,
+        photo_url=patient.photo_url,
+        emergency_contact_json=patient.emergency_contact_json,
+        is_newborn=patient.is_newborn,
+        registration_date=patient.registration_date,
         created_at=patient.created_at,
     )
 
@@ -406,6 +427,23 @@ def register_patient(
         payload=body,
         actor=current_user,
         client_ip=client_ip(request),
+    )
+    return PatientRegistrationResponse.model_validate(patient)
+
+
+@router.put("/patients/{patient_id}", response_model=PatientRegistrationResponse)
+def update_patient(
+    patient_id: int,
+    body: PatientRegistrationUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_reception(current_user)
+    clinic = resolve_clinic_for_user(db, current_user)
+    patient = ReceptionHisService.update_patient(
+        db, clinic_id=clinic.id, patient_id=patient_id, payload=body,
+        actor=current_user, client_ip=client_ip(request),
     )
     return PatientRegistrationResponse.model_validate(patient)
 

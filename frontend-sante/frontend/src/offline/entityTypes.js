@@ -15,6 +15,13 @@ const RULES = [
     entityType: 'patient',
     domain: 'patients',
   },
+  {
+    pattern: /\/clinical\/reception\/his\/patients\/[^/]+\/?$/,
+    entityType: 'patient',
+    domain: 'patients',
+    queueable: true,
+    requiresReconciliation: false,
+  },
   { pattern: /\/clinical\/consultations/, entityType: 'consultation', domain: 'consultations' },
   {
     pattern: /\/clinical\/(reception\/his\/)?invoices|\/clinical\/billing\//,

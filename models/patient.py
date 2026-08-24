@@ -17,6 +17,10 @@ class Patient(Base):
     first_name = Column(String, index=True)
     last_name = Column(String, index=True)
     age = Column(Integer)
+    # Preserve the age as reported when an exact date of birth is unavailable.
+    # `age` remains the complete-years compatibility value used by older views.
+    age_value = Column(Integer, nullable=True)
+    age_unit = Column(String(16), nullable=True)
     gender = Column(String)
     date_of_birth = Column(Date, nullable=True)
     date_of_birth_precision = Column(String(16), nullable=False, default="full")

@@ -55,9 +55,11 @@ export default function RegisterTab({
   setRegisteredPatient,
   setRegistrationPrintForm,
   updateReg,
+  editingPatientId,
+  cancelPatientEdit,
 }) {
   const registrationLocked = Boolean(
-    registeredPatient?.patient_number || registeredPatient?._sync_status === 'queued',
+    !editingPatientId && (registeredPatient?.patient_number || registeredPatient?._sync_status === 'queued'),
   );
 
   return (
@@ -65,8 +67,8 @@ export default function RegisterTab({
       <form className="clinical-card reception-his-form-sheet registration-form" onSubmit={handleRegister}>
         <header className="registration-form-header">
           <div>
-            <p className="registration-eyebrow">Nouveau dossier patient</p>
-            <h2>Enregistrement patient</h2>
+            <p className="registration-eyebrow">{editingPatientId ? 'Dossier patient existant' : 'Nouveau dossier patient'}</p>
+            <h2>{editingPatientId ? 'Modifier les informations du patient' : 'Enregistrement patient'}</h2>
             <p>Les champs marqués d’un astérisque (*) sont obligatoires.</p>
           </div>
           <label className="registration-date-field">
@@ -128,13 +130,25 @@ export default function RegisterTab({
             </div>
 
             <div className="registration-birth-block">
-              <div className="registration-field-label">Date de naissance *</div>
+              <div className="registration-field-label">Date de naissance ou âge *</div>
               <div className="registration-choice-group" role="radiogroup" aria-label="Précision de la date de naissance">
                 <label><input type="radio" name="birth-date-mode" value="full" checked={regForm.date_of_birth_precision === 'full'} onChange={() => updateReg({ date_of_birth_precision: 'full', birth_year: '' })} />Date complète</label>
                 <label><input type="radio" name="birth-date-mode" value="year" checked={regForm.date_of_birth_precision === 'year'} onChange={() => updateReg({ date_of_birth_precision: 'year', date_of_birth: '' })} />Année seulement</label>
+                <label><input type="radio" name="birth-date-mode" value="unknown" checked={regForm.date_of_birth_precision === 'unknown'} onChange={() => updateReg({ date_of_birth_precision: 'unknown', date_of_birth: '', birth_year: '' })} />Âge seulement</label>
               </div>
               <div className="registration-grid registration-grid--2">
-                {regForm.date_of_birth_precision === 'year' ? (
+                {regForm.date_of_birth_precision === 'unknown' ? (
+                  <>
+                    <label>Âge déclaré *
+                      <input required type="number" inputMode="numeric" name="age_value" min="0" max={{ days: 365, weeks: 104, months: 240, years: 130 }[regForm.age_unit]} value={regForm.age_value} onChange={(e) => updateReg({ age_value: e.target.value.replace(/[^\d]/g, '').slice(0, 3), age_years: e.target.value && regForm.age_unit === 'years' ? e.target.value : '0' })} placeholder="Ex. 2" />
+                    </label>
+                    <label>Unité *
+                      <select required name="age_unit" value={regForm.age_unit} onChange={(e) => updateReg({ age_unit: e.target.value, age_years: e.target.value === 'years' ? regForm.age_value : '0' })}>
+                        <option value="days">Jour(s)</option><option value="weeks">Semaine(s)</option><option value="months">Mois</option><option value="years">Année(s)</option>
+                      </select>
+                    </label>
+                  </>
+                ) : regForm.date_of_birth_precision === 'year' ? (
                   <label>Année de naissance *
                     <input required type="number" inputMode="numeric" name="birth_year" autoComplete="off" min="1900" max={new Date().getFullYear()} placeholder="Ex. 1985" value={regForm.birth_year} onChange={(e) => {
                       const year = e.target.value.replace(/[^\d]/g, '').slice(0, 4);
@@ -151,10 +165,10 @@ export default function RegisterTab({
                     <small>Format affiché selon l’appareil · jour / mois / année</small>
                   </label>
                 )}
-                <label>Âge en années *
-                  <input required type="number" inputMode="numeric" name="age_years" autoComplete="off" min="0" max="130" value={regForm.age_years} onChange={(e) => updateReg({ age_years: e.target.value.replace(/[^\d]/g, '').slice(0, 3) })} placeholder="Ex. 41" />
-                  <small>Peut être corrigé si la date exacte est inconnue.</small>
-                </label>
+                {regForm.date_of_birth_precision !== 'unknown' && <label>Âge calculé (années)
+                  <input readOnly type="number" name="age_years" value={regForm.age_years} />
+                  <small>Calculé automatiquement à partir de la naissance.</small>
+                </label>}
               </div>
             </div>
           </section>
@@ -219,9 +233,10 @@ export default function RegisterTab({
         )}
 
         <footer className="registration-action-bar">
-          <div><strong>{registrationLocked ? 'Dossier enregistré' : 'Prêt à enregistrer'}</strong><span>{registrationLocked ? 'Vous pouvez imprimer la fiche ou saisir un autre patient.' : 'Une vérification des doublons sera effectuée avant la création.'}</span></div>
+          <div><strong>{editingPatientId ? 'Modification du dossier' : registrationLocked ? 'Dossier enregistré' : 'Prêt à enregistrer'}</strong><span>{editingPatientId ? 'Le numéro de dossier restera inchangé.' : registrationLocked ? 'Vous pouvez imprimer la fiche ou saisir un autre patient.' : 'Une vérification des doublons sera effectuée avant la création.'}</span></div>
           <div className="registration-actions">
-            <button type="submit" className="clinical-btn registration-primary-action" disabled={loading || registrationLocked} data-testid="reception-register-submit">{loading ? 'Enregistrement…' : 'Enregistrer le patient'}</button>
+            <button type="submit" className="clinical-btn registration-primary-action" disabled={loading || registrationLocked} data-testid="reception-register-submit">{loading ? 'Enregistrement…' : editingPatientId ? 'Enregistrer les modifications' : 'Enregistrer le patient'}</button>
+            {editingPatientId && <button type="button" className="clinical-btn clinical-btn--secondary" onClick={cancelPatientEdit} disabled={loading}>Annuler</button>}
             {registeredPatient?.patient_number && <button type="button" className="clinical-btn clinical-btn--secondary" onClick={printRegistrationSheet}>Imprimer la fiche</button>}
             {registeredPatient && <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => { setRegisteredPatient(null); setRegistrationPrintForm(null); clearDuplicatePanel?.(); setRegForm({ ...EMPTY_REG, registration_date: todayStr }); setMessage(''); }} data-testid="reception-new-registration">Nouvel enregistrement</button>}
           </div>

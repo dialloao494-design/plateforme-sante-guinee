@@ -125,6 +125,10 @@ const clinicalApi = {
   receptionHisBillingCatalog: () => httpClient.get('/clinical/reception/his/billing-catalog'),
   receptionHisSearch: (q) => httpClient.get('/clinical/reception/his/patients/search', { params: { q } }),
   receptionHisGetPatient: (patientId) => httpClient.get(`/clinical/reception/his/patients/${patientId}`),
+  receptionHisUpdatePatient: (patientId, data, offlineOptimisticData) => {
+    invalidateApiCache('/clinical/reception/');
+    return httpClient.put(`/clinical/reception/his/patients/${patientId}`, data, { offlineOptimisticData });
+  },
   receptionHisCheckDuplicates: (data) =>
     httpClient.post('/clinical/reception/his/patients/check-duplicates', data),
   receptionHisRegister: (data) => {

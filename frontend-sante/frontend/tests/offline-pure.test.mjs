@@ -94,6 +94,21 @@ test('optimistic patient create never invents a dossier number', () => {
   assert.equal(row._sync_status, 'queued');
 });
 
+test('patient update is queueable and preserves the existing dossier number', () => {
+  const classified = classifyRequest('/clinical/reception/his/patients/55', 'put');
+  assert.equal(classified.entityType, 'patient');
+  assert.equal(classified.operation, 'update');
+  assert.equal(classified.queueable, true);
+  assert.equal(classified.requiresReconciliation, false);
+  const row = buildOptimisticResponse(
+    { id: 55, first_name: 'Awa', patient_number: 'PAT-017-000055' },
+    'patient',
+    'update',
+  );
+  assert.equal(row.patient_number, 'PAT-017-000055');
+  assert.equal(row._pending_dossier, undefined);
+});
+
 test('resolveLastWriteWins prefers higher version', () => {
   const local = { record_version: 2, updated_at: '2026-01-01' };
   const remote = { record_version: 1, updated_at: '2026-02-01' };

@@ -79,6 +79,7 @@ export function useReceptionDashboard() {
 
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [registeredPatient, setRegisteredPatient] = useState(null);
+  const [editingPatientId, setEditingPatientId] = useState(null);
   const [registrationPrintForm, setRegistrationPrintForm] = useState(null);
   const [activePrintDocument, setActivePrintDocument] = useState('');
   const [lastAdmission, setLastAdmission] = useState(null);
@@ -817,11 +818,12 @@ export function useReceptionDashboard() {
 
   const buildRegistrationPayload = (confirmDuplicate = false) => {
     const manualAge = regForm.age_years !== '' ? Number(regForm.age_years) : null;
+    const reportedAge = regForm.age_value !== '' ? Number(regForm.age_value) : manualAge;
     const resolvedDob =
       regForm.date_of_birth_precision === 'year' && regForm.birth_year.length === 4
         ? `${regForm.birth_year}-01-01`
         : (regForm.date_of_birth_precision === 'full' && regForm.date_of_birth ? regForm.date_of_birth : null);
-    if (!resolvedDob && (manualAge == null || !Number.isFinite(manualAge))) {
+    if (!resolvedDob && (reportedAge == null || !Number.isFinite(reportedAge))) {
       return { error: 'Indiquez une date de naissance, une année de naissance ou saisissez l’âge du patient.' };
     }
     return {
@@ -831,6 +833,8 @@ export function useReceptionDashboard() {
         date_of_birth: resolvedDob,
         date_of_birth_precision: resolvedDob ? regForm.date_of_birth_precision : 'unknown',
         age_years: manualAge != null && Number.isFinite(manualAge) ? manualAge : undefined,
+        age_value: reportedAge != null && Number.isFinite(reportedAge) ? reportedAge : undefined,
+        age_unit: regForm.date_of_birth_precision === 'unknown' ? regForm.age_unit : 'years',
         gender: regForm.gender,
         is_newborn: regForm.is_newborn,
         registration_date: regForm.registration_date || undefined,
@@ -961,7 +965,53 @@ export function useReceptionDashboard() {
       setError(built.error);
       return;
     }
-    await submitRegistration(built.payload);
+    if (!editingPatientId) {
+      await submitRegistration(built.payload);
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setMessage('');
+    try {
+      const optimistic = { ...selectedPatient, ...built.payload, id: editingPatientId, patient_number: selectedPatient?.patient_number };
+      const { data } = await clinicalApi.receptionHisUpdatePatient(editingPatientId, built.payload, optimistic);
+      const patient = data || optimistic;
+      setSelectedPatient(patient);
+      setRegisteredPatient(patient);
+      setRegistrationPrintForm({ ...regForm });
+      setEditingPatientId(null);
+      setMessage(data?._offline_queued ? 'Modifications enregistrées hors ligne — synchronisation en attente.' : 'Informations du patient mises à jour.');
+    } catch (err) {
+      setError(formatApiError(err, 'Modification du patient impossible'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const beginPatientEdit = async () => {
+    if (!selectedPatient?.id) return;
+    setLoading(true);
+    setError('');
+    try {
+      let patient = selectedPatient;
+      try {
+        const { data } = await clinicalApi.receptionHisGetPatient(selectedPatient.id);
+        if (data) patient = data;
+      } catch { /* cached/partial patient remains editable offline */ }
+      const { patientToRegistrationForm } = await import('../patientEditForm.js');
+      setRegForm(patientToRegistrationForm(patient));
+      setRegisteredPatient(patient);
+      setEditingPatientId(patient.id);
+      setTab('register');
+      setMessage('Modifiez les champs nécessaires puis enregistrez.');
+    } finally { setLoading(false); }
+  };
+
+  const cancelPatientEdit = () => {
+    setEditingPatientId(null);
+    setRegForm({ ...EMPTY_REG });
+    setRegisteredPatient(null);
+    setMessage('Modification annulée.');
   };
 
   const handleConfirmDuplicateRegister = async () => {
@@ -1455,6 +1505,7 @@ export function useReceptionDashboard() {
     searching,
     runPatientSearch,
     selectedPatient,
+    beginPatientEdit,
     clearPatient,
     selectPatient,
     registeredPatient,
@@ -1463,6 +1514,8 @@ export function useReceptionDashboard() {
     setRegisteredPatient,
     setRegistrationPrintForm,
     regForm,
+    editingPatientId,
+    cancelPatientEdit,
     updateReg,
     setRegForm,
     handleRegister,

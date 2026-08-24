@@ -39,6 +39,7 @@ export default function ReceptionDashboard() {
     registrationPrintForm,
     activePrintDocument,
     resolveRelationship,
+    beginPatientEdit,
   } = dashboard;
 
   const openPatient = async (patient, targetTab = 'admission') => {
@@ -112,6 +113,13 @@ export default function ReceptionDashboard() {
       </header>
 
       <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} />
+      {selectedPatient && (
+        <div className="reception-patient-actions">
+          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={beginPatientEdit}>
+            Modifier les informations du patient
+          </button>
+        </div>
+      )}
 
       {message && <p className="clinical-message clinical-message--ok" role="status" aria-live="polite">{message}</p>}
       {error && <p className="clinical-message clinical-message--err" role="alert">{error}</p>}
