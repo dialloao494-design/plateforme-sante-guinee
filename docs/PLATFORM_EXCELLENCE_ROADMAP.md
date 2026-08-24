@@ -545,28 +545,39 @@ configuration matches canonical documentation, and schema startup is determinist
 
 ### P2 — Complete ward, room, and bed management
 
-**Status: OPEN — preferred next product initiative**
+**Status: CODE COMPLETE / LOCALLY VERIFIED — CI, production, and clinic exercise open**
 
 The current system records hospitalization accommodation tariffs and basic
 admission placement. It does not yet provide a complete operational inventory of
 wards, rooms, beds, berceaux, occupancy, transfers, or availability over time.
 
-Build a clinic-scoped accommodation model with:
+The clinic-scoped accommodation foundation now includes:
 
-- configurable wards/services, rooms, and accommodation types;
-- individual beds and newborn berceaux with stable identifiers;
-- available, reserved, occupied, cleaning, maintenance, and unavailable states;
-- admission allocation with start/end dates and overlap prevention;
-- safe transfers between rooms/beds with a preserved movement history;
-- pediatric, isolation, accessibility, and other placement attributes without
+- [x] configurable wards/services, rooms, and accommodation types;
+- [x] individual beds and newborn berceaux with stable identifiers;
+- [x] available, reserved, occupied, cleaning, maintenance, and unavailable states;
+- [x] admission allocation, expected discharge, expiring reservations, optimistic
+  version checks, and database-enforced current-stay overlap prevention;
+- [x] safe transfers between rooms/beds with preserved stay and immutable bed-state history;
+- [x] pediatric, newborn, isolation, and accessibility placement attributes without
   encoding clinical suitability only in a price;
-- occupancy, expected-discharge, turnover, and capacity views;
-- explicit separation between the physical accommodation, its clinical
+- [x] a responsive ward census with occupancy, expected-discharge, turnover, and capacity views;
+- [x] explicit separation between the physical accommodation, its clinical
   suitability, and the billable tariff;
-- clinic isolation, permission checks, audit events, and offline-safe/idempotent
+- [x] clinic isolation, permission checks, audit events, and offline-queued/idempotent
   allocation behavior;
-- responsive Reception, Nursing, and Hospitalization workflows with conflict,
-  stale-state, and concurrent-allocation browser tests.
+- [x] responsive Hospitalization configuration, census, admission, and transfer workflows;
+- [ ] add an embedded ward handoff summary to the Nursing dashboard and a compact
+  placement summary to Reception (both roles already use the same APIs and route);
+- [ ] complete real-browser two-user concurrent allocation and reconnect replay scenarios;
+- [ ] validate the state wording and cleaning handoff with Reception and Nursing staff.
+
+Local evidence (2026-08-24): Alembic `0035` passes clean-schema, partial stamped-
+schema recovery, and create-all-before-upgrade paths. Full backend tests pass
+**458/458 with 1 skipped**. Frontend unit **50/50**, offline
+**45/45**, responsive Chromium **3/3**, lint, production build, and all six
+performance budgets pass. Remote CI, production migration/smoke, and clinic-field
+validation are not yet claimed.
 
 **Exit criterion:** authorized staff can configure capacity, allocate and transfer
 a patient without double-booking, see trustworthy real-time availability, and
@@ -740,6 +751,7 @@ and a clear escalation contact.
 | 2026-08-24 | [CI run 32753005661](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32753005661) passed all six jobs for `839864e`; [deployment run 32753287391](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32753287391) passed Railway/Vercel readiness and production smoke. Railway identifies `839864e`, and Vercel serves the new administration bundle. | The onboarding foundation is CI- and production-verified. Secure credential delivery, shift routines, broader browser scenarios, and observed clinic-admin validation remain open. |
 | 2026-08-24 | Secure one-time staff activation and clinic opening/closing handoff routines were implemented with migration, tenant-scoped APIs, audit events, responsive administration UI, and focused security/shift regression coverage. Local backend 456/456 (plus one skip), frontend 50/50, offline 45/45, focused browser 2/2, lint, build, and six performance budgets pass. | Code-complete and locally verified. CI, production, and clinic-field validation remain open. |
 | 2026-08-24 | [CI run 32756121047](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32756121047) passed all six jobs for `7807b08`; [deployment run 32756387226](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/32756387226) passed. Railway reports exact commit `7807b08`, and Vercel serves `/activate-staff`. | Secure staff activation and operational shift handoff are production-verified. Observed clinic-admin validation remains open. |
+| 2026-08-24 | Complete ward-management foundation added real clinic wards, stable regular-bed/berceau inventory, suitability attributes, six-state lifecycle, expected discharge and reservation metadata, immutable turnover events, transactional/versioned allocation, database overlap guards, and a responsive census/configuration workspace. Focused backend 28/28, frontend 50/50, offline 45/45, responsive Chromium 3/3, lint/build/budgets pass locally. | Core ward management is code-complete and locally verified. CI/deployment, two-user browser concurrency/reconnect proof, embedded Nursing/Reception summaries, and observed clinic turnover exercise remain open. |
 
 ## Related evidence
 

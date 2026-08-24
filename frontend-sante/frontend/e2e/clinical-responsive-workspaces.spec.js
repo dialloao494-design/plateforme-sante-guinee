@@ -37,3 +37,15 @@ test('billing and administration forms reflow on a narrow clinic screen', async 
   await expect(page.getByRole('button', { name: /Ouvrir le poste|Clôturer et transmettre/ })).toBeVisible();
   await expectNoPageOverflow(page);
 });
+
+test('ward census and configuration remain operable on a narrow hospital screen', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await loginAsRole(page, 'admin');
+  await page.goto('/clinical/hospitalization');
+  await expect(page.getByTestId('hospitalization-dashboard')).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Plan des lits' })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('tab', { name: 'Configuration' }).click();
+  await expect(page.getByRole('heading', { name: 'Services, chambres et couchages' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Créer le service' })).toBeVisible();
+  await expectNoPageOverflow(page);
+});

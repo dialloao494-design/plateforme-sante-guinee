@@ -51,6 +51,11 @@ test('classifyRequest maps hospitalization and nursing mutations as queueable', 
   const admit = classifyRequest('/clinical/hospitalization/admissions', 'post');
   assert.equal(admit.entityType, 'hospitalization');
   assert.equal(admit.queueable, true);
+  const allocation = classifyRequest('/clinical/hospitalization/admissions/12/assign-bed', 'post');
+  assert.equal(allocation.entityType, 'hospitalization');
+  assert.equal(allocation.queueable, true);
+  const wardBoard = classifyRequest('/clinical/hospitalization/board', 'get');
+  assert.equal(wardBoard.cacheable, true);
   const nurse = classifyRequest('/clinical/nursing-care/assessments', 'post');
   assert.equal(nurse.entityType, 'nursing');
   assert.equal(nurse.queueable, true);

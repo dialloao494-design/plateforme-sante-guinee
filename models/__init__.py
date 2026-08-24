@@ -26,7 +26,7 @@ from .medical_history import (
     PatientVitalSigns,
     FollowUpSchedule,
 )
-from .hospitalization import HospitalRoom, HospitalBed, Admission, PatientStay
+from .hospitalization import HospitalWard, HospitalRoom, HospitalBed, Admission, PatientStay, BedStatusEvent
 from .clinical_visit import ClinicalVisit
 from .invoice import Invoice, InvoiceItem, PaymentRecord
 from .discharge import DischargeSummary

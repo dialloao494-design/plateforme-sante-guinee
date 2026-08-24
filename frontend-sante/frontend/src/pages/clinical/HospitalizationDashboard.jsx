@@ -9,8 +9,11 @@ import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
 import ClinicalFeedback from '../../components/clinical/ClinicalFeedback.jsx';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
+import WardCensusBoard from './hospitalization/WardCensusBoard.jsx';
+import WardConfiguration from './hospitalization/WardConfiguration.jsx';
 
 import './clinical.css';
+import './hospitalization/hospitalization.css';
 
 const STATUS_LABELS = {
   pending: 'En attente',
@@ -27,6 +30,9 @@ export default function HospitalizationDashboard() {
   const closingPatientIdRef = useRef('');
   const canManageBeds = userCanManageHospitalBeds(user?.role || user?.user_role);
   const [occupancy, setOccupancy] = useState(null);
+  const [board, setBoard] = useState(null);
+  const [wards, setWards] = useState([]);
+  const [activeView, setActiveView] = useState('census');
   const [hospStats, setHospStats] = useState(null);
   const [admissions, setAdmissions] = useState([]);
   const [beds, setBeds] = useState([]);
@@ -35,32 +41,35 @@ export default function HospitalizationDashboard() {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [selectedBedId, setSelectedBedId] = useState('');
   const [transferReason, setTransferReason] = useState('');
-  const [roomForm, setRoomForm] = useState({ ward_name: 'Médecine', room_number: '', room_type: 'general', capacity: 2 });
-  const [bedForm, setBedForm] = useState({ room_id: '', bed_number: '' });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [patientSearch, setPatientSearch] = useState('');
   const [patientMatches, setPatientMatches] = useState([]);
-  const [admitForm, setAdmitForm] = useState({ patient_id: '', diagnosis_summary: '', reason: '' });
+  const [admitForm, setAdmitForm] = useState({ patient_id: '', diagnosis_summary: '', reason: '', expected_discharge_at: '', placement_age_group: 'adult', requires_isolation: false, requires_accessible: false });
   const [dischargeOutcome, setDischargeOutcome] = useState('cured');
 
   const load = useCallback(async () => {
-    try {
-      const [occRes, admRes, bedRes, roomRes, dashRes] = await Promise.all([
+    const results = await Promise.allSettled([
         clinicalApi.hospitalOccupancy(),
         clinicalApi.hospitalAdmissions(),
         clinicalApi.hospitalBeds(),
         clinicalApi.hospitalRooms(),
         clinicalApi.hospitalDashboard(),
+        clinicalApi.hospitalWardBoard(),
+        clinicalApi.hospitalWards(),
       ]);
-      setOccupancy(occRes.data);
-      setHospStats(dashRes.data);
-      setAdmissions(admRes.data || []);
-      setBeds(bedRes.data || []);
-      setRooms(roomRes.data || []);
+    const value = (index) => results[index].status === 'fulfilled' ? results[index].value.data : undefined;
+    if (value(0)) setOccupancy(value(0));
+    if (value(1)) setAdmissions(value(1) || []);
+    if (value(2)) setBeds(value(2) || []);
+    if (value(3)) setRooms(value(3) || []);
+    if (value(4)) setHospStats(value(4));
+    if (value(5)) setBoard(value(5));
+    if (value(6)) setWards(value(6) || []);
+    if (results.some((result) => result.status === 'fulfilled')) {
       setError('');
-    } catch (err) {
-      setError(formatApiError(err, 'Hospitalisation indisponible'));
+    } else {
+      setError(formatApiError(results[0].reason, 'Hospitalisation indisponible hors ligne. Connectez-vous une fois pour préparer ce poste.'));
     }
   }, []);
 
@@ -114,11 +123,14 @@ export default function HospitalizationDashboard() {
   const assignBed = async () => {
     if (!selectedAdmission || !selectedBedId) return;
     try {
-      await clinicalApi.assignBed(selectedAdmission.id, {
+      const response = await clinicalApi.assignBed(selectedAdmission.id, {
         bed_id: Number(selectedBedId),
+        expected_bed_version: beds.find((bed) => bed.id === Number(selectedBedId))?.version,
         transfer_reason: transferReason || undefined,
       });
-      setMessage('Lit assigné avec succès');
+      setMessage(response.data?._offline_queued
+        ? 'Placement enregistré hors ligne. Il sera vérifié à la synchronisation avant de devenir définitif.'
+        : 'Lit assigné avec succès');
       setTransferReason('');
       setSelectedBedId('');
       setSelectedAdmission(null);
@@ -160,9 +172,13 @@ export default function HospitalizationDashboard() {
         patient_id: Number(admitForm.patient_id),
         diagnosis_summary: admitForm.diagnosis_summary || null,
         reason: admitForm.reason || null,
+        expected_discharge_at: admitForm.expected_discharge_at || null,
+        placement_age_group: admitForm.placement_age_group,
+        requires_isolation: admitForm.requires_isolation,
+        requires_accessible: admitForm.requires_accessible,
       });
       setMessage('Admission créée');
-      setAdmitForm({ patient_id: '', diagnosis_summary: '', reason: '' });
+      setAdmitForm({ patient_id: '', diagnosis_summary: '', reason: '', expected_discharge_at: '', placement_age_group: 'adult', requires_isolation: false, requires_accessible: false });
       setSelectedPatient(null);
       setRoutePatientId('');
       setPatientMatches([]);
@@ -172,45 +188,71 @@ export default function HospitalizationDashboard() {
     }
   };
 
-  const createRoom = async (e) => {
-    e.preventDefault();
-    try {
-      await clinicalApi.createHospitalRoom(roomForm);
-      setMessage('Chambre créée');
-      setRoomForm({ ...roomForm, room_number: '' });
-      load();
-    } catch (err) {
-      setError(formatApiError(err, 'Création chambre impossible'));
-    }
+  const createWardConfig = async (payload) => {
+    try { await clinicalApi.createHospitalWard(payload); setMessage('Service créé'); await load(); }
+    catch (err) { setError(formatApiError(err, 'Création du service impossible')); throw err; }
   };
 
-  const addBed = async (e) => {
-    e.preventDefault();
-    if (!bedForm.room_id) return;
-    try {
-      await clinicalApi.addHospitalBed(bedForm.room_id, { bed_number: bedForm.bed_number });
-      setMessage('Lit ajouté');
-      setBedForm({ ...bedForm, bed_number: '' });
-      load();
-    } catch (err) {
-      setError(formatApiError(err, 'Ajout lit impossible'));
-    }
+  const createRoomConfig = async (payload) => {
+    try { await clinicalApi.createHospitalRoom({ ...payload, ward_id: Number(payload.ward_id) }); setMessage('Chambre créée'); await load(); }
+    catch (err) { setError(formatApiError(err, 'Création de la chambre impossible')); throw err; }
   };
 
-  const availableBeds = beds.filter((b) => b.status === 'available' || b.status === 'reserved');
+  const addBedConfig = async (payload) => {
+    try {
+      const { room_id, ...data } = payload;
+      await clinicalApi.addHospitalBed(Number(room_id), data);
+      setMessage(payload.accommodation_type === 'cradle' ? 'Berceau ajouté' : 'Lit ajouté');
+      await load();
+    } catch (err) { setError(formatApiError(err, 'Ajout du couchage impossible')); throw err; }
+  };
+
+  const markBedReady = async (bed) => {
+    try {
+      await clinicalApi.updateHospitalBed(bed.id, { status: 'available', reason: 'Nettoyage terminé', expected_version: bed.version });
+      setMessage(`${bed.accommodation_type === 'cradle' ? 'Berceau' : 'Lit'} ${bed.bed_number} disponible`);
+      await load();
+    } catch (err) { setError(formatApiError(err, 'Mise à disposition impossible')); }
+  };
+
+  const focusAdmission = (admissionId) => {
+    const admission = admissions.find((item) => item.id === admissionId);
+    if (admission) { setSelectedAdmission(admission); setActiveView('workflow'); }
+  };
+
+  const availableBeds = beds.filter((bed) => {
+    if (!['available', 'reserved'].includes(bed.status)) return false;
+    if (!selectedAdmission) return true;
+    if (selectedAdmission.placement_age_group === 'newborn' && !bed.newborn_suitable) return false;
+    if (selectedAdmission.placement_age_group === 'pediatric' && !bed.pediatric_suitable) return false;
+    if (selectedAdmission.requires_isolation && !bed.isolation_suitable) return false;
+    if (selectedAdmission.requires_accessible && !bed.accessible) return false;
+    return true;
+  });
 
   return (
-    <div className="clinical-page" data-testid="hospitalization-dashboard">
+    <div className="clinical-page hospitalization-page" data-testid="hospitalization-dashboard">
       <header className="clinical-header">
         <h1>Hospitalisation</h1>
         <p>Admissions, lits et occupation — pilotage du service.</p>
       </header>
 
       <ClinicalFeedback error={error} message={message} />
+      <nav className="hospitalization-toolbar" aria-label="Sections hospitalisation">
+        <div className="hospitalization-toolbar__tabs" role="tablist">
+          <button type="button" role="tab" aria-selected={activeView === 'census'} onClick={() => setActiveView('census')}>Plan des lits</button>
+          <button type="button" role="tab" aria-selected={activeView === 'workflow'} onClick={() => setActiveView('workflow')}>Admissions et transferts</button>
+          {canManageBeds && <button type="button" role="tab" aria-selected={activeView === 'configuration'} onClick={() => setActiveView('configuration')}>Configuration</button>}
+        </div>
+        <button type="button" className="clinical-btn clinical-btn--secondary" onClick={load}>Actualiser le census</button>
+      </nav>
       <PatientSafetyStrip patient={selectedPatient} onClose={closePatient} contextLabel="Patient actif en hospitalisation" />
 
       <ClinicalStatGrid stats={stats} />
 
+      {activeView === 'census' && <WardCensusBoard board={board} canManageBeds={canManageBeds} onSelectAdmission={focusAdmission} onMarkReady={markBedReady} />}
+
+      {activeView === 'workflow' && <>
       <section className="clinical-panel">
         <h2>Admettre un patient</h2>
         <form className="clinical-form-grid" onSubmit={admitPatient}>
@@ -250,6 +292,20 @@ export default function HospitalizationDashboard() {
             Motif admission
             <input value={admitForm.reason} onChange={(e) => setAdmitForm({ ...admitForm, reason: e.target.value })} />
           </label>
+          <label>
+            Sortie prévue
+            <input type="datetime-local" value={admitForm.expected_discharge_at} onChange={(e) => setAdmitForm({ ...admitForm, expected_discharge_at: e.target.value })} />
+          </label>
+          <label>
+            Groupe de placement
+            <select value={admitForm.placement_age_group} onChange={(e) => setAdmitForm({ ...admitForm, placement_age_group: e.target.value })}>
+              <option value="adult">Adulte</option><option value="pediatric">Enfant</option><option value="newborn">Nouveau-né</option>
+            </select>
+          </label>
+          <div className="clinical-span-2 clinical-actions">
+            <label><input type="checkbox" checked={admitForm.requires_isolation} onChange={(e) => setAdmitForm({ ...admitForm, requires_isolation: e.target.checked })} /> Isolement requis</label>
+            <label><input type="checkbox" checked={admitForm.requires_accessible} onChange={(e) => setAdmitForm({ ...admitForm, requires_accessible: e.target.checked })} /> Accès adapté requis</label>
+          </div>
           <button type="submit" className="clinical-btn">Créer admission</button>
         </form>
       </section>
@@ -327,9 +383,11 @@ export default function HospitalizationDashboard() {
                   {availableBeds.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.ward_name} / {b.room_number} — Lit {b.bed_number}
+                      {b.accommodation_type === 'cradle' ? ' · Berceau' : ''}
                     </option>
                   ))}
                 </select>
+                {availableBeds.length === 0 && <span className="clinical-stat-hint">Aucun couchage disponible ne répond aux exigences de placement. Vérifiez le plan ou contactez un responsable clinique.</span>}
               </label>
               <label>
                 Motif transfert (optionnel)
@@ -344,80 +402,9 @@ export default function HospitalizationDashboard() {
           )}
         </section>
       </div>
+      </>}
 
-      <section className="clinical-panel">
-        <h2>Plan des lits</h2>
-        <div className="clinical-bed-grid">
-          {beds.map((b) => (
-            <div key={b.id} className={`clinical-bed-card clinical-bed-card--${b.status}`}>
-              <span className="clinical-bed-card__num">{b.bed_number}</span>
-              <span>{b.ward_name}</span>
-              <span>{b.room_number}</span>
-              <span className="clinical-badge">{b.status}</span>
-            </div>
-          ))}
-          {beds.length === 0 && <p>Aucun lit configuré — créez des chambres ci-dessous.</p>}
-        </div>
-      </section>
-
-      {canManageBeds && (
-      <div className="clinical-grid clinical-grid--2">
-        <section className="clinical-panel">
-          <h2>Nouvelle chambre (admin)</h2>
-          <form onSubmit={createRoom} className="clinical-form">
-            <label>
-              Service
-              <input value={roomForm.ward_name} onChange={(e) => setRoomForm({ ...roomForm, ward_name: e.target.value })} required />
-            </label>
-            <label>
-              Numéro chambre
-              <input value={roomForm.room_number} onChange={(e) => setRoomForm({ ...roomForm, room_number: e.target.value })} required />
-            </label>
-            <label>
-              Type
-              <select value={roomForm.room_type} onChange={(e) => setRoomForm({ ...roomForm, room_type: e.target.value })}>
-                <option value="general">Général</option>
-                <option value="private">Privée</option>
-                <option value="icu">Réanimation</option>
-                <option value="maternity">Maternité</option>
-              </select>
-            </label>
-            <label>
-              Capacité
-              <input type="number" min="1" value={roomForm.capacity} onChange={(e) => setRoomForm({ ...roomForm, capacity: Number(e.target.value) })} />
-            </label>
-            <button type="submit" className="clinical-btn">Créer chambre</button>
-          </form>
-        </section>
-
-        <section className="clinical-panel">
-          <h2>Ajouter un lit (admin)</h2>
-          <form onSubmit={addBed} className="clinical-form">
-            <label>
-              Chambre
-              <select value={bedForm.room_id} onChange={(e) => setBedForm({ ...bedForm, room_id: e.target.value })} required>
-                <option value="">— Choisir —</option>
-                {rooms.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.ward_name} — {r.room_number}
-                  </option>
-                ))}
-              </select>
-              {rooms.length === 0 && (
-                <span className="clinical-stat-hint">
-                  Aucune chambre configurée — créez d&apos;abord une chambre ci-contre.
-                </span>
-              )}
-            </label>
-            <label>
-              Numéro lit
-              <input value={bedForm.bed_number} onChange={(e) => setBedForm({ ...bedForm, bed_number: e.target.value })} required />
-            </label>
-            <button type="submit" className="clinical-btn">Ajouter lit</button>
-          </form>
-        </section>
-      </div>
-      )}
+      {activeView === 'configuration' && canManageBeds && <WardConfiguration wards={wards} rooms={rooms} onCreateWard={createWardConfig} onCreateRoom={createRoomConfig} onAddBed={addBedConfig} />}
     </div>
   );
 }

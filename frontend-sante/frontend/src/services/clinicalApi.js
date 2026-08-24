@@ -285,6 +285,10 @@ const clinicalApi = {
 
   // Hospitalization
   hospitalOccupancy: () => httpClient.get('/clinical/hospitalization/occupancy'),
+  hospitalWardBoard: () => httpClient.get('/clinical/hospitalization/board'),
+  hospitalWards: () => httpClient.get('/clinical/hospitalization/wards'),
+  createHospitalWard: (data) => httpClient.post('/clinical/hospitalization/wards', data),
+  updateHospitalWard: (wardId, data) => httpClient.patch(`/clinical/hospitalization/wards/${wardId}`, data),
   hospitalDashboard: () => httpClient.get('/clinical/hospitalization/dashboard'),
   hospitalRooms: () => httpClient.get('/clinical/hospitalization/rooms'),
   createHospitalRoom: (data) => httpClient.post('/clinical/hospitalization/rooms', data),
@@ -297,6 +301,7 @@ const clinicalApi = {
   getAdmission: (id) => httpClient.get(`/clinical/hospitalization/admissions/${id}`),
   updateAdmissionStatus: (id, data) => httpClient.patch(`/clinical/hospitalization/admissions/${id}/status`, data),
   assignBed: (id, data) => httpClient.post(`/clinical/hospitalization/admissions/${id}/assign-bed`, data),
+  reserveBed: (bedId, data) => httpClient.post(`/clinical/hospitalization/beds/${bedId}/reserve`, data),
 
   // Unified billing
   billingPatientSearch: (q) =>

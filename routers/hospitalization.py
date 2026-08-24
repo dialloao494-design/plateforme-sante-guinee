@@ -17,6 +17,7 @@ from schemas.hospitalization import (
     AdmissionResponse,
     AdmissionStatusUpdate,
     BedAssignmentRequest,
+    BedReservationRequest,
     HospitalBedCreate,
     HospitalBedResponse,
     HospitalBedUpdate,
@@ -24,6 +25,9 @@ from schemas.hospitalization import (
     HospitalRoomCreate,
     HospitalRoomResponse,
     HospitalRoomUpdate,
+    HospitalWardCreate,
+    HospitalWardResponse,
+    HospitalWardUpdate,
     OccupancySummary,
     PatientStayResponse,
 )
@@ -52,7 +56,18 @@ def _bed_response(bed: models.HospitalBed) -> HospitalBedResponse:
         id=bed.id,
         room_id=bed.room_id,
         bed_number=bed.bed_number,
+        stable_code=bed.stable_code,
+        accommodation_type=bed.accommodation_type,
+        pediatric_suitable=bed.pediatric_suitable,
+        newborn_suitable=bed.newborn_suitable,
+        isolation_suitable=bed.isolation_suitable,
+        accessible=bed.accessible,
         status=bed.status,
+        status_reason=bed.status_reason,
+        version=bed.version,
+        reserved_for_admission_id=bed.reserved_for_admission_id,
+        reserved_until=bed.reserved_until,
+        last_cleaned_at=bed.last_cleaned_at,
         ward_name=room.ward_name if room else None,
         room_number=room.room_number if room else None,
     )
@@ -106,6 +121,10 @@ def _admission_response(admission: models.Admission) -> AdmissionResponse:
         notes=admission.notes,
         admitted_at=admission.admitted_at,
         discharged_at=admission.discharged_at,
+        expected_discharge_at=admission.expected_discharge_at,
+        placement_age_group=admission.placement_age_group,
+        requires_isolation=admission.requires_isolation,
+        requires_accessible=admission.requires_accessible,
         patient_name=patient_name,
         current_bed=current_bed,
         stays=stays_out,
@@ -117,15 +136,58 @@ def _room_response(room: models.HospitalRoom) -> HospitalRoomResponse:
     return HospitalRoomResponse(
         id=room.id,
         clinic_id=room.clinic_id,
+        ward_id=room.ward_id,
         ward_name=room.ward_name,
         room_number=room.room_number,
         room_type=room.room_type,
         capacity=room.capacity,
         status=room.status,
         notes=room.notes,
+        isolation_capable=room.isolation_capable,
+        accessible=room.accessible,
+        sex_policy=room.sex_policy,
         bed_count=len(beds),
         occupied_beds=sum(1 for b in beds if b.status == "occupied"),
     )
+
+
+def _ward_response(ward: models.HospitalWard) -> HospitalWardResponse:
+    rooms = ward.rooms or []
+    return HospitalWardResponse(
+        id=ward.id, clinic_id=ward.clinic_id, code=ward.code, name=ward.name,
+        service_type=ward.service_type, status=ward.status, location=ward.location, notes=ward.notes,
+        room_count=len(rooms), bed_count=sum(len(room.beds or []) for room in rooms),
+    )
+
+
+@router.get("/board")
+def ward_board(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    _require_role(current_user, ADMISSION_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return HospitalizationService.ward_board(db, clinic_id=clinic.id)
+
+
+@router.get("/wards", response_model=List[HospitalWardResponse])
+def list_wards(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    _require_role(current_user, ADMISSION_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return [_ward_response(item) for item in HospitalizationService.list_wards(db, clinic_id=clinic.id)]
+
+
+@router.post("/wards", response_model=HospitalWardResponse, status_code=201)
+def create_ward(payload: HospitalWardCreate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    _require_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    clinic = resolve_clinic_for_user(db, current_user)
+    ward = HospitalizationService.create_ward(db, clinic_id=clinic.id, payload=payload, actor=current_user, client_ip=client_ip(request))
+    return _ward_response(ward)
+
+
+@router.patch("/wards/{ward_id}", response_model=HospitalWardResponse)
+def update_ward(ward_id: int, payload: HospitalWardUpdate, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    _require_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    clinic = resolve_clinic_for_user(db, current_user)
+    ward = HospitalizationService.update_ward(db, clinic_id=clinic.id, ward_id=ward_id, payload=payload, actor=current_user, client_ip=client_ip(request))
+    return _ward_response(ward)
 
 
 @router.get("/dashboard", response_model=HospitalizationDashboardStats)
@@ -258,9 +320,17 @@ def update_bed(
     _require_role(current_user, BED_ADMIN_ROLES)
     clinic = resolve_clinic_for_user(db, current_user)
     bed = HospitalizationService.update_bed(
-        db, clinic_id=clinic.id, bed_id=bed_id, status=payload.status
+        db, clinic_id=clinic.id, bed_id=bed_id, status=payload.status, actor=current_user,
+        reason=payload.reason, expected_version=payload.expected_version,
     )
     return _bed_response(bed)
+
+
+@router.post("/beds/{bed_id}/reserve", response_model=HospitalBedResponse)
+def reserve_bed(bed_id: int, payload: BedReservationRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    _require_role(current_user, ADMISSION_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return _bed_response(HospitalizationService.reserve_bed(db, clinic_id=clinic.id, bed_id=bed_id, admission_id=payload.admission_id, reserved_until=payload.reserved_until, actor=current_user, expected_version=payload.expected_bed_version))
 
 
 @router.get("/admissions", response_model=List[AdmissionResponse])
