@@ -2,7 +2,9 @@ name: Deploy Railway + Vercel
 
 on:
   workflow_dispatch:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
 
 concurrency:
@@ -18,12 +20,15 @@ env:
 jobs:
   deploy-backend:
     name: Railway backend
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     env:
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       SVC_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Resolve backend URL
         shell: bash
@@ -94,6 +99,8 @@ jobs:
       VITE_API_URL: ${{ secrets.VITE_API_URL }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Resolve frontend URL and API URL
         shell: bash
@@ -147,6 +154,8 @@ jobs:
     needs: [deploy-backend, deploy-frontend]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

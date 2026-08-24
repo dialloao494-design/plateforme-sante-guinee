@@ -24,8 +24,9 @@ def upgrade() -> None:
         op.add_column("patients", sa.Column("age_value", sa.Integer(), nullable=True))
     if "age_unit" not in columns:
         op.add_column("patients", sa.Column("age_unit", sa.String(length=16), nullable=True))
-    op.execute("UPDATE patients SET age_value = age WHERE age_value IS NULL")
-    op.execute("UPDATE patients SET age_unit = 'years' WHERE age_unit IS NULL")
+    if "age" in columns:
+        op.execute("UPDATE patients SET age_value = age WHERE age_value IS NULL")
+    op.execute("UPDATE patients SET age_unit = 'years' WHERE age_unit IS NULL AND age_value IS NOT NULL")
 
 
 def downgrade() -> None:
