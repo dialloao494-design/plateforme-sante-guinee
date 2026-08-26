@@ -281,9 +281,11 @@ const Appointments = () => {
         <h2>Ajouter un rendez-vous</h2>
 
         <div className="form-group">
-          <label>Médecin</label>
+          <label htmlFor="appointment-doctor">Médecin</label>
           {doctorsError && <p className="error" style={{marginBottom: '6px'}}>{doctorsError}</p>}
           <select
+            id="appointment-doctor"
+            name="doctor_id"
             value={formData.doctorId}
             onChange={(e) => setFormData((prev) => ({ ...prev, doctorId: e.target.value }))}
             required
@@ -301,8 +303,10 @@ const Appointments = () => {
         </div>
 
         <div className="form-group">
-          <label>Date</label>
+          <label htmlFor="appointment-date">Date et heure</label>
           <input
+            id="appointment-date"
+            name="appointment_date"
             type="datetime-local"
             value={formData.date}
             onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
@@ -311,8 +315,10 @@ const Appointments = () => {
         </div>
 
         <div className="form-group">
-          <label>Durée (minutes)</label>
+          <label htmlFor="appointment-duration">Durée (minutes)</label>
           <select
+            id="appointment-duration"
+            name="duration_minutes"
             value={formData.duration}
             onChange={(e) => setFormData((prev) => ({ ...prev, duration: e.target.value }))}
             required
@@ -326,8 +332,10 @@ const Appointments = () => {
         </div>
 
         <div className="form-group">
-          <label>Type de consultation</label>
+          <label htmlFor="appointment-type">Type de consultation</label>
           <select
+            id="appointment-type"
+            name="consultation_type"
             value={formData.consultationType}
             onChange={(e) => setFormData((prev) => ({ ...prev, consultationType: e.target.value }))}
             required

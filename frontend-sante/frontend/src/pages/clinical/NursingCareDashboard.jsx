@@ -151,14 +151,14 @@ export default function NursingCareDashboard() {
 
       <ClinicalStatGrid stats={stats} />
 
-      <div className="clinical-tabs" role="tablist">
-        <button type="button" data-testid="nursing-care-tab-record" className={`clinical-tab${view === 'record' ? ' active' : ''}`} onClick={() => setView('record')}>
+      <div className="clinical-tabs" role="tablist" aria-label="Vues des soins infirmiers">
+        <button type="button" role="tab" aria-selected={view === 'record'} data-testid="nursing-care-tab-record" className={`clinical-tab${view === 'record' ? ' active' : ''}`} onClick={() => setView('record')}>
           Enregistrement
         </button>
-        <button type="button" className={`clinical-tab${view === 'register' ? ' active' : ''}`} onClick={() => setView('register')}>
+        <button type="button" role="tab" aria-selected={view === 'register'} className={`clinical-tab${view === 'register' ? ' active' : ''}`} onClick={() => setView('register')}>
           Registre mensuel
         </button>
-        <button type="button" className={`clinical-tab${view === 'report' ? ' active' : ''}`} onClick={() => setView('report')}>
+        <button type="button" role="tab" aria-selected={view === 'report'} className={`clinical-tab${view === 'report' ? ' active' : ''}`} onClick={() => setView('report')}>
           Statistiques
         </button>
       </div>

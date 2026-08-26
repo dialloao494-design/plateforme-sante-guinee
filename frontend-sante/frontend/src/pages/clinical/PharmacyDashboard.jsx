@@ -406,7 +406,7 @@ export default function PharmacyDashboard() {
             <section className="pharmacy-his-workflow-card pharmacy-his-workflow-card--billing">
               <h3>Facturation</h3>
               {!billingReady && <FormNotice>{BILLING_NOTICE}</FormNotice>}
-              <div className="pharmacy-his-table-wrap">
+              <div className="pharmacy-his-table-wrap" tabIndex="0" role="region" aria-label="Lignes à facturer">
                 <table className="pharmacy-his-table pharmacy-his-table--billing">
                   <thead>
                     <tr>

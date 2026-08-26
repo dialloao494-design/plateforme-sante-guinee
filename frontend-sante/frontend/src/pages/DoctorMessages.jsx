@@ -269,7 +269,10 @@ const DoctorMessages = () => {
           </div>
 
           <form className="chat-composer" onSubmit={handleSend}>
+            <label className="sr-only" htmlFor="doctor-message-text">Message au patient</label>
             <textarea
+              id="doctor-message-text"
+              name="message"
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={3}
@@ -277,14 +280,17 @@ const DoctorMessages = () => {
               disabled={!selectedAppointmentId}
             />
             <div className="composer-actions">
+              <label className="sr-only" htmlFor="doctor-message-file">Pièce jointe</label>
               <input
+                id="doctor-message-file"
+                name="attachment"
                 type="file"
                 accept=".pdf,image/*"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 disabled={!selectedAppointmentId}
               />
               <button type="submit" className="button-pay" disabled={!selectedAppointmentId || sending}>
-                {sending ? 'Envoi...' : 'Envoyer'}
+                {sending ? 'Envoi…' : 'Envoyer'}
               </button>
             </div>
           </form>
@@ -292,16 +298,20 @@ const DoctorMessages = () => {
       </div>
 
       {showPrescriptionModal && (
-        <div className="prescription-overlay" onClick={() => setShowPrescriptionModal(false)}>
-          <form className="prescription-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSendPrescription}>
-            <h3>Envoyer une ordonnance</h3>
+        <div className="prescription-overlay" onClick={(event) => event.target === event.currentTarget && setShowPrescriptionModal(false)}>
+          <form className="prescription-modal" role="dialog" aria-modal="true" aria-labelledby="prescription-dialog-title" onSubmit={handleSendPrescription}>
+            <h3 id="prescription-dialog-title">Envoyer une ordonnance</h3>
+            <label className="sr-only" htmlFor="prescription-text">Contenu de l’ordonnance</label>
             <textarea
+              id="prescription-text"
+              name="prescription"
               rows={4}
               placeholder="Médicaments, posologie, durée du traitement, recommandations…"
               value={prescriptionText}
               onChange={(e) => setPrescriptionText(e.target.value)}
             />
-            <input type="file" accept=".pdf,image/*" onChange={(e) => setPrescriptionFile(e.target.files?.[0] || null)} />
+            <label className="sr-only" htmlFor="prescription-file">Ordonnance en pièce jointe</label>
+            <input id="prescription-file" name="prescription_attachment" type="file" accept=".pdf,image/*" onChange={(e) => setPrescriptionFile(e.target.files?.[0] || null)} />
             <div className="modal-actions">
               <button type="button" className="button-secondary" onClick={() => setShowPrescriptionModal(false)}>
                 Fermer
@@ -310,7 +320,7 @@ const DoctorMessages = () => {
                 Aperçu / imprimer (PDF navigateur)
               </button>
               <button type="submit" className="button-pay" disabled={sending}>
-                {sending ? 'Envoi...' : 'Envoyer au patient'}
+                {sending ? 'Envoi…' : 'Envoyer au patient'}
               </button>
             </div>
           </form>

@@ -3,6 +3,16 @@
 /** @typedef {{ email: string, password: string, homePath: RegExp, skipReason?: string }} RoleCredential */
 
 export const ROLE_CREDENTIALS = {
+  patient: {
+    email: (globalThis.process?.env || {}).E2E_PATIENT_EMAIL || 'test.patient@example.com',
+    password: (globalThis.process?.env || {}).E2E_PATIENT_PASSWORD || 'PatientPilot123!',
+    homePath: /\/dashboard/,
+  },
+  platformOwner: {
+    email: (globalThis.process?.env || {}).E2E_PLATFORM_OWNER_EMAIL || 'owner@e2e.local',
+    password: (globalThis.process?.env || {}).E2E_PLATFORM_OWNER_PASSWORD || 'E2eOwnerPass12!',
+    homePath: /\/platform\/(?:clinics|setup|settings|system)/,
+  },
   reception: {
     email: (globalThis.process?.env || {}).E2E_RECEPTION_EMAIL || 'reception@pilot.local',
     password: (globalThis.process?.env || {}).E2E_RECEPTION_PASSWORD || 'ReceptionPilot1!',

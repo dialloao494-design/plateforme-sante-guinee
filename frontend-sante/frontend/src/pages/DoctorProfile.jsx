@@ -139,7 +139,7 @@ export default function DoctorProfile() {
           <section className="doctor-profile-card doctor-profile-card--hero">
             <div className="doctor-profile-avatar-wrap">
               {doctor.photo_url ? (
-                <img src={doctor.photo_url} alt="" className="doctor-profile-photo" />
+                <img src={doctor.photo_url} alt="" className="doctor-profile-photo" width="144" height="144" />
               ) : (
                 <div className="doctor-profile-photo-fallback" aria-hidden>
                   {String(doctor.name || 'Dr')

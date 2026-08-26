@@ -152,7 +152,7 @@ const Messages = () => {
             onChange={(e) => setFile(e.target.files?.[0] || null)}
           />
           <button type="submit" disabled={sending} className="button-pay">
-            {sending ? 'Envoi...' : 'Envoyer'}
+            {sending ? 'Envoi…' : 'Envoyer'}
           </button>
         </div>
       </form>

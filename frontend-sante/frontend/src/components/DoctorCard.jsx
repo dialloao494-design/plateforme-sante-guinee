@@ -8,7 +8,7 @@ const DoctorCard = ({ doctor, onBook }) => {
     <div className="doctor-card">
       <div className="doctor-card-header">
         {doctor.photo_url ? (
-          <img src={doctor.photo_url} alt={fullName} className="doctor-photo" />
+          <img src={doctor.photo_url} alt={fullName} className="doctor-photo" width="96" height="96" />
         ) : (
           <div className="doctor-avatar">{initials}</div>
         )}

@@ -18,7 +18,7 @@ from sqlalchemy import func
 
 import models
 from security import hash_password, verify_password
-from services.pilot_seed import PILOT_DOCTORS
+from services.pilot_seed import PILOT_DOCTORS, PILOT_PATIENT_EMAIL
 from services.user_provisioning import (
     EmailAlreadyRegisteredError,
     UserProvisioningError,
@@ -143,6 +143,32 @@ def _link_demo_doctors_to_clinic(db, clinic_id: int) -> None:
         logger.info("CIS pilot seed: linked demo doctor %s to clinic %s", email_l, clinic_id)
 
 
+def _link_pilot_patient_to_clinic(db, clinic_id: int) -> None:
+    """Give the canonical browser-test patient a real tenant-scoped record."""
+    user = (
+        db.query(models.User)
+        .filter(func.lower(models.User.email) == PILOT_PATIENT_EMAIL.lower())
+        .first()
+    )
+    if not user:
+        logger.warning("CIS pilot seed: pilot patient user is missing")
+        return
+    patient = db.query(models.Patient).filter(models.Patient.user_id == user.id).first()
+    if not patient:
+        logger.warning("CIS pilot seed: pilot patient profile is missing")
+        return
+    changed = False
+    if user.clinic_id != clinic_id:
+        user.clinic_id = clinic_id
+        changed = True
+    if patient.clinic_id != clinic_id:
+        patient.clinic_id = clinic_id
+        changed = True
+    if changed:
+        db.commit()
+        logger.info("CIS pilot seed: linked pilot patient to clinic %s", clinic_id)
+
+
 def seed_clinic_pilot_accounts() -> None:
     from database import SessionLocal
 
@@ -152,6 +178,7 @@ def seed_clinic_pilot_accounts() -> None:
         for spec in PILOT_STAFF:
             _ensure_staff_account(db, clinic.id, spec["email"], spec["password"], spec["role"])
         _link_demo_doctors_to_clinic(db, clinic.id)
+        _link_pilot_patient_to_clinic(db, clinic.id)
         from services.hospitalization_seed import seed_hospitalization
 
         seed_hospitalization(db, clinic.id)

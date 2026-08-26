@@ -30,9 +30,30 @@ export default function PatientMedicalHistory() {
     })();
   }, []);
 
-  if (loading) return <PageSkeleton lines={8} />;
-  if (error) return <p className="clinical-error">{error}</p>;
-  if (!history) return null;
+  if (loading) {
+    return (
+      <div className="clinical-page">
+        <h1>Dossier médical</h1>
+        <PageSkeleton lines={8} />
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="clinical-page">
+        <h1>Dossier médical</h1>
+        <p className="clinical-error" role="alert">{error}</p>
+      </div>
+    );
+  }
+  if (!history) {
+    return (
+      <div className="clinical-page">
+        <h1>Dossier médical</h1>
+        <p>Aucune donnée médicale disponible.</p>
+      </div>
+    );
+  }
 
   const upcomingFollowUps = (history.follow_ups || []).filter(
     (f) => f.status === 'scheduled' || f.status === 'overdue'
