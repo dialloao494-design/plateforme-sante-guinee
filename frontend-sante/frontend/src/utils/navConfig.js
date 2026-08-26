@@ -53,6 +53,7 @@ const ROLE_NAV = {
   ],
   doctor: [
     { path: '/clinical/doctor', label: 'Médecin', icon: 'board' },
+    { path: '/clinical/prescriptions', label: 'Ordonnances', icon: 'queue' },
     { path: '/clinical/patient-history', label: 'Dossier patient', icon: 'board' },
     { path: '/clinical/hospitalization', label: 'Hospitalisation', icon: 'queue' },
     { path: '/clinical/discharge', label: 'Sortie patient', icon: 'calendar' },
@@ -103,6 +104,7 @@ const CLINIC_ONLY_PATHS = new Set([
   '/clinical/notifications',
   '/clinical/lab',
   '/clinical/pharmacy',
+  '/clinical/prescriptions',
   '/clinical/reception',
   '/clinical/admin',
   '/clinical',

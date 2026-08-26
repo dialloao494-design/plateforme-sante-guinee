@@ -12,6 +12,7 @@ import ClinicalStatGrid from './ClinicalStatGrid.jsx';
 import DepartmentQueuePanel from './DepartmentQueuePanel.jsx';
 import DoctorPatientOverview from './doctor/DoctorPatientOverview.jsx';
 import './clinical.css';
+import './DoctorClinicalDashboard.css';
 
 const CONSULT_FIELDS = [
   { key: 'chief_complaint', label: 'Motif de consultation', rows: 2 },
@@ -25,12 +26,9 @@ const CONSULT_FIELDS = [
   { key: 'diagnosis', label: 'Diagnostic', rows: 2 },
   { key: 'treatment_plan', label: 'Plan de traitement', rows: 3 },
   { key: 'observations', label: 'Observations / Notes', rows: 2 },
-  { key: 'hospitalized_vitals', label: 'Signes vitaux patients hospitalisés', rows: 3 },
   { key: 'post_op_report', label: 'Post-opératoire — Compte rendu', rows: 3 },
   { key: 'discharge_summary_text', label: 'Résumé de sortie', rows: 3 },
-  { key: 'discharge_authorization', label: 'Autorisation de sortie', rows: 2 },
   { key: 'discharge_against_advice', label: 'Décharge — Contre avis médical', rows: 2 },
-  { key: 'prescription_text', label: 'Ordonnance', rows: 3 },
 ];
 
 const EMPTY_DISCHARGE_MOTIFS = {
@@ -62,6 +60,9 @@ const ANTECEDENT_FIELDS = [
 ];
 
 const HOSP_DURATIONS = ['24h', '48h', '72h'];
+const EMPTY_PRESCRIPTION_ITEM = {
+  medication_name: '', dosage: '', route: 'orale', frequency: '', duration_days: '', quantity: '', instructions: '',
+};
 
 const EMPTY_FORM = CONSULT_FIELDS.reduce((acc, f) => ({ ...acc, [f.key]: '' }), {
   target_specialty_code: '',
@@ -109,11 +110,14 @@ export default function DoctorClinicalDashboard() {
   const [history, setHistory] = useState([]);
   const [serviceRequests, setServiceRequests] = useState([]);
 
-  const [catalog, setCatalog] = useState({ specialties: [], imaging: [], lab_tests: [] });
+  const [catalog, setCatalog] = useState({ specialties: [], imaging: [], lab_tests: [], surgical_acts: [] });
 
   // Lab request
   const [labSearch, setLabSearch] = useState('');
   const [selectedLabs, setSelectedLabs] = useState([]);
+  const [selectedSurgicalAct, setSelectedSurgicalAct] = useState('');
+  const [prescriptionItem, setPrescriptionItem] = useState(EMPTY_PRESCRIPTION_ITEM);
+  const [action, setAction] = useState('');
 
   // Imaging request
   const [imagingForm, setImagingForm] = useState({
@@ -156,7 +160,7 @@ export default function DoctorClinicalDashboard() {
     loadDashboard();
     clinicalApi
       .doctorCatalog()
-      .then(({ data }) => setCatalog(data || { specialties: [], imaging: [], lab_tests: [] }))
+      .then(({ data }) => setCatalog(data || { specialties: [], imaging: [], lab_tests: [], surgical_acts: [] }))
       .catch(() => {});
   }, [loadDashboard]);
 
@@ -231,12 +235,9 @@ export default function DoctorClinicalDashboard() {
         observations: consult.observations || '',
         target_specialty_code: consult.target_specialty_code || '',
         target_specialty_other: consult.target_specialty_other || '',
-        hospitalized_vitals: consult.hospitalized_vitals || '',
         post_op_report: consult.post_op_report || '',
         discharge_summary_text: consult.discharge_summary_text || '',
-        discharge_authorization: consult.discharge_authorization || '',
         discharge_against_advice: consult.discharge_against_advice || '',
-        prescription_text: consult.prescription_text || '',
       });
       let motifs = { ...EMPTY_DISCHARGE_MOTIFS };
       if (consult.discharge_form_json) {
@@ -248,6 +249,8 @@ export default function DoctorClinicalDashboard() {
       }
       setDischargeMotifs(motifs);
       setSelectedLabs([]);
+      setSelectedSurgicalAct('');
+      setPrescriptionItem(EMPTY_PRESCRIPTION_ITEM);
       setLabSearch('');
       setImagingForm({ modality: 'xray', modality_other: '', body_part: '', clinical_indication: '', priority: 'routine' });
       setHosp({ requested: false, reason: '', duration: '24h', custom_days: '' });
@@ -281,6 +284,9 @@ export default function DoctorClinicalDashboard() {
     setHistory([]);
     setServiceRequests([]);
     setForm(EMPTY_FORM);
+    setSelectedLabs([]);
+    setSelectedSurgicalAct('');
+    setPrescriptionItem(EMPTY_PRESCRIPTION_ITEM);
     setRoutePatientId('');
   };
 
@@ -308,18 +314,16 @@ export default function DoctorClinicalDashboard() {
     target_specialty_code: form.target_specialty_code || null,
     target_specialty_other:
       form.target_specialty_code === '__other__' ? form.target_specialty_other : null,
-    hospitalized_vitals: form.hospitalized_vitals || '',
     post_op_report: form.post_op_report || '',
     discharge_summary_text: form.discharge_summary_text || '',
-    discharge_authorization: form.discharge_authorization || '',
     discharge_against_advice: form.discharge_against_advice || '',
-    prescription_text: form.prescription_text || '',
     discharge_form_json: JSON.stringify(dischargeMotifs),
   });
 
   const saveConsultation = async (complete = false) => {
     if (!consultation) return;
     setBusy(true);
+    setAction(complete ? 'validate' : 'save');
     setError('');
     setMessage('');
     try {
@@ -340,6 +344,7 @@ export default function DoctorClinicalDashboard() {
       setError(formatApiError(err, 'Sauvegarde impossible'));
     } finally {
       setBusy(false);
+      setAction('');
     }
   };
 
@@ -456,10 +461,8 @@ export default function DoctorClinicalDashboard() {
       const reason = hosp.reason || form.chief_complaint || 'Hospitalisation requise';
       const notesParts = [
         `Durée: ${durationLabel}`,
-        form.hospitalized_vitals ? `SV hospitalisés: ${form.hospitalized_vitals}` : '',
         form.post_op_report ? `Post-op: ${form.post_op_report}` : '',
         form.discharge_summary_text ? `Résumé sortie: ${form.discharge_summary_text}` : '',
-        form.prescription_text ? `Ordonnance: ${form.prescription_text}` : '',
       ].filter(Boolean);
       await clinicalApi.createAdmission({
         consultation_id: consultation.id,
@@ -488,8 +491,6 @@ export default function DoctorClinicalDashboard() {
     const map = {
       reception: { category: 'other', label: 'Réception', name: 'Retour à la réception' },
       nurse: { category: 'nursing', label: 'Soins infirmiers', name: 'Soins infirmiers' },
-      lab: { category: 'laboratory', label: 'Laboratoire', name: 'Orientation laboratoire' },
-      imaging: { category: 'imaging', label: 'Imagerie médicale', name: 'Orientation imagerie' },
     };
     const cfg = map[target];
     setBusy(true);
@@ -511,14 +512,77 @@ export default function DoctorClinicalDashboard() {
 
   const printReport = async () => {
     if (!consultation) return;
+    setBusy(true);
+    setAction('print');
     setError('');
     try {
+      const { data } = await clinicalApi.updateConsultation(consultation.id, buildUpdatePayload());
+      setConsultation(data);
       await clinicalApi.downloadConsultationPdf(
         consultation.id,
         `consultation_${consultation.id}.pdf`
       );
     } catch (err) {
       setError(formatApiError(err, 'Impression impossible'));
+    } finally {
+      setBusy(false);
+      setAction('');
+    }
+  };
+
+  const sendSurgicalRequest = async () => {
+    if (!consultation || !selectedSurgicalAct) return;
+    const act = (catalog.surgical_acts || []).find((item) => item.code === selectedSurgicalAct);
+    if (!act) return;
+    setBusy(true);
+    setAction('surgery');
+    setError('');
+    try {
+      await clinicalApi.doctorCreateServiceRequest({
+        patient_id: consultation.patient_id,
+        service_category: 'surgery',
+        service_name: act.label,
+        department: 'Chirurgie',
+        catalog_code: act.code,
+        unit_price_gnf: act.price_gnf,
+      });
+      setSelectedSurgicalAct('');
+      setMessage(`Acte « ${act.label} » transmis au service de chirurgie.`);
+      refreshServiceRequests();
+    } catch (err) {
+      setError(formatApiError(err, "Envoi de l'acte chirurgical impossible"));
+    } finally {
+      setBusy(false);
+      setAction('');
+    }
+  };
+
+  const createPrescription = async () => {
+    if (!consultation) return;
+    if (!prescriptionItem.medication_name.trim() || !prescriptionItem.dosage.trim() || !prescriptionItem.frequency.trim()) {
+      setError('Renseignez le médicament, la dose et la fréquence.');
+      return;
+    }
+    setBusy(true);
+    setAction('prescription');
+    setError('');
+    try {
+      await clinicalApi.prescribe(consultation.id, {
+        items: [{
+          ...prescriptionItem,
+          duration_days: prescriptionItem.duration_days ? Number(prescriptionItem.duration_days) : null,
+          quantity: prescriptionItem.quantity ? Number(prescriptionItem.quantity) : null,
+          instructions: prescriptionItem.instructions || null,
+        }],
+        notes: prescriptionItem.instructions || null,
+      });
+      setPrescriptionItem(EMPTY_PRESCRIPTION_ITEM);
+      setMessage('Ordonnance validée et transmise à la pharmacie.');
+    } catch (err) {
+      setError(formatApiError(err, "Création de l'ordonnance impossible"));
+    } finally {
+      setBusy(false);
+      setAction('');
     }
   };
 
@@ -547,9 +611,9 @@ export default function DoctorClinicalDashboard() {
       },
       discharge_date: dischargeMotifs.discharge_date || new Date().toLocaleDateString('fr-FR'),
       discharge_time: dischargeMotifs.discharge_time || '',
-      discharge_authorization: form.discharge_authorization || form.discharge_summary_text || '',
+      discharge_authorization: form.discharge_summary_text || '',
       discharge_instructions: dischargeMotifs.discharge_instructions || form.discharge_summary_text || '',
-      prescription_text: form.prescription_text || '',
+      prescription_text: '',
       next_appointment: dischargeMotifs.next_appointment || '',
       admin_formalities: dischargeMotifs.admin_formalities,
       invoice_paid: dischargeMotifs.invoice_paid,
@@ -852,15 +916,13 @@ export default function DoctorClinicalDashboard() {
             </section>
 
             <div className="clinical-actions">
-              <button type="button" className="clinical-btn secondary" onClick={() => saveConsultation(false)} disabled={busy}>Enregistrer</button>
-              <button type="button" className="clinical-btn" onClick={() => saveConsultation(true)} disabled={busy}>Valider la consultation</button>
-              <button type="button" className="clinical-btn secondary" onClick={printReport} disabled={busy}>Imprimer le compte rendu</button>
+              <button type="button" className="clinical-btn secondary" onClick={() => saveConsultation(false)} disabled={busy}>{action === 'save' ? 'Enregistrement…' : 'Enregistrer'}</button>
+              <button type="button" className="clinical-btn" onClick={() => saveConsultation(true)} disabled={busy}>{action === 'validate' ? 'Validation…' : 'Valider la consultation'}</button>
+              <button type="button" className="clinical-btn secondary" onClick={printReport} disabled={busy}>{action === 'print' ? 'Préparation…' : 'Imprimer le compte rendu'}</button>
             </div>
             <div className="clinical-actions" style={{ marginTop: '0.5rem' }}>
               <button type="button" className="clinical-btn secondary" onClick={() => sendTo('reception')} disabled={busy}>Envoyer à la réception</button>
               <button type="button" className="clinical-btn secondary" onClick={() => sendTo('nurse')} disabled={busy}>Envoyer à l&apos;infirmerie</button>
-              <button type="button" className="clinical-btn secondary" onClick={() => sendTo('lab')} disabled={busy}>Orienter labo</button>
-              <button type="button" className="clinical-btn secondary" onClick={() => sendTo('imaging')} disabled={busy}>Orienter imagerie</button>
             </div>
 
             {/* ===== Page 2 : Demande de service ===== */}
@@ -913,6 +975,42 @@ export default function DoctorClinicalDashboard() {
                   )}
                   <button type="button" className="clinical-btn" onClick={sendLabRequest} disabled={busy || selectedLabs.length === 0}>
                     Envoyer au laboratoire
+                  </button>
+                </div>
+
+                <div className="doctor-service-block">
+                  <h4>Acte chirurgical</h4>
+                  <p className="clinical-hint">Choisissez un acte du catalogue validé. Le code et le tarif suivent la demande.</p>
+                  <div className="doctor-service-submit-row">
+                    <label className="doctor-field-grow" htmlFor="doctor-surgical-act">
+                      Acte demandé
+                      <select id="doctor-surgical-act" value={selectedSurgicalAct} onChange={(e) => setSelectedSurgicalAct(e.target.value)}>
+                        <option value="">— Sélectionner un acte —</option>
+                        {(catalog.surgical_acts || []).map((act) => (
+                          <option key={act.code} value={act.code}>{act.label} · {new Intl.NumberFormat('fr-FR').format(act.price_gnf)} GNF</option>
+                        ))}
+                      </select>
+                    </label>
+                    <button type="button" className="clinical-btn" onClick={sendSurgicalRequest} disabled={busy || !selectedSurgicalAct}>
+                      {action === 'surgery' ? 'Transmission…' : 'Envoyer en chirurgie'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="doctor-service-block doctor-prescription-block">
+                  <h4>Ordonnance médicamenteuse</h4>
+                  <p className="clinical-hint">La validation crée une ordonnance traçable et la transmet à la pharmacie.</p>
+                  <div className="doctor-prescription-grid">
+                    <label>Médicament *<input value={prescriptionItem.medication_name} onChange={(e) => setPrescriptionItem({ ...prescriptionItem, medication_name: e.target.value })} autoComplete="off" /></label>
+                    <label>Dose *<input value={prescriptionItem.dosage} onChange={(e) => setPrescriptionItem({ ...prescriptionItem, dosage: e.target.value })} placeholder="Ex. 500 mg" /></label>
+                    <label>Voie<select value={prescriptionItem.route} onChange={(e) => setPrescriptionItem({ ...prescriptionItem, route: e.target.value })}><option value="orale">Orale</option><option value="intraveineuse">Intraveineuse</option><option value="intramusculaire">Intramusculaire</option><option value="cutanée">Cutanée</option><option value="autre">Autre</option></select></label>
+                    <label>Fréquence *<input value={prescriptionItem.frequency} onChange={(e) => setPrescriptionItem({ ...prescriptionItem, frequency: e.target.value })} placeholder="Ex. 2 fois/jour" /></label>
+                    <label>Durée (jours)<input type="number" min="1" value={prescriptionItem.duration_days} onChange={(e) => setPrescriptionItem({ ...prescriptionItem, duration_days: e.target.value })} /></label>
+                    <label>Quantité<input type="number" min="1" value={prescriptionItem.quantity} onChange={(e) => setPrescriptionItem({ ...prescriptionItem, quantity: e.target.value })} /></label>
+                    <label className="doctor-prescription-instructions">Consignes<textarea rows="2" value={prescriptionItem.instructions} onChange={(e) => setPrescriptionItem({ ...prescriptionItem, instructions: e.target.value })} /></label>
+                  </div>
+                  <button type="button" className="clinical-btn" onClick={createPrescription} disabled={busy}>
+                    {action === 'prescription' ? 'Validation…' : 'Valider et transmettre à la pharmacie'}
                   </button>
                 </div>
 
@@ -1009,21 +1107,10 @@ export default function DoctorClinicalDashboard() {
                   />
 
                   <div className="doctor-hosp-doc-fields">
-                    <label>
-                      Signes vitaux patients hospitalisés
-                      <textarea
-                        rows={3}
-                        value={form.hospitalized_vitals}
-                        onChange={(e) => setForm({ ...form, hospitalized_vitals: e.target.value })}
-                        placeholder="Suivi quotidien des signes vitaux (médecin)…"
-                      />
-                    </label>
-                    {nurseAssessment?.hospitalized_daily_vitals && (
-                      <p className="doctor-nurse-readonly-block">
-                        <strong>Dernière saisie infirmière (lecture seule) :</strong>{' '}
-                        {nurseAssessment.hospitalized_daily_vitals}
-                      </p>
-                    )}
+                    <div className="doctor-nurse-readonly-block" role="note">
+                      <strong>Constantes infirmières — lecture seule</strong>
+                      <span>{nurseAssessment?.hospitalized_daily_vitals || 'Aucune constante hospitalière encore saisie par l’équipe infirmière.'}</span>
+                    </div>
                     <label>
                       Post-opératoire — Compte rendu
                       <textarea
@@ -1041,27 +1128,11 @@ export default function DoctorClinicalDashboard() {
                       />
                     </label>
                     <label>
-                      Autorisation de sortie
-                      <textarea
-                        rows={2}
-                        value={form.discharge_authorization}
-                        onChange={(e) => setForm({ ...form, discharge_authorization: e.target.value })}
-                      />
-                    </label>
-                    <label>
                       Décharge — Contre avis médical
                       <textarea
                         rows={2}
                         value={form.discharge_against_advice}
                         onChange={(e) => setForm({ ...form, discharge_against_advice: e.target.value })}
-                      />
-                    </label>
-                    <label>
-                      Ordonnance
-                      <textarea
-                        rows={3}
-                        value={form.prescription_text}
-                        onChange={(e) => setForm({ ...form, prescription_text: e.target.value })}
                       />
                     </label>
 

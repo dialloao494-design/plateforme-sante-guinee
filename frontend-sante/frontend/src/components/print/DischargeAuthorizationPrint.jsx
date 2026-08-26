@@ -87,16 +87,13 @@ export default function DischargeAuthorizationPrint({ data }) {
           le patient est autorisé à quitter la Polyclinique AASMA à la date et à l&apos;heure indiquées
           ci-dessus.
         </p>
-        {d.discharge_authorization ? <p className="print-discharge-auth__notes">{d.discharge_authorization}</p> : null}
       </section>
 
       <section className="print-discharge-auth__section">
         <p>
           <strong>Consignes de sortie :</strong> {d.discharge_instructions || '________________________________'}
         </p>
-        <p>
-          <strong>Traitement prescrit :</strong> {d.prescription_text || '________________________________'}
-        </p>
+        <p><strong>Ordonnance :</strong> document séparé dans le dossier patient.</p>
         <p>
           <strong>Date du prochain rendez-vous :</strong>{' '}
           {d.next_appointment || '____ / ____ / ________ à ____ h ____'}

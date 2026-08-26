@@ -440,7 +440,6 @@ class ClinicalWorkflowService:
             "observations",
             "target_specialty_code",
             "target_specialty_other",
-            "hospitalized_vitals",
             "post_op_report",
             "discharge_summary_text",
             "discharge_authorization",

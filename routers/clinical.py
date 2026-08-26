@@ -1090,7 +1090,11 @@ def doctor_catalog(
 ):
     assert_role(current_user, (*DOCTOR_ROLES, *ADMIN_ROLES))
     clinic = resolve_clinic_for_user(db, current_user)
-    from data.aasma_billing_catalog import IMAGING_EXAMINATIONS, SPECIALIZED_SPECIALTIES
+    from data.aasma_billing_catalog import (
+        IMAGING_EXAMINATIONS,
+        SPECIALIZED_SPECIALTIES,
+        SURGICAL_ACTS,
+    )
 
     lab_tests: list[dict] = []
     try:
@@ -1127,7 +1131,62 @@ def doctor_catalog(
         "specialties": SPECIALIZED_SPECIALTIES,
         "imaging": IMAGING_EXAMINATIONS,
         "lab_tests": lab_tests,
+        "surgical_acts": SURGICAL_ACTS,
     }
+
+
+@router.get("/doctor/prescriptions", response_model=list[PrescriptionResponse])
+def doctor_prescriptions(
+    patient_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return this clinic doctor's prescription register, optionally for one patient."""
+    clinic = resolve_clinic_for_user(db, current_user)
+    assert_role(current_user, (*DOCTOR_ROLES, *ADMIN_ROLES))
+    query = (
+        db.query(models.Prescription)
+        .options(
+            joinedload(models.Prescription.items),
+            joinedload(models.Prescription.patient),
+            joinedload(models.Prescription.prescriber),
+        )
+        .filter(
+            models.Prescription.clinic_id == clinic.id,
+            models.Prescription.deleted_at.is_(None),
+        )
+    )
+    if current_user.role in DOCTOR_ROLES:
+        query = query.filter(models.Prescription.prescriber_doctor_id == doctor_for_user(db, current_user).id)
+    if patient_id is not None:
+        query = query.filter(models.Prescription.patient_id == patient_id)
+    rows = query.order_by(models.Prescription.created_at.desc()).all()
+    return [
+        PrescriptionResponse(
+            id=row.id,
+            clinic_id=row.clinic_id,
+            consultation_id=row.consultation_id,
+            patient_id=row.patient_id,
+            status=row.status,
+            notes=row.notes,
+            created_at=row.created_at,
+            patient_name=(f"{row.patient.first_name} {row.patient.last_name}" if row.patient else None),
+            doctor_name=(row.prescriber.name if row.prescriber else None),
+            items=[
+                {
+                    "medication_name": item.medication_name,
+                    "dosage": item.dosage,
+                    "route": item.route,
+                    "frequency": item.frequency,
+                    "duration_days": item.duration_days,
+                    "quantity": item.quantity,
+                    "instructions": item.instructions,
+                }
+                for item in row.items
+            ],
+        )
+        for row in rows
+    ]
 
 
 @router.get("/doctor/service-requests")

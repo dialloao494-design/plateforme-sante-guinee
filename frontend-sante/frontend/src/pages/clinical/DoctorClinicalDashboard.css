@@ -1,0 +1,13 @@
+.doctor-service-submit-row { display:flex; align-items:flex-end; gap:1rem; }
+.doctor-field-grow { display:grid; flex:1; gap:.4rem; color:#173a58; font-weight:700; }
+.doctor-field-grow select { min-height:46px; padding:.65rem .75rem; border:1px solid #9eb8cf; border-radius:9px; background:#fff; color:#102f4c; font:inherit; }
+.doctor-prescription-block { border-left:4px solid #008c7d; }
+.doctor-prescription-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.85rem; margin:1rem 0; }
+.doctor-prescription-grid label { display:grid; gap:.35rem; color:#284762; font-size:.86rem; font-weight:750; }
+.doctor-prescription-grid input,.doctor-prescription-grid select,.doctor-prescription-grid textarea { width:100%; box-sizing:border-box; min-height:44px; padding:.65rem .75rem; border:1px solid #9eb8cf; border-radius:9px; background:#fff; color:#102f4c; font:inherit; }
+.doctor-prescription-instructions { grid-column:1/-1; }
+.doctor-nurse-readonly-block { display:grid; gap:.35rem; padding:1rem; border:1px solid #b8d9d4; border-left:4px solid #008c7d; border-radius:10px; background:#f0faf8; color:#274a5f; }
+.doctor-nurse-readonly-block strong { color:#006d62; }
+.doctor-service-block h4 { color:#082e4b; }
+@media (max-width:800px) { .doctor-prescription-grid { grid-template-columns:1fr 1fr; } .doctor-service-submit-row { align-items:stretch; flex-direction:column; } }
+@media (max-width:520px) { .doctor-prescription-grid { grid-template-columns:1fr; } }

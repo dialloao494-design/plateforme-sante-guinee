@@ -482,6 +482,9 @@ class PrescriptionResponse(BaseModel):
     status: str
     items: list[PrescriptionItemCreate] = []
     patient_name: Optional[str] = None
+    doctor_name: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

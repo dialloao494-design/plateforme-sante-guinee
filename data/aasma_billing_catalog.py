@@ -149,6 +149,9 @@ SERVICE_PRESTATIONS = [
 
 # Surgical acts available in reception service requests / billing
 SURGICAL_ACTS = [
+    {"code": "small_dressing", "label": "Petit pansement", "price_gnf": 30_000},
+    {"code": "large_dressing", "label": "Grand pansement", "price_gnf": 80_000},
+    {"code": "skin_graft", "label": "Greffe cutanée", "price_gnf": 0},
     {"code": "suture_simple", "label": "Suture simple", "price_gnf": 150_000},
     {"code": "suture_complex", "label": "Suture complexe", "price_gnf": 300_000},
     {"code": "abscess_drainage", "label": "Drainage d'abcès", "price_gnf": 200_000},

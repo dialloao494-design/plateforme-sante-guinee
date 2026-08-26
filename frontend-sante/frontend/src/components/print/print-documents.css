@@ -319,4 +319,21 @@
   .doctor-discharge-print-root {
     display: block !important;
   }
+
+  .print-discharge-auth {
+    box-sizing: border-box;
+    max-height: 277mm;
+    overflow: hidden;
+    padding: 0;
+    font-size: 9pt;
+    line-height: 1.2;
+    page-break-after: avoid;
+  }
+
+  .print-discharge-auth__meta { margin: 0.35rem 0 0.45rem; }
+  .print-discharge-auth__section { margin: 0.38rem 0; padding-top: 0.2rem; }
+  .print-discharge-auth__section h2 { margin-bottom: 0.18rem; font-size: 9.5pt; }
+  .print-discharge-auth__section p { margin: 0.12rem 0; }
+  .print-discharge-auth__signatures { margin-top: 0.5rem; padding-top: 0.4rem; }
+  .print-discharge-auth__stamp { margin-top: 0.35rem; }
 }

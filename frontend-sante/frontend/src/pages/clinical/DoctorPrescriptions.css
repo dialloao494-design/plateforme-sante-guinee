@@ -1,0 +1,25 @@
+.doctor-rx-page { max-width: 1180px; margin: 0 auto; }
+.doctor-rx-hero { display:flex; align-items:flex-end; justify-content:space-between; gap:2rem; padding:2rem; background:linear-gradient(120deg,#fff 65%,#edf9f7); border:1px solid #cbdde8; border-left:6px solid #008c7d; border-radius:18px; }
+.doctor-rx-hero h1 { margin:.15rem 0 .35rem; color:#062c49; font-size:clamp(2rem,4vw,3.4rem); }
+.doctor-rx-hero p { margin:0; color:#55728d; }
+.doctor-rx-eyebrow { color:#007568 !important; font-size:.78rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+.doctor-rx-toolbar { display:grid; grid-template-columns:minmax(16rem,1fr) auto; align-items:end; gap:.35rem 1rem; margin:1.5rem 0; }
+.doctor-rx-toolbar label { grid-column:1; font-weight:750; color:#173a58; }
+.doctor-rx-toolbar input { grid-column:1; min-height:48px; padding:.75rem 1rem; border:1px solid #9eb8cf; border-radius:10px; background:#fff; font:inherit; }
+.doctor-rx-toolbar span { grid-column:2; grid-row:2; color:#5f7890; }
+.doctor-rx-list { display:grid; gap:1rem; }
+.doctor-rx-card { overflow:hidden; background:#fff; border:1px solid #ccdae6; border-radius:16px; box-shadow:0 8px 24px rgba(20,50,75,.06); }
+.doctor-rx-card > header { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; padding:1.25rem 1.4rem; border-bottom:1px solid #dce7ef; }
+.doctor-rx-card h2 { margin:.15rem 0; font-size:1.25rem; color:#082e4b; }
+.doctor-rx-card p { margin:.15rem 0; color:#60778e; }
+.doctor-rx-number { color:#007568 !important; font-size:.75rem; font-weight:800; letter-spacing:.1em; }
+.doctor-rx-status { padding:.4rem .7rem; border-radius:999px; background:#fff4d8; color:#805b00; font-size:.8rem; font-weight:750; }
+.doctor-rx-status--dispensed { background:#e3f8ee; color:#08704f; }
+.doctor-rx-status--cancelled { background:#fde9e8; color:#9b2924; }
+.doctor-rx-table-wrap { overflow-x:auto; }
+.doctor-rx-card table { width:100%; border-collapse:collapse; }
+.doctor-rx-card th,.doctor-rx-card td { padding:.85rem 1.1rem; text-align:left; border-bottom:1px solid #e3ebf1; white-space:nowrap; }
+.doctor-rx-card th { color:#476681; background:#f5f9fb; font-size:.76rem; letter-spacing:.06em; text-transform:uppercase; }
+.doctor-rx-notes { padding:0 1.4rem 1rem; }
+.doctor-rx-empty { padding:2rem; text-align:center; background:#fff; border:1px dashed #aac0d2; border-radius:14px; }
+@media (max-width:720px) { .doctor-rx-hero { align-items:stretch; flex-direction:column; } .doctor-rx-toolbar { grid-template-columns:1fr; } .doctor-rx-toolbar span { grid-column:1; grid-row:auto; } }

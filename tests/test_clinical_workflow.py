@@ -400,6 +400,7 @@ def test_doctor_dashboard_module(client, db_session, admin_user):
     r = client.get("/clinical/doctor/catalog", headers=doc_headers)
     assert r.status_code == 200
     assert "specialties" in r.json() and "imaging" in r.json()
+    assert any(act["code"] == "small_dressing" for act in r.json()["surgical_acts"])
 
     # Search
     r = client.get("/clinical/doctor/patients/search", params={"q": "Barry"}, headers=doc_headers)
@@ -426,6 +427,7 @@ def test_doctor_dashboard_module(client, db_session, admin_user):
             "allergies": "Pénicilline",
             "observations": "Revoir dans 1 semaine",
             "target_specialty_code": "internal_medicine",
+            "hospitalized_vitals": "doit rester sous responsabilité infirmière",
         },
         headers=doc_headers,
     )
@@ -434,6 +436,7 @@ def test_doctor_dashboard_module(client, db_session, admin_user):
     assert body["diagnosis"] == "Migraine"
     assert body["surgical_history"] == "Appendicectomie 2015"
     assert body["target_specialty_code"] == "internal_medicine"
+    assert body["hospitalized_vitals"] is None
 
     # Lab + imaging orders
     r = client.post(
@@ -465,6 +468,44 @@ def test_doctor_dashboard_module(client, db_session, admin_user):
     r = client.get("/clinical/doctor/service-requests", params={"patient_id": patient_id}, headers=doc_headers)
     assert r.status_code == 200
     assert len(r.json()) >= 1
+
+    # Catalog-backed surgical act reaches the service request queue with its code and tariff.
+    r = client.post(
+        "/clinical/doctor/service-requests",
+        json={
+            "patient_id": patient_id,
+            "service_category": "surgery",
+            "service_name": "Petit pansement",
+            "department": "Chirurgie",
+            "catalog_code": "small_dressing",
+            "unit_price_gnf": 30000,
+        },
+        headers=doc_headers,
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["catalog_code"] == "small_dressing"
+
+    # A structured prescription is routed to pharmacy and visible in the doctor's register.
+    r = client.post(
+        f"/clinical/consultations/{consultation_id}/prescriptions",
+        json={"items": [{
+            "medication_name": "Paracétamol",
+            "dosage": "500 mg",
+            "route": "orale",
+            "frequency": "2 fois/jour",
+            "duration_days": 3,
+            "quantity": 6,
+            "instructions": "Après le repas",
+        }]},
+        headers=doc_headers,
+    )
+    assert r.status_code == 201, r.text
+    prescription_id = r.json()["id"]
+    r = client.get("/clinical/doctor/prescriptions", headers=doc_headers)
+    assert r.status_code == 200, r.text
+    prescription = next(row for row in r.json() if row["id"] == prescription_id)
+    assert prescription["patient_name"] == "Fatou Barry"
+    assert prescription["items"][0]["frequency"] == "2 fois/jour"
 
     # Consultation history
     r = client.get(f"/clinical/doctor/patients/{patient_id}/consultations", headers=doc_headers)

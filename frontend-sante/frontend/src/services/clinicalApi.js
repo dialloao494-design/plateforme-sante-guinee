@@ -231,6 +231,10 @@ const clinicalApi = {
       params: patientId ? { patient_id: patientId } : {},
     }),
   doctorCreateServiceRequest: (data) => httpClient.post('/clinical/doctor/service-requests', data),
+  doctorPrescriptions: (patientId) =>
+    httpClient.get('/clinical/doctor/prescriptions', {
+      params: patientId ? { patient_id: patientId } : {},
+    }),
   downloadConsultationPdf: (consultationId, filename) =>
     import('../utils/downloadPdf').then(({ downloadAuthenticatedPdf }) =>
       downloadAuthenticatedPdf(`/clinical/consultations/${consultationId}/pdf`, filename)

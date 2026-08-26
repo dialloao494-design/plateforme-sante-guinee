@@ -44,6 +44,7 @@ const NotificationsPage = lazy(() => import("../pages/NotificationsPage.jsx"));
 const PatientMedicalHistory = lazy(() => import("../pages/PatientMedicalHistory.jsx"));
 const ReceptionDashboard = lazy(() => import("../pages/clinical/ReceptionDashboard.jsx"));
 const DoctorClinicalDashboard = lazy(() => import("../pages/clinical/DoctorClinicalDashboard.jsx"));
+const DoctorPrescriptions = lazy(() => import("../pages/clinical/DoctorPrescriptions.jsx"));
 const LabDashboard = lazy(() => import("../pages/clinical/LabDashboard.jsx"));
 const PharmacyDashboard = lazy(() => import("../pages/clinical/PharmacyDashboard.jsx"));
 const HospitalizationDashboard = lazy(() => import("../pages/clinical/HospitalizationDashboard.jsx"));
@@ -304,6 +305,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={["doctor"]}>
             <DoctorClinicalDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/clinical/prescriptions"
+        element={
+          <ProtectedRoute allowedRoles={["doctor"]}>
+            <DoctorPrescriptions />
           </ProtectedRoute>
         }
       />

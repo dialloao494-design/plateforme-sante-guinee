@@ -14,3 +14,8 @@ for (const role of ['admin', 'clinic_admin']) {
     assert.equal(items.some((item) => item.label === 'Utilisateurs'), false);
   });
 }
+
+test('clinic doctor has a dedicated prescription register', () => {
+  const items = getNavItemsForRole('doctor', 17);
+  assert.equal(items.some((item) => item.path === '/clinical/prescriptions' && item.label === 'Ordonnances'), true);
+});
