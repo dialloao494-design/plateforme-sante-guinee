@@ -30,7 +30,31 @@
 .nurse-his-history-card dd { margin: 0.1rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: #0f172a; }
 .nurse-doctor-panel { background: #f4faf8; border: 1px solid #c5e8df; }
 .nurse-doctor-vitals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem 1rem; margin: 0.75rem 0; font-size: 0.95rem; }
+.nurse-workflow-rail { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin: 0.5rem 0 1rem; border: 1px solid #cfe0e3; border-radius: 12px; overflow: hidden; background: #f5f9f9; }
+.nurse-workflow-rail span { display: flex; align-items: center; justify-content: center; gap: 0.55rem; padding: 0.8rem 0.65rem; color: #526b7a; font-weight: 700; border-left: 1px solid #d8e4e6; }
+.nurse-workflow-rail span:first-child { border-left: 0; }
+.nurse-workflow-rail b { display: grid; place-items: center; width: 1.65rem; height: 1.65rem; border-radius: 50%; background: #dce8ea; color: #315566; }
+.nurse-workflow-rail .active, .nurse-workflow-rail .complete { color: #075f55; background: #ebf8f5; }
+.nurse-workflow-rail .complete b { color: #fff; background: #078979; }
+.nurse-observation-block { background: linear-gradient(135deg, #f2fbf9 0%, #fff 65%); }
+.nurse-vitals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 0.85rem; margin: 1rem 0; }
+.nurse-vital-field { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; font-weight: 700; color: #173a51; }
+.nurse-vital-input { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0.5rem; }
+.nurse-vital-input small, .nurse-his-bp-pair small { color: #64748b; font-weight: 700; }
+.nurse-alert-banner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 1rem; padding: 0.8rem 1rem; border: 1px solid #e7a845; border-left: 5px solid #b45309; border-radius: 8px; color: #78350f; background: #fffbeb; }
+.nurse-empty-order { padding: 0.85rem; border: 1px dashed #cbdadd; border-radius: 8px; color: #526b7a; background: #f8fbfb; }
+.nurse-order-list { display: grid; gap: 0.75rem; margin: 0.75rem 0 1rem; }
+.nurse-order-list article { padding: 0.9rem 1rem; border: 1px solid #cfe0e3; border-left: 4px solid #078979; border-radius: 8px; background: #fff; }
+.nurse-order-list article > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 1rem; }
+.nurse-order-list article span { color: #64748b; }
+.nurse-order-list ul { margin: 0.65rem 0 0; padding-left: 1.2rem; }
+.nurse-continuity-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.nurse-his-save-row { position: sticky; bottom: 0; z-index: 3; margin: 1rem -1.25rem -1.25rem; padding: 1rem 1.25rem; border-top: 1px solid #d8e4e6; background: rgba(255,255,255,0.96); backdrop-filter: blur(8px); }
 
 @media (max-width: 720px) {
   .nurse-his-header-grid { grid-template-columns: 1fr; }
+  .nurse-workflow-rail { grid-template-columns: 1fr; }
+  .nurse-workflow-rail span { justify-content: flex-start; border-left: 0; border-top: 1px solid #d8e4e6; }
+  .nurse-workflow-rail span:first-child { border-top: 0; }
+  .nurse-continuity-grid { grid-template-columns: 1fr; }
 }

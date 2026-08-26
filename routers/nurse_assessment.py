@@ -19,6 +19,7 @@ from schemas.nurse_assessment import (
     NursePatientDetail,
     NursePendingAdmissionRow,
 )
+from schemas.clinical import PrescriptionResponse
 from security import get_current_user
 from services.nurse_assessment_service import NurseAssessmentService
 from services.reception_his_service import ReceptionHisService
@@ -89,6 +90,44 @@ def list_patient_assessments(
         limit=limit,
     )
     return [NurseAssessmentService.serialize(row) for row in rows]
+
+
+@router.get("/patients/{patient_id}/prescriptions", response_model=list[PrescriptionResponse])
+def list_patient_prescriptions(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Read-only medication orders for safe nurse administration."""
+    _require_role(current_user, NURSE_READ_ROLES)
+    clinic = resolve_clinic_for_user(db, current_user)
+    NurseAssessmentService.get_patient_detail(db, clinic_id=clinic.id, patient_id=patient_id)
+    rows = (
+        db.query(models.Prescription)
+        .options(joinedload(models.Prescription.items), joinedload(models.Prescription.patient), joinedload(models.Prescription.prescriber))
+        .filter(
+            models.Prescription.clinic_id == clinic.id,
+            models.Prescription.patient_id == patient_id,
+            models.Prescription.deleted_at.is_(None),
+            models.Prescription.status != "cancelled",
+        )
+        .order_by(models.Prescription.created_at.desc())
+        .all()
+    )
+    return [
+        PrescriptionResponse(
+            id=row.id, clinic_id=row.clinic_id, consultation_id=row.consultation_id,
+            patient_id=row.patient_id, status=row.status, notes=row.notes, created_at=row.created_at,
+            patient_name=(f"{row.patient.first_name} {row.patient.last_name}" if row.patient else None),
+            doctor_name=(row.prescriber.name if row.prescriber else None),
+            items=[{
+                "medication_name": item.medication_name, "dosage": item.dosage,
+                "route": item.route, "frequency": item.frequency,
+                "duration_days": item.duration_days, "quantity": item.quantity,
+                "instructions": item.instructions,
+            } for item in row.items],
+        ) for row in rows
+    ]
 
 
 @router.post("/assessments", response_model=NurseAssessmentResponse, status_code=status.HTTP_201_CREATED)

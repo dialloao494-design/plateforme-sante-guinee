@@ -26,8 +26,14 @@ class NurseAssessmentCreate(BaseModel):
     bp_diastolic: Optional[int] = Field(None, ge=20, le=200)
     heart_rate: Optional[int] = Field(None, ge=20, le=250)
     respiratory_rate: Optional[int] = Field(None, ge=5, le=60)
+    oxygen_saturation: Optional[int] = Field(None, ge=50, le=100)
+    pain_score: Optional[int] = Field(None, ge=0, le=10)
     height_cm: Optional[float] = Field(None, ge=30.0, le=250.0)
     weight_kg: Optional[float] = Field(None, ge=0.5, le=500.0)
+    arm_circumference_cm: Optional[float] = Field(None, ge=5.0, le=80.0)
+    head_circumference_cm: Optional[float] = Field(None, ge=20.0, le=80.0)
+    consciousness_level: Optional[str] = Field(None, max_length=32)
+    escalation_level: Optional[str] = Field(None, max_length=32)
     vitals_observations: Optional[str] = Field(None, max_length=5000)
 
     reason_for_consultation: Optional[str] = Field(None, max_length=10000)
@@ -40,6 +46,12 @@ class NurseAssessmentCreate(BaseModel):
     hospitalized_daily_vitals: Optional[str] = Field(None, max_length=10000)
     prescription: Optional[str] = Field(None, max_length=10000)
     nurse_notes: Optional[str] = Field(None, max_length=10000)
+    care_plan: Optional[str] = Field(None, max_length=10000)
+    handover_sbar: Optional[str] = Field(None, max_length=10000)
+    medication_administration: Optional[str] = Field(None, max_length=10000)
+    specimen_collection: Optional[str] = Field(None, max_length=10000)
+    wound_assessment: Optional[str] = Field(None, max_length=10000)
+    safety_checklist: Optional[str] = Field(None, max_length=10000)
 
     @field_validator(
         "temperature_c",
@@ -47,8 +59,11 @@ class NurseAssessmentCreate(BaseModel):
         "bp_diastolic",
         "heart_rate",
         "respiratory_rate",
+        "oxygen_saturation",
         "height_cm",
         "weight_kg",
+        "arm_circumference_cm",
+        "head_circumference_cm",
         mode="before",
     )
     @classmethod
@@ -82,9 +97,15 @@ class NurseAssessmentResponse(BaseModel):
     bp_diastolic: Optional[int] = None
     heart_rate: Optional[int] = None
     respiratory_rate: Optional[int] = None
+    oxygen_saturation: Optional[int] = None
+    pain_score: Optional[int] = None
     height_cm: Optional[float] = None
     weight_kg: Optional[float] = None
+    arm_circumference_cm: Optional[float] = None
+    head_circumference_cm: Optional[float] = None
     bmi: Optional[float] = None
+    consciousness_level: Optional[str] = None
+    escalation_level: Optional[str] = None
     vitals_observations: Optional[str] = None
 
     reason_for_consultation: Optional[str] = None
@@ -97,6 +118,12 @@ class NurseAssessmentResponse(BaseModel):
     hospitalized_daily_vitals: Optional[str] = None
     prescription: Optional[str] = None
     nurse_notes: Optional[str] = None
+    care_plan: Optional[str] = None
+    handover_sbar: Optional[str] = None
+    medication_administration: Optional[str] = None
+    specimen_collection: Optional[str] = None
+    wound_assessment: Optional[str] = None
+    safety_checklist: Optional[str] = None
 
     recorded_at: datetime
     updated_at: datetime

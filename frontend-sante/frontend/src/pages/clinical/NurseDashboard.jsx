@@ -8,8 +8,10 @@ import { formatApiError } from '../../utils/apiError.js';
 import { formatClinicalDate, formatClinicalDateTime, formatClinicalStatus, patientAge, patientDisplayName, patientGenderLabel } from '../../utils/clinicalPresentation.js';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
 import ClinicalStatGrid from './ClinicalStatGrid.jsx';
-import { DisplayField, ReadOnlyDisplay, TextAreaField } from './nurse/NurseFormPrimitives.jsx';
-import { calculateBmi, EMPTY_NURSE_ASSESSMENT } from './nurse/nurseDomain.js';
+import { DisplayField, TextAreaField } from './nurse/NurseFormPrimitives.jsx';
+import NurseContinuityPanel from './nurse/NurseContinuityPanel.jsx';
+import NurseVitalsPanel from './nurse/NurseVitalsPanel.jsx';
+import { calculateBmi, EMPTY_NURSE_ASSESSMENT, nursingCompletion, vitalAlerts } from './nurse/nurseDomain.js';
 import './clinical.css';
 import './nurse.css';
 
@@ -48,10 +50,13 @@ export default function NurseDashboard() {
   const [queueRows, setQueueRows] = useState([]);
   const [loadingQueue, setLoadingQueue] = useState(false);
   const [patientAssessments, setPatientAssessments] = useState([]);
+  const [patientPrescriptions, setPatientPrescriptions] = useState([]);
   const [loadingPatientHistory, setLoadingPatientHistory] = useState(false);
   const [showPatientHistory, setShowPatientHistory] = useState(false);
 
   const bmi = useMemo(() => calculateBmi(form.weight_kg, form.height_cm), [form.weight_kg, form.height_cm]);
+  const alerts = useMemo(() => vitalAlerts(form), [form]);
+  const completion = useMemo(() => nursingCompletion(form), [form]);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -106,12 +111,21 @@ export default function NurseDashboard() {
     setError('');
     setForm(EMPTY_NURSE_ASSESSMENT);
     setPatientAssessments([]);
+    setPatientPrescriptions([]);
     setShowPatientHistory(false);
     setAssessmentLoading(true);
     try {
       const { data } = await clinicalApi.nurseGetPatient(patient.id);
       setSelectedPatient(data);
       await loadPatientHistory(data.id);
+      try {
+        const { data: prescriptions } = await clinicalApi.nursePatientPrescriptions(data.id);
+        setPatientPrescriptions(prescriptions || []);
+      } catch {
+        // The patient workspace must remain usable offline even when this optional
+        // read-only resource has not yet been warmed into the local HTTP cache.
+        setPatientPrescriptions([]);
+      }
     } catch (err) {
       setError(formatApiError(err, 'Chargement du patient impossible'));
       await loadPatientHistory(patient.id);
@@ -185,15 +199,21 @@ export default function NurseDashboard() {
     setError('');
     setMessage('');
     try {
-      await clinicalApi.nurseSaveAssessment({
+      const assessmentPayload = {
         patient_id: selectedPatient.id,
         temperature_c: numOrNull(form.temperature_c),
         bp_systolic: numOrNull(form.bp_systolic),
         bp_diastolic: numOrNull(form.bp_diastolic),
         heart_rate: numOrNull(form.heart_rate),
         respiratory_rate: numOrNull(form.respiratory_rate),
+        oxygen_saturation: numOrNull(form.oxygen_saturation),
+        pain_score: form.pain_score === '' ? null : Number(form.pain_score),
         height_cm: numOrNull(form.height_cm),
         weight_kg: numOrNull(form.weight_kg),
+        arm_circumference_cm: numOrNull(form.arm_circumference_cm),
+        head_circumference_cm: numOrNull(form.head_circumference_cm),
+        consciousness_level: form.consciousness_level || null,
+        escalation_level: alerts.length ? 'review_required' : 'routine',
         vitals_observations: form.vitals_observations || null,
         reason_for_consultation: form.reason_for_consultation || null,
         history_of_present_illness: form.history_of_present_illness || null,
@@ -205,17 +225,32 @@ export default function NurseDashboard() {
         hospitalized_daily_vitals: form.hospitalized_daily_vitals || null,
         prescription: form.prescription || null,
         nurse_notes: form.nurse_notes || null,
-      });
-      setMessage('Évaluation infirmière enregistrée — visible par le médecin.');
+        care_plan: form.care_plan || null,
+        handover_sbar: form.handover_sbar || null,
+        medication_administration: form.medication_administration || null,
+        specimen_collection: form.specimen_collection || null,
+        wound_assessment: form.wound_assessment || null,
+        safety_checklist: form.safety_checklist || null,
+      };
+      const { data: savedAssessment } = await clinicalApi.nurseSaveAssessment(assessmentPayload);
+      const queuedOffline = Boolean(savedAssessment?._offline_queued);
+      setMessage(queuedOffline
+        ? 'Observation enregistrée hors ligne — elle sera synchronisée automatiquement. Le patient reste ouvert.'
+        : alerts.length
+          ? 'Observation enregistrée. Les paramètres anormaux nécessitent une revue clinique.'
+          : 'Observation enregistrée — historique mis à jour et visible par l’équipe clinique.');
+      if (queuedOffline) {
+        setPatientAssessments((previous) => [{
+          ...assessmentPayload,
+          id: savedAssessment.client_request_id || `offline-${Date.now()}`,
+          nurse_name: user?.full_name || user?.email || 'Infirmier(ère)',
+          recorded_at: new Date().toISOString(),
+          _sync_status: 'queued',
+        }, ...previous]);
+      }
       setForm(EMPTY_NURSE_ASSESSMENT);
-      closingPatientIdRef.current = String(selectedPatient?.id || routePatientId || '');
-      setSelectedPatient(null);
-      setRoutePatientId('');
-      setPatientAssessments([]);
-      setShowPatientHistory(false);
-      setSearchQ('');
-      setSearchResults([]);
-      loadDashboard();
+      setShowPatientHistory(true);
+      if (!queuedOffline) await Promise.all([loadDashboard(), loadPatientHistory(selectedPatient.id)]);
     } catch (err) {
       setError(formatApiError(err, 'Enregistrement impossible'));
     } finally {
@@ -284,12 +319,16 @@ export default function NurseDashboard() {
         closingPatientIdRef.current = String(selectedPatient?.id || routePatientId || '');
         setSelectedPatient(null);
         setRoutePatientId('');
+        setForm(EMPTY_NURSE_ASSESSMENT);
         setPatientAssessments([]);
+        setPatientPrescriptions([]);
         setShowPatientHistory(false);
+        setMessage('Dossier infirmier fermé. Recherchez un patient pour continuer.');
+        requestAnimationFrame(() => searchRef.current?.focus());
       }} contextLabel="Patient actif en soins infirmiers" />
 
-      {error && <p className="clinical-error">{error}</p>}
-      {message && <p className="clinical-success">{message}</p>}
+      {error && <p className="clinical-error" role="alert">{error}</p>}
+      {message && <p className="clinical-success" aria-live="polite">{message}</p>}
 
       <ClinicalStatGrid stats={statCards} onStatClick={loadQueueBucket} activeKey={activeStatBucket} />
 
@@ -419,8 +458,16 @@ export default function NurseDashboard() {
             </div>
           </fieldset>
 
+          <nav className="nurse-workflow-rail" aria-label="Progression de l'observation infirmière">
+            <span className={completion.vitalsComplete ? 'complete' : 'active'}><b>1</b> Observer</span>
+            <span className={completion.contextComplete ? 'complete' : ''}><b>2</b> Comprendre</span>
+            <span className={completion.continuityComplete ? 'complete' : ''}><b>3</b> Transmettre</span>
+          </nav>
+
+          <NurseVitalsPanel form={form} bmi={bmi} alerts={alerts} onChange={updateForm} />
+
           <fieldset>
-            <legend>Motif de consultation</legend>
+            <legend>2 · Motif de consultation</legend>
             <TextAreaField
               label=""
               rows={4}
@@ -474,103 +521,43 @@ export default function NurseDashboard() {
           </fieldset>
 
           <fieldset>
-            <legend>Signes vitaux des patients hospitalisés (soins quotidiens)</legend>
+            <legend>Ordonnance et consignes médicales</legend>
+            <p className="clinical-hint">Ordonnances actives du médecin — lecture seule. Toute administration doit être tracée à l’étape 3.</p>
+            {patientPrescriptions.length === 0 ? (
+              <p className="nurse-empty-order">Aucune ordonnance active pour ce patient.</p>
+            ) : (
+              <div className="nurse-order-list">
+                {patientPrescriptions.map((order) => (
+                  <article key={order.id}>
+                    <div><strong>Ordonnance #{order.id}</strong><span>{order.doctor_name || 'Médecin'} · {formatClinicalDateTime(order.created_at)}</span></div>
+                    <ul>
+                      {(order.items || []).map((item, index) => (
+                        <li key={`${order.id}-${index}`}><strong>{item.medication_name}</strong> — {item.dosage}, {item.route}, {item.frequency}{item.instructions ? ` · ${item.instructions}` : ''}</li>
+                      ))}
+                    </ul>
+                  </article>
+                ))}
+              </div>
+            )}
             <TextAreaField
-              label="Signes vitaux des patients hospitalisés (soins quotidiens)"
-              rows={3}
-              value={form.hospitalized_daily_vitals}
-              onChange={(e) => updateForm({ hospitalized_daily_vitals: e.target.value })}
-            />
-          </fieldset>
-
-          <fieldset>
-            <legend>Prescription</legend>
-            <TextAreaField
-              label="Prescription"
-              rows={4}
+              label="Consigne verbale ou précision à confirmer par le médecin"
+              rows={2}
               value={form.prescription}
               onChange={(e) => updateForm({ prescription: e.target.value })}
             />
           </fieldset>
 
           <fieldset>
-            <legend>Signes vitaux</legend>
-            <div className="reception-his-form-row reception-his-form-row--4">
-              <label>
-                Température (°C)
-                <input
-                  type="number"
-                  step="0.1"
-                  min="30"
-                  max="45"
-                  value={form.temperature_c}
-                  onChange={(e) => updateForm({ temperature_c: e.target.value })}
-                />
-              </label>
-              <label>
-                Tension artérielle (mmHg)
-                <div className="nurse-his-bp-pair">
-                  <input
-                    type="number"
-                    placeholder="Syst."
-                    value={form.bp_systolic}
-                    onChange={(e) => updateForm({ bp_systolic: e.target.value })}
-                  />
-                  <span>/</span>
-                  <input
-                    type="number"
-                    placeholder="Diast."
-                    value={form.bp_diastolic}
-                    onChange={(e) => updateForm({ bp_diastolic: e.target.value })}
-                  />
-                </div>
-              </label>
-              <label>
-                Fréquence cardiaque (batt/min)
-                <input
-                  type="number"
-                  value={form.heart_rate}
-                  onChange={(e) => updateForm({ heart_rate: e.target.value })}
-                />
-              </label>
-              <label>
-                Fréquence respiratoire (resp/min)
-                <input
-                  type="number"
-                  value={form.respiratory_rate}
-                  onChange={(e) => updateForm({ respiratory_rate: e.target.value })}
-                />
-              </label>
-              <label>
-                Taille (cm)
-                <input
-                  type="number"
-                  step="0.1"
-                  value={form.height_cm}
-                  onChange={(e) => updateForm({ height_cm: e.target.value })}
-                />
-              </label>
-              <label>
-                Poids (kg)
-                <input
-                  type="number"
-                  step="0.1"
-                  value={form.weight_kg}
-                  onChange={(e) => updateForm({ weight_kg: e.target.value })}
-                />
-              </label>
-              <label>
-                IMC (calculé)
-                <ReadOnlyDisplay value={bmi} />
-              </label>
-            </div>
+            <legend>Surveillance du patient hospitalisé</legend>
             <TextAreaField
-              label="Observations générales"
+              label="Évolution et paramètres intermédiaires"
               rows={3}
-              value={form.vitals_observations}
-              onChange={(e) => updateForm({ vitals_observations: e.target.value })}
+              value={form.hospitalized_daily_vitals}
+              onChange={(e) => updateForm({ hospitalized_daily_vitals: e.target.value })}
             />
           </fieldset>
+
+          <NurseContinuityPanel form={form} onChange={updateForm} />
 
           <fieldset>
             <legend>Notes infirmières</legend>
@@ -624,15 +611,22 @@ export default function NurseDashboard() {
                       <strong>{row.nurse_name || 'Infirmier(ère)'}</strong>
                       {' · '}
                       {formatClinicalDateTime(row.recorded_at)}
+                      {row._sync_status === 'queued' ? ' · En attente de synchronisation' : ''}
                     </p>
                     <dl>
                       <div><dt>Motif</dt><dd>{row.reason_for_consultation || '—'}</dd></div>
                       <div><dt>TA</dt><dd>{row.bp_systolic || '—'}/{row.bp_diastolic || '—'}</dd></div>
                       <div><dt>Température</dt><dd>{row.temperature_c ?? '—'} °C</dd></div>
+                      <div><dt>Pouls</dt><dd>{row.heart_rate ?? '—'} /min</dd></div>
+                      <div><dt>SpO₂</dt><dd>{row.oxygen_saturation ?? '—'} %</dd></div>
+                      <div><dt>Douleur</dt><dd>{row.pain_score ?? '—'} /10</dd></div>
+                      <div><dt>PB / PC</dt><dd>{row.arm_circumference_cm ?? '—'} / {row.head_circumference_cm ?? '—'} cm</dd></div>
                       <div><dt>Allergies</dt><dd>{row.allergies || '—'}</dd></div>
                       <div><dt>Traitements en cours</dt><dd>{row.current_treatments || '—'}</dd></div>
                       <div><dt>Ordonnance</dt><dd>{row.prescription || '—'}</dd></div>
                       <div><dt>Notes infirmières</dt><dd>{row.nurse_notes || '—'}</dd></div>
+                      <div><dt>Plan de soins</dt><dd>{row.care_plan || '—'}</dd></div>
+                      <div><dt>Transmission SBAR</dt><dd>{row.handover_sbar || '—'}</dd></div>
                     </dl>
                   </article>
                 ))}

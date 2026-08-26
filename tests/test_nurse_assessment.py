@@ -77,13 +77,25 @@ def test_nurse_assessment_save_and_doctor_sync(client, db_session, admin_user):
             "bp_diastolic": 80,
             "heart_rate": 78,
             "respiratory_rate": 16,
+            "oxygen_saturation": 98,
+            "pain_score": 4,
             "height_cm": 165,
             "weight_kg": 60,
+            "arm_circumference_cm": 28.5,
+            "head_circumference_cm": 55.0,
+            "consciousness_level": "alert",
+            "escalation_level": "routine",
             "reason_for_consultation": "Douleur thoracique",
             "allergies": "Aspirine",
             "hospitalized_daily_vitals": "TA 120/80, T 37.8, SpO2 98%",
             "prescription": "Paracétamol 500 mg si douleur",
             "nurse_notes": "Patient anxieux",
+            "care_plan": "Recontrôler la douleur dans 30 minutes",
+            "handover_sbar": "S: douleur; B: sans allergie; A: stable; R: surveiller",
+            "medication_administration": "10:00 Paracétamol 500 mg PO administré",
+            "specimen_collection": "Tube EDTA prélevé à 10:10",
+            "wound_assessment": "Aucune plaie",
+            "safety_checklist": "Risque de chute faible",
         },
     )
     assert r.status_code == 201, r.text
@@ -92,6 +104,12 @@ def test_nurse_assessment_save_and_doctor_sync(client, db_session, admin_user):
     assert body["bmi"] == 22.0
     assert body["hospitalized_daily_vitals"] == "TA 120/80, T 37.8, SpO2 98%"
     assert body["prescription"] == "Paracétamol 500 mg si douleur"
+    assert body["oxygen_saturation"] == 98
+    assert body["pain_score"] == 4
+    assert body["arm_circumference_cm"] == 28.5
+    assert body["head_circumference_cm"] == 55.0
+    assert body["care_plan"].startswith("Recontrôler")
+    assert body["handover_sbar"].startswith("S: douleur")
 
     r2 = client.get(
         f"/clinical/nurse/patients/{patient.id}/assessment",
@@ -205,3 +223,42 @@ def test_nurse_assessment_creates_distinct_history_rows(client, db_session, admi
     assert rows[1]["reason_for_consultation"] == "Première évaluation"
     assert rows[0]["prescription"] == "Ordonnance deuxième"
     assert rows[1]["prescription"] == "Ordonnance première"
+
+
+def test_nurse_reads_active_structured_prescriptions_but_not_other_clinic(client, db_session, admin_user):
+    clinic_id, nurse, _, doctor, patient = _seed_nurse_clinic(db_session, admin_user, salt="-orders")
+    appointment = models.RendezVous(
+        clinic_id=clinic_id, patient_id=patient.id, doctor_id=doctor.id,
+        date=datetime.utcnow(), status="scheduled", clinical_status="checked_in",
+    )
+    db_session.add(appointment)
+    db_session.flush()
+    consultation = models.ClinicalConsultation(
+        clinic_id=clinic_id, appointment_id=appointment.id, patient_id=patient.id,
+        doctor_id=doctor.id, status="completed",
+    )
+    db_session.add(consultation)
+    db_session.flush()
+    prescription = models.Prescription(
+        clinic_id=clinic_id, consultation_id=consultation.id, patient_id=patient.id,
+        prescriber_doctor_id=doctor.id, status="active",
+    )
+    db_session.add(prescription)
+    db_session.flush()
+    db_session.add(models.PrescriptionItem(
+        prescription_id=prescription.id, medication_name="Amoxicilline",
+        dosage="500 mg", route="oral", frequency="3 fois/jour", duration_days=7,
+    ))
+    _, _, _, _, foreign_patient = _seed_nurse_clinic(db_session, admin_user, salt="-foreign-orders")
+    db_session.commit()
+
+    response = client.get(
+        f"/clinical/nurse/patients/{patient.id}/prescriptions", headers=_auth(nurse),
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()[0]["items"][0]["medication_name"] == "Amoxicilline"
+
+    denied = client.get(
+        f"/clinical/nurse/patients/{foreign_patient.id}/prescriptions", headers=_auth(nurse),
+    )
+    assert denied.status_code in (403, 404), denied.text

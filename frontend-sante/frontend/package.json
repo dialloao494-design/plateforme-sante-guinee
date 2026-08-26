@@ -10,6 +10,7 @@
     "dev:tunnel": "vite --mode tunnel --host 0.0.0.0",
     "build": "vite build",
     "check:performance": "node scripts/check-build-budget.mjs",
+    "pretest:unit": "node --test src/pages/clinical/nurse/nurseDomain.test.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test:unit": "node --test src/pages/clinical/admin/adminDomain.test.mjs src/utils/apiError.test.mjs src/utils/loginErrors.test.mjs src/utils/authStorage.test.mjs src/utils/clinicalPatientRoute.test.mjs src/utils/clinicalPresentation.test.mjs src/utils/navConfig.test.mjs src/pages/clinical/lab/labDomain.test.mjs src/pages/clinical/reception/registrationConflict.test.mjs src/pages/clinical/reception/registrationSuccess.test.mjs src/pages/clinical/reception/routeState.test.mjs src/pages/clinical/reception/hooks/buildInvoiceItemPayload.test.mjs src/offline/reconcilePatient.test.mjs src/offline/remapPatientRefs.test.mjs",
