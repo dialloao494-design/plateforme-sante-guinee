@@ -81,7 +81,7 @@ export default function PlatformAccounts() {
   };
 
   return (
-    <main className="users-page platform-accounts-page" id="main-content">
+    <section className="users-page platform-accounts-page" aria-label="Comptes et accès">
       <div className="users-page-inner">
         <Link to="/platform" className="platform-back-link">← Console plateforme</Link>
         <header className="platform-admin-heading">
@@ -125,6 +125,6 @@ export default function PlatformAccounts() {
           {preview && <div className="platform-preview-list"><strong>Prévisualisation</strong><ul>{preview.items.map((item) => <li key={item.id} className={item.eligible ? '' : 'platform-preview-list__blocked'}>{item.email} — {item.completed ? 'terminé' : item.eligible ? 'autorisé' : item.reason}</li>)}</ul></div>}
           <div className="platform-modal-actions"><button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => setDialog(null)}>Annuler</button>{!dialog.user && preview ? <button type="button" className="clinical-btn clinical-btn--danger" disabled={busy} onClick={() => runAction(true)}>{busy ? 'Traitement…' : 'Confirmer l’action groupée'}</button> : <button type="button" className={`clinical-btn${dialog.action === 'delete' || dialog.action === 'deactivate' ? ' clinical-btn--danger' : ''}`} disabled={busy || reason.trim().length < 3} onClick={() => runAction(false)}>{busy ? 'Vérification…' : dialog.user ? 'Confirmer' : 'Prévisualiser'}</button>}</div></section></div>}
       </div>
-    </main>
+    </section>
   );
 }

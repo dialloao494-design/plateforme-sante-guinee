@@ -359,7 +359,7 @@ export default function ClinicAdminDashboard() {
           <label>Au<input type="date" value={auditFilters.date_to} onChange={(e) => setAuditFilters({ ...auditFilters, date_to: e.target.value })} /></label>
           <button type="button" className="clinical-btn clinical-btn--secondary" onClick={filterAudit}>Appliquer</button>
         </div>
-        <ul className="clinical-list clinical-audit-list admin-audit-ledger">
+        <ul className="clinical-list clinical-audit-list admin-audit-ledger" tabIndex="0" aria-label="Journal d’activité, défilement possible">
           {auditLogs.length === 0 && <li>Aucune entrée récente.</li>}
           {auditLogs.map((log) => (
             <li key={log.id}>
