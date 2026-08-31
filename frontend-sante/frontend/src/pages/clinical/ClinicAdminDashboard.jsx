@@ -55,7 +55,7 @@ export default function ClinicAdminDashboard() {
   const [staffEditForm, setStaffEditForm] = useState({ first_name: '', last_name: '', role: '', reason: '' });
   const [staffSearch, setStaffSearch] = useState('');
   const [staffRoleFilter, setStaffRoleFilter] = useState('');
-  const [staffStatusFilter, setStaffStatusFilter] = useState('');
+  const [staffStatusFilter, setStaffStatusFilter] = useState('active');
   const [auditFilters, setAuditFilters] = useState({ action: '', date_from: '', date_to: '' });
 
   const loadClinicStaff = async (id) => {
