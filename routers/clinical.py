@@ -66,6 +66,7 @@ from schemas.clinical import (
     StaffResponse,
     StaffPasswordReset,
     StaffRoleUpdate,
+    StaffProfileUpdate,
     StaffInvitationCreate,
     StaffInvitationResponse,
     StaffLifecycleRequest,
@@ -102,6 +103,7 @@ from services.staff_lifecycle_service import (
     reactivate_staff as lifecycle_reactivate_staff,
     delete_unused_staff as lifecycle_delete_unused_staff,
     revoke_sessions as lifecycle_revoke_sessions,
+    update_staff_profile as lifecycle_update_staff_profile,
 )
 
 router = APIRouter(prefix="/clinical", tags=["Clinical CIS"])
@@ -414,6 +416,29 @@ def list_staff(
         _staff_response(db, u)
         for u in rows
     ]
+
+
+@router.patch("/staff/{user_id}", response_model=StaffResponse)
+def update_staff_profile(
+    user_id: int,
+    body: StaffProfileUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    assert_clinic_access(current_user, body.clinic_id)
+    try:
+        user = lifecycle_update_staff_profile(
+            db, clinic_id=body.clinic_id, user_id=user_id, actor=current_user,
+            first_name=body.first_name, last_name=body.last_name, role=body.role,
+            reason=body.reason,
+            allow_admin_role=current_user.role in ("platform_owner", "platform_admin"),
+            ip=client_ip(request), user_agent=request.headers.get("user-agent"),
+        )
+    except StaffLifecycleError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    return _staff_response(db, user)
 
 
 @router.patch("/staff/{user_id}/deactivate", response_model=StaffResponse)

@@ -84,6 +84,14 @@
 .admin-staff-actions { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; min-width: 300px; }
 .admin-staff-actions .clinical-btn { min-height: 42px; padding: .55rem .78rem; white-space: nowrap; }
 .admin-staff-actions__warning { border-color: #c98318; color: #8a4d00; }
+.admin-staff-editor { margin: 1rem 0; padding: 1rem; border: 1px solid #80c9c0; border-left: 5px solid #00897b; border-radius: 12px; background: #f4fbfa; box-shadow: 0 8px 24px rgba(16, 42, 67, .08); }
+.admin-staff-editor__heading, .admin-staff-editor__footer { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.admin-staff-editor__heading h3 { margin: .15rem 0 0; }
+.admin-staff-editor__fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .85rem; margin: 1rem 0; }
+.admin-staff-editor__fields label { display: grid; gap: .35rem; font-weight: 750; color: #294b5e; }
+.admin-staff-editor__fields input, .admin-staff-editor__fields select { width: 100%; min-height: 44px; padding: .55rem .7rem; border: 1px solid #91adbd; border-radius: 8px; background: #fff; color: #102a43; }
+.admin-staff-editor__fields small, .admin-staff-editor__footer span { color: #567287; font-weight: 500; }
+.admin-staff-editor__reason { grid-column: 1 / -1; }
 
 .admin-create-staff__form {
   display: grid;
@@ -133,6 +141,8 @@
 .admin-audit-ledger small { grid-column: 2 / -1; color: #627a89; }
 
 @media (max-width: 680px) {
+  .admin-staff-editor__heading, .admin-staff-editor__footer { align-items: stretch; flex-direction: column; }
+  .admin-staff-editor__fields { grid-template-columns: 1fr; }
   .admin-readiness__summary { grid-template-columns: 1fr auto; }
   .admin-readiness__summary .clinical-btn { grid-column: 1 / -1; width: 100%; }
   .admin-setup { grid-template-columns: 1fr; }

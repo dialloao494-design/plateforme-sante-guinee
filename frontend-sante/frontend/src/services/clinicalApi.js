@@ -29,6 +29,7 @@ const clinicalApi = {
       params: { clinic_id: clinicId, ...(role ? { role } : {}) },
     }),
   updateStaffRole: (userId, data) => httpClient.patch(`/clinical/staff/${userId}/role`, data),
+  updateStaff: (userId, data) => httpClient.patch(`/clinical/staff/${userId}`, data),
   deactivateStaff: (userId, clinicId, reason) =>
     httpClient.patch(`/clinical/staff/${userId}/deactivate`, { reason }, { params: { clinic_id: clinicId } }),
   reactivateStaff: (userId, clinicId, reason) =>

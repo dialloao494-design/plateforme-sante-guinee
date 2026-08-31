@@ -365,7 +365,7 @@
 .platform-command-bar { display: grid; gap: 1rem; padding: 1rem; border: 1px solid #cbdde3; border-radius: 14px; background: #f8fbfb; margin-bottom: 1rem; }
 .platform-account-filters { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; }
 .platform-account-filters label { display: grid; gap: .3rem; color: #29485a; font-size: .78rem; font-weight: 700; }
-.platform-account-filters input, .platform-account-filters select, .platform-governance-dialog input, .platform-governance-dialog textarea, .platform-configuration-form input, .platform-configuration-form select, .platform-configuration-form textarea, .platform-staff-drawer select { min-height: 42px; border: 1px solid #9eb9ca; border-radius: 8px; padding: .5rem .65rem; background: #fff; color: #102a43; }
+.platform-account-filters input, .platform-account-filters select, .platform-governance-dialog input, .platform-governance-dialog textarea, .platform-configuration-form input, .platform-configuration-form select, .platform-configuration-form textarea, .platform-staff-drawer input, .platform-staff-drawer select { min-height: 42px; border: 1px solid #9eb9ca; border-radius: 8px; padding: .5rem .65rem; background: #fff; color: #102a43; }
 .platform-account-filters input:focus-visible, .platform-account-filters select:focus-visible, .platform-governance-dialog input:focus-visible, .platform-governance-dialog textarea:focus-visible { outline: 3px solid rgba(15,143,131,.25); outline-offset: 2px; border-color: #0f8f83; }
 .platform-selection-bar { position: sticky; top: 1rem; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin: 1rem 0; padding: .75rem 1rem; border: 1px solid #78c9bf; border-radius: 12px; background: #e9faf6; box-shadow: 0 8px 24px rgba(8,47,73,.08); }
 .platform-selection-bar button, .platform-actions-cell button, .platform-drawer-actions button, .platform-pagination button { min-height: 38px; border: 1px solid #9eb9ca; border-radius: 8px; padding: .4rem .7rem; background: #fff; color: #14394c; cursor: pointer; font-weight: 700; }
@@ -403,6 +403,8 @@
 .platform-staff-drawer dl { display: grid; grid-template-columns: 1fr 1.4fr; gap: .45rem .75rem; }
 .platform-staff-drawer dt { color: #5a7180; }.platform-staff-drawer dd { margin: 0; overflow-wrap: anywhere; }
 .platform-staff-drawer label { display: grid; gap: .3rem; font-weight: 700; }
+.platform-staff-edit { display: grid; gap: .7rem; padding-top: 1rem; border-top: 1px solid #c8dfdd; }
+.platform-staff-edit button { width: 100%; margin-top: .2rem; }
 .platform-drawer-close { position: absolute; top: .5rem; right: .5rem; width: 40px; height: 40px; border: 0; background: transparent; font-size: 1.5rem; cursor: pointer; }
 .platform-drawer-actions { display: grid; gap: .5rem; margin-top: 1rem; }
 .platform-pagination { display: flex; justify-content: center; align-items: center; gap: .75rem; margin: 1rem 0; }

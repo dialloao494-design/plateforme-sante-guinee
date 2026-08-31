@@ -18,7 +18,7 @@ import models
 from models.clinic_node_ops import ClinicNodeBackupRecord
 from models.refresh_token import RefreshToken
 import schemas
-from schemas.clinical import ClinicResponse
+from schemas.clinical import ClinicResponse, StaffProfileUpdate
 from schemas.platform import (
     PlatformClinicDetail,
     PlatformClinicSummary,
@@ -53,6 +53,7 @@ from services.staff_lifecycle_service import (
     reactivate_staff as lifecycle_reactivate_staff,
     delete_unused_staff as lifecycle_delete_unused_staff,
     revoke_sessions as lifecycle_revoke_sessions,
+    update_staff_profile as lifecycle_update_staff_profile,
 )
 from services.platform_admin_service import list_accounts, clinic_configuration, clinic_health, data_inventory
 from services.clinical_audit_service import ClinicalAuditService
@@ -269,6 +270,25 @@ def platform_accounts(
 
 def _lifecycle_error(exc: StaffLifecycleError):
     raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+
+@router.patch("/clinics/{clinic_id}/staff/{user_id}", response_model=PlatformStaffMember)
+def platform_update_staff(
+    clinic_id: int, user_id: int, body: StaffProfileUpdate, request: Request,
+    db: Session = Depends(get_db), current_user=Depends(get_current_platform_admin),
+):
+    if body.clinic_id != clinic_id:
+        raise HTTPException(status_code=422, detail="La clinique indiquée ne correspond pas à cette fiche.")
+    try:
+        lifecycle_update_staff_profile(
+            db, clinic_id=clinic_id, user_id=user_id, actor=current_user,
+            first_name=body.first_name, last_name=body.last_name, role=body.role,
+            reason=body.reason, allow_admin_role=True, ip=client_ip(request),
+            user_agent=request.headers.get("user-agent"),
+        )
+    except StaffLifecycleError as exc:
+        _lifecycle_error(exc)
+    return next(member for member in list_clinic_staff(db, clinic_id) if member.id == user_id)
 
 
 @router.patch("/clinics/{clinic_id}/staff/{user_id}/deactivate", response_model=PlatformStaffMember)

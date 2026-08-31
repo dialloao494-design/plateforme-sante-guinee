@@ -51,6 +51,8 @@ export default function ClinicAdminDashboard() {
   const [invitationBusyId, setInvitationBusyId] = useState(null);
   const [resetBusyId, setResetBusyId] = useState(null);
   const [lifecycleBusyId, setLifecycleBusyId] = useState(null);
+  const [editingStaff, setEditingStaff] = useState(null);
+  const [staffEditForm, setStaffEditForm] = useState({ first_name: '', last_name: '', role: '', reason: '' });
   const [staffSearch, setStaffSearch] = useState('');
   const [staffRoleFilter, setStaffRoleFilter] = useState('');
   const [staffStatusFilter, setStaffStatusFilter] = useState('');
@@ -231,6 +233,29 @@ export default function ClinicAdminDashboard() {
     finally { setLifecycleBusyId(null); }
   };
 
+  const openStaffEditor = (staffUser) => {
+    setEditingStaff(staffUser);
+    setStaffEditForm({
+      first_name: staffUser.first_name || '', last_name: staffUser.last_name || '',
+      role: staffUser.role, reason: 'Mise à jour de la fiche du personnel',
+    });
+    setError(''); setMessage('');
+  };
+
+  const saveStaffProfile = async (event) => {
+    event.preventDefault();
+    if (!editingStaff || !clinicId) return;
+    setLifecycleBusyId(editingStaff.id); setError(''); setMessage('');
+    try {
+      await clinicalApi.updateStaff(editingStaff.id, { ...staffEditForm, clinic_id: Number(clinicId) });
+      setMessage(`Fiche de ${staffEditForm.first_name} ${staffEditForm.last_name} mise à jour.`);
+      setEditingStaff(null);
+      await loadClinicStaff(clinicId);
+      await loadCompliance();
+    } catch (err) { setError(formatApiError(err, 'Modification du personnel impossible.')); }
+    finally { setLifecycleBusyId(null); }
+  };
+
   const filterAudit = async () => {
     setError('');
     try {
@@ -375,6 +400,18 @@ export default function ClinicAdminDashboard() {
       <section id="clinic-staff" className="clinical-card admin-section">
         <div className="admin-section-heading"><div><p className="clinical-eyebrow">Annuaire opérationnel</p><h2>Personnel</h2></div><span>{filteredStaff.length} / {clinicStaff.length}</span></div>
         <div className="admin-directory-filters"><label>Recherche<input type="search" autoComplete="off" placeholder="Nom ou e-mail…" value={staffSearch} onChange={(e) => setStaffSearch(e.target.value)} /></label><label>Rôle<select value={staffRoleFilter} onChange={(e) => setStaffRoleFilter(e.target.value)}><option value="">Tous</option>{STAFF_ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label><label>Accès<select value={staffStatusFilter} onChange={(e) => setStaffStatusFilter(e.target.value)}><option value="">Tous</option><option value="active">Actifs</option><option value="inactive">Inactifs</option></select></label></div>
+        {editingStaff && (
+          <form className="admin-staff-editor" onSubmit={saveStaffProfile} aria-labelledby="staff-editor-title">
+            <div className="admin-staff-editor__heading"><div><p className="clinical-eyebrow">Compte {editingStaff.email}</p><h3 id="staff-editor-title">Modifier le membre du personnel</h3></div><button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => setEditingStaff(null)}>Annuler</button></div>
+            <div className="admin-staff-editor__fields">
+              <label>Prénom<input required autoFocus value={staffEditForm.first_name} onChange={(e) => setStaffEditForm({ ...staffEditForm, first_name: e.target.value })} /></label>
+              <label>Nom<input required value={staffEditForm.last_name} onChange={(e) => setStaffEditForm({ ...staffEditForm, last_name: e.target.value })} /></label>
+              <label>Rôle<select value={staffEditForm.role} disabled={editingStaff.id === user?.id} onChange={(e) => setStaffEditForm({ ...staffEditForm, role: e.target.value })}>{!STAFF_ROLE_OPTIONS.some((option) => option.value === staffEditForm.role) && <option value={staffEditForm.role}>{ROLE_LABELS[staffEditForm.role] || staffEditForm.role}</option>}{STAFF_ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>{editingStaff.id === user?.id && <small>Votre propre rôle ne peut pas être modifié ici.</small>}</label>
+              <label className="admin-staff-editor__reason">Raison<input required minLength="3" value={staffEditForm.reason} onChange={(e) => setStaffEditForm({ ...staffEditForm, reason: e.target.value })} /></label>
+            </div>
+            <div className="admin-staff-editor__footer"><span>Un changement de rôle déconnectera immédiatement cette personne.</span><button type="submit" className="clinical-btn" disabled={lifecycleBusyId === editingStaff.id}>{lifecycleBusyId === editingStaff.id ? 'Enregistrement…' : 'Enregistrer les modifications'}</button></div>
+          </form>
+        )}
         {clinicStaff.length === 0 ? (
           <p className="clinical-muted">Aucun membre — créez un compte ci-dessous.</p>
         ) : (
@@ -397,8 +434,10 @@ export default function ClinicAdminDashboard() {
                   <td><span className="clinical-badge">{ROLE_LABELS[u.role] || u.role}</span></td>
                   <td><strong>{u.is_active ? 'Actif' : u.invitation_status === 'sent' ? 'Invitation envoyée' : 'Inactif'}</strong><span className="admin-cell-meta">Dernière connexion : {u.last_login_at ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(u.last_login_at)) : 'jamais'} · MFA {u.mfa_enabled ? 'active' : 'inactive'} · {u.active_sessions || 0} session(s)</span></td>
                   <td>
+                    <div className="admin-staff-actions">
+                      <button type="button" className="clinical-btn clinical-btn--secondary" disabled={lifecycleBusyId === u.id} onClick={() => openStaffEditor(u)}>Modifier</button>
                     {u.id === user?.id ? <span className="clinical-muted">Votre compte</span> : (
-                      <div className="admin-staff-actions">
+                      <>
                         {u.is_active ? <>
                           <button type="button" className="clinical-btn clinical-btn--secondary" disabled={resetBusyId === u.id || lifecycleBusyId === u.id} onClick={() => resetStaffPassword(u)}>{resetBusyId === u.id ? 'Envoi…' : 'Réinitialiser le mot de passe'}</button>
                           <button type="button" className="clinical-btn clinical-btn--secondary" disabled={lifecycleBusyId === u.id} onClick={() => revokeStaffSessions(u)}>Déconnecter</button>
@@ -407,8 +446,9 @@ export default function ClinicAdminDashboard() {
                           {u.invitation_status ? <button type="button" className="clinical-btn clinical-btn--secondary" disabled={invitationBusyId === u.id || lifecycleBusyId === u.id} onClick={() => resendInvitation(u)}>{invitationBusyId === u.id ? 'Envoi…' : 'Renvoyer l’invitation'}</button> : <button type="button" className="clinical-btn" disabled={lifecycleBusyId === u.id} onClick={() => changeStaffAccess(u, true)}>{lifecycleBusyId === u.id ? 'Réactivation…' : 'Réactiver'}</button>}
                           {u.invitation_status && <button type="button" className="clinical-btn clinical-btn--danger" disabled={lifecycleBusyId === u.id} onClick={() => deleteStaff(u)}>{lifecycleBusyId === u.id ? 'Suppression…' : 'Supprimer'}</button>}
                         </>}
-                      </div>
+                      </>
                     )}
+                    </div>
                   </td>
                 </tr>
               ))}

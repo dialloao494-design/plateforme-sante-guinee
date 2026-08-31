@@ -72,6 +72,26 @@ def test_platform_lifecycle_preserves_last_clinic_admin(client, db_session, admi
     assert db_session.get(models.User, only_admin.id).is_active is True
 
 
+def test_platform_admin_can_edit_staff_identity_and_assign_clinic_admin(client, db_session, admin_headers):
+    clinic, _ = _clinic_with_admin(db_session, "edit-profile")
+    with provisioning_channel("test_fixture"):
+        nurse = create_staff_user(
+            db_session, email="edit.platform.nurse@real.gn", password="NursePass12!",
+            role="nurse", clinic_id=clinic.id, channel="test_fixture",
+        ).user
+    db_session.commit()
+    response = client.patch(
+        f"/platform/clinics/{clinic.id}/staff/{nurse.id}",
+        json={"clinic_id": clinic.id, "first_name": "Fatoumata", "last_name": "Diallo", "role": "clinic_admin", "reason": "Nomination administratrice clinique"},
+        headers=admin_headers,
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["first_name"] == "Fatoumata"
+    assert response.json()["last_name"] == "Diallo"
+    assert response.json()["full_name"] == "Fatoumata Diallo"
+    assert response.json()["role"] == "clinic_admin"
+
+
 def test_clinic_configuration_state_health_and_audit_exports(client, db_session, admin_headers):
     clinic, _ = _clinic_with_admin(db_session, "control-room")
     config = client.patch(

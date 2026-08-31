@@ -15,6 +15,8 @@ const platformApi = {
   getClinicDetail: (clinicId) => httpClient.get(`/platform/clinics/${clinicId}/detail`),
 
   listClinicStaff: (clinicId) => httpClient.get(`/platform/clinics/${clinicId}/staff`),
+  updateStaff: (clinicId, userId, data) =>
+    httpClient.patch(`/platform/clinics/${clinicId}/staff/${userId}`, { ...data, clinic_id: clinicId }),
 
   setClinicActive: (clinicId, isActive) =>
     httpClient.patch(`/platform/clinics/${clinicId}/active`, { is_active: isActive }),

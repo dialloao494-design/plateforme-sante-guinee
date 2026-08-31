@@ -211,6 +211,51 @@ def test_clinic_admin_can_deactivate_and_reactivate_staff(client, db_session):
     assert response.json()["is_active"] is True
 
 
+def test_clinic_admin_can_edit_staff_name_and_role_with_audit(client, db_session):
+    clinic = models.Clinic(name="Editable Staff Clinic", is_active=True)
+    db_session.add(clinic); db_session.commit()
+    admin = _clinic_admin(db_session, clinic.id, email=f"edit.admin.{clinic.id}@test.gn")
+    with provisioning_channel("test_fixture"):
+        staff = models.User(
+            email=f"edit.staff.{clinic.id}@test.gn", hashed_password=hash_password("Secret12Pass!"),
+            role="receptionist", clinic_id=clinic.id, first_name="Ancien", last_name="Nom",
+        )
+        db_session.add(staff); db_session.flush()
+        db_session.add(models.ClinicStaff(clinic_id=clinic.id, user_id=staff.id, is_active=True)); db_session.commit()
+
+    response = client.patch(
+        f"/clinical/staff/{staff.id}",
+        json={"clinic_id": clinic.id, "first_name": "Aïssatou", "last_name": "Camara", "role": "nurse", "reason": "Affectation au service infirmier"},
+        headers=_auth(admin),
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["first_name"] == "Aïssatou"
+    assert response.json()["last_name"] == "Camara"
+    assert response.json()["role"] == "nurse"
+    audit = db_session.query(models.ClinicalAuditLog).filter_by(
+        clinic_id=clinic.id, resource_type="staff", resource_id=staff.id, action="update_profile",
+    ).one()
+    assert audit.reason == "Affectation au service infirmier"
+    assert '"role": "receptionist"' in audit.before_json
+    assert '"role": "nurse"' in audit.after_json
+
+
+def test_clinic_admin_cannot_promote_staff_to_administrator(client, db_session):
+    clinic = models.Clinic(name="Guarded Staff Clinic", is_active=True)
+    db_session.add(clinic); db_session.commit()
+    admin = _clinic_admin(db_session, clinic.id, email=f"guard.edit.admin.{clinic.id}@test.gn")
+    with provisioning_channel("test_fixture"):
+        staff = models.User(email=f"guard.edit.staff.{clinic.id}@test.gn", hashed_password=hash_password("Secret12Pass!"), role="nurse", clinic_id=clinic.id)
+        db_session.add(staff); db_session.commit()
+    response = client.patch(
+        f"/clinical/staff/{staff.id}",
+        json={"clinic_id": clinic.id, "first_name": "Mariam", "last_name": "Bah", "role": "clinic_admin", "reason": "Promotion non autorisée"},
+        headers=_auth(admin),
+    )
+    assert response.status_code == 403
+    assert db_session.get(models.User, staff.id).role == "nurse"
+
+
 def test_delete_is_limited_to_unused_inactive_invitation(client, db_session):
     clinic = models.Clinic(name="Delete Invitation Clinic", is_active=True)
     db_session.add(clinic); db_session.commit()

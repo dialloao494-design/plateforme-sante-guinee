@@ -37,7 +37,10 @@ def _staff(db: Session, clinic_id: int, user_id: int) -> models.User:
 
 
 def _snapshot(user: models.User) -> dict:
-    return {"id": user.id, "email": user.email, "role": user.role, "is_active": bool(user.is_active)}
+    return {
+        "id": user.id, "email": user.email, "first_name": user.first_name,
+        "last_name": user.last_name, "role": user.role, "is_active": bool(user.is_active),
+    }
 
 
 def _audit(db: Session, *, actor, target, clinic_id: int, action: str, reason: str, ip: str | None, user_agent: str | None, before: dict, after: dict | None) -> None:
@@ -143,3 +146,62 @@ def revoke_sessions(db: Session, *, clinic_id: int, user_id: int, actor, reason:
     _audit(db, actor=actor, target=user, clinic_id=clinic_id, action="revoke_sessions", reason=reason, ip=ip, user_agent=user_agent, before=before, after={**before, "revoked_sessions": count})
     db.commit()
     return count
+
+
+def update_staff_profile(
+    db: Session, *, clinic_id: int, user_id: int, actor, first_name: str,
+    last_name: str, role: str, reason: str, allow_admin_role: bool = False,
+    ip: str | None = None, user_agent: str | None = None,
+) -> models.User:
+    """Update a clinic staff identity and permissions through one audited workflow."""
+    from core.provisioning_context import provisioning_channel
+    from core.roles import CLINICAL_STAFF_ROLES, CLINIC_ADMIN_ROLES, assert_known_role
+
+    user = _staff(db, clinic_id, user_id)
+    clean_first = first_name.strip()
+    clean_last = last_name.strip()
+    clean_reason = reason.strip()
+    if not clean_first or not clean_last:
+        raise StaffLifecycleError("Le prénom et le nom sont obligatoires.", 422)
+    if not clean_reason:
+        raise StaffLifecycleError("Indiquez la raison de la modification.", 422)
+    try:
+        normalized_role = assert_known_role(role)
+    except ValueError as exc:
+        raise StaffLifecycleError("Sélectionnez un rôle clinique valide.", 422) from exc
+    allowed_roles = CLINICAL_STAFF_ROLES | (CLINIC_ADMIN_ROLES if allow_admin_role else frozenset())
+    if normalized_role not in allowed_roles:
+        raise StaffLifecycleError("Vous ne pouvez pas attribuer ce rôle.", 403)
+    if user.id == actor.id and normalized_role != user.role:
+        raise StaffLifecycleError("Vous ne pouvez pas modifier votre propre rôle.", 400)
+    if user.role in CLINIC_ADMIN_ROLES and normalized_role not in CLINIC_ADMIN_ROLES and user.is_active:
+        remaining = db.query(models.User).filter(
+            models.User.clinic_id == clinic_id,
+            models.User.role.in_(tuple(CLINIC_ADMIN_ROLES)),
+            models.User.is_active.is_(True),
+            models.User.id != user.id,
+        ).count()
+        if remaining == 0:
+            raise StaffLifecycleError("La clinique doit conserver au moins un administrateur actif.")
+
+    before = _snapshot(user)
+    role_changed = normalized_role != user.role
+    with provisioning_channel("admin_api"):
+        user.first_name = clean_first
+        user.last_name = clean_last
+        user.role = normalized_role
+        if user.doctor_profile:
+            user.doctor_profile.first_name = clean_first
+            user.doctor_profile.last_name = clean_last
+        if role_changed:
+            user.session_version = int(user.session_version or 0) + 1
+            user.token_version = int(user.token_version or 0) + 1
+            revoke_all_user_refresh_tokens(db, user_id=user.id, commit=False)
+        _audit(
+            db, actor=actor, target=user, clinic_id=clinic_id, action="update_profile",
+            reason=clean_reason, ip=ip, user_agent=user_agent, before=before,
+            after={**_snapshot(user), "permissions_changed": role_changed},
+        )
+        db.commit()
+    db.refresh(user)
+    return user

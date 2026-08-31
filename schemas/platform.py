@@ -51,6 +51,8 @@ class PlatformStaffMember(BaseModel):
     id: int
     email: str
     full_name: Optional[str]
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     role: str
     phone: Optional[str]
     is_active: bool

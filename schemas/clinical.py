@@ -74,6 +74,16 @@ class StaffRoleUpdate(BaseModel):
     reason: str = Field(..., min_length=3, max_length=500)
 
 
+class StaffProfileUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    clinic_id: int
+    first_name: str = Field(..., min_length=1, max_length=128)
+    last_name: str = Field(..., min_length=1, max_length=128)
+    role: str
+    reason: str = Field(..., min_length=3, max_length=500)
+
+
 class StaffPasswordReset(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

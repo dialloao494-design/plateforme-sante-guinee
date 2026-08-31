@@ -129,10 +129,11 @@ def _user_last_activity(db: Session, user_id: int) -> datetime | None:
 
 
 def _staff_display(db: Session, user: models.User) -> tuple[str | None, str | None]:
+    account_name = " ".join(part for part in (user.first_name, user.last_name) if part).strip()
     if user.role == "doctor" and user.doctor_profile:
         doc = user.doctor_profile
-        return doc.full_name, doc.phone
-    return None, None
+        return account_name or doc.full_name, doc.phone
+    return account_name or None, None
 
 
 def _clinic_stats(db: Session, clinic_id: int) -> dict:
@@ -385,6 +386,8 @@ def list_clinic_staff(db: Session, clinic_id: int) -> list[PlatformStaffMember]:
                 id=user.id,
                 email=user.email,
                 full_name=full_name,
+                first_name=user.first_name,
+                last_name=user.last_name,
                 role=user.role,
                 phone=phone,
                 is_active=user.is_active,
