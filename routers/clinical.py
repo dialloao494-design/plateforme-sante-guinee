@@ -94,6 +94,7 @@ from services.staff_activation_service import ActivationError, invite_staff, res
 from services.clinic_shift_service import ShiftConflict, close_shift, current_shift, open_shift, serialize_shift
 from services.password_reset_service import create_reset_token, send_reset_email
 from models.user import User
+from models.refresh_token import AccessTokenDenylist, RefreshToken
 
 router = APIRouter(prefix="/clinical", tags=["Clinical CIS"])
 
@@ -106,8 +107,8 @@ def _staff_response(db: Session, user: User) -> StaffResponse:
         id=user.id, email=user.email, role=user.role, clinic_id=user.clinic_id,
         is_active=user.is_active, first_name=user.first_name, last_name=user.last_name,
         last_login_at=user.last_login_at, must_change_password=user.must_change_password,
-        invitation_status=latest.delivery_status if latest and not user.is_active else None,
-        invitation_expires_at=latest.expires_at if latest and not user.is_active else None,
+        invitation_status=latest.delivery_status if latest and latest.used_at is None and not user.is_active and user.email_verified_at is None and user.last_login_at is None else None,
+        invitation_expires_at=latest.expires_at if latest and latest.used_at is None and not user.is_active and user.email_verified_at is None and user.last_login_at is None else None,
     )
 
 
@@ -398,6 +399,7 @@ def list_staff(
 @router.patch("/staff/{user_id}/deactivate", response_model=StaffResponse)
 def deactivate_staff(
     user_id: int,
+    request: Request,
     clinic_id: int = Query(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -413,11 +415,106 @@ def deactivate_staff(
         raise HTTPException(status_code=404, detail="Staff member not found")
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
+    if user.role in ("clinic_admin", "admin"):
+        remaining_admins = db.query(models.User).filter(
+            models.User.clinic_id == clinic_id,
+            models.User.role.in_(("clinic_admin", "admin")),
+            models.User.is_active.is_(True),
+            models.User.id != user.id,
+        ).count()
+        if remaining_admins == 0:
+            raise HTTPException(status_code=409, detail="La clinique doit conserver au moins un administrateur actif.")
     user.is_active = False
-    db.add(user)
+    user.session_version = int(user.session_version or 0) + 1
+    user.token_version = int(user.token_version or 0) + 1
+    db.query(models.ClinicStaff).filter(
+        models.ClinicStaff.clinic_id == clinic_id,
+        models.ClinicStaff.user_id == user.id,
+    ).update({models.ClinicStaff.is_active: False}, synchronize_session=False)
+    db.query(RefreshToken).filter(RefreshToken.user_id == user.id).delete(synchronize_session=False)
     db.commit()
     db.refresh(user)
-    return StaffResponse(id=user.id, email=user.email, role=user.role, clinic_id=user.clinic_id, is_active=user.is_active)
+    log_cis(db, actor=current_user, clinic_id=clinic_id, action="deactivate", resource_type="staff", resource_id=user.id, client_ip=client_ip(request))
+    return _staff_response(db, user)
+
+
+@router.patch("/staff/{user_id}/reactivate", response_model=StaffResponse)
+def reactivate_staff(
+    user_id: int,
+    request: Request,
+    clinic_id: int = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    assert_clinic_access(current_user, clinic_id)
+    user = db.query(models.User).filter(models.User.id == user_id, models.User.clinic_id == clinic_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Membre du personnel introuvable.")
+    pending_invitation = db.query(models.StaffActivationToken).filter(
+        models.StaffActivationToken.user_id == user.id,
+        models.StaffActivationToken.used_at.is_(None),
+    ).first()
+    if user.email_verified_at is None and user.last_login_at is None and pending_invitation:
+        raise HTTPException(status_code=409, detail="Ce compte n’a jamais été activé. Renvoyez plutôt son invitation.")
+    user.is_active = True
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    user.session_version = int(user.session_version or 0) + 1
+    user.token_version = int(user.token_version or 0) + 1
+    db.query(models.ClinicStaff).filter(
+        models.ClinicStaff.clinic_id == clinic_id,
+        models.ClinicStaff.user_id == user.id,
+    ).update({models.ClinicStaff.is_active: True}, synchronize_session=False)
+    db.commit()
+    db.refresh(user)
+    log_cis(db, actor=current_user, clinic_id=clinic_id, action="reactivate", resource_type="staff", resource_id=user.id, client_ip=client_ip(request))
+    return _staff_response(db, user)
+
+
+@router.delete("/staff/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_unused_staff(
+    user_id: int,
+    request: Request,
+    clinic_id: int = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Permanently remove only an unused, inactive invitation account."""
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    assert_clinic_access(current_user, clinic_id)
+    user = db.query(models.User).filter(models.User.id == user_id, models.User.clinic_id == clinic_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Membre du personnel introuvable.")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Vous ne pouvez pas supprimer votre propre compte.")
+    if user.is_active:
+        raise HTTPException(status_code=409, detail="Désactivez d’abord ce compte.")
+    pending_invitation = db.query(models.StaffActivationToken).filter(
+        models.StaffActivationToken.user_id == user.id,
+        models.StaffActivationToken.used_at.is_(None),
+    ).first()
+    if user.email_verified_at is not None or user.last_login_at is not None or not pending_invitation:
+        raise HTTPException(
+            status_code=409,
+            detail="Ce compte possède un historique. Il doit rester désactivé afin de préserver la traçabilité clinique.",
+        )
+    if db.query(models.Doctor).filter(models.Doctor.user_id == user.id).first():
+        raise HTTPException(status_code=409, detail="Ce compte possède un profil médecin. Conservez-le désactivé.")
+
+    # Invitation-only identities have no clinical authorship. Remove their
+    # authentication artifacts and membership before deleting the identity.
+    db.query(models.StaffActivationToken).filter(models.StaffActivationToken.user_id == user.id).delete(synchronize_session=False)
+    db.query(models.PasswordResetToken).filter(models.PasswordResetToken.user_id == user.id).delete(synchronize_session=False)
+    db.query(models.EmailVerificationToken).filter(models.EmailVerificationToken.user_id == user.id).delete(synchronize_session=False)
+    db.query(RefreshToken).filter(RefreshToken.user_id == user.id).delete(synchronize_session=False)
+    db.query(AccessTokenDenylist).filter(AccessTokenDenylist.user_id == user.id).delete(synchronize_session=False)
+    db.query(models.NotificationEvent).filter(models.NotificationEvent.user_id == user.id).delete(synchronize_session=False)
+    db.query(models.ClinicStaff).filter(models.ClinicStaff.clinic_id == clinic_id, models.ClinicStaff.user_id == user.id).delete(synchronize_session=False)
+    db.delete(user)
+    db.commit()
+    log_cis(db, actor=current_user, clinic_id=clinic_id, action="delete_unused", resource_type="staff", resource_id=user_id, client_ip=client_ip(request))
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/staff/{user_id}/reset-password")

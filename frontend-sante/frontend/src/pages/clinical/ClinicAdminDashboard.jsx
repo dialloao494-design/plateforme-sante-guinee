@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext.jsx';
+import { useConfirm } from '../../contexts/ConfirmContext.jsx';
 import clinicalApi from '../../services/clinicalApi';
 import { formatApiError } from '../../utils/apiError.js';
 import { formatGNF } from '../../utils/appointmentPresentation.js';
@@ -30,6 +31,7 @@ const STAFF_ROLE_OPTIONS = [
 
 export default function ClinicAdminDashboard() {
   const { user } = useAuth();
+  const confirm = useConfirm();
   const clinicId = user?.clinic_id;
 
   const [message, setMessage] = useState('');
@@ -48,6 +50,7 @@ export default function ClinicAdminDashboard() {
   });
   const [invitationBusyId, setInvitationBusyId] = useState(null);
   const [resetBusyId, setResetBusyId] = useState(null);
+  const [lifecycleBusyId, setLifecycleBusyId] = useState(null);
 
   const loadClinicStaff = async (id) => {
     if (!id) return;
@@ -168,6 +171,43 @@ export default function ClinicAdminDashboard() {
       await loadClinicStaff(clinicId);
     } catch (err) { setError(formatApiError(err, 'Renvoi impossible.')); }
     finally { setInvitationBusyId(null); }
+  };
+
+  const changeStaffAccess = async (staffUser, nextActive) => {
+    const accepted = await confirm({
+      title: nextActive ? 'Réactiver cet accès ?' : 'Désactiver cet accès ?',
+      message: nextActive
+        ? `${staffUser.email} pourra de nouveau se connecter à la clinique.`
+        : `${staffUser.email} sera immédiatement déconnecté et ne pourra plus accéder aux données. Son historique sera conservé.`,
+      confirmLabel: nextActive ? 'Réactiver l’accès' : 'Désactiver l’accès',
+      tone: nextActive ? 'default' : 'danger',
+    });
+    if (!accepted) return;
+    setLifecycleBusyId(staffUser.id); setError(''); setMessage('');
+    try {
+      if (nextActive) await clinicalApi.reactivateStaff(staffUser.id, Number(clinicId));
+      else await clinicalApi.deactivateStaff(staffUser.id, Number(clinicId));
+      await loadClinicStaff(clinicId);
+      setMessage(nextActive ? `Accès réactivé pour ${staffUser.email}.` : `Accès désactivé pour ${staffUser.email}.`);
+    } catch (err) { setError(formatApiError(err, 'Modification de l’accès impossible.')); }
+    finally { setLifecycleBusyId(null); }
+  };
+
+  const deleteStaff = async (staffUser) => {
+    const accepted = await confirm({
+      title: 'Supprimer définitivement ce compte ?',
+      message: `${staffUser.email} sera supprimé. Cette action est réservée aux invitations jamais utilisées et ne peut pas être annulée.`,
+      confirmLabel: 'Supprimer le compte',
+      tone: 'danger',
+    });
+    if (!accepted) return;
+    setLifecycleBusyId(staffUser.id); setError(''); setMessage('');
+    try {
+      await clinicalApi.deleteStaff(staffUser.id, Number(clinicId));
+      await loadClinicStaff(clinicId);
+      setMessage(`Compte ${staffUser.email} supprimé.`);
+    } catch (err) { setError(formatApiError(err, 'Suppression impossible.')); }
+    finally { setLifecycleBusyId(null); }
   };
 
   const shiftFeedback = (kind, text) => { setError(kind === 'error' ? text : ''); setMessage(kind === 'message' ? text : ''); };
@@ -311,17 +351,16 @@ export default function ClinicAdminDashboard() {
                   <td><span className="clinical-badge">{ROLE_LABELS[u.role] || u.role}</span></td>
                   <td>{u.is_active ? 'Actif' : u.invitation_status === 'sent' ? 'Invitation envoyée' : 'Livraison à vérifier'}</td>
                   <td>
-                    {!u.is_active ? <button type="button" className="clinical-btn clinical-btn--secondary" disabled={invitationBusyId === u.id} onClick={() => resendInvitation(u)}>{invitationBusyId === u.id ? 'Envoi…' : 'Renvoyer'}</button> : u.id !== user?.id ? (
-                      <button
-                        type="button"
-                        className="clinical-btn clinical-btn--secondary"
-                        disabled={resetBusyId === u.id}
-                        onClick={() => resetStaffPassword(u)}
-                      >
-                        {resetBusyId === u.id ? '…' : 'Réinit. MDP'}
-                      </button>
-                    ) : (
-                      '—'
+                    {u.id === user?.id ? <span className="clinical-muted">Votre compte</span> : (
+                      <div className="admin-staff-actions">
+                        {u.is_active ? <>
+                          <button type="button" className="clinical-btn clinical-btn--secondary" disabled={resetBusyId === u.id || lifecycleBusyId === u.id} onClick={() => resetStaffPassword(u)}>{resetBusyId === u.id ? 'Envoi…' : 'Réinitialiser le mot de passe'}</button>
+                          <button type="button" className="clinical-btn clinical-btn--secondary admin-staff-actions__warning" disabled={lifecycleBusyId === u.id} onClick={() => changeStaffAccess(u, false)}>{lifecycleBusyId === u.id ? 'Désactivation…' : 'Désactiver'}</button>
+                        </> : <>
+                          {u.invitation_status ? <button type="button" className="clinical-btn clinical-btn--secondary" disabled={invitationBusyId === u.id || lifecycleBusyId === u.id} onClick={() => resendInvitation(u)}>{invitationBusyId === u.id ? 'Envoi…' : 'Renvoyer l’invitation'}</button> : <button type="button" className="clinical-btn" disabled={lifecycleBusyId === u.id} onClick={() => changeStaffAccess(u, true)}>{lifecycleBusyId === u.id ? 'Réactivation…' : 'Réactiver'}</button>}
+                          {u.invitation_status && <button type="button" className="clinical-btn clinical-btn--danger" disabled={lifecycleBusyId === u.id} onClick={() => deleteStaff(u)}>{lifecycleBusyId === u.id ? 'Suppression…' : 'Supprimer'}</button>}
+                        </>}
+                      </div>
                     )}
                   </td>
                 </tr>

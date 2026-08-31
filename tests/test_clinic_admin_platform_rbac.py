@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 import models
 from core.provisioning_context import provisioning_channel
 from security import create_access_token, hash_password
@@ -183,3 +185,65 @@ def test_clinic_admin_sends_reset_link_without_seeing_it(client, db_session, mon
     assert response.json()["delivery_status"] == "sent"
     assert "raw" not in response.text and "token" not in response.text
     assert len(captured["raw"]) >= 32
+
+
+def test_clinic_admin_can_deactivate_and_reactivate_staff(client, db_session):
+    clinic = models.Clinic(name="Lifecycle Clinic", is_active=True)
+    db_session.add(clinic); db_session.commit()
+    admin = _clinic_admin(db_session, clinic.id, email=f"lifecycle.admin.{clinic.id}@test.gn")
+    with provisioning_channel("test_fixture"):
+        staff = models.User(
+            email=f"lifecycle.nurse.{clinic.id}@test.gn",
+            hashed_password=hash_password("Secret12Pass!"), role="nurse", clinic_id=clinic.id,
+            email_verified_at=datetime.utcnow(), is_active=True,
+        )
+        db_session.add(staff); db_session.flush()
+        db_session.add(models.ClinicStaff(clinic_id=clinic.id, user_id=staff.id, is_active=True)); db_session.commit()
+
+    response = client.patch(f"/clinical/staff/{staff.id}/deactivate", params={"clinic_id": clinic.id}, headers=_auth(admin))
+    assert response.status_code == 200, response.text
+    assert response.json()["is_active"] is False
+    db_session.expire_all()
+    assert db_session.query(models.ClinicStaff).filter_by(user_id=staff.id).one().is_active is False
+
+    response = client.patch(f"/clinical/staff/{staff.id}/reactivate", params={"clinic_id": clinic.id}, headers=_auth(admin))
+    assert response.status_code == 200, response.text
+    assert response.json()["is_active"] is True
+
+
+def test_delete_is_limited_to_unused_inactive_invitation(client, db_session):
+    clinic = models.Clinic(name="Delete Invitation Clinic", is_active=True)
+    db_session.add(clinic); db_session.commit()
+    admin = _clinic_admin(db_session, clinic.id, email=f"delete.admin.{clinic.id}@test.gn")
+    with provisioning_channel("test_fixture"):
+        invited = models.User(
+            email=f"unused.invite.{clinic.id}@test.gn",
+            hashed_password=hash_password("Secret12Pass!"), role="receptionist", clinic_id=clinic.id,
+            is_active=False,
+        )
+        db_session.add(invited); db_session.flush()
+        db_session.add(models.ClinicStaff(clinic_id=clinic.id, user_id=invited.id, is_active=False))
+        db_session.add(models.StaffActivationToken(
+            user_id=invited.id, created_by_user_id=admin.id, token_hash=f"unused-{invited.id}",
+            expires_at=datetime.utcnow() + timedelta(hours=1), delivery_status="sent",
+        )); db_session.commit(); invited_id=invited.id
+
+    response = client.delete(f"/clinical/staff/{invited_id}", params={"clinic_id": clinic.id}, headers=_auth(admin))
+    assert response.status_code == 204, response.text
+    assert db_session.query(models.User).filter_by(id=invited_id).first() is None
+
+
+def test_delete_rejects_account_with_history(client, db_session):
+    clinic = models.Clinic(name="Preserve History Clinic", is_active=True)
+    db_session.add(clinic); db_session.commit()
+    admin = _clinic_admin(db_session, clinic.id, email=f"history.admin.{clinic.id}@test.gn")
+    with provisioning_channel("test_fixture"):
+        former = models.User(
+            email=f"former.staff.{clinic.id}@test.gn",
+            hashed_password=hash_password("Secret12Pass!"), role="cashier", clinic_id=clinic.id,
+            is_active=False, email_verified_at=datetime.utcnow(), last_login_at=datetime.utcnow(),
+        )
+        db_session.add(former); db_session.commit()
+    response = client.delete(f"/clinical/staff/{former.id}", params={"clinic_id": clinic.id}, headers=_auth(admin))
+    assert response.status_code == 409, response.text
+    assert db_session.query(models.User).filter_by(id=former.id).first() is not None

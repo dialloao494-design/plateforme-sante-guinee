@@ -81,6 +81,9 @@
   outline: 3px solid rgba(11, 140, 130, 0.35);
   outline-offset: 3px;
 }
+.admin-staff-actions { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; min-width: 300px; }
+.admin-staff-actions .clinical-btn { min-height: 42px; padding: .55rem .78rem; white-space: nowrap; }
+.admin-staff-actions__warning { border-color: #c98318; color: #8a4d00; }
 
 .admin-create-staff__form {
   display: grid;
