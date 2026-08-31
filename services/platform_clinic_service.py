@@ -8,6 +8,8 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 import models
+from models.refresh_token import RefreshToken
+from services.platform_admin_service import clinic_configuration
 from core.clinic_classification import classify_clinic
 from schemas.platform import (
     PlatformClinicDetail,
@@ -351,6 +353,10 @@ def get_clinic_detail(db: Session, clinic_id: int) -> PlatformClinicDetail | Non
         last_activity_at=stats["last_activity_at"],
         role_breakdown=_role_breakdown(db, clinic.id),
         module_usage=_module_usage(db, clinic.id),
+        suspended_at=clinic.suspended_at,
+        suspension_reason=clinic.suspension_reason,
+        archived_at=clinic.archived_at,
+        configuration=clinic_configuration(clinic),
     )
 
 
@@ -363,6 +369,17 @@ def list_clinic_staff(db: Session, clinic_id: int) -> list[PlatformStaffMember]:
     members: list[PlatformStaffMember] = []
     for user in users:
         full_name, phone = _staff_display(db, user)
+        latest_invitation = db.query(models.StaffActivationToken).filter(
+            models.StaffActivationToken.user_id == user.id,
+        ).order_by(models.StaffActivationToken.created_at.desc()).first()
+        active_sessions = db.query(RefreshToken).filter(
+            RefreshToken.user_id == user.id,
+            RefreshToken.revoked_at.is_(None),
+            RefreshToken.expires_at > datetime.utcnow(),
+        ).count()
+        last_reset = db.query(func.max(models.PasswordResetToken.created_at)).filter(
+            models.PasswordResetToken.user_id == user.id,
+        ).scalar()
         members.append(
             PlatformStaffMember(
                 id=user.id,
@@ -372,6 +389,15 @@ def list_clinic_staff(db: Session, clinic_id: int) -> list[PlatformStaffMember]:
                 phone=phone,
                 is_active=user.is_active,
                 last_activity_at=_user_last_activity(db, user.id),
+                created_at=getattr(user, "created_at", None),
+                last_login_at=user.last_login_at,
+                mfa_enabled=bool(user.mfa_enabled),
+                failed_login_attempts=user.failed_login_attempts or 0,
+                locked_until=user.locked_until,
+                invitation_status=(latest_invitation.delivery_status if latest_invitation and latest_invitation.used_at is None and user.last_login_at is None else None),
+                invitation_expires_at=(latest_invitation.expires_at if latest_invitation and latest_invitation.used_at is None and user.last_login_at is None else None),
+                active_sessions=active_sessions,
+                last_password_reset_at=last_reset,
             )
         )
     return members

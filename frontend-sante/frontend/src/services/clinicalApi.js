@@ -29,12 +29,14 @@ const clinicalApi = {
       params: { clinic_id: clinicId, ...(role ? { role } : {}) },
     }),
   updateStaffRole: (userId, data) => httpClient.patch(`/clinical/staff/${userId}/role`, data),
-  deactivateStaff: (userId, clinicId) =>
-    httpClient.patch(`/clinical/staff/${userId}/deactivate`, null, { params: { clinic_id: clinicId } }),
-  reactivateStaff: (userId, clinicId) =>
-    httpClient.patch(`/clinical/staff/${userId}/reactivate`, null, { params: { clinic_id: clinicId } }),
-  deleteStaff: (userId, clinicId) =>
-    httpClient.delete(`/clinical/staff/${userId}`, { params: { clinic_id: clinicId } }),
+  deactivateStaff: (userId, clinicId, reason) =>
+    httpClient.patch(`/clinical/staff/${userId}/deactivate`, { reason }, { params: { clinic_id: clinicId } }),
+  reactivateStaff: (userId, clinicId, reason) =>
+    httpClient.patch(`/clinical/staff/${userId}/reactivate`, { reason }, { params: { clinic_id: clinicId } }),
+  deleteStaff: (userId, clinicId, reason) =>
+    httpClient.delete(`/clinical/staff/${userId}`, { params: { clinic_id: clinicId }, data: { reason } }),
+  revokeStaffSessions: (userId, clinicId, reason) =>
+    httpClient.post(`/clinical/staff/${userId}/sessions/revoke`, { reason }, { params: { clinic_id: clinicId } }),
   resetStaffPassword: (userId, data) =>
     httpClient.post(`/clinical/staff/${userId}/reset-password`, data),
   sendStaffPasswordReset: (userId, clinicId) =>

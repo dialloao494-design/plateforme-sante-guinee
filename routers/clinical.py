@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -68,6 +68,7 @@ from schemas.clinical import (
     StaffRoleUpdate,
     StaffInvitationCreate,
     StaffInvitationResponse,
+    StaffLifecycleRequest,
     ClinicShiftOpenRequest,
     ClinicShiftCloseRequest,
     ClinicShiftResponse,
@@ -95,6 +96,13 @@ from services.clinic_shift_service import ShiftConflict, close_shift, current_sh
 from services.password_reset_service import create_reset_token, send_reset_email
 from models.user import User
 from models.refresh_token import AccessTokenDenylist, RefreshToken
+from services.staff_lifecycle_service import (
+    StaffLifecycleError,
+    deactivate_staff as lifecycle_deactivate_staff,
+    reactivate_staff as lifecycle_reactivate_staff,
+    delete_unused_staff as lifecycle_delete_unused_staff,
+    revoke_sessions as lifecycle_revoke_sessions,
+)
 
 router = APIRouter(prefix="/clinical", tags=["Clinical CIS"])
 
@@ -103,12 +111,24 @@ def _staff_response(db: Session, user: User) -> StaffResponse:
     latest = db.query(models.StaffActivationToken).filter(
         models.StaffActivationToken.user_id == user.id,
     ).order_by(models.StaffActivationToken.created_at.desc()).first()
+    active_sessions = db.query(RefreshToken).filter(
+        RefreshToken.user_id == user.id,
+        RefreshToken.revoked_at.is_(None),
+        RefreshToken.expires_at > datetime.utcnow(),
+    ).count()
+    last_reset = db.query(models.PasswordResetToken.created_at).filter(
+        models.PasswordResetToken.user_id == user.id,
+    ).order_by(models.PasswordResetToken.created_at.desc()).scalar()
     return StaffResponse(
         id=user.id, email=user.email, role=user.role, clinic_id=user.clinic_id,
         is_active=user.is_active, first_name=user.first_name, last_name=user.last_name,
         last_login_at=user.last_login_at, must_change_password=user.must_change_password,
         invitation_status=latest.delivery_status if latest and latest.used_at is None and not user.is_active and user.email_verified_at is None and user.last_login_at is None else None,
         invitation_expires_at=latest.expires_at if latest and latest.used_at is None and not user.is_active and user.email_verified_at is None and user.last_login_at is None else None,
+        created_at=getattr(user, "created_at", None), mfa_enabled=bool(user.mfa_enabled),
+        failed_login_attempts=user.failed_login_attempts or 0, locked_until=user.locked_until,
+        active_sessions=active_sessions,
+        last_password_reset_at=last_reset,
     )
 
 
@@ -399,6 +419,7 @@ def list_staff(
 @router.patch("/staff/{user_id}/deactivate", response_model=StaffResponse)
 def deactivate_staff(
     user_id: int,
+    body: StaffLifecycleRequest,
     request: Request,
     clinic_id: int = Query(...),
     db: Session = Depends(get_db),
@@ -406,41 +427,20 @@ def deactivate_staff(
 ):
     assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
     assert_clinic_access(current_user, clinic_id)
-    user = (
-        db.query(models.User)
-        .filter(models.User.id == user_id, models.User.clinic_id == clinic_id)
-        .first()
-    )
-    if not user:
-        raise HTTPException(status_code=404, detail="Staff member not found")
-    if user.id == current_user.id:
-        raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
-    if user.role in ("clinic_admin", "admin"):
-        remaining_admins = db.query(models.User).filter(
-            models.User.clinic_id == clinic_id,
-            models.User.role.in_(("clinic_admin", "admin")),
-            models.User.is_active.is_(True),
-            models.User.id != user.id,
-        ).count()
-        if remaining_admins == 0:
-            raise HTTPException(status_code=409, detail="La clinique doit conserver au moins un administrateur actif.")
-    user.is_active = False
-    user.session_version = int(user.session_version or 0) + 1
-    user.token_version = int(user.token_version or 0) + 1
-    db.query(models.ClinicStaff).filter(
-        models.ClinicStaff.clinic_id == clinic_id,
-        models.ClinicStaff.user_id == user.id,
-    ).update({models.ClinicStaff.is_active: False}, synchronize_session=False)
-    db.query(RefreshToken).filter(RefreshToken.user_id == user.id).delete(synchronize_session=False)
-    db.commit()
-    db.refresh(user)
-    log_cis(db, actor=current_user, clinic_id=clinic_id, action="deactivate", resource_type="staff", resource_id=user.id, client_ip=client_ip(request))
+    try:
+        user = lifecycle_deactivate_staff(
+            db, clinic_id=clinic_id, user_id=user_id, actor=current_user,
+            reason=body.reason, ip=client_ip(request), user_agent=request.headers.get("user-agent"),
+        )
+    except StaffLifecycleError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
     return _staff_response(db, user)
 
 
 @router.patch("/staff/{user_id}/reactivate", response_model=StaffResponse)
 def reactivate_staff(
     user_id: int,
+    body: StaffLifecycleRequest,
     request: Request,
     clinic_id: int = Query(...),
     db: Session = Depends(get_db),
@@ -448,27 +448,13 @@ def reactivate_staff(
 ):
     assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
     assert_clinic_access(current_user, clinic_id)
-    user = db.query(models.User).filter(models.User.id == user_id, models.User.clinic_id == clinic_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Membre du personnel introuvable.")
-    pending_invitation = db.query(models.StaffActivationToken).filter(
-        models.StaffActivationToken.user_id == user.id,
-        models.StaffActivationToken.used_at.is_(None),
-    ).first()
-    if user.email_verified_at is None and user.last_login_at is None and pending_invitation:
-        raise HTTPException(status_code=409, detail="Ce compte n’a jamais été activé. Renvoyez plutôt son invitation.")
-    user.is_active = True
-    user.failed_login_attempts = 0
-    user.locked_until = None
-    user.session_version = int(user.session_version or 0) + 1
-    user.token_version = int(user.token_version or 0) + 1
-    db.query(models.ClinicStaff).filter(
-        models.ClinicStaff.clinic_id == clinic_id,
-        models.ClinicStaff.user_id == user.id,
-    ).update({models.ClinicStaff.is_active: True}, synchronize_session=False)
-    db.commit()
-    db.refresh(user)
-    log_cis(db, actor=current_user, clinic_id=clinic_id, action="reactivate", resource_type="staff", resource_id=user.id, client_ip=client_ip(request))
+    try:
+        user = lifecycle_reactivate_staff(
+            db, clinic_id=clinic_id, user_id=user_id, actor=current_user,
+            reason=body.reason, ip=client_ip(request), user_agent=request.headers.get("user-agent"),
+        )
+    except StaffLifecycleError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
     return _staff_response(db, user)
 
 
@@ -476,6 +462,7 @@ def reactivate_staff(
 def delete_unused_staff(
     user_id: int,
     request: Request,
+    body: StaffLifecycleRequest,
     clinic_id: int = Query(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -483,38 +470,32 @@ def delete_unused_staff(
     """Permanently remove only an unused, inactive invitation account."""
     assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
     assert_clinic_access(current_user, clinic_id)
-    user = db.query(models.User).filter(models.User.id == user_id, models.User.clinic_id == clinic_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Membre du personnel introuvable.")
-    if user.id == current_user.id:
-        raise HTTPException(status_code=400, detail="Vous ne pouvez pas supprimer votre propre compte.")
-    if user.is_active:
-        raise HTTPException(status_code=409, detail="Désactivez d’abord ce compte.")
-    pending_invitation = db.query(models.StaffActivationToken).filter(
-        models.StaffActivationToken.user_id == user.id,
-        models.StaffActivationToken.used_at.is_(None),
-    ).first()
-    if user.email_verified_at is not None or user.last_login_at is not None or not pending_invitation:
-        raise HTTPException(
-            status_code=409,
-            detail="Ce compte possède un historique. Il doit rester désactivé afin de préserver la traçabilité clinique.",
+    try:
+        lifecycle_delete_unused_staff(
+            db, clinic_id=clinic_id, user_id=user_id, actor=current_user,
+            reason=body.reason, ip=client_ip(request), user_agent=request.headers.get("user-agent"),
         )
-    if db.query(models.Doctor).filter(models.Doctor.user_id == user.id).first():
-        raise HTTPException(status_code=409, detail="Ce compte possède un profil médecin. Conservez-le désactivé.")
-
-    # Invitation-only identities have no clinical authorship. Remove their
-    # authentication artifacts and membership before deleting the identity.
-    db.query(models.StaffActivationToken).filter(models.StaffActivationToken.user_id == user.id).delete(synchronize_session=False)
-    db.query(models.PasswordResetToken).filter(models.PasswordResetToken.user_id == user.id).delete(synchronize_session=False)
-    db.query(models.EmailVerificationToken).filter(models.EmailVerificationToken.user_id == user.id).delete(synchronize_session=False)
-    db.query(RefreshToken).filter(RefreshToken.user_id == user.id).delete(synchronize_session=False)
-    db.query(AccessTokenDenylist).filter(AccessTokenDenylist.user_id == user.id).delete(synchronize_session=False)
-    db.query(models.NotificationEvent).filter(models.NotificationEvent.user_id == user.id).delete(synchronize_session=False)
-    db.query(models.ClinicStaff).filter(models.ClinicStaff.clinic_id == clinic_id, models.ClinicStaff.user_id == user.id).delete(synchronize_session=False)
-    db.delete(user)
-    db.commit()
-    log_cis(db, actor=current_user, clinic_id=clinic_id, action="delete_unused", resource_type="staff", resource_id=user_id, client_ip=client_ip(request))
+    except StaffLifecycleError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/staff/{user_id}/sessions/revoke")
+def revoke_staff_sessions(
+    user_id: int, body: StaffLifecycleRequest, request: Request,
+    clinic_id: int = Query(...), db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    assert_clinic_access(current_user, clinic_id)
+    try:
+        count = lifecycle_revoke_sessions(
+            db, clinic_id=clinic_id, user_id=user_id, actor=current_user,
+            reason=body.reason, ip=client_ip(request), user_agent=request.headers.get("user-agent"),
+        )
+    except StaffLifecycleError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+    return {"id": user_id, "revoked_sessions": count}
 
 
 @router.post("/staff/{user_id}/reset-password")
@@ -575,6 +556,7 @@ def send_staff_password_reset_link(
 def update_staff_role(
     user_id: int,
     body: StaffRoleUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -599,14 +581,36 @@ def update_staff_role(
     )
     if not user:
         raise HTTPException(status_code=404, detail="Staff member not found")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Vous ne pouvez pas modifier votre propre rôle.")
+    if user.role in ("clinic_admin", "admin") and normalized not in ("clinic_admin", "admin"):
+        remaining = db.query(models.User).filter(
+            models.User.clinic_id == body.clinic_id,
+            models.User.role.in_(("clinic_admin", "admin")),
+            models.User.is_active.is_(True),
+            models.User.id != user.id,
+        ).count()
+        if remaining == 0:
+            raise HTTPException(status_code=409, detail="La clinique doit conserver au moins un administrateur actif.")
     from core.provisioning_context import provisioning_channel
 
+    before = {"role": user.role, "email": user.email}
     user.role = normalized
+    user.session_version = int(user.session_version or 0) + 1
+    user.token_version = int(user.token_version or 0) + 1
+    from services.auth_session_service import revoke_all_user_refresh_tokens
+    revoke_all_user_refresh_tokens(db, user_id=user.id, commit=False)
+    ClinicalAuditService.log(
+        db, actor=current_user, patient_id=None, clinic_id=body.clinic_id,
+        action="change_role", resource_type="staff", resource_id=user.id,
+        client_ip=client_ip(request), user_agent=request.headers.get("user-agent"),
+        reason=body.reason, before=before, after={"role": normalized, "email": user.email}, commit=False,
+    )
     db.add(user)
     with provisioning_channel("admin_api"):
         db.commit()
     db.refresh(user)
-    return StaffResponse(id=user.id, email=user.email, role=user.role, clinic_id=user.clinic_id, is_active=user.is_active)
+    return _staff_response(db, user)
 
 
 # --- Clinic operations (unified dashboard) ---
@@ -1833,6 +1837,11 @@ def patient_journey(
 def list_audit_logs(
     request: Request,
     patient_id: Optional[int] = None,
+    actor_id: Optional[int] = None,
+    action: Optional[str] = None,
+    resource_type: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -1840,9 +1849,13 @@ def list_audit_logs(
     clinic = resolve_clinic_for_user(db, current_user)
     assert_permission(current_user, Permission.ADMIN_AUDIT)
     logs = ClinicalAuditService.list_for_clinic(
-        db, clinic_id=clinic.id, patient_id=patient_id, limit=max(1, min(limit, 500))
+        db, clinic_id=clinic.id, patient_id=patient_id, actor_id=actor_id,
+        action=action, resource_type=resource_type, date_from=date_from, date_to=date_to,
+        limit=max(1, min(limit, 500)),
     )
-    return logs
+    actor_ids = {row.actor_id for row in logs}
+    actors = {u.id: u.email for u in db.query(models.User).filter(models.User.id.in_(actor_ids)).all()} if actor_ids else {}
+    return [ClinicalAuditLogResponse.model_validate(row).model_copy(update={"actor_email": actors.get(row.actor_id), "clinic_name": clinic.name}) for row in logs]
 
 
 # --- Billing ---

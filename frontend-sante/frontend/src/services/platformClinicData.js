@@ -180,12 +180,12 @@ export async function createClinicStaff({ clinicId, email, password, role }) {
   return data;
 }
 
-export async function deactivateClinicStaff({ clinicId, userId }) {
-  return clinicalApi.deactivateStaff(userId, Number(clinicId));
+export async function deactivateClinicStaff({ clinicId, userId, reason }) {
+  return platformApi.deactivateStaff(Number(clinicId), userId, reason);
 }
 
-export async function reactivateClinicStaff(userId) {
-  return platformApi.setUserStatus(userId, true);
+export async function reactivateClinicStaff({ clinicId, userId, reason }) {
+  return platformApi.reactivateStaff(Number(clinicId), userId, reason);
 }
 
 export async function resetClinicStaffPassword({ clinicId, userId, newPassword }) {

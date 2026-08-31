@@ -51,6 +51,10 @@ export default function ClinicAdminDashboard() {
   const [invitationBusyId, setInvitationBusyId] = useState(null);
   const [resetBusyId, setResetBusyId] = useState(null);
   const [lifecycleBusyId, setLifecycleBusyId] = useState(null);
+  const [staffSearch, setStaffSearch] = useState('');
+  const [staffRoleFilter, setStaffRoleFilter] = useState('');
+  const [staffStatusFilter, setStaffStatusFilter] = useState('');
+  const [auditFilters, setAuditFilters] = useState({ action: '', date_from: '', date_to: '' });
 
   const loadClinicStaff = async (id) => {
     if (!id) return;
@@ -185,8 +189,8 @@ export default function ClinicAdminDashboard() {
     if (!accepted) return;
     setLifecycleBusyId(staffUser.id); setError(''); setMessage('');
     try {
-      if (nextActive) await clinicalApi.reactivateStaff(staffUser.id, Number(clinicId));
-      else await clinicalApi.deactivateStaff(staffUser.id, Number(clinicId));
+      if (nextActive) await clinicalApi.reactivateStaff(staffUser.id, Number(clinicId), 'Réactivation validée par l’administration clinique');
+      else await clinicalApi.deactivateStaff(staffUser.id, Number(clinicId), 'Accès retiré par l’administration clinique');
       await loadClinicStaff(clinicId);
       setMessage(nextActive ? `Accès réactivé pour ${staffUser.email}.` : `Accès désactivé pour ${staffUser.email}.`);
     } catch (err) { setError(formatApiError(err, 'Modification de l’accès impossible.')); }
@@ -203,11 +207,36 @@ export default function ClinicAdminDashboard() {
     if (!accepted) return;
     setLifecycleBusyId(staffUser.id); setError(''); setMessage('');
     try {
-      await clinicalApi.deleteStaff(staffUser.id, Number(clinicId));
+      await clinicalApi.deleteStaff(staffUser.id, Number(clinicId), 'Invitation inutilisée supprimée par l’administration clinique');
       await loadClinicStaff(clinicId);
       setMessage(`Compte ${staffUser.email} supprimé.`);
     } catch (err) { setError(formatApiError(err, 'Suppression impossible.')); }
     finally { setLifecycleBusyId(null); }
+  };
+
+  const revokeStaffSessions = async (staffUser) => {
+    const accepted = await confirm({
+      title: 'Déconnecter tous les appareils ?',
+      message: `${staffUser.email} devra se reconnecter sur chaque appareil.`,
+      confirmLabel: 'Déconnecter les sessions',
+      tone: 'danger',
+    });
+    if (!accepted) return;
+    setLifecycleBusyId(staffUser.id); setError(''); setMessage('');
+    try {
+      const { data } = await clinicalApi.revokeStaffSessions(staffUser.id, Number(clinicId), 'Sessions révoquées par l’administration clinique');
+      setMessage(`${data.revoked_sessions} session(s) révoquée(s) pour ${staffUser.email}.`);
+      await loadClinicStaff(clinicId);
+    } catch (err) { setError(formatApiError(err, 'Déconnexion impossible.')); }
+    finally { setLifecycleBusyId(null); }
+  };
+
+  const filterAudit = async () => {
+    setError('');
+    try {
+      const { data } = await clinicalApi.auditLogs({ limit: 200, ...Object.fromEntries(Object.entries(auditFilters).filter(([, value]) => value)) });
+      setAuditLogs(data || []);
+    } catch (err) { setError(formatApiError(err, 'Journal d’audit indisponible.')); }
   };
 
   const shiftFeedback = (kind, text) => { setError(kind === 'error' ? text : ''); setMessage(kind === 'message' ? text : ''); };
@@ -228,6 +257,14 @@ export default function ClinicAdminDashboard() {
   }, [activity, clinicStaff.length]);
 
   const attentionItems = useMemo(() => buildAttentionItems(onboarding, activity), [onboarding, activity]);
+  const filteredStaff = useMemo(() => {
+    const q = staffSearch.trim().toLowerCase();
+    return clinicStaff.filter((member) => (
+      (!q || `${member.first_name || ''} ${member.last_name || ''} ${member.email}`.toLowerCase().includes(q))
+      && (!staffRoleFilter || member.role === staffRoleFilter)
+      && (!staffStatusFilter || (staffStatusFilter === 'active') === member.is_active)
+    ));
+  }, [clinicStaff, staffSearch, staffRoleFilter, staffStatusFilter]);
 
   return (
     <div className="clinical-page clinical-page--clinic-admin" data-testid="admin-dashboard">
@@ -315,20 +352,29 @@ export default function ClinicAdminDashboard() {
       )}
 
       <section id="clinic-audit" className="clinical-card admin-section">
-        <h2>Journal d&apos;audit</h2>
-        <ul className="clinical-list clinical-audit-list">
+        <div className="admin-section-heading"><div><p className="clinical-eyebrow">Traçabilité</p><h2>Journal d&apos;audit</h2></div><span>{auditLogs.length} entrée(s)</span></div>
+        <div className="admin-directory-filters">
+          <label>Action<input value={auditFilters.action} onChange={(e) => setAuditFilters({ ...auditFilters, action: e.target.value })} placeholder="Ex. deactivate…" /></label>
+          <label>Du<input type="date" value={auditFilters.date_from} onChange={(e) => setAuditFilters({ ...auditFilters, date_from: e.target.value })} /></label>
+          <label>Au<input type="date" value={auditFilters.date_to} onChange={(e) => setAuditFilters({ ...auditFilters, date_to: e.target.value })} /></label>
+          <button type="button" className="clinical-btn clinical-btn--secondary" onClick={filterAudit}>Appliquer</button>
+        </div>
+        <ul className="clinical-list clinical-audit-list admin-audit-ledger">
           {auditLogs.length === 0 && <li>Aucune entrée récente.</li>}
           {auditLogs.map((log) => (
             <li key={log.id}>
-              <strong>{log.action}</strong> · {log.resource_type}
-              {log.resource_id != null && ` #${log.resource_id}`}
+              <time>{new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(log.timestamp))}</time>
+              <span><strong>{log.action}</strong> · {log.resource_type}{log.resource_id != null && ` #${log.resource_id}`}</span>
+              <span>{log.actor_email || `Utilisateur #${log.actor_id}`}</span>
+              <small>{log.reason || 'Entrée historique sans motif'}</small>
             </li>
           ))}
         </ul>
       </section>
 
       <section id="clinic-staff" className="clinical-card admin-section">
-        <h2>Personnel ({clinicStaff.length})</h2>
+        <div className="admin-section-heading"><div><p className="clinical-eyebrow">Annuaire opérationnel</p><h2>Personnel</h2></div><span>{filteredStaff.length} / {clinicStaff.length}</span></div>
+        <div className="admin-directory-filters"><label>Recherche<input type="search" autoComplete="off" placeholder="Nom ou e-mail…" value={staffSearch} onChange={(e) => setStaffSearch(e.target.value)} /></label><label>Rôle<select value={staffRoleFilter} onChange={(e) => setStaffRoleFilter(e.target.value)}><option value="">Tous</option>{STAFF_ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label><label>Accès<select value={staffStatusFilter} onChange={(e) => setStaffStatusFilter(e.target.value)}><option value="">Tous</option><option value="active">Actifs</option><option value="inactive">Inactifs</option></select></label></div>
         {clinicStaff.length === 0 ? (
           <p className="clinical-muted">Aucun membre — créez un compte ci-dessous.</p>
         ) : (
@@ -344,17 +390,18 @@ export default function ClinicAdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {clinicStaff.map((u) => (
+              {filteredStaff.map((u) => (
                 <tr key={u.id}>
                   <td>{[u.first_name, u.last_name].filter(Boolean).join(' ') || 'Nom à compléter'}</td>
                   <td>{u.email}</td>
                   <td><span className="clinical-badge">{ROLE_LABELS[u.role] || u.role}</span></td>
-                  <td>{u.is_active ? 'Actif' : u.invitation_status === 'sent' ? 'Invitation envoyée' : 'Livraison à vérifier'}</td>
+                  <td><strong>{u.is_active ? 'Actif' : u.invitation_status === 'sent' ? 'Invitation envoyée' : 'Inactif'}</strong><span className="admin-cell-meta">Dernière connexion : {u.last_login_at ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(u.last_login_at)) : 'jamais'} · MFA {u.mfa_enabled ? 'active' : 'inactive'} · {u.active_sessions || 0} session(s)</span></td>
                   <td>
                     {u.id === user?.id ? <span className="clinical-muted">Votre compte</span> : (
                       <div className="admin-staff-actions">
                         {u.is_active ? <>
                           <button type="button" className="clinical-btn clinical-btn--secondary" disabled={resetBusyId === u.id || lifecycleBusyId === u.id} onClick={() => resetStaffPassword(u)}>{resetBusyId === u.id ? 'Envoi…' : 'Réinitialiser le mot de passe'}</button>
+                          <button type="button" className="clinical-btn clinical-btn--secondary" disabled={lifecycleBusyId === u.id} onClick={() => revokeStaffSessions(u)}>Déconnecter</button>
                           <button type="button" className="clinical-btn clinical-btn--secondary admin-staff-actions__warning" disabled={lifecycleBusyId === u.id} onClick={() => changeStaffAccess(u, false)}>{lifecycleBusyId === u.id ? 'Désactivation…' : 'Désactiver'}</button>
                         </> : <>
                           {u.invitation_status ? <button type="button" className="clinical-btn clinical-btn--secondary" disabled={invitationBusyId === u.id || lifecycleBusyId === u.id} onClick={() => resendInvitation(u)}>{invitationBusyId === u.id ? 'Envoi…' : 'Renvoyer l’invitation'}</button> : <button type="button" className="clinical-btn" disabled={lifecycleBusyId === u.id} onClick={() => changeStaffAccess(u, true)}>{lifecycleBusyId === u.id ? 'Réactivation…' : 'Réactiver'}</button>}

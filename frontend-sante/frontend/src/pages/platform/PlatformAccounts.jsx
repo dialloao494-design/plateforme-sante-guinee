@@ -1,178 +1,130 @@
-/**
- * Technical accounts view — platform-level and orphan accounts only.
- * Clinic staff is managed per-clinic at /platform/clinics/:id.
- */
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import httpClient from '../../services/httpClient.js';
+/** Platform account inventory and guarded technical-account governance. */
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import platformApi from '../../services/platformApi.js';
 import { formatApiError } from '../../utils/apiError.js';
 import PageSkeleton from '../../components/ui/PageSkeleton.jsx';
 import '../Users.css';
 import './PlatformOwner.css';
 
-const ACCOUNT_FILTERS = [
-  { value: 'platform', label: 'Comptes plateforme' },
-  { value: 'orphan', label: 'Comptes orphelins' },
-  { value: 'test', label: 'Comptes test' },
-  { value: 'all', label: 'Tous (technique)' },
-];
+const FILTERS = [['all', 'Tous'], ['production', 'Production'], ['test', 'Test'], ['technical', 'Technique'], ['unknown', 'À examiner']];
+const CATEGORY_LABELS = { production: 'Production', test: 'Test', technical: 'Technique', unknown: 'À examiner' };
 
-const TEST_EMAIL_PATTERNS = [
-  /@sante-gn\.test$/i,
-  /@pilot\.local$/i,
-  /@clinic\.test$/i,
-  /@patient\.gn$/i,
-  /stress|e2e|staging/i,
-];
-
-function isTestEmail(email) {
-  const e = String(email || '');
-  return TEST_EMAIL_PATTERNS.some((re) => re.test(e));
-}
-
-function classifyAccount(user) {
-  const role = String(user.role || '').toLowerCase();
-  if (role === 'platform_owner' || role === 'platform_admin') return 'platform';
-  if (user.clinic_id != null) return 'clinic_staff';
-  if (isTestEmail(user.email)) return 'test';
-  return 'orphan';
+function formatDate(value) {
+  if (!value) return 'Jamais';
+  return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 }
 
 export default function PlatformAccounts() {
+  const [params, setParams] = useSearchParams();
+  const filter = params.get('type') || 'all';
+  const search = params.get('q') || '';
+  const clinic = params.get('clinic') || '';
+  const role = params.get('role') || '';
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('platform');
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [selected, setSelected] = useState([]);
+  const [dialog, setDialog] = useState(null);
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState(null);
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await httpClient.get('/platform/users');
-      setUsers(Array.isArray(response.data) ? response.data : []);
-    } catch (err) {
-      setError(formatApiError(err, 'Impossible de charger les comptes.'));
-    } finally {
-      setLoading(false);
-    }
+  const updateParam = (key, value) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value); else next.delete(key);
+    setParams(next, { replace: true });
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const fetchUsers = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const { data } = await platformApi.listAccounts({
+        category: filter, ...(search ? { search } : {}), ...(clinic ? { clinic_id: Number(clinic) } : {}), ...(role ? { role } : {}),
+      });
+      setUsers(Array.isArray(data) ? data : []);
+      setSelected((current) => current.filter((id) => (data || []).some((row) => row.id === id)));
+    } catch (err) { setError(formatApiError(err, 'Impossible de charger les comptes.')); }
+    finally { setLoading(false); }
+  }, [filter, search, clinic, role]);
 
-  const filteredUsers = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    return users.filter((user) => {
-      const bucket = classifyAccount(user);
-      if (filter === 'platform' && bucket !== 'platform') return false;
-      if (filter === 'orphan' && bucket !== 'orphan') return false;
-      if (filter === 'test' && bucket !== 'test') return false;
-      if (filter === 'all' && bucket === 'clinic_staff') return false;
-      if (!q) return true;
-      return (
-        String(user.email || '').toLowerCase().includes(q)
-        || String(user.role || '').toLowerCase().includes(q)
-        || String(user.clinic_name || '').toLowerCase().includes(q)
-      );
-    });
-  }, [users, search, filter]);
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  const clinics = useMemo(() => Array.from(new Map(users.filter((u) => u.clinic_id).map((u) => [u.clinic_id, u.clinic_name || `Clinique #${u.clinic_id}`])).entries()), [users]);
+  const roles = useMemo(() => [...new Set(users.map((u) => u.role))].sort(), [users]);
+  const allSelected = users.length > 0 && users.every((u) => selected.includes(u.id));
+
+  const openAction = (action, user = null) => {
+    setDialog({ action, user, ids: user ? [user.id] : selected }); setReason(''); setPreview(null); setError(''); setMessage('');
+  };
+
+  const runAction = async (execute = false) => {
+    if (!dialog || reason.trim().length < 3) return;
+    setBusy(true); setError('');
+    try {
+      if (dialog.user) {
+        const user = dialog.user;
+        if (!user.clinic_id) throw new Error('Ce compte doit être examiné et rattaché à une clinique avant toute action.');
+        if (dialog.action === 'deactivate') await platformApi.deactivateStaff(user.clinic_id, user.id, reason);
+        else if (dialog.action === 'reactivate') await platformApi.reactivateStaff(user.clinic_id, user.id, reason);
+        else if (dialog.action === 'delete') await platformApi.deleteStaff(user.clinic_id, user.id, reason);
+        else await platformApi.revokeStaffSessions(user.clinic_id, user.id, reason);
+        setMessage(`Action terminée pour ${user.email}.`); setDialog(null); await fetchUsers();
+      } else {
+        const { data } = await platformApi.bulkAccounts({ user_ids: dialog.ids, action: dialog.action, reason, execute });
+        if (!execute) setPreview(data);
+        else { setMessage('Traitement groupé terminé. Vérifiez les résultats ci-dessous.'); setPreview(data); setSelected([]); await fetchUsers(); }
+      }
+    } catch (err) { setError(formatApiError(err, 'Action impossible.')); }
+    finally { setBusy(false); }
+  };
 
   return (
-    <div className="users-page platform-accounts-page">
+    <main className="users-page platform-accounts-page" id="main-content">
       <div className="users-page-inner">
         <Link to="/platform" className="platform-back-link">← Console plateforme</Link>
-        <h1>Comptes techniques</h1>
-        <p className="users-lead">
-          Le personnel clinique se gère par établissement depuis{' '}
-          <Link to="/platform/clinics">Cliniques</Link>. Cette page affiche uniquement les comptes
-          plateforme, orphelins et de test — les comptes rattachés à une clinique sont masqués par défaut.
-        </p>
+        <header className="platform-admin-heading">
+          <div><p className="clinical-eyebrow">Gouvernance des identités</p><h1>Comptes & accès</h1><p>Classez les identités, examinez les connexions et appliquez les mêmes protections dans chaque clinique.</p></div>
+          <div className="platform-admin-heading__signal"><strong>{users.length}</strong><span>comptes dans cette vue</span></div>
+        </header>
+        <div aria-live="polite">{error && <p className="clinical-error" role="alert">{error}</p>}{message && <p className="clinical-success">{message}</p>}</div>
 
-        {error && (
-          <div className="users-feedback users-feedback--error" role="alert">
-            {error}
+        <section className="platform-command-bar" aria-label="Filtres des comptes">
+          <div className="platform-filter-tabs" role="tablist" aria-label="Catégorie">
+            {FILTERS.map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={filter === value} className={`platform-filter-tab${filter === value ? ' platform-filter-tab--active' : ''}`} onClick={() => updateParam('type', value)}>{label}</button>)}
           </div>
-        )}
+          <div className="platform-account-filters">
+            <label>Recherche<input name="account-search" type="search" autoComplete="off" placeholder="E-mail…" value={search} onChange={(e) => updateParam('q', e.target.value)} /></label>
+            <label>Clinique<select name="clinic" value={clinic} onChange={(e) => updateParam('clinic', e.target.value)}><option value="">Toutes</option>{clinics.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
+            <label>Rôle<select name="role" value={role} onChange={(e) => updateParam('role', e.target.value)}><option value="">Tous</option>{roles.map((value) => <option key={value}>{value}</option>)}</select></label>
+            <button type="button" className="clinical-btn clinical-btn--secondary" onClick={fetchUsers} disabled={loading}>{loading ? 'Actualisation…' : 'Actualiser'}</button>
+          </div>
+        </section>
 
-        <div className="platform-filter-tabs platform-accounts-filters" role="tablist">
-          {ACCOUNT_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              role="tab"
-              aria-selected={filter === f.value}
-              className={`platform-filter-tab${filter === f.value ? ' platform-filter-tab--active' : ''}`}
-              onClick={() => setFilter(f.value)}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        {selected.length > 0 && <section className="platform-selection-bar" aria-label="Actions groupées"><strong>{selected.length} sélectionné(s)</strong><button type="button" onClick={() => openAction('deactivate')}>Prévisualiser la désactivation</button><button type="button" onClick={() => openAction('reactivate')}>Prévisualiser la réactivation</button><button type="button" className="platform-danger-link" onClick={() => openAction('delete')}>Prévisualiser la suppression</button></section>}
 
-        <div className="users-toolbar">
-          <input
-            type="search"
-            placeholder="Rechercher par e-mail, rôle ou clinique…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="Filtrer les comptes"
-          />
-          <button type="button" className="users-refresh-btn" onClick={fetchUsers} disabled={loading}>
-            Actualiser
-          </button>
-          <span className="users-count-pill">
-            {filteredUsers.length} affiché(s) · comptes clinique exclus
-          </span>
-        </div>
-
-        {loading && <PageSkeleton lines={6} />}
-
-        {!loading && !error && filteredUsers.length === 0 && (
-          <div className="users-feedback users-feedback--success">Aucun compte ne correspond à ce filtre.</div>
-        )}
-
-        {!loading && filteredUsers.length > 0 && (
-          <div className="users-table-wrap">
-            <table className="users-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Email</th>
-                  <th>Rôle</th>
-                  <th>Clinique</th>
-                  <th>Catégorie</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((user) => {
-                  const bucket = classifyAccount(user);
-                  return (
-                    <tr key={user.id}>
-                      <td>{user.id}</td>
-                      <td>{user.email}</td>
-                      <td>
-                        <span className={`role-badge role-${user.role}`}>{user.role}</span>
-                      </td>
-                      <td>
-                        {user.clinic_id ? (
-                          <Link to={`/platform/clinics/${user.clinic_id}`}>
-                            {user.clinic_name || `#${user.clinic_id}`}
-                          </Link>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td>{bucket}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
+        {loading ? <PageSkeleton lines={7} /> : users.length === 0 ? <div className="platform-empty-state"><h2>Aucun compte</h2><p>Modifiez les filtres ou vérifiez l’établissement sélectionné.</p></div> : (
+          <div className="users-table-wrap" tabIndex="0" role="region" aria-label="Inventaire des comptes">
+            <table className="users-table platform-accounts-table">
+              <thead><tr><th><input type="checkbox" aria-label="Sélectionner tous les comptes affichés" checked={allSelected} onChange={(e) => setSelected(e.target.checked ? users.map((u) => u.id) : [])} /></th><th>Identité</th><th>Catégorie</th><th>Clinique / rôle</th><th>Dernière connexion</th><th>Sécurité</th><th>Actions</th></tr></thead>
+              <tbody>{users.map((user) => <tr key={user.id} className={!user.is_active ? 'platform-row-inactive' : ''}>
+                <td><input type="checkbox" aria-label={`Sélectionner ${user.email}`} checked={selected.includes(user.id)} onChange={(e) => setSelected((current) => e.target.checked ? [...current, user.id] : current.filter((id) => id !== user.id))} /></td>
+                <td><strong>{user.email}</strong><span className="platform-table-sub">Créé {formatDate(user.created_at)} · {user.is_active ? 'Actif' : 'Inactif'}</span></td>
+                <td><span className={`platform-account-category platform-account-category--${user.category}`}>{CATEGORY_LABELS[user.category]}</span><span className="platform-table-sub">{user.classification_reasons?.[0]}</span></td>
+                <td>{user.clinic_id ? <Link to={`/platform/clinics/${user.clinic_id}`}>{user.clinic_name || `#${user.clinic_id}`}</Link> : 'Non rattaché'}<span className="platform-table-sub">{user.role}</span></td>
+                <td>{formatDate(user.last_login_at)}</td>
+                <td><strong>{user.active_sessions} session(s)</strong><span className="platform-table-sub">MFA {user.mfa_enabled ? 'activée' : 'non activée'}{user.locked_until ? ' · verrouillé' : ''}</span></td>
+                <td><div className="platform-actions-cell">{user.clinic_id && <><button type="button" onClick={() => openAction(user.is_active ? 'deactivate' : 'reactivate', user)}>{user.is_active ? 'Désactiver' : 'Réactiver'}</button><button type="button" onClick={() => openAction('sessions', user)}>Déconnecter</button>{user.can_delete && <button type="button" className="platform-danger-link" onClick={() => openAction('delete', user)}>Supprimer</button>}</>}</div></td>
+              </tr>)}</tbody>
             </table>
           </div>
         )}
+
+        {dialog && <div className="platform-modal-backdrop" role="presentation"><section className="clinical-card platform-modal platform-governance-dialog" role="dialog" aria-modal="true" aria-labelledby="account-action-title"><p className="clinical-eyebrow">Action sensible</p><h2 id="account-action-title">{dialog.user ? dialog.user.email : `${dialog.ids.length} comptes`}</h2><p>Indiquez une raison exploitable dans le journal d’audit. Une prévisualisation est obligatoire pour les actions groupées.</p><label htmlFor="account-action-reason">Raison</label><textarea id="account-action-reason" name="reason" rows="3" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex. Fin de contrat, compte de test terminé…" />
+          {preview && <div className="platform-preview-list"><strong>Prévisualisation</strong><ul>{preview.items.map((item) => <li key={item.id} className={item.eligible ? '' : 'platform-preview-list__blocked'}>{item.email} — {item.completed ? 'terminé' : item.eligible ? 'autorisé' : item.reason}</li>)}</ul></div>}
+          <div className="platform-modal-actions"><button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => setDialog(null)}>Annuler</button>{!dialog.user && preview ? <button type="button" className="clinical-btn clinical-btn--danger" disabled={busy} onClick={() => runAction(true)}>{busy ? 'Traitement…' : 'Confirmer l’action groupée'}</button> : <button type="button" className={`clinical-btn${dialog.action === 'delete' || dialog.action === 'deactivate' ? ' clinical-btn--danger' : ''}`} disabled={busy || reason.trim().length < 3} onClick={() => runAction(false)}>{busy ? 'Vérification…' : dialog.user ? 'Confirmer' : 'Prévisualiser'}</button>}</div></section></div>}
       </div>
-    </div>
+    </main>
   );
 }

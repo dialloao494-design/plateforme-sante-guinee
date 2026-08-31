@@ -56,6 +56,12 @@ class StaffResponse(BaseModel):
     must_change_password: bool = False
     invitation_status: Optional[str] = None
     invitation_expires_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    mfa_enabled: bool = False
+    failed_login_attempts: int = 0
+    locked_until: Optional[datetime] = None
+    active_sessions: int = 0
+    last_password_reset_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -65,6 +71,7 @@ class StaffRoleUpdate(BaseModel):
 
     role: str
     clinic_id: int
+    reason: str = Field(..., min_length=3, max_length=500)
 
 
 class StaffPasswordReset(BaseModel):
@@ -540,8 +547,20 @@ class ClinicalAuditLogResponse(BaseModel):
     resource_id: Optional[int]
     timestamp: datetime
     ip: Optional[str]
+    user_agent: Optional[str] = None
+    reason: Optional[str] = None
+    before_json: Optional[str] = None
+    after_json: Optional[str] = None
+    actor_email: Optional[str] = None
+    clinic_name: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class StaffLifecycleRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reason: str = Field(..., min_length=3, max_length=500)
 
 
 # --- Billing ---

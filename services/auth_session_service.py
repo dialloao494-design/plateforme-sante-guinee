@@ -165,7 +165,7 @@ def revoke_refresh_token(db: Session, *, raw_token: str | None) -> None:
     _revoke_family(db, family_id=row.family_id, reason="logout")
 
 
-def revoke_all_user_refresh_tokens(db: Session, *, user_id: int) -> int:
+def revoke_all_user_refresh_tokens(db: Session, *, user_id: int, commit: bool = True) -> int:
     now = datetime.utcnow()
     rows = (
         db.query(RefreshToken)
@@ -175,7 +175,10 @@ def revoke_all_user_refresh_tokens(db: Session, *, user_id: int) -> int:
     for row in rows:
         row.revoked_at = now
         db.add(row)
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     return len(rows)
 
 

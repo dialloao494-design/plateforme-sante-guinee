@@ -200,13 +200,13 @@ def test_clinic_admin_can_deactivate_and_reactivate_staff(client, db_session):
         db_session.add(staff); db_session.flush()
         db_session.add(models.ClinicStaff(clinic_id=clinic.id, user_id=staff.id, is_active=True)); db_session.commit()
 
-    response = client.patch(f"/clinical/staff/{staff.id}/deactivate", params={"clinic_id": clinic.id}, headers=_auth(admin))
+    response = client.patch(f"/clinical/staff/{staff.id}/deactivate", params={"clinic_id": clinic.id}, json={"reason": "Fin de remplacement"}, headers=_auth(admin))
     assert response.status_code == 200, response.text
     assert response.json()["is_active"] is False
     db_session.expire_all()
     assert db_session.query(models.ClinicStaff).filter_by(user_id=staff.id).one().is_active is False
 
-    response = client.patch(f"/clinical/staff/{staff.id}/reactivate", params={"clinic_id": clinic.id}, headers=_auth(admin))
+    response = client.patch(f"/clinical/staff/{staff.id}/reactivate", params={"clinic_id": clinic.id}, json={"reason": "Retour planifié"}, headers=_auth(admin))
     assert response.status_code == 200, response.text
     assert response.json()["is_active"] is True
 
@@ -228,7 +228,7 @@ def test_delete_is_limited_to_unused_inactive_invitation(client, db_session):
             expires_at=datetime.utcnow() + timedelta(hours=1), delivery_status="sent",
         )); db_session.commit(); invited_id=invited.id
 
-    response = client.delete(f"/clinical/staff/{invited_id}", params={"clinic_id": clinic.id}, headers=_auth(admin))
+    response = client.request("DELETE", f"/clinical/staff/{invited_id}", params={"clinic_id": clinic.id}, json={"reason": "Invitation créée par erreur"}, headers=_auth(admin))
     assert response.status_code == 204, response.text
     assert db_session.query(models.User).filter_by(id=invited_id).first() is None
 
@@ -244,6 +244,6 @@ def test_delete_rejects_account_with_history(client, db_session):
             is_active=False, email_verified_at=datetime.utcnow(), last_login_at=datetime.utcnow(),
         )
         db_session.add(former); db_session.commit()
-    response = client.delete(f"/clinical/staff/{former.id}", params={"clinic_id": clinic.id}, headers=_auth(admin))
+    response = client.request("DELETE", f"/clinical/staff/{former.id}", params={"clinic_id": clinic.id}, json={"reason": "Demande de suppression"}, headers=_auth(admin))
     assert response.status_code == 409, response.text
     assert db_session.query(models.User).filter_by(id=former.id).first() is not None

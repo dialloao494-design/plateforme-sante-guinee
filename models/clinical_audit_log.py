@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 
 from database import Base
 
@@ -20,3 +20,7 @@ class ClinicalAuditLog(Base):
     resource_id = Column(Integer, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     ip = Column(String(64), nullable=True)
+    user_agent = Column(String(512), nullable=True)
+    reason = Column(String(500), nullable=True)
+    before_json = Column(Text, nullable=True)
+    after_json = Column(Text, nullable=True)

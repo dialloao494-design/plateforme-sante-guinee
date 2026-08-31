@@ -179,6 +179,17 @@ def get_current_user(
             detail="Account is disabled",
         )
 
+    # A suspended/archived clinic is an authentication boundary, not merely a
+    # hidden dashboard state. Platform accounts remain available for recovery.
+    if user.role not in ("platform_owner", "platform_admin") and getattr(user, "clinic_id", None):
+        from models.clinic import Clinic
+        clinic_active = db.query(Clinic.is_active).filter(Clinic.id == user.clinic_id).scalar()
+        if clinic_active is False:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Clinic access is suspended. Contact the platform administrator.",
+            )
+
     if token_role and not roles_equivalent(token_role, user.role):
         raise credentials_exception
     try:

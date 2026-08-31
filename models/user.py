@@ -46,6 +46,7 @@ class User(Base):
     last_login_at = Column(DateTime, nullable=True)
     mfa_secret = Column(String, nullable=True)
     mfa_enabled = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     patient_profile = relationship("Patient", back_populates="user", uselist=False)
     doctor_profile = relationship("Doctor", back_populates="user", uselist=False)

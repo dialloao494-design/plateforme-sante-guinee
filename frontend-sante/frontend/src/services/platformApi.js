@@ -24,8 +24,27 @@ const platformApi = {
       new_password: newPassword,
     }),
 
-  setUserStatus: (userId, isActive) =>
-    httpClient.patch(`/platform/users/${userId}/status`, { is_active: isActive }),
+  listAccounts: (params = {}) => httpClient.get('/platform/accounts', { params }),
+  deactivateStaff: (clinicId, userId, reason) =>
+    httpClient.patch(`/platform/clinics/${clinicId}/staff/${userId}/deactivate`, { reason }),
+  reactivateStaff: (clinicId, userId, reason) =>
+    httpClient.patch(`/platform/clinics/${clinicId}/staff/${userId}/reactivate`, { reason }),
+  deleteStaff: (clinicId, userId, reason) =>
+    httpClient.delete(`/platform/clinics/${clinicId}/staff/${userId}`, { data: { reason } }),
+  revokeStaffSessions: (clinicId, userId, reason) =>
+    httpClient.post(`/platform/clinics/${clinicId}/staff/${userId}/sessions/revoke`, { reason }),
+  bulkAccounts: (data) => httpClient.post('/platform/accounts/bulk', data),
+  auditLogs: (params = {}) => httpClient.get('/platform/audit-logs', { params }),
+  auditCsvUrl: '/platform/audit-logs/export.csv',
+  auditPdfUrl: '/platform/audit-logs/export.pdf',
+  updateClinicConfiguration: (clinicId, data) =>
+    httpClient.patch(`/platform/clinics/${clinicId}/configuration`, data),
+  changeClinicState: (clinicId, data) =>
+    httpClient.post(`/platform/clinics/${clinicId}/state`, data),
+  clinicHealth: (clinicId) => httpClient.get(`/platform/clinics/${clinicId}/health`),
+  clinicDataGovernance: (clinicId) => httpClient.get(`/platform/clinics/${clinicId}/data-governance`),
+  resetClinicData: (clinicId, data) => httpClient.post(`/platform/clinics/${clinicId}/data-reset`, data),
+  mergePatients: (clinicId, data) => httpClient.post(`/platform/clinics/${clinicId}/patients/merge`, data),
 };
 
 export default platformApi;

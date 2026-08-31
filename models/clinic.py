@@ -20,6 +20,10 @@ class Clinic(Base):
     onboarding_config_json = Column(Text, nullable=True)
     onboarding_completed_at = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False, index=True)
+    suspended_at = Column(DateTime, nullable=True)
+    suspension_reason = Column(Text, nullable=True)
+    archived_at = Column(DateTime, nullable=True)
+    configuration_json = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

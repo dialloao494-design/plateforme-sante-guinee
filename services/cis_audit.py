@@ -20,6 +20,10 @@ def log_cis(
     patient_id: Optional[int] = None,
     resource_id: Optional[int] = None,
     client_ip: Optional[str] = None,
+    user_agent: Optional[str] = None,
+    reason: Optional[str] = None,
+    before: Optional[dict] = None,
+    after: Optional[dict] = None,
 ) -> None:
     ClinicalAuditService.log(
         db,
@@ -30,6 +34,10 @@ def log_cis(
         resource_type=resource_type,
         resource_id=resource_id,
         client_ip=client_ip,
+        user_agent=user_agent,
+        reason=reason,
+        before=before,
+        after=after,
     )
 
 
