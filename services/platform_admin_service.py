@@ -7,7 +7,7 @@ import os
 import re
 from datetime import datetime
 
-from sqlalchemy import func
+from sqlalchemy import func, inspect, text
 from sqlalchemy.orm import Session
 
 import models
@@ -98,6 +98,8 @@ def clinic_configuration(clinic: models.Clinic) -> dict:
         "offline_workstations_enabled": bool(stored.get("offline_workstations_enabled", True)),
         "offline_data_epoch": int(stored.get("offline_data_epoch", 1)),
         "data_retention_days": int(stored.get("data_retention_days", 3650)),
+        "mfa_policy": stored.get("mfa_policy", "administrators"),
+        "trusted_workstation_days": int(stored.get("trusted_workstation_days", 30)),
     }
 
 
@@ -107,13 +109,25 @@ def clinic_health(db: Session, clinic_id: int) -> dict:
     open_conflicts = db.query(SyncConflict).filter(SyncConflict.clinic_id == clinic_id, SyncConflict.status == "open").count()
     pending = db.query(SyncOutboxEvent).filter(SyncOutboxEvent.clinic_id == clinic_id, SyncOutboxEvent.status.in_(("pending", "in_flight", "dead"))).count()
     dead = db.query(SyncOutboxEvent).filter(SyncOutboxEvent.clinic_id == clinic_id, SyncOutboxEvent.status == "dead").count()
+    try:
+        db.execute(text("SELECT 1")).scalar()
+        database_status = "connected"
+    except Exception:
+        database_status = "error"
+    migration_revision = "non versionnée"
+    if database_status == "connected" and inspect(db.get_bind()).has_table("alembic_version"):
+        migration_revision = db.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).scalar() or "inconnue"
+    disk = None
+    if heartbeat and heartbeat.disk_total_bytes:
+        disk = {"free_bytes": heartbeat.disk_free_bytes, "total_bytes": heartbeat.disk_total_bytes,
+                "percent_free": round((heartbeat.disk_free_bytes or 0) * 100 / heartbeat.disk_total_bytes, 1)}
     return {
         "status": "attention" if open_conflicts or dead else "ok",
         "application_version": os.getenv("RAILWAY_GIT_COMMIT_SHA") or os.getenv("APP_VERSION") or "non renseignée",
-        "database": "connected",
-        "migration_revision": os.getenv("ALEMBIC_REVISION", "runtime"),
+        "database": database_status,
+        "migration_revision": migration_revision,
         "sync": {"pending": pending, "dead": dead, "conflicts": open_conflicts, "last_success_at": heartbeat.last_sync_success_at if heartbeat else None},
-        "workstation": {"last_seen_at": heartbeat.received_at if heartbeat else None, "software_version": heartbeat.software_version if heartbeat else None, "schema_version": heartbeat.schema_version if heartbeat else None},
+        "workstation": {"last_seen_at": heartbeat.received_at if heartbeat else None, "software_version": heartbeat.software_version if heartbeat else None, "schema_version": heartbeat.schema_version if heartbeat else None, "license_state": heartbeat.license_state if heartbeat else None, "disk": disk},
         "backup": {"last_at": backup.created_at if backup else None, "verified": bool(backup.verified) if backup else False, "restored_at": backup.restored_at if backup else None},
     }
 

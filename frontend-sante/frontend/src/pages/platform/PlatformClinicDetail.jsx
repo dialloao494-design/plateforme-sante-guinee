@@ -75,8 +75,9 @@ export default function PlatformClinicDetail() {
       if (dialog.type === 'deactivate') await platformApi.deactivateStaff(id, member.id, reason);
       else if (dialog.type === 'reactivate') await platformApi.reactivateStaff(id, member.id, reason);
       else if (dialog.type === 'delete') await platformApi.deleteStaff(id, member.id, reason);
+      else if (dialog.type === 'reset-link') await platformApi.sendStaffResetLink(id, member.id, reason);
       else await platformApi.revokeStaffSessions(id, member.id, reason);
-      setMessage(`Action terminée pour ${member.email}.`); setDialog(null); setSelectedStaff(null); await loadAll();
+      setMessage(dialog.type === 'reset-link' ? `Lien de réinitialisation envoyé à ${member.email}.` : `Action terminée pour ${member.email}.`); setDialog(null); setSelectedStaff(null); await loadAll();
     } catch (err) { setError(formatApiError(err, 'Action impossible.')); } finally { setBusy(false); }
   };
 

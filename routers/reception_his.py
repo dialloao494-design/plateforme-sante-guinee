@@ -44,6 +44,7 @@ from schemas.reception_his import (
 )
 from security import get_current_user
 from services.reception_his_service import ReceptionHisService, invoice_issued_at
+from services.platform_admin_service import clinic_configuration
 
 router = APIRouter(prefix="/clinical/reception/his", tags=["Reception HIS"])
 
@@ -554,6 +555,12 @@ def add_payment(
 ):
     _require_billing_pay(current_user)
     clinic = resolve_clinic_for_user(db, current_user)
+    allowed_methods = clinic_configuration(clinic).get("payment_methods", [])
+    if body.payment_method not in allowed_methods:
+        raise HTTPException(
+            status_code=409,
+            detail="Ce mode de paiement n’est pas autorisé pour cette clinique. Choisissez un mode proposé par l’administrateur.",
+        )
     invoice = ReceptionHisService.add_payment(
         db,
         clinic_id=clinic.id,

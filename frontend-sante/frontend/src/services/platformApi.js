@@ -33,6 +33,10 @@ const platformApi = {
     httpClient.delete(`/platform/clinics/${clinicId}/staff/${userId}`, { data: { reason } }),
   revokeStaffSessions: (clinicId, userId, reason) =>
     httpClient.post(`/platform/clinics/${clinicId}/staff/${userId}/sessions/revoke`, { reason }),
+  listStaffSessions: (clinicId, userId) =>
+    httpClient.get(`/platform/clinics/${clinicId}/staff/${userId}/sessions`),
+  sendStaffResetLink: (clinicId, userId, reason) =>
+    httpClient.post(`/platform/clinics/${clinicId}/staff/${userId}/password-reset-link`, { reason }),
   bulkAccounts: (data) => httpClient.post('/platform/accounts/bulk', data),
   auditLogs: (params = {}) => httpClient.get('/platform/audit-logs', { params }),
   auditCsvUrl: '/platform/audit-logs/export.csv',

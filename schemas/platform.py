@@ -130,6 +130,17 @@ class PlatformClinicConfigurationUpdate(BaseModel):
     catalogue_version: Optional[str] = Field(None, max_length=64)
     offline_workstations_enabled: Optional[bool] = None
     data_retention_days: Optional[int] = Field(None, ge=30, le=3650)
+    mfa_policy: Optional[str] = Field(None, pattern="^(optional|administrators|all_staff)$")
+    trusted_workstation_days: Optional[int] = Field(None, ge=0, le=90)
+
+
+class PlatformSession(BaseModel):
+    id: int
+    created_at: datetime
+    expires_at: datetime
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    current: bool = False
 
 
 class PlatformClinicStateRequest(BaseModel):

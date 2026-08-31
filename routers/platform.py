@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 import models
 from models.clinic_node_ops import ClinicNodeBackupRecord
+from models.refresh_token import RefreshToken
 import schemas
 from schemas.clinical import ClinicResponse
 from schemas.platform import (
@@ -30,6 +31,7 @@ from schemas.platform import (
     PlatformClinicStateRequest,
     PlatformDataResetRequest,
     PlatformPatientMergeRequest,
+    PlatformSession,
 )
 from database import get_db
 from security import get_current_platform_admin, get_current_platform_owner, hash_password, validate_password
@@ -55,6 +57,7 @@ from services.staff_lifecycle_service import (
 from services.platform_admin_service import list_accounts, clinic_configuration, clinic_health, data_inventory
 from services.clinical_audit_service import ClinicalAuditService
 from services.auth_session_service import revoke_all_user_refresh_tokens
+from services.password_reset_service import create_reset_token, send_reset_email
 from core.http_utils import client_ip
 
 router = APIRouter(prefix="/platform", tags=["Platform Owner"])
@@ -304,6 +307,33 @@ def platform_revoke_staff_sessions(clinic_id: int, user_id: int, body: PlatformL
     return {"id": user_id, "revoked_sessions": count}
 
 
+@router.get("/clinics/{clinic_id}/staff/{user_id}/sessions", response_model=list[PlatformSession])
+def platform_staff_sessions(clinic_id: int, user_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_platform_admin)):
+    user = db.query(models.User.id).filter(models.User.id == user_id, models.User.clinic_id == clinic_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Membre du personnel introuvable.")
+    now = datetime.utcnow()
+    return [PlatformSession(id=row.id, created_at=row.created_at, expires_at=row.expires_at,
+            ip_address=row.ip_address, user_agent=row.user_agent)
+            for row in db.query(RefreshToken).filter(RefreshToken.user_id == user_id,
+                RefreshToken.revoked_at.is_(None), RefreshToken.expires_at > now)
+            .order_by(RefreshToken.created_at.desc()).all()]
+
+
+@router.post("/clinics/{clinic_id}/staff/{user_id}/password-reset-link")
+def platform_staff_reset_link(clinic_id: int, user_id: int, body: PlatformLifecycleRequest, request: Request, db: Session = Depends(get_db), current_user=Depends(get_current_platform_admin)):
+    user = db.query(models.User).filter(models.User.id == user_id, models.User.clinic_id == clinic_id, models.User.is_active.is_(True)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Compte actif introuvable.")
+    raw = create_reset_token(db, email=user.email)
+    delivered = bool(raw and send_reset_email(user.email, raw))
+    ClinicalAuditService.log(db, actor=current_user, patient_id=None, clinic_id=clinic_id,
+        action="password_reset_link", resource_type="staff", resource_id=user.id,
+        client_ip=client_ip(request), user_agent=request.headers.get("user-agent"),
+        reason=body.reason, after={"delivery_status": "sent" if delivered else "failed"})
+    return {"id": user.id, "email": user.email, "delivery_status": "sent" if delivered else "failed"}
+
+
 @router.post("/accounts/bulk")
 def bulk_account_action(body: AccountBulkRequest, request: Request, db: Session = Depends(get_db), current_user=Depends(get_current_platform_owner)):
     if body.action not in ("deactivate", "reactivate", "delete"):
@@ -461,7 +491,7 @@ def update_clinic_configuration(clinic_id: int, body: PlatformClinicConfiguratio
     if not clinic: raise HTTPException(status_code=404, detail="Clinique introuvable.")
     before = {"name": clinic.name, "address": clinic.address, "city": clinic.city, "phone": clinic.phone, "email": clinic.email, **clinic_configuration(clinic)}
     data = body.model_dump(exclude_unset=True)
-    config_keys = {"enabled_modules", "payment_methods", "receipt_template", "catalogue_version", "offline_workstations_enabled", "data_retention_days"}
+    config_keys = {"enabled_modules", "payment_methods", "receipt_template", "catalogue_version", "offline_workstations_enabled", "data_retention_days", "mfa_policy", "trusted_workstation_days"}
     config = clinic_configuration(clinic)
     for key in tuple(data):
         if key in config_keys: config[key] = data.pop(key)
