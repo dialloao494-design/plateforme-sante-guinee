@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -71,6 +71,28 @@ class PharmacyServiceRequestResponse(BaseModel):
     payment_method: Optional[str] = None
     payments: list[PharmacyPaymentOut] = []
     items: list[PharmacyServiceLineOut]
+    request_number: str
+
+
+class PharmacyStockOrderCreate(BaseModel):
+    inventory_item_id: Optional[int] = None
+    medication_name: str = Field(..., min_length=2, max_length=255)
+    quantity: int = Field(..., ge=1, le=1_000_000)
+    supplier: str = Field(..., min_length=2, max_length=128)
+
+
+class PharmacyStockOrderOut(BaseModel):
+    id: int
+    order_number: str
+    inventory_item_id: Optional[int] = None
+    medication_name: str
+    quantity: int
+    supplier: str
+    status: str
+    ordered_at: datetime
+    received_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PharmacyChargePaymentCreate(BaseModel):

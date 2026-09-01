@@ -532,6 +532,7 @@ class PharmacyOrderResponse(BaseModel):
     prepared_by: Optional[str] = None
     notes: Optional[str] = None
     items: list[PrescriptionItemBrief] = []
+    request_number: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

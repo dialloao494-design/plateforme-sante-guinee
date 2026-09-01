@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import clinicalApi from '../../services/clinicalApi';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useClinicalPatientRoute } from '../../hooks/useClinicalPatientRoute.js';
@@ -14,9 +14,16 @@ import { BILLING_NOTICE, EMPTY_PAYMENT, emptyMedicationLine, emptyPaymentLine, i
 import './clinical.css';
 import './pharmacy.css';
 
+const PharmacyHistoryTab = lazy(() => import('./pharmacy/PharmacyHistoryTab.jsx'));
+const PharmacyReportTab = lazy(() => import('./pharmacy/PharmacyReportTab.jsx'));
+const PharmacyStockOrdersTab = lazy(() => import('./pharmacy/PharmacyStockOrdersTab.jsx'));
+
 const TABS = [
+  { id: 'orders', label: 'Commandes' },
   { id: 'workflow', label: 'Dispensation' },
   { id: 'stock', label: 'Stock' },
+  { id: 'history', label: 'Historique' },
+  { id: 'report', label: 'Rapport' },
 ];
 
 const formatPrintDate = (d = new Date()) => formatClinicalDate(d);
@@ -333,6 +340,12 @@ export default function PharmacyDashboard() {
         <PharmacyStockTab onInventoryChange={setInventory} />
       )}
 
+      <Suspense fallback={<p className="pharmacy-panel" role="status">Chargement de la section…</p>}>
+        {tab === 'orders' && <PharmacyStockOrdersTab inventory={inventory} onInventoryChange={setInventory} />}
+        {tab === 'history' && <PharmacyHistoryTab />}
+        {tab === 'report' && <PharmacyReportTab />}
+      </Suspense>
+
       {tab === 'workflow' && (
         <>
           <PatientSafetyStrip patient={selectedPatient} onClose={clearPatient} contextLabel="Patient actif à la pharmacie" />
@@ -402,6 +415,12 @@ export default function PharmacyDashboard() {
               onSubmit={submitRequest}
               onUpdateLine={updateLine}
             />
+
+            {savedRequest?.request_number && (
+              <p className="pharmacy-request-number" role="status">
+                Demande enregistrée · <strong>{savedRequest.request_number}</strong>
+              </p>
+            )}
 
             <section className="pharmacy-his-workflow-card pharmacy-his-workflow-card--billing">
               <h3>Facturation</h3>

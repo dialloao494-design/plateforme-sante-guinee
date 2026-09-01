@@ -10,6 +10,8 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.graphics.barcode.qr import QrCodeWidget
+from reportlab.graphics.shapes import Drawing
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from data.clinic_branding import CLINIC_PRINT_NAME
@@ -103,6 +105,18 @@ def _styles():
     }
 
 
+def _invoice_qr(invoice_number: str) -> Drawing:
+    """Compact, self-contained QR used to identify the printed invoice."""
+    size = 22 * mm
+    widget = QrCodeWidget(f"FACTURE:{invoice_number}")
+    bounds = widget.getBounds()
+    width = bounds[2] - bounds[0]
+    height = bounds[3] - bounds[1]
+    drawing = Drawing(size, size, transform=[size / width, 0, 0, size / height, 0, 0])
+    drawing.add(widget)
+    return drawing
+
+
 def build_hospital_invoice_pdf(
     *,
     invoice_number: str,
@@ -154,9 +168,10 @@ def build_hospital_invoice_pdf(
             [
                 Paragraph("<br/>".join(meta_left), styles["meta"]),
                 Paragraph("<br/>".join(meta_right), styles["meta_right"]),
+                _invoice_qr(invoice_number or "SANS-NUMERO"),
             ]
         ],
-        colWidths=[page_w * 0.55, page_w * 0.45],
+        colWidths=[page_w * 0.48, page_w * 0.37, page_w * 0.15],
     )
     meta_table.setStyle(
         TableStyle(

@@ -22,16 +22,35 @@ from schemas.pharmacy_his import (
     PharmacyPatientOut,
     PharmacyServiceRequestCreate,
     PharmacyServiceRequestResponse,
+    PharmacyStockOrderCreate,
+    PharmacyStockOrderOut,
 )
 from security import get_current_user
 from services.doctor_medicine_delivery_service import DoctorMedicineDeliveryService
+from services.cis_audit import log_cis
 from services.pharmacy_clinical_service import PharmacyClinicalService
+from services.pharmacy_inventory_service import PharmacyInventoryService
 from services.reception_his_service import ReceptionHisService
 
 router = APIRouter(prefix="/clinical/pharmacy", tags=["Pharmacy Phase 2"])
 
 PHARMACY_READ = ("pharmacist", "doctor", "clinic_admin", "admin", "receptionist", "cashier", "platform_admin", "platform_owner")
 PHARMACY_WRITE = ("pharmacist", "clinic_admin", "admin", "doctor")
+PHARMACY_STOCK_WRITE = ("pharmacist", "clinic_admin", "admin")
+
+
+def _stock_order_out(row: models.PharmacyStockOrder) -> PharmacyStockOrderOut:
+    return PharmacyStockOrderOut(
+        id=row.id,
+        order_number=f"CMD-{int(row.clinic_id):03d}-{int(row.id):06d}",
+        inventory_item_id=row.inventory_item_id,
+        medication_name=row.medication_name,
+        quantity=row.quantity,
+        supplier=row.supplier,
+        status=row.status,
+        ordered_at=row.ordered_at,
+        received_at=row.received_at,
+    )
 
 
 def _require_role(user: User, allowed: tuple[str, ...]) -> None:
@@ -231,6 +250,76 @@ def pharmacy_dashboard(db: Session = Depends(get_db), current_user: User = Depen
     _require_role(current_user, PHARMACY_READ)
     clinic = resolve_clinic_for_user(db, current_user)
     return PharmacyClinicalService.dashboard_stats(db, clinic_id=clinic.id)
+
+
+@router.get("/stock-orders", response_model=List[PharmacyStockOrderOut])
+def list_pharmacy_stock_orders(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    _require_role(current_user, PHARMACY_READ)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return [_stock_order_out(row) for row in PharmacyInventoryService.list_stock_orders(db, clinic_id=clinic.id)]
+
+
+@router.post("/stock-orders", response_model=PharmacyStockOrderOut, status_code=201)
+def create_pharmacy_stock_order(
+    body: PharmacyStockOrderCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, PHARMACY_STOCK_WRITE)
+    clinic = resolve_clinic_for_user(db, current_user)
+    row = PharmacyInventoryService.create_stock_order(
+        db,
+        clinic_id=clinic.id,
+        inventory_item_id=body.inventory_item_id,
+        medication_name=body.medication_name,
+        quantity=body.quantity,
+        supplier=body.supplier,
+        actor_id=current_user.id,
+    )
+    log_cis(
+        db,
+        actor=current_user,
+        clinic_id=clinic.id,
+        action="create",
+        resource_type="pharmacy_stock_order",
+        resource_id=row.id,
+        after={"status": row.status, "medication_name": row.medication_name, "quantity": row.quantity, "supplier": row.supplier},
+    )
+    return _stock_order_out(row)
+
+
+@router.post("/stock-orders/{order_id}/{action}", response_model=PharmacyStockOrderOut)
+def close_pharmacy_stock_order(
+    order_id: int,
+    action: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, PHARMACY_STOCK_WRITE)
+    clinic = resolve_clinic_for_user(db, current_user)
+    status_value = {"receive": "received", "cancel": "cancelled"}.get(action)
+    if not status_value:
+        raise HTTPException(status_code=404, detail="Action de commande inconnue")
+    row = PharmacyInventoryService.update_stock_order_status(
+        db,
+        clinic_id=clinic.id,
+        order_id=order_id,
+        status=status_value,
+        actor_id=current_user.id,
+    )
+    log_cis(
+        db,
+        actor=current_user,
+        clinic_id=clinic.id,
+        action="update",
+        resource_type="pharmacy_stock_order",
+        resource_id=row.id,
+        before={"status": "ordered"},
+        after={"status": row.status, "received_at": row.received_at.isoformat() if row.received_at else None},
+    )
+    return _stock_order_out(row)
 
 
 @router.get("/reports/monthly")

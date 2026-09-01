@@ -74,10 +74,17 @@ class PharmacyClinicalService:
             .all()
         )
         register_rows = []
+        medicine_totals: dict[str, dict] = {}
         for idx, row in enumerate(rows, start=1):
             if not row.patient:
                 continue
             disp_date = row.dispensed_at.date() if row.dispensed_at else date.today()
+            lines = PharmacyClinicalService._line_items_from_order(row)
+            for line in lines:
+                name = str(line.get("product_name") or "Médicament").strip()
+                bucket = medicine_totals.setdefault(name, {"medication_name": name, "quantity": 0, "revenue_gnf": 0})
+                bucket["quantity"] += int(line.get("quantity") or 0)
+                bucket["revenue_gnf"] += int(line.get("total_gnf") or 0)
             register_rows.append(
                 {
                     "line_number": idx,
@@ -87,15 +94,61 @@ class PharmacyClinicalService:
                     "medications": PharmacyClinicalService._medications_text(row),
                     "dispensed_at": row.dispensed_at.isoformat() if row.dispensed_at else None,
                     "status": row.status,
+                    "request_number": PharmacyClinicalService.request_number(row),
                 }
             )
+        charges = db.query(models.ClinicCharge).filter(
+            models.ClinicCharge.clinic_id == clinic_id,
+            models.ClinicCharge.charge_type == "pharmacy",
+            models.ClinicCharge.created_at >= start,
+            models.ClinicCharge.created_at <= end,
+        ).all()
+        generated = sum(int(c.amount_gnf or 0) for c in charges)
+        payment_rows = (
+            db.query(models.ClinicChargePayment)
+            .join(models.ClinicCharge, models.ClinicCharge.id == models.ClinicChargePayment.charge_id)
+            .filter(
+                models.ClinicCharge.clinic_id == clinic_id,
+                models.ClinicCharge.charge_type == "pharmacy",
+                models.ClinicChargePayment.created_at >= start,
+                models.ClinicChargePayment.created_at <= end,
+            )
+            .all()
+        )
+        collected = sum(int(payment.amount_gnf or 0) for payment in payment_rows)
+        # Older single-payment records predate split payment rows.
+        payment_charge_ids = {payment.charge_id for payment in payment_rows}
+        legacy_paid = db.query(models.ClinicCharge).filter(
+            models.ClinicCharge.clinic_id == clinic_id,
+            models.ClinicCharge.charge_type == "pharmacy",
+            models.ClinicCharge.payment_status == "paid",
+            models.ClinicCharge.paid_at >= start,
+            models.ClinicCharge.paid_at <= end,
+        ).all()
+        collected += sum(int(charge.paid_amount_gnf or charge.amount_gnf or 0) for charge in legacy_paid if charge.id not in payment_charge_ids)
+        pending = sum(max(0, int(c.amount_gnf or 0) - int(c.paid_amount_gnf or 0)) for c in charges)
+        collected_for_period_sales = sum(min(int(c.amount_gnf or 0), int(c.paid_amount_gnf or 0)) for c in charges)
+        unique_patients = len({charge.patient_id for charge in charges if charge.patient_id})
         return {
             "year": year,
             "month": month,
             "clinic_id": clinic_id,
             "total_dispensed": len(rows),
+            "unique_patients": unique_patients,
+            "requests_created": len(charges),
+            "generated_revenue_gnf": generated,
+            "collected_revenue_gnf": collected,
+            "pending_revenue_gnf": pending,
+            "collection_rate_percent": round((collected_for_period_sales / generated * 100), 1) if generated else 0,
+            "top_medications": sorted(
+                medicine_totals.values(), key=lambda item: (item["quantity"], item["revenue_gnf"]), reverse=True
+            )[:10],
             "register_rows": register_rows,
         }
+
+    @staticmethod
+    def request_number(order: models.PharmacyOrder) -> str:
+        return f"PHARM-{int(order.clinic_id):03d}-{int(order.id):06d}"
 
     @staticmethod
     def _medications_text(order: models.PharmacyOrder) -> str:
@@ -239,6 +292,7 @@ class PharmacyClinicalService:
             "payment_method": primary_method,
             "payments": payments,
             "items": lines,
+            "request_number": PharmacyClinicalService.request_number(order),
         }
 
     @staticmethod
@@ -431,6 +485,7 @@ class PharmacyClinicalService:
                 "payment_method": charge.payment_method,
                 "payments": PharmacyClinicalService._payment_rows(charge),
                 "items": [],
+                "request_number": f"PHARM-{int(clinic_id):03d}-{int(charge.source_id):06d}",
             }
         db.refresh(order)
         return PharmacyClinicalService.serialize_service_request(db, order)

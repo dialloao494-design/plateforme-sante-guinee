@@ -196,6 +196,24 @@ def test_lab_and_pharmacy_dashboards(client, db_session, admin_user):
     r = client.get("/clinical/pharmacy/dashboard", headers=_auth(pharmacist))
     assert r.status_code == 200
 
+    report = client.get(
+        "/clinical/pharmacy/reports/monthly",
+        params={"year": date.today().year, "month": date.today().month},
+        headers=_auth(pharmacist),
+    )
+    assert report.status_code == 200
+    assert {
+        "unique_patients",
+        "requests_created",
+        "total_dispensed",
+        "generated_revenue_gnf",
+        "collected_revenue_gnf",
+        "pending_revenue_gnf",
+        "collection_rate_percent",
+        "top_medications",
+        "register_rows",
+    } <= report.json().keys()
+
     r = client.get(
         "/clinical/workflow/queue/nursing",
         headers=_auth(reception),

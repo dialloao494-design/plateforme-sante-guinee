@@ -3,12 +3,93 @@
 from __future__ import annotations
 
 from fastapi import HTTPException
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 import models
 
 
 class PharmacyInventoryService:
+    @staticmethod
+    def list_stock_orders(db: Session, *, clinic_id: int) -> list[models.PharmacyStockOrder]:
+        return (
+            db.query(models.PharmacyStockOrder)
+            .filter(models.PharmacyStockOrder.clinic_id == clinic_id)
+            .order_by(models.PharmacyStockOrder.created_at.desc())
+            .all()
+        )
+
+    @staticmethod
+    def create_stock_order(
+        db: Session,
+        *,
+        clinic_id: int,
+        inventory_item_id: int | None,
+        medication_name: str,
+        quantity: int,
+        supplier: str,
+        actor_id: int,
+    ) -> models.PharmacyStockOrder:
+        inventory_item = None
+        if inventory_item_id is not None:
+            inventory_item = PharmacyInventoryService.get_item(
+                db, clinic_id=clinic_id, item_id=inventory_item_id
+            )
+        row = models.PharmacyStockOrder(
+            clinic_id=clinic_id,
+            inventory_item_id=inventory_item.id if inventory_item else None,
+            medication_name=(inventory_item.medication_name if inventory_item else medication_name.strip()),
+            quantity=quantity,
+            supplier=supplier.strip(),
+            status="ordered",
+            created_by_user_id=actor_id,
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        return row
+
+    @staticmethod
+    def update_stock_order_status(
+        db: Session,
+        *,
+        clinic_id: int,
+        order_id: int,
+        status: str,
+        actor_id: int,
+    ) -> models.PharmacyStockOrder:
+        row = (
+            db.query(models.PharmacyStockOrder)
+            .filter(
+                models.PharmacyStockOrder.id == order_id,
+                models.PharmacyStockOrder.clinic_id == clinic_id,
+            )
+            .first()
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Commande de stock introuvable")
+        if row.status != "ordered":
+            raise HTTPException(status_code=400, detail="Cette commande est déjà clôturée")
+        if status not in {"received", "cancelled"}:
+            raise HTTPException(status_code=400, detail="Statut de commande invalide")
+        row.status = status
+        if status == "received":
+            if not row.inventory_item_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Associez cette commande à un médicament du stock avant la réception",
+                )
+            item = PharmacyInventoryService.get_item(
+                db, clinic_id=clinic_id, item_id=row.inventory_item_id
+            )
+            item.quantity += row.quantity
+            row.received_at = datetime.utcnow()
+            row.received_by_user_id = actor_id
+        db.commit()
+        db.refresh(row)
+        return row
+
     @staticmethod
     def list_items(db: Session, *, clinic_id: int) -> list[models.PharmacyInventoryItem]:
         return (

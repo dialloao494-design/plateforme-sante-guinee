@@ -385,6 +385,10 @@ const clinicalApi = {
     httpClient.post(`/clinical/pharmacy/charges/${chargeId}/payments`, data),
   pharmacyChargeReceiptUrl: (chargeId) =>
     `${httpClient.defaults.baseURL}/clinical/pharmacy/charges/${chargeId}/receipt`,
+  pharmacyStockOrders: () => httpClient.get('/clinical/pharmacy/stock-orders'),
+  createPharmacyStockOrder: (data) => httpClient.post('/clinical/pharmacy/stock-orders', data),
+  receivePharmacyStockOrder: (id) => httpClient.post(`/clinical/pharmacy/stock-orders/${id}/receive`),
+  cancelPharmacyStockOrder: (id) => httpClient.post(`/clinical/pharmacy/stock-orders/${id}/cancel`),
 
   // Bed / room management
   updateHospitalRoom: (roomId, data) => httpClient.patch(`/clinical/hospitalization/rooms/${roomId}`, data),

@@ -1658,6 +1658,7 @@ def _serialize_pharmacy_order(order: models.PharmacyOrder, db: Session) -> Pharm
         prepared_by=prepared_by,
         notes=order.notes,
         items=items,
+        request_number=f"PHARM-{int(order.clinic_id):03d}-{int(order.id):06d}",
     )
 
 

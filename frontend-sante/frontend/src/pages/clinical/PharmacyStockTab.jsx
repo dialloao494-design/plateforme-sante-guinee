@@ -13,7 +13,6 @@ const EMPTY_FORM = {
   purchase_price_gnf: '',
   batch_number: '',
   expiry_date: '',
-  supplier: '',
 };
 
 export default function PharmacyStockTab({ onInventoryChange }) {
@@ -42,8 +41,7 @@ export default function PharmacyStockTab({ onInventoryChange }) {
     return items.filter(
       (i) =>
         i.medication_name?.toLowerCase().includes(q) ||
-        i.sku?.toLowerCase().includes(q) ||
-        i.supplier?.toLowerCase().includes(q)
+        i.sku?.toLowerCase().includes(q)
     );
   }, [items, searchQ]);
 
@@ -63,7 +61,6 @@ export default function PharmacyStockTab({ onInventoryChange }) {
       purchase_price_gnf: item.purchase_price_gnf != null ? String(item.purchase_price_gnf) : '',
       batch_number: item.batch_number || '',
       expiry_date: item.expiry_date || '',
-      supplier: item.supplier || '',
     });
   };
 
@@ -85,7 +82,6 @@ export default function PharmacyStockTab({ onInventoryChange }) {
         purchase_price_gnf: form.purchase_price_gnf === '' ? null : Number(form.purchase_price_gnf),
         batch_number: form.batch_number.trim() || null,
         expiry_date: form.expiry_date || null,
-        supplier: form.supplier.trim() || null,
       };
       if (editingId) {
         await clinicalApi.updatePharmacyInventoryItem(editingId, payload);
@@ -182,10 +178,6 @@ export default function PharmacyStockTab({ onInventoryChange }) {
             <input type="date" value={form.expiry_date} onChange={(e) => setForm((p) => ({ ...p, expiry_date: e.target.value }))} />
           </label>
         </div>
-        <label>
-          Fournisseur
-          <input value={form.supplier} onChange={(e) => setForm((p) => ({ ...p, supplier: e.target.value }))} />
-        </label>
         <div className="pharmacy-his-actions">
           <button type="submit" className="clinical-btn pharmacy-his-primary-action" disabled={loading}>
             {loading ? 'Enregistrement…' : editingId ? 'Mettre à jour' : 'Ajouter au stock'}
@@ -209,7 +201,6 @@ export default function PharmacyStockTab({ onInventoryChange }) {
               <th>Prix achat</th>
               <th>Lot</th>
               <th>Expiration</th>
-              <th>Fournisseur</th>
               <th scope="col">Actions</th>
             </tr>
           </thead>
@@ -223,7 +214,6 @@ export default function PharmacyStockTab({ onInventoryChange }) {
                 <td>{item.purchase_price_gnf != null ? formatGNF(item.purchase_price_gnf) : '—'}</td>
                 <td>{item.batch_number || '—'}</td>
                 <td>{item.expiry_date || '—'}</td>
-                <td>{item.supplier || '—'}</td>
                 <td className="pharmacy-stock-actions">
                   <button type="button" className="clinical-btn clinical-btn--secondary" onClick={() => startEdit(item)}>
                     Modifier

@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_single_alembic_head_includes_registration_dedupe():
     script = ScriptDirectory.from_config(Config(str(ROOT / "alembic.ini")))
-    assert script.get_heads() == ["20260831_0037"]
+    assert script.get_heads() == ["20260901_0038"]
 
 
 def test_upgrade_from_0016_with_existing_0017_tables(tmp_path):
@@ -171,7 +171,7 @@ def test_upgrade_from_0016_with_existing_0017_tables(tmp_path):
         rev = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
         role = conn.execute(text("SELECT role FROM users WHERE id = 1")).scalar()
         user_count = conn.execute(text("SELECT COUNT(*) FROM users")).scalar()
-    assert rev == "20260831_0037"
+    assert rev == "20260901_0038"
     assert role == "nurse"
     assert user_count == 1
     engine.dispose()

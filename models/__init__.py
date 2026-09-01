@@ -33,6 +33,7 @@ from .discharge import DischargeSummary
 from .imaging import ImagingOrder, ImagingResult
 from .appointment_reminder import AppointmentReminder, ReminderEvent
 from .pharmacy_inventory import PharmacyInventoryItem
+from .pharmacy_stock_order import PharmacyStockOrder
 from .nutrition import NutritionAssessment
 from .immunization import VaccineScheduleItem, ImmunizationRecord
 from .nursing_care import NursingProcedure
