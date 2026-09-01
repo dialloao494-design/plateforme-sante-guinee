@@ -80,7 +80,7 @@ export default function OfflineStatusIndicator() {
     try {
       // A staff-requested retry must not remain hidden behind automatic
       // exponential backoff from an earlier network failure.
-      const result = await flushOutbox(undefined, { forceRetry: true });
+      const result = await flushOutbox(undefined, { forceRetry: true, assumeOnline: online });
       await refresh();
       if (result?.failed > 0) {
         const text = `${result.failed} opération(s) n'ont pas pu être synchronisées. Exportez-les avant toute intervention sur ce navigateur.`;

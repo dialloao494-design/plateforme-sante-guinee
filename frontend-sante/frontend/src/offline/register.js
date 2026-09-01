@@ -11,7 +11,10 @@ const statusListeners = new Set();
 let onlineStatus = typeof navigator !== 'undefined' ? navigator.onLine : true;
 const OFFLINE_FALLBACK_TIMEOUT_MS = 1_500;
 const DEGRADED_NETWORK_WINDOW_MS = 15_000;
+const CONNECTIVITY_PROBE_INTERVAL_MS = 8_000;
 let networkDegradedUntil = 0;
+let connectivityProbeTimer = null;
+let connectivityProbePromise = null;
 
 export function isBrowserOnline() {
   return onlineStatus;
@@ -33,6 +36,34 @@ function setOnlineStatus(next) {
       /* ignore */
     }
   }
+}
+
+/**
+ * Browsers can leave navigator.onLine=false after Wi-Fi has recovered. Prove
+ * reachability against our own API before keeping a clinical workstation in
+ * offline mode; never infer connectivity from a third-party website.
+ */
+export function probeServerConnectivity(httpClient) {
+  if (!httpClient) return Promise.resolve(false);
+  if (connectivityProbePromise) return connectivityProbePromise;
+  connectivityProbePromise = httpClient.get('/health', {
+    timeout: 4_000,
+    __connectivityProbe: true,
+    __skipAuthRefresh: true,
+    headers: { 'Cache-Control': 'no-cache' },
+    params: { connectivity_probe: Date.now() },
+  }).then(async () => {
+    const recovered = !onlineStatus;
+    networkDegradedUntil = 0;
+    setOnlineStatus(true);
+    if (recovered) {
+      await flushOutbox(httpClient, { forceRetry: true, assumeOnline: true });
+    }
+    return true;
+  }).catch(() => false).finally(() => {
+    connectivityProbePromise = null;
+  });
+  return connectivityProbePromise;
 }
 
 function isNetworkError(error) {
@@ -238,26 +269,39 @@ export async function registerServiceWorker() {
   }
 }
 
-function hookBrowserConnectivity() {
+function hookBrowserConnectivity(httpClient) {
   if (typeof window === 'undefined') return;
 
   const handleOnline = () => {
     networkDegradedUntil = 0;
     setOnlineStatus(true);
     flushOutbox();
+    void probeServerConnectivity(httpClient);
   };
   const handleOffline = () => setOnlineStatus(false);
+  const probeWhenNeeded = () => {
+    if (!onlineStatus || Date.now() < networkDegradedUntil) {
+      void probeServerConnectivity(httpClient);
+    }
+  };
 
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', handleOffline);
+  window.addEventListener('focus', probeWhenNeeded);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') probeWhenNeeded();
+  });
   setOnlineStatus(navigator.onLine);
+  if (connectivityProbeTimer) window.clearInterval(connectivityProbeTimer);
+  connectivityProbeTimer = window.setInterval(probeWhenNeeded, CONNECTIVITY_PROBE_INTERVAL_MS);
+  probeWhenNeeded();
 }
 
 /** Bootstrap offline support: SW, interceptors. Auto-sync starts after auth. */
 export async function initOfflineSupport(httpClient) {
   if (typeof window === 'undefined') return;
 
-  hookBrowserConnectivity();
+  hookBrowserConnectivity(httpClient);
   attachOfflineInterceptors(httpClient);
   // Do not flush the outbox until AuthContext confirms an authenticated user.
   // Callers should invoke startAutoSync(httpClient) after bootstrap succeeds.

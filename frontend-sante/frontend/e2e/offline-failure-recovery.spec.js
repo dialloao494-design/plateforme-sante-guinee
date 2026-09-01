@@ -1,6 +1,23 @@
 import { test, expect } from '@playwright/test';
 import { loginAsReception } from './helpers.js';
 
+test('server probe recovers when browser connectivity state remains stale', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'onLine', {
+      configurable: true,
+      get: () => false,
+    });
+  });
+  await loginAsReception(page);
+  await expect.poll(
+    () => page.evaluate(async () => {
+      const { isBrowserOnline } = await import('/src/offline/register.js');
+      return { browser: navigator.onLine, application: isBrowserOnline() };
+    }),
+    { timeout: 12_000 },
+  ).toEqual({ browser: false, application: true });
+});
+
 test('network loss before request queues registration', async ({ page, context }) => {
   test.setTimeout(120_000);
   await loginAsReception(page);

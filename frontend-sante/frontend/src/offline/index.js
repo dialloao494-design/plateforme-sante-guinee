@@ -58,6 +58,7 @@ export {
   initOfflineSupport,
   isBrowserOnline,
   onOnlineStatusChange,
+  probeServerConnectivity,
   registerServiceWorker,
 } from './register.js';
 export {

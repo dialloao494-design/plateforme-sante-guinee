@@ -160,11 +160,11 @@ export async function replayOutboxItem(item, client) {
 }
 
 /** Flush pending outbox mutations to the API. */
-async function performFlush(client = httpClientRef, { forceRetry = false } = {}) {
+async function performFlush(client = httpClientRef, { forceRetry = false, assumeOnline = false } = {}) {
   if (!client) {
     return { synced: 0, failed: 0, conflicts: 0, skipped: true };
   }
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+  if (typeof navigator !== 'undefined' && !navigator.onLine && !assumeOnline) {
     return { synced: 0, failed: 0, conflicts: 0, offline: true };
   }
 
