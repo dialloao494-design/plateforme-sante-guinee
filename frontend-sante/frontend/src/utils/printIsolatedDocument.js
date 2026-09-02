@@ -31,6 +31,9 @@ export async function printIsolatedDocument(element) {
   const cleanup = () => frame.remove();
   frame.contentWindow.onafterprint = cleanup;
   frame.contentWindow.focus();
+  window.dispatchEvent(new CustomEvent('clinical:isolated-print', {
+    detail: { title: element.getAttribute('aria-label') || printDocument.title || 'Document clinique' },
+  }));
   frame.contentWindow.print();
   window.setTimeout(cleanup, 30_000);
 }

@@ -346,6 +346,10 @@ export function useReceptionDashboard() {
     loadDashboard();
     clinicalApi.clinicDoctors().then((r) => setDoctors(r.data || [])).catch(() => setDoctors([]));
     clinicalApi.receptionHisBillingCatalog().then((r) => setBillingCatalog(r.data || null)).catch(() => setBillingCatalog(null));
+    // Warm the separately bundled print helper while Reception is online. This
+    // keeps the route within its performance budget and makes a first receipt
+    // print available after the workstation subsequently loses connectivity.
+    import('../../../../utils/printIsolatedDocument.js').catch(() => {});
   }, [loadDashboard]);
 
   useEffect(() => onInvoiceReconciled((event) => {

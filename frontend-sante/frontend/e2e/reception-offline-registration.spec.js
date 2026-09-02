@@ -88,15 +88,21 @@ test('offline registration queues then reconciles dossier after reconnect', asyn
   await expect.poll(() => countOutboxPending(page)).toBe(3);
 
   // Receipt printing must be entirely local while the invoice and payment are
-  // still provisional; no PDF endpoint is available without the network.
+  // still provisional; no PDF endpoint is available without the network. The
+  // production print path uses an isolated iframe so the application shell
+  // cannot create trailing blank pages; observe the isolated-print boundary.
   await page.evaluate(() => {
     window.__offlineReceiptPrintCalls = 0;
-    window.print = () => { window.__offlineReceiptPrintCalls += 1; };
+    window.addEventListener('clinical:isolated-print', () => {
+      window.__offlineReceiptPrintCalls += 1;
+    }, { once: true });
   });
   await page.getByRole('button', { name: 'Imprimer reçu' }).click();
   await expect.poll(() => page.evaluate(() => window.__offlineReceiptPrintCalls)).toBe(1);
   const localReceipt = page.locator('.reception-invoice-receipt-print');
-  await expect(localReceipt).toHaveClass(/clinical-print-target/);
+  // The source is deselected after its complete clone reaches the isolated
+  // print frame; the application document itself must no longer be printable.
+  await expect(localReceipt).not.toHaveClass(/clinical-print-target/);
   await expect(page.locator('.reception-his-registration-print')).not.toHaveClass(/clinical-print-target/);
   await expect(localReceipt).toContainText('FACTURE');
   await expect(localReceipt).toContainText('Détail des prestations');
@@ -111,7 +117,7 @@ test('offline registration queues then reconciles dossier after reconnect', asyn
     invoice: getComputedStyle(document.querySelector('.reception-invoice-receipt-print')).display,
     registration: getComputedStyle(document.querySelector('.reception-his-registration-print')).display,
   }));
-  expect(printVisibility.invoice).toBe('block');
+  expect(printVisibility.invoice).toBe('none');
   expect(printVisibility.registration).toBe('none');
   await page.emulateMedia({ media: 'screen' });
   await expect(page.getByRole('status')).toContainText(/Reçu local ouvert pour impression/i);
