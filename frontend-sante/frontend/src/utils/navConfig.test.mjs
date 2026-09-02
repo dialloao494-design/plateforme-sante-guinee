@@ -19,3 +19,17 @@ test('clinic doctor has a dedicated prescription register', () => {
   const items = getNavItemsForRole('doctor', 17);
   assert.equal(items.some((item) => item.path === '/clinical/prescriptions' && item.label === 'Ordonnances'), true);
 });
+
+test('delegated platform administrators do not receive owner-only controls', () => {
+  const ownerPaths = getNavItemsForRole('platform_owner').map((item) => item.path);
+  const delegatedPaths = getNavItemsForRole('platform_admin').map((item) => item.path);
+
+  assert.deepEqual(ownerPaths, [
+    '/platform/overview',
+    '/platform/clinics',
+    '/platform/system',
+    '/platform/settings',
+    '/platform/accounts',
+  ]);
+  assert.deepEqual(delegatedPaths, ['/platform/clinics']);
+});

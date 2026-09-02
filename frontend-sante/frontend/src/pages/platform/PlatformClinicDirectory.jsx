@@ -45,7 +45,9 @@ export default function PlatformClinicDirectory() {
         </p>
       </header>
 
-      <Link to="/platform/overview" className="platform-back-link">← Vue d’ensemble</Link>
+      {String(user?.role || user?.user_role || '').toLowerCase() === 'platform_owner' && (
+        <Link to="/platform/overview" className="platform-back-link">← Vue d’ensemble</Link>
+      )}
 
       {error && <p className="clinical-error">{error}</p>}
 
