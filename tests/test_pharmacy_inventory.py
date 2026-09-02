@@ -153,6 +153,15 @@ def test_pharmacy_refund_is_guarded_audited_and_restores_stock(client, db_sessio
     assert refunded.status_code == 201, refunded.text
     assert refunded.json()["amount_gnf"] == 10000
     assert refunded.json()["refund_number"].startswith(f"RPH-{clinic_id:03d}-")
+    charge = db_session.query(models.ClinicCharge).filter(models.ClinicCharge.id == charge_id).first()
+    assert charge.payment_status == "paid"
+    audit = db_session.query(models.ClinicalAuditLog).filter(
+        models.ClinicalAuditLog.clinic_id == clinic_id,
+        models.ClinicalAuditLog.resource_type == "pharmacy_refund",
+        models.ClinicalAuditLog.resource_id == refunded.json()["id"],
+    ).first()
+    assert audit is not None
+    assert audit.reason == "Produit scellé retourné"
     restored = next(row for row in client.get("/clinical/pharmacy/inventory", headers=_auth(pharmacist)).json() if row["id"] == item["id"])
     assert restored["quantity"] == item["quantity"] - 1
     receipt = client.get(f"/clinical/pharmacy/refunds/{refunded.json()['id']}/receipt", headers=_auth(pharmacist))

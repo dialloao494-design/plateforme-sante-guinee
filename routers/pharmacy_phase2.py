@@ -292,6 +292,7 @@ def create_pharmacy_refund(
         action="create",
         resource_type="pharmacy_refund",
         resource_id=result["id"],
+        patient_id=result["patient_id"],
         after={
             "refund_number": result["refund_number"],
             "charge_id": result["charge_id"],
@@ -325,6 +326,14 @@ def pharmacy_refund_receipt(
     now = datetime.utcnow()
     items = PharmacyClinicalService._refund_items(row)
     patient_name = f"{row.patient.last_name} {row.patient.first_name}" if row.patient else "—"
+    total_refunded = sum(
+        int(value or 0)
+        for (value,) in db.query(models.PharmacyRefund.amount_gnf).filter(
+            models.PharmacyRefund.clinic_id == clinic.id,
+            models.PharmacyRefund.charge_id == row.charge_id,
+            models.PharmacyRefund.status == "paid",
+        )
+    )
     pdf_bytes = build_refund_receipt_pdf(
         clinic_name=clinic.name,
         refund_number=row.refund_number,
@@ -332,7 +341,7 @@ def pharmacy_refund_receipt(
         patient_name=patient_name,
         patient_number=row.patient.patient_number if row.patient else "",
         service_paid_for=", ".join(f"{item['product_name']} × {item['quantity']}" for item in items),
-        amount_consumed_gnf=max(0, int(row.charge.paid_amount_gnf or 0) - int(row.amount_gnf or 0)),
+        amount_consumed_gnf=max(0, int(row.charge.paid_amount_gnf or 0) - total_refunded),
         refund_amount_gnf=row.amount_gnf,
         reason=row.reason,
         reason_notes=row.reason_notes,

@@ -333,9 +333,11 @@ class PharmacyClinicalService:
         db.add(row)
         db.flush()
         row.refund_number = PharmacyClinicalService._refund_number(row)
-        total_refunded = already_amount + amount
-        charge.payment_status = "refunded" if total_refunded >= int(charge.paid_amount_gnf or 0) else "partially_refunded"
-        db.commit()
+        # The original payment remains a paid gross receipt. Refunds are a
+        # separate, auditable ledger and reporting subtracts them for net
+        # revenue; changing the charge status would erase historical revenue
+        # from clinic-wide reports that intentionally select paid charges.
+        db.flush()
         row = db.query(models.PharmacyRefund).options(joinedload(models.PharmacyRefund.patient)).filter(models.PharmacyRefund.id == row.id).first()
         return PharmacyClinicalService.serialize_refund(row)
 
