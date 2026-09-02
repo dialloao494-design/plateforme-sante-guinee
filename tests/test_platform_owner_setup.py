@@ -7,6 +7,7 @@ import pytest
 from core.provisioning_context import provisioning_channel
 from models.user import User
 from security import hash_password
+from services.user_provisioning import create_platform_owner_user
 
 
 @pytest.fixture(autouse=True)
@@ -76,6 +77,26 @@ class TestPlatformOwnerSetup:
             },
         )
         assert response.status_code == 403
+
+    def test_trusted_provisioning_allows_additional_owner(self, client, db_session):
+        first = create_platform_owner_user(
+            db_session,
+            email="owner.first@example.com",
+            password="SecureOwner12!",
+        )
+        second = create_platform_owner_user(
+            db_session,
+            email="owner.second@example.com",
+            password="SecureOwner13!",
+        )
+
+        assert first.user.role == "platform_owner"
+        assert second.user.role == "platform_owner"
+        assert db_session.query(User).filter(User.role == "platform_owner").count() == 2
+
+        # Additional owners must not reopen the public bootstrap endpoint.
+        response = client.get("/platform/setup/status")
+        assert response.json()["setup_required"] is False
 
     def test_setup_rejects_mismatched_passwords(self, client):
         response = client.post(

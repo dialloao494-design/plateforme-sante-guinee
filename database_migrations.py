@@ -886,43 +886,20 @@ def ensure_user_session_security_columns(engine: Engine) -> None:
         )
 
 
-def ensure_single_platform_owner_index(engine: Engine) -> None:
-    """Enforce at most one platform_owner account (partial unique index)."""
+def ensure_multiple_platform_owners(engine: Engine) -> None:
+    """Remove the legacy single-owner index in disposable local databases."""
     insp = inspect(engine)
     if "users" not in insp.get_table_names():
         return
-    dialect = engine.dialect.name
     indexes = {idx["name"] for idx in insp.get_indexes("users")}
-    if "uq_users_single_platform_owner" in indexes:
+    if "uq_users_single_platform_owner" not in indexes:
         return
     try:
         with engine.begin() as conn:
-            # Demote extras before unique index — duplicate platform_owner rows
-            # from historical /platform/setup races otherwise crash production boot.
-            conn.execute(
-                text(
-                    """
-                    UPDATE users
-                    SET role = 'patient',
-                        is_active = false
-                    WHERE role = 'platform_owner'
-                      AND id NOT IN (
-                        SELECT id FROM (
-                          SELECT MIN(id) AS id FROM users WHERE role = 'platform_owner'
-                        ) keeper
-                      )
-                    """
-                )
-            )
-            conn.execute(
-                text(
-                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_single_platform_owner "
-                    "ON users (role) WHERE role = 'platform_owner'"
-                )
-            )
-        logger.info("Applied unique partial index uq_users_single_platform_owner")
+            conn.execute(text("DROP INDEX IF EXISTS uq_users_single_platform_owner"))
+        logger.info("Removed legacy unique index uq_users_single_platform_owner")
     except Exception as exc:
-        logger.warning("uq_users_single_platform_owner migration skipped: %s", exc)
+        logger.warning("Legacy platform-owner index removal skipped: %s", exc)
 
 
 def ensure_patient_user_id_unique(engine: Engine) -> None:
@@ -1744,4 +1721,3 @@ def ensure_clinic_node_ops_schema(engine: Engine) -> None:
                 logger.info("Added sync_conflicts.%s", col)
             except Exception as exc:
                 logger.warning("sync_conflicts.%s skipped: %s", col, exc)
-

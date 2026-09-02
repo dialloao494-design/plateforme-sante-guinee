@@ -636,7 +636,7 @@ def _run_schema_and_seed_startup() -> None:
             ensure_pharmacy_inventory_schema,
             ensure_clinic_charge_payments_schema,
             ensure_patient_user_id_unique,
-            ensure_single_platform_owner_index,
+            ensure_multiple_platform_owners,
             ensure_message_attachment_columns,
             ensure_patient_dossier_schema,
             ensure_user_roles_check_constraint,
@@ -678,7 +678,7 @@ def _run_schema_and_seed_startup() -> None:
             ensure_pharmacy_inventory_schema(engine)
             ensure_clinic_charge_payments_schema(engine)
             ensure_patient_user_id_unique(engine)
-            ensure_single_platform_owner_index(engine)
+            ensure_multiple_platform_owners(engine)
             ensure_user_roles_check_constraint(engine)
             normalize_legacy_user_roles(engine)
             ensure_email_verification_schema(engine)

@@ -86,7 +86,7 @@ from database_migrations import (
     ensure_patient_dossier_schema,
     ensure_user_roles_check_constraint,
     normalize_legacy_user_roles,
-    ensure_single_platform_owner_index,
+    ensure_multiple_platform_owners,
     ensure_user_session_security_columns,
     run_alembic_upgrade_head,
 )
@@ -133,7 +133,7 @@ else:
     ensure_patient_dossier_schema(engine)
     ensure_user_roles_check_constraint(engine)
     normalize_legacy_user_roles(engine)
-    ensure_single_platform_owner_index(engine)
+    ensure_multiple_platform_owners(engine)
 
 # Verify-only checks (no DDL) — fail closed if schema incomplete.
 insp = inspect(engine)

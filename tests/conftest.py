@@ -145,7 +145,7 @@ def admin_user(db_session: Session) -> User:
             pass
         return _reset_admin_fixture_user(existing, db_session)
 
-    # Partial unique index allows only one platform_owner in the shared test DB.
+    # Reuse the shared owner fixture when present to keep test setup deterministic.
     existing_owner = (
         db_session.query(User).filter(User.role == "platform_owner").first()
     )

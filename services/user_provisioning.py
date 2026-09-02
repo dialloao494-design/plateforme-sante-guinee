@@ -435,10 +435,13 @@ def create_platform_owner_user(
     password: str,
     channel: str = "platform_owner_bootstrap",
 ) -> ProvisionedUser:
-    """Create the platform owner — bootstrap channel only."""
+    """Create a platform owner through a trusted bootstrap channel.
+
+    Multiple owners are allowed for operational resilience. The public setup
+    flow remains one-time and is guarded separately by
+    :func:`setup_first_platform_owner`.
+    """
     validate_password(password)
-    if db.query(User).filter(User.role == "platform_owner").first():
-        raise UserProvisioningError("Platform owner already exists.")
     try:
         user = _persist_user(
             db,
@@ -450,8 +453,6 @@ def create_platform_owner_user(
     except IntegrityError as exc:
         db.rollback()
         error_text = str(exc).lower()
-        if "uq_users_single_platform_owner" in error_text or "users.role" in error_text:
-            raise PlatformOwnerSetupClosedError("Platform owner already exists.") from exc
         if "email" in error_text:
             raise EmailAlreadyRegisteredError("Email already registered") from exc
         raise UserProvisioningError("Error creating platform owner.") from exc
@@ -472,9 +473,8 @@ def setup_first_platform_owner(
     """Create the first platform owner via the public setup page (one-time).
 
     Serializes concurrent setup with a Postgres advisory transaction lock (or
-    SQLite BEGIN IMMEDIATE). Post-insert demotion remains as defense in depth.
-    A partial unique index (uq_users_single_platform_owner) enforces at most one
-    platform_owner row when the DB dialect supports it.
+    SQLite BEGIN IMMEDIATE). The public setup endpoint is one-time even though
+    trusted provisioning may create additional platform owners.
     """
     bind = db.get_bind()
     dialect = getattr(bind.dialect, "name", "") if bind is not None else ""
@@ -505,31 +505,6 @@ def setup_first_platform_owner(
         raise PlatformOwnerSetupClosedError(
             "Platform owner setup is disabled. Sign in with your owner account."
         ) from exc
-
-    # Post-insert integrity: if racing inserts produced >1 owner, keep the lowest id.
-    owners = (
-        db.query(User)
-        .filter(User.role == "platform_owner")
-        .order_by(User.id.asc())
-        .all()
-    )
-    if len(owners) > 1:
-        keeper = owners[0]
-        for extra in owners[1:]:
-            logger.error(
-                "Platform owner race detected — demoting duplicate id=%s email=%s",
-                extra.id,
-                extra.email,
-            )
-            extra.role = "patient"
-            extra.is_active = False
-            db.add(extra)
-        db.commit()
-        if provisioned.user.id != keeper.id:
-            raise PlatformOwnerSetupClosedError(
-                "Platform owner setup is disabled. Sign in with your owner account."
-            )
-        provisioned = ProvisionedUser(user=keeper, doctor_id=None)
 
     return provisioned
 

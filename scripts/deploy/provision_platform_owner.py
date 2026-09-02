@@ -42,10 +42,17 @@ def main() -> int:
 
     db = SessionLocal()
     try:
-        existing = db.query(models.User).filter(models.User.role == "platform_owner").first()
+        existing = db.query(models.User).filter(models.User.email == email).first()
         if existing:
-            print(f"Platform owner already exists: {existing.email} (id={existing.id})")
-            return 0
+            if existing.role == "platform_owner":
+                print(f"Platform owner already exists: {existing.email} (id={existing.id})")
+                return 0
+            print(
+                f"ERROR: Account already exists with role={existing.role}; "
+                "refusing an implicit privilege escalation.",
+                file=sys.stderr,
+            )
+            return 1
 
         provisioned = create_platform_owner_user(
             db,
@@ -53,6 +60,8 @@ def main() -> int:
             password=password,
             channel="platform_owner_bootstrap",
         )
+        provisioned.user.must_change_password = True
+        db.commit()
         print(f"Platform owner created: {provisioned.user.email} (id={provisioned.user.id})")
         return 0
     except (EmailAlreadyRegisteredError, UserProvisioningError) as exc:

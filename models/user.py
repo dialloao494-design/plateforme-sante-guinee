@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Index, Integer, String, text
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, Integer, String
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -17,13 +17,6 @@ class User(Base):
         CheckConstraint(
             f"role IN ({_CLINICAL_ROLES})",
             name="ck_users_role_allowed",
-        ),
-        Index(
-            "uq_users_single_platform_owner",
-            "role",
-            unique=True,
-            postgresql_where=text("role = 'platform_owner'"),
-            sqlite_where=text("role = 'platform_owner'"),
         ),
     )
 
