@@ -60,6 +60,8 @@ const ClinicOperationsDashboard = lazy(() => import("../pages/clinical/ClinicOpe
 const AccountProfile = lazy(() => import("../pages/AccountProfile.jsx"));
 const ChangePassword = lazy(() => import("../pages/ChangePassword.jsx"));
 const PlatformOwnerDashboard = lazy(() => import("../pages/platform/PlatformOwnerDashboard.jsx"));
+const PlatformOperations = lazy(() => import("../pages/platform/PlatformOperations.jsx"));
+const PlatformSecurity = lazy(() => import("../pages/platform/PlatformSecurity.jsx"));
 const PlatformAccounts = lazy(() => import("../pages/platform/PlatformAccounts.jsx"));
 const PlatformOwnerSetup = lazy(() => import("../pages/platform/PlatformOwnerSetup.jsx"));
 const NutritionDashboard = lazy(() => import("../pages/clinical/NutritionDashboard.jsx"));
@@ -107,7 +109,7 @@ const AppRoutes = () => {
         }
       />
       <Route
-        path="/platform/settings"
+        path="/platform/overview"
         element={
           <ProtectedRoute allowedRoles={PLATFORM_OWNER_ROLES}>
             <PlatformOwnerDashboard />
@@ -115,10 +117,18 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/platform/settings"
+        element={
+          <ProtectedRoute allowedRoles={PLATFORM_OWNER_ROLES}>
+            <PlatformSecurity />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/platform/system"
         element={
           <ProtectedRoute allowedRoles={PLATFORM_OWNER_ROLES}>
-            <PlatformOwnerDashboard />
+            <PlatformOperations />
           </ProtectedRoute>
         }
       />

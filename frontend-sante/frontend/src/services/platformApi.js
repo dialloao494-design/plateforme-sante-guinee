@@ -3,6 +3,7 @@ import httpClient from './httpClient';
 const platformApi = {
   getSummary: (category = 'production') =>
     httpClient.get('/platform/summary', { params: { category } }),
+  getSettings: () => httpClient.get('/platform/settings'),
 
   listClinicDirectory: (opts = {}) =>
     httpClient.get('/platform/clinics/directory', {

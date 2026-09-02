@@ -31,7 +31,11 @@ const ROLE_NAV = {
   admin: CLINIC_ADMIN_NAV,
   clinic_admin: CLINIC_ADMIN_NAV,
   platform_owner: [
+    { path: '/platform/overview', label: 'Vue d’ensemble', icon: 'dash' },
     { path: '/platform/clinics', label: 'Cliniques', icon: 'shield' },
+    { path: '/platform/system', label: 'Opérations', icon: 'queue' },
+    { path: '/platform/settings', label: 'Sécurité', icon: 'lock' },
+    { path: '/platform/accounts', label: 'Comptes & accès', icon: 'board' },
   ],
   platform_admin: [
     { path: '/platform/clinics', label: 'Cliniques', icon: 'shield' },

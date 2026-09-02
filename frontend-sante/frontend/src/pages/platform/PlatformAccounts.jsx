@@ -83,7 +83,7 @@ export default function PlatformAccounts() {
   return (
     <section className="users-page platform-accounts-page" aria-label="Comptes et accès">
       <div className="users-page-inner">
-        <Link to="/platform" className="platform-back-link">← Console plateforme</Link>
+        <Link to="/platform/overview" className="platform-back-link">← Vue d’ensemble</Link>
         <header className="platform-admin-heading">
           <div><p className="clinical-eyebrow">Gouvernance des identités</p><h1>Comptes & accès</h1><p>Classez les identités, examinez les connexions et appliquez les mêmes protections dans chaque clinique.</p></div>
           <div className="platform-admin-heading__signal"><strong>{users.length}</strong><span>comptes dans cette vue</span></div>

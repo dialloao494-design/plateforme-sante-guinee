@@ -94,10 +94,13 @@ export function getShellContext(pathname, role) {
       return {
         crumbs: [
           c('/platform', 'Plateforme'),
-          { label: 'Comptes techniques', to: null },
+          { label: 'Comptes & accès', to: null },
         ],
       };
     }
+    if (pathname === '/platform/overview') return { crumbs: [{ label: 'Pilotage plateforme', to: null }] };
+    if (pathname === '/platform/system') return { crumbs: [c('/platform/overview', 'Plateforme'), { label: 'Opérations', to: null }] };
+    if (pathname === '/platform/settings') return { crumbs: [c('/platform/overview', 'Plateforme'), { label: 'Sécurité', to: null }] };
     const label =
       pathname === '/platform/clinics' || pathname.startsWith('/platform/clinics')
         ? 'Cliniques'

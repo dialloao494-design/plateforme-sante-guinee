@@ -10,7 +10,7 @@ const SURFACES = [
   },
   {
     role: 'platformOwner',
-    routes: ['/platform/clinics', '/platform/settings', '/platform/system', '/platform/accounts', '/account/profile', '/account/password'],
+    routes: ['/platform/overview', '/platform/clinics', '/platform/settings', '/platform/system', '/platform/accounts', '/account/profile', '/account/password'],
   },
   {
     role: 'admin',
@@ -53,7 +53,7 @@ async function visibleControlDefects(page) {
 
 async function auditCurrentSurface(page, route, width) {
   await expect(page).toHaveURL(new RegExp(route.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  await expect(page.locator('#main-content')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('#main-content').first()).toBeVisible({ timeout: 20_000 });
   await expect(page.locator('#main-content h1').first(), `${route} needs one visible page title`).toBeVisible();
 
   const overflow = await page.evaluate(() => ({

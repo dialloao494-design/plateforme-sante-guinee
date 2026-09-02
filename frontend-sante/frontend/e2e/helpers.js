@@ -11,7 +11,7 @@ export const ROLE_CREDENTIALS = {
   platformOwner: {
     email: (globalThis.process?.env || {}).E2E_PLATFORM_OWNER_EMAIL || 'owner@e2e.local',
     password: (globalThis.process?.env || {}).E2E_PLATFORM_OWNER_PASSWORD || 'E2eOwnerPass12!',
-    homePath: /\/platform\/(?:clinics|setup|settings|system)/,
+    homePath: /\/platform\/(?:overview|clinics|setup|settings|system)/,
   },
   reception: {
     email: (globalThis.process?.env || {}).E2E_RECEPTION_EMAIL || 'reception@pilot.local',

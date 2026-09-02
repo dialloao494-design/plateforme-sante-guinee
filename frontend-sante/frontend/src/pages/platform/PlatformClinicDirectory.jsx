@@ -45,6 +45,8 @@ export default function PlatformClinicDirectory() {
         </p>
       </header>
 
+      <Link to="/platform/overview" className="platform-back-link">← Vue d’ensemble</Link>
+
       {error && <p className="clinical-error">{error}</p>}
 
       <div className="platform-toolbar">
