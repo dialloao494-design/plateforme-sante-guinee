@@ -389,6 +389,13 @@ const clinicalApi = {
   createPharmacyStockOrder: (data) => httpClient.post('/clinical/pharmacy/stock-orders', data),
   receivePharmacyStockOrder: (id) => httpClient.post(`/clinical/pharmacy/stock-orders/${id}/receive`),
   cancelPharmacyStockOrder: (id) => httpClient.post(`/clinical/pharmacy/stock-orders/${id}/cancel`),
+  pharmacyRefundEligible: () => httpClient.get('/clinical/pharmacy/refunds/eligible'),
+  pharmacyRefunds: () => httpClient.get('/clinical/pharmacy/refunds'),
+  createPharmacyRefund: (data) => httpClient.post('/clinical/pharmacy/refunds', data),
+  downloadPharmacyRefundReceipt: (id, filename) =>
+    import('../utils/downloadPdf').then(({ downloadAuthenticatedPdf }) =>
+      downloadAuthenticatedPdf(`/clinical/pharmacy/refunds/${id}/receipt`, filename)
+    ),
 
   // Bed / room management
   updateHospitalRoom: (roomId, data) => httpClient.patch(`/clinical/hospitalization/rooms/${roomId}`, data),

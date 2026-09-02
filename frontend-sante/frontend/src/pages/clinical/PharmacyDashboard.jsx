@@ -17,12 +17,14 @@ import './pharmacy.css';
 const PharmacyHistoryTab = lazy(() => import('./pharmacy/PharmacyHistoryTab.jsx'));
 const PharmacyReportTab = lazy(() => import('./pharmacy/PharmacyReportTab.jsx'));
 const PharmacyStockOrdersTab = lazy(() => import('./pharmacy/PharmacyStockOrdersTab.jsx'));
+const PharmacyRefundsTab = lazy(() => import('./pharmacy/PharmacyRefundsTab.jsx'));
 
 const TABS = [
   { id: 'orders', label: 'Commandes' },
   { id: 'workflow', label: 'Dispensation' },
   { id: 'stock', label: 'Stock' },
   { id: 'history', label: 'Historique' },
+  { id: 'refunds', label: 'Remboursements' },
   { id: 'report', label: 'Rapport' },
 ];
 
@@ -343,6 +345,7 @@ export default function PharmacyDashboard() {
       <Suspense fallback={<p className="pharmacy-panel" role="status">Chargement de la section…</p>}>
         {tab === 'orders' && <PharmacyStockOrdersTab inventory={inventory} onInventoryChange={setInventory} />}
         {tab === 'history' && <PharmacyHistoryTab />}
+        {tab === 'refunds' && <PharmacyRefundsTab />}
         {tab === 'report' && <PharmacyReportTab />}
       </Suspense>
 
@@ -403,6 +406,12 @@ export default function PharmacyDashboard() {
               </div>
             </section>
 
+            <ol className="pharmacy-dispensation-steps" aria-label="Progression de la dispensation">
+              <li className={selectedPatient ? 'is-done' : 'is-active'}><span>1</span>Patient</li>
+              <li className={billingReady ? 'is-done' : selectedPatient ? 'is-active' : ''}><span>2</span>Enregistrer la demande</li>
+              <li className={billingReady ? 'is-active' : ''}><span>3</span>Encaisser et délivrer</li>
+            </ol>
+
             <PharmacyRequestEditor
               lines={lines}
               inventory={inventory}
@@ -422,9 +431,9 @@ export default function PharmacyDashboard() {
               </p>
             )}
 
-            <section className="pharmacy-his-workflow-card pharmacy-his-workflow-card--billing">
+            <section className={`pharmacy-his-workflow-card pharmacy-his-workflow-card--billing${billingReady ? '' : ' pharmacy-his-workflow-card--locked'}`} aria-disabled={!billingReady}>
               <h3>Facturation</h3>
-              {!billingReady && <FormNotice>{BILLING_NOTICE}</FormNotice>}
+              {!billingReady && <div className="pharmacy-billing-lock"><span aria-hidden="true">2</span><div><strong>Facturation verrouillée</strong><FormNotice>{BILLING_NOTICE}</FormNotice></div></div>}
               <div className="pharmacy-his-table-wrap" tabIndex="0" role="region" aria-label="Lignes à facturer">
                 <table className="pharmacy-his-table pharmacy-his-table--billing">
                   <thead>

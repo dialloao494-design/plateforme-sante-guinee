@@ -20,6 +20,10 @@ REASON_LABELS = {
     "service_cancelled": "Service annulé",
     "overpayment": "Trop-perçu",
     "other": "Autre",
+    "returned": "Produit retourné",
+    "billing_error": "Erreur de facturation",
+    "duplicate": "Paiement en double",
+    "quality_issue": "Problème de qualité",
 }
 
 METHOD_LABELS = {

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -93,6 +93,56 @@ class PharmacyStockOrderOut(BaseModel):
     received_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PharmacyRefundItemCreate(BaseModel):
+    inventory_item_id: Optional[int] = None
+    product_name: str = Field(..., min_length=1, max_length=255)
+    quantity: int = Field(..., ge=1)
+    return_to_stock: bool = False
+
+
+class PharmacyRefundCreate(BaseModel):
+    charge_id: int
+    items: list[PharmacyRefundItemCreate] = Field(..., min_length=1)
+    refund_method: Literal["cash", "orange_money", "bank_transfer", "card", "insurance"]
+    reason: Literal["returned", "billing_error", "duplicate", "quality_issue", "other"]
+    reason_notes: str = Field(..., min_length=3, max_length=1000)
+    recipient_name: str = Field(..., min_length=2, max_length=255)
+    recipient_phone: str = Field(..., min_length=6, max_length=32)
+
+
+class PharmacyRefundOut(BaseModel):
+    id: int
+    refund_number: str
+    charge_id: int
+    pharmacy_order_id: int
+    patient_id: int
+    patient_name: str
+    request_number: str
+    amount_gnf: int
+    refund_method: str
+    reason: str
+    reason_notes: str
+    recipient_name: str
+    recipient_phone: str
+    items: list[dict]
+    status: str
+    created_at: datetime
+
+
+class PharmacyRefundEligibleCharge(BaseModel):
+    charge_id: int
+    order_id: int
+    request_number: str
+    patient_id: int
+    patient_name: str
+    paid_amount_gnf: int
+    already_refunded_gnf: int
+    refundable_gnf: int
+    payment_status: str
+    created_at: datetime
+    items: list[dict]
 
 
 class PharmacyChargePaymentCreate(BaseModel):

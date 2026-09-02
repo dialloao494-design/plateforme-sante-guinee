@@ -1644,6 +1644,15 @@ def _serialize_pharmacy_order(order: models.PharmacyOrder, db: Session) -> Pharm
         user = db.query(models.User).filter(models.User.id == order.prepared_by_user_id).first()
         if user:
             prepared_by = user.email.split("@")[0].replace(".", " ").title()
+    charge = (
+        db.query(models.ClinicCharge)
+        .filter(
+            models.ClinicCharge.clinic_id == order.clinic_id,
+            models.ClinicCharge.source_type == "pharmacy_order",
+            models.ClinicCharge.source_id == order.id,
+        )
+        .first()
+    )
     return PharmacyOrderResponse(
         id=order.id,
         clinic_id=order.clinic_id,
@@ -1659,6 +1668,8 @@ def _serialize_pharmacy_order(order: models.PharmacyOrder, db: Session) -> Pharm
         notes=order.notes,
         items=items,
         request_number=f"PHARM-{int(order.clinic_id):03d}-{int(order.id):06d}",
+        charge_id=charge.id if charge else None,
+        invoice_number=f"PHARM-{charge.id}" if charge else None,
     )
 
 

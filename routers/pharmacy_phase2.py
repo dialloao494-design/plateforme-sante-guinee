@@ -20,6 +20,9 @@ from schemas.pharmacy_his import (
     PharmacyChargePaymentCreate,
     PharmacyChargePaymentLegacyCreate,
     PharmacyPatientOut,
+    PharmacyRefundCreate,
+    PharmacyRefundEligibleCharge,
+    PharmacyRefundOut,
     PharmacyServiceRequestCreate,
     PharmacyServiceRequestResponse,
     PharmacyStockOrderCreate,
@@ -37,6 +40,7 @@ router = APIRouter(prefix="/clinical/pharmacy", tags=["Pharmacy Phase 2"])
 PHARMACY_READ = ("pharmacist", "doctor", "clinic_admin", "admin", "receptionist", "cashier", "platform_admin", "platform_owner")
 PHARMACY_WRITE = ("pharmacist", "clinic_admin", "admin", "doctor")
 PHARMACY_STOCK_WRITE = ("pharmacist", "clinic_admin", "admin")
+PHARMACY_REFUND_WRITE = ("pharmacist", "clinic_admin", "admin")
 
 
 def _stock_order_out(row: models.PharmacyStockOrder) -> PharmacyStockOrderOut:
@@ -250,6 +254,101 @@ def pharmacy_dashboard(db: Session = Depends(get_db), current_user: User = Depen
     _require_role(current_user, PHARMACY_READ)
     clinic = resolve_clinic_for_user(db, current_user)
     return PharmacyClinicalService.dashboard_stats(db, clinic_id=clinic.id)
+
+
+@router.get("/refunds/eligible", response_model=List[PharmacyRefundEligibleCharge])
+def eligible_pharmacy_refunds(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    _require_role(current_user, PHARMACY_READ)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return PharmacyClinicalService.eligible_refund_charges(db, clinic_id=clinic.id)
+
+
+@router.get("/refunds", response_model=List[PharmacyRefundOut])
+def list_pharmacy_refunds(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    _require_role(current_user, PHARMACY_READ)
+    clinic = resolve_clinic_for_user(db, current_user)
+    return PharmacyClinicalService.list_refunds(db, clinic_id=clinic.id)
+
+
+@router.post("/refunds", response_model=PharmacyRefundOut, status_code=201)
+def create_pharmacy_refund(
+    body: PharmacyRefundCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_role(current_user, PHARMACY_REFUND_WRITE)
+    clinic = resolve_clinic_for_user(db, current_user)
+    result = PharmacyClinicalService.create_refund(
+        db, clinic_id=clinic.id, payload=body, actor=current_user
+    )
+    log_cis(
+        db,
+        actor=current_user,
+        clinic_id=clinic.id,
+        action="create",
+        resource_type="pharmacy_refund",
+        resource_id=result["id"],
+        after={
+            "refund_number": result["refund_number"],
+            "charge_id": result["charge_id"],
+            "amount_gnf": result["amount_gnf"],
+            "reason": result["reason"],
+        },
+        reason=body.reason_notes,
+    )
+    return result
+
+
+@router.get("/refunds/{refund_id}/receipt")
+def pharmacy_refund_receipt(
+    refund_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from services.pdf_service import printed_by_label
+    from services.refund_receipt_pdf_builder import build_refund_receipt_pdf
+
+    _require_role(current_user, PHARMACY_READ)
+    clinic = resolve_clinic_for_user(db, current_user)
+    row = (
+        db.query(models.PharmacyRefund)
+        .options(joinedload(models.PharmacyRefund.patient))
+        .filter(models.PharmacyRefund.id == refund_id, models.PharmacyRefund.clinic_id == clinic.id)
+        .first()
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Remboursement pharmacie introuvable")
+    now = datetime.utcnow()
+    items = PharmacyClinicalService._refund_items(row)
+    patient_name = f"{row.patient.last_name} {row.patient.first_name}" if row.patient else "—"
+    pdf_bytes = build_refund_receipt_pdf(
+        clinic_name=clinic.name,
+        refund_number=row.refund_number,
+        invoice_number=f"PHARM-{row.charge_id}",
+        patient_name=patient_name,
+        patient_number=row.patient.patient_number if row.patient else "",
+        service_paid_for=", ".join(f"{item['product_name']} × {item['quantity']}" for item in items),
+        amount_consumed_gnf=max(0, int(row.charge.paid_amount_gnf or 0) - int(row.amount_gnf or 0)),
+        refund_amount_gnf=row.amount_gnf,
+        reason=row.reason,
+        reason_notes=row.reason_notes,
+        recipient_name=row.recipient_name,
+        recipient_phone=row.recipient_phone,
+        refund_method=row.refund_method,
+        status=row.status,
+        printed_by=printed_by_label(current_user),
+        printed_date=now.strftime("%d/%m/%Y"),
+        printed_time=now.strftime("%H:%M"),
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="remboursement-{row.refund_number}.pdf"'},
+    )
 
 
 @router.get("/stock-orders", response_model=List[PharmacyStockOrderOut])

@@ -822,3 +822,96 @@
   font-size: 0.85rem;
   line-height: 1.5;
 }
+
+.pharmacy-dispensation-steps,
+.pharmacy-refund-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pharmacy-dispensation-steps li,
+.pharmacy-refund-steps li {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  min-height: 48px;
+  padding: .7rem 1rem;
+  border: 1px solid #cbdce6;
+  border-radius: 12px;
+  background: #fff;
+  color: #617489;
+  font-weight: 750;
+}
+
+.pharmacy-dispensation-steps span,
+.pharmacy-refund-steps span {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: #e7eef3;
+}
+
+.pharmacy-dispensation-steps .is-active,
+.pharmacy-refund-steps .is-active { border-color: #078b80; color: #075e58; background: #effbf9; }
+.pharmacy-dispensation-steps .is-done,
+.pharmacy-refund-steps .is-done { color: #075e58; }
+.pharmacy-dispensation-steps .is-done span,
+.pharmacy-refund-steps .is-done span { background: #078b80; color: #fff; }
+
+.pharmacy-his-workflow-card--locked > :not(h3):not(.pharmacy-billing-lock) { display: none; }
+.pharmacy-billing-lock { display: flex; gap: 1rem; align-items: flex-start; padding: 1.2rem; border: 1px dashed #9db8c8; border-radius: 12px; background: #f7fafc; }
+.pharmacy-billing-lock > span { display: grid; place-items: center; flex: 0 0 2.25rem; height: 2.25rem; border-radius: 50%; background: #dce7ed; color: #456176; font-weight: 800; }
+.pharmacy-billing-lock strong { display: block; color: #183b55; margin-bottom: .25rem; }
+
+.pharmacy-refunds { display: grid; gap: 1.25rem; }
+.pharmacy-refund-picker > label { display: grid; gap: .45rem; font-weight: 750; }
+.pharmacy-refund-picker input,
+.pharmacy-refund-form input,
+.pharmacy-refund-form select,
+.pharmacy-refund-form textarea { min-height: 48px; padding: .7rem .8rem; border: 1px solid #9db8d3; border-radius: 10px; background: #fff; color: #092b47; font: inherit; }
+.pharmacy-refund-invoices { display: grid; gap: .65rem; margin-top: 1rem; }
+.pharmacy-refund-invoices button { display: flex; justify-content: space-between; gap: 1rem; min-height: 64px; padding: .8rem 1rem; border: 1px solid #c7d9e5; border-radius: 12px; background: #fff; color: #163852; text-align: left; cursor: pointer; }
+.pharmacy-refund-invoices button:hover,
+.pharmacy-refund-invoices button:focus-visible { border-color: #078b80; background: #f0fdfa; }
+.pharmacy-refund-invoices span { display: grid; gap: .2rem; }
+.pharmacy-refund-invoices span:last-child { text-align: right; }
+.pharmacy-refund-invoices small { color: #617489; }
+.pharmacy-refund-form > header,
+.pharmacy-refund-form > footer { display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; }
+.pharmacy-refund-form h3,
+.pharmacy-refund-form header p { margin: .2rem 0; }
+.pharmacy-refund-form fieldset { margin: 1.25rem 0; padding: 1rem; border: 1px solid #c7d9e5; border-radius: 12px; }
+.pharmacy-refund-form legend { padding: 0 .4rem; font-weight: 800; }
+.pharmacy-refund-line { display: grid; grid-template-columns: minmax(18rem, 1.5fr) 8rem minmax(15rem, 1fr); gap: 1rem; align-items: center; padding: .85rem 0; border-bottom: 1px solid #e1ebf1; }
+.pharmacy-refund-line:last-child { border-bottom: 0; }
+.pharmacy-refund-line label { display: grid; gap: .35rem; font-weight: 700; }
+.pharmacy-refund-check { grid-template-columns: auto 1fr; align-items: center; }
+.pharmacy-refund-check input,
+.pharmacy-refund-stock input { width: 1.25rem; min-height: 1.25rem; }
+.pharmacy-refund-check span { display: grid; gap: .2rem; }
+.pharmacy-refund-check small { color: #617489; font-weight: 500; }
+.pharmacy-refund-stock { grid-template-columns: auto 1fr; align-items: center; }
+.pharmacy-refund-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.pharmacy-refund-fields label { display: grid; gap: .4rem; color: #29445c; font-weight: 700; }
+.pharmacy-refund-notes { grid-column: 1 / -1; }
+.pharmacy-refund-notes textarea { min-height: 6rem; resize: vertical; }
+.pharmacy-refund-form footer { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #dce7ed; }
+.pharmacy-refund-form footer div { display: grid; gap: .2rem; }
+.pharmacy-refund-form footer strong { font-size: 1.8rem; color: #075e58; }
+.pharmacy-refund-form footer p { margin: 0; color: #617489; }
+.pharmacy-compact-action { min-height: 42px; padding: .5rem .75rem; white-space: nowrap; }
+
+@media (max-width: 760px) {
+  .pharmacy-dispensation-steps,
+  .pharmacy-refund-steps,
+  .pharmacy-refund-fields { grid-template-columns: 1fr; }
+  .pharmacy-refund-line { grid-template-columns: 1fr; }
+  .pharmacy-refund-form > header,
+  .pharmacy-refund-form > footer { align-items: stretch; flex-direction: column; }
+}

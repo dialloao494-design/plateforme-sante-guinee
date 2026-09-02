@@ -533,6 +533,8 @@ class PharmacyOrderResponse(BaseModel):
     notes: Optional[str] = None
     items: list[PrescriptionItemBrief] = []
     request_number: Optional[str] = None
+    charge_id: Optional[int] = None
+    invoice_number: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

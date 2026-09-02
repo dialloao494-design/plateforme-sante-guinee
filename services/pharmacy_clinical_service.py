@@ -19,6 +19,18 @@ from services.pharmacy_inventory_service import PharmacyInventoryService
 
 class PharmacyClinicalService:
     @staticmethod
+    def _refund_items(refund: models.PharmacyRefund) -> list[dict]:
+        try:
+            value = json.loads(refund.items_json or "[]")
+            return value if isinstance(value, list) else []
+        except (TypeError, json.JSONDecodeError):
+            return []
+
+    @staticmethod
+    def _refund_number(refund: models.PharmacyRefund) -> str:
+        return f"RPH-{int(refund.clinic_id):03d}-{int(refund.id):06d}"
+
+    @staticmethod
     def dashboard_stats(db: Session, *, clinic_id: int) -> dict:
         today_start = datetime.combine(date.today(), datetime.min.time())
         month_start = datetime(date.today().year, date.today().month, 1)
@@ -129,6 +141,13 @@ class PharmacyClinicalService:
         pending = sum(max(0, int(c.amount_gnf or 0) - int(c.paid_amount_gnf or 0)) for c in charges)
         collected_for_period_sales = sum(min(int(c.amount_gnf or 0), int(c.paid_amount_gnf or 0)) for c in charges)
         unique_patients = len({charge.patient_id for charge in charges if charge.patient_id})
+        refunds = db.query(models.PharmacyRefund).filter(
+            models.PharmacyRefund.clinic_id == clinic_id,
+            models.PharmacyRefund.status == "paid",
+            models.PharmacyRefund.created_at >= start,
+            models.PharmacyRefund.created_at <= end,
+        ).all()
+        refunded = sum(int(row.amount_gnf or 0) for row in refunds)
         return {
             "year": year,
             "month": month,
@@ -138,6 +157,8 @@ class PharmacyClinicalService:
             "requests_created": len(charges),
             "generated_revenue_gnf": generated,
             "collected_revenue_gnf": collected,
+            "refunded_gnf": refunded,
+            "net_revenue_gnf": collected - refunded,
             "pending_revenue_gnf": pending,
             "collection_rate_percent": round((collected_for_period_sales / generated * 100), 1) if generated else 0,
             "top_medications": sorted(
@@ -145,6 +166,178 @@ class PharmacyClinicalService:
             )[:10],
             "register_rows": register_rows,
         }
+
+    @staticmethod
+    def eligible_refund_charges(db: Session, *, clinic_id: int) -> list[dict]:
+        charges = (
+            db.query(models.ClinicCharge)
+            .options(joinedload(models.ClinicCharge.patient))
+            .filter(
+                models.ClinicCharge.clinic_id == clinic_id,
+                models.ClinicCharge.charge_type == "pharmacy",
+                models.ClinicCharge.paid_amount_gnf > 0,
+            )
+            .order_by(models.ClinicCharge.created_at.desc())
+            .limit(250)
+            .all()
+        )
+        result = []
+        for charge in charges:
+            order = db.query(models.PharmacyOrder).filter(
+                models.PharmacyOrder.id == charge.source_id,
+                models.PharmacyOrder.clinic_id == clinic_id,
+            ).first()
+            if not order:
+                continue
+            refunds = db.query(models.PharmacyRefund).filter(
+                models.PharmacyRefund.clinic_id == clinic_id,
+                models.PharmacyRefund.charge_id == charge.id,
+                models.PharmacyRefund.status == "paid",
+            ).all()
+            refunded = sum(int(row.amount_gnf or 0) for row in refunds)
+            refundable = max(0, int(charge.paid_amount_gnf or 0) - refunded)
+            if refundable <= 0:
+                continue
+            result.append({
+                "charge_id": charge.id,
+                "order_id": order.id,
+                "request_number": PharmacyClinicalService.request_number(order),
+                "patient_id": charge.patient_id,
+                "patient_name": f"{charge.patient.last_name} {charge.patient.first_name}" if charge.patient else "—",
+                "paid_amount_gnf": int(charge.paid_amount_gnf or 0),
+                "already_refunded_gnf": refunded,
+                "refundable_gnf": refundable,
+                "payment_status": charge.payment_status,
+                "created_at": charge.created_at,
+                "items": PharmacyClinicalService._line_items_from_order(order),
+            })
+        return result
+
+    @staticmethod
+    def list_refunds(db: Session, *, clinic_id: int) -> list[dict]:
+        rows = (
+            db.query(models.PharmacyRefund)
+            .options(joinedload(models.PharmacyRefund.patient))
+            .filter(models.PharmacyRefund.clinic_id == clinic_id)
+            .order_by(models.PharmacyRefund.created_at.desc())
+            .limit(250)
+            .all()
+        )
+        return [PharmacyClinicalService.serialize_refund(row) for row in rows]
+
+    @staticmethod
+    def serialize_refund(row: models.PharmacyRefund) -> dict:
+        return {
+            "id": row.id,
+            "refund_number": row.refund_number,
+            "charge_id": row.charge_id,
+            "pharmacy_order_id": row.pharmacy_order_id,
+            "patient_id": row.patient_id,
+            "patient_name": f"{row.patient.last_name} {row.patient.first_name}" if row.patient else "—",
+            "request_number": f"PHARM-{int(row.clinic_id):03d}-{int(row.pharmacy_order_id):06d}",
+            "amount_gnf": row.amount_gnf,
+            "refund_method": row.refund_method,
+            "reason": row.reason,
+            "reason_notes": row.reason_notes,
+            "recipient_name": row.recipient_name,
+            "recipient_phone": row.recipient_phone,
+            "items": PharmacyClinicalService._refund_items(row),
+            "status": row.status,
+            "created_at": row.created_at,
+        }
+
+    @staticmethod
+    def create_refund(db: Session, *, clinic_id: int, payload, actor: User) -> dict:
+        charge = (
+            db.query(models.ClinicCharge)
+            .filter(
+                models.ClinicCharge.id == payload.charge_id,
+                models.ClinicCharge.clinic_id == clinic_id,
+                models.ClinicCharge.charge_type == "pharmacy",
+            )
+            .with_for_update()
+            .first()
+        )
+        if not charge:
+            raise HTTPException(status_code=404, detail="Facture pharmacie introuvable")
+        order = db.query(models.PharmacyOrder).filter(
+            models.PharmacyOrder.id == charge.source_id,
+            models.PharmacyOrder.clinic_id == clinic_id,
+        ).first()
+        if not order:
+            raise HTTPException(status_code=404, detail="Demande pharmacie introuvable")
+        original_lines = PharmacyClinicalService._line_items_from_order(order)
+        previous = db.query(models.PharmacyRefund).filter(
+            models.PharmacyRefund.clinic_id == clinic_id,
+            models.PharmacyRefund.charge_id == charge.id,
+            models.PharmacyRefund.status == "paid",
+        ).all()
+        already_amount = sum(int(row.amount_gnf or 0) for row in previous)
+        remaining_amount = max(0, int(charge.paid_amount_gnf or 0) - already_amount)
+        if remaining_amount <= 0:
+            raise HTTPException(status_code=400, detail="Cette facture est déjà entièrement remboursée")
+        previous_quantities: dict[str, int] = {}
+        for previous_refund in previous:
+            for line in PharmacyClinicalService._refund_items(previous_refund):
+                key = str(line.get("inventory_item_id") or line.get("product_name") or "").lower()
+                previous_quantities[key] = previous_quantities.get(key, 0) + int(line.get("quantity") or 0)
+        refund_lines = []
+        gross_selected = 0
+        for requested in payload.items:
+            match = next((line for line in original_lines if (
+                requested.inventory_item_id and line.get("inventory_item_id") == requested.inventory_item_id
+            ) or str(line.get("product_name") or "").strip().lower() == requested.product_name.strip().lower()), None)
+            if not match:
+                raise HTTPException(status_code=400, detail=f"Produit absent de la facture : {requested.product_name}")
+            key = str(match.get("inventory_item_id") or match.get("product_name") or "").lower()
+            available_qty = int(match.get("quantity") or 0) - previous_quantities.get(key, 0)
+            if requested.quantity > available_qty:
+                raise HTTPException(status_code=400, detail=f"Quantité remboursable dépassée pour {requested.product_name}")
+            line_gross = requested.quantity * int(match.get("unit_price_gnf") or 0)
+            gross_selected += line_gross
+            refund_lines.append({
+                "inventory_item_id": match.get("inventory_item_id"),
+                "product_name": match.get("product_name"),
+                "quantity": requested.quantity,
+                "unit_price_gnf": int(match.get("unit_price_gnf") or 0),
+                "return_to_stock": bool(requested.return_to_stock),
+            })
+        subtotal = int(charge.subtotal_amount_gnf or charge.amount_gnf or 0)
+        amount = round(gross_selected * int(charge.amount_gnf or 0) / subtotal) if subtotal else 0
+        amount = min(amount, remaining_amount)
+        if amount <= 0:
+            raise HTTPException(status_code=400, detail="Le montant remboursable doit être supérieur à zéro")
+        for line in refund_lines:
+            line["amount_gnf"] = round(line["quantity"] * line["unit_price_gnf"] * amount / gross_selected) if gross_selected else 0
+            if line["return_to_stock"]:
+                if not line["inventory_item_id"]:
+                    raise HTTPException(status_code=400, detail=f"Stock introuvable pour {line['product_name']}")
+                item = PharmacyInventoryService.get_item(db, clinic_id=clinic_id, item_id=line["inventory_item_id"])
+                item.quantity += int(line["quantity"])
+        row = models.PharmacyRefund(
+            clinic_id=clinic_id,
+            charge_id=charge.id,
+            pharmacy_order_id=order.id,
+            patient_id=charge.patient_id,
+            refund_number=f"pending-{datetime.utcnow().timestamp()}-{actor.id}",
+            amount_gnf=amount,
+            refund_method=payload.refund_method,
+            reason=payload.reason,
+            reason_notes=payload.reason_notes.strip(),
+            recipient_name=payload.recipient_name.strip(),
+            recipient_phone=payload.recipient_phone.strip(),
+            items_json=json.dumps(refund_lines),
+            status="paid",
+            created_by_user_id=actor.id,
+        )
+        db.add(row)
+        db.flush()
+        row.refund_number = PharmacyClinicalService._refund_number(row)
+        total_refunded = already_amount + amount
+        charge.payment_status = "refunded" if total_refunded >= int(charge.paid_amount_gnf or 0) else "partially_refunded"
+        db.commit()
+        row = db.query(models.PharmacyRefund).options(joinedload(models.PharmacyRefund.patient)).filter(models.PharmacyRefund.id == row.id).first()
+        return PharmacyClinicalService.serialize_refund(row)
 
     @staticmethod
     def request_number(order: models.PharmacyOrder) -> str:

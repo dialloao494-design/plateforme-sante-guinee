@@ -17,10 +17,14 @@ test('pharmacy exposes orders, dispensing history and management report on deskt
   await expect(page.getByRole('heading', { name: 'Historique des dispensations' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'N° demande' })).toBeVisible();
 
+  await page.getByTestId('pharmacy-tab-refunds').click();
+  await expect(page.getByRole('heading', { name: 'Remboursements patients' })).toBeVisible();
+  await expect(page.getByLabel('Rechercher une facture payée')).toBeVisible();
+
   await page.getByTestId('pharmacy-tab-report').click();
   await expect(page.getByRole('heading', { name: 'Rapport pharmacie' })).toBeVisible();
   await expect(page.getByText('Patients servis', { exact: true })).toBeVisible();
-  await expect(page.getByText('Recettes encaissées', { exact: true })).toBeVisible();
+  await expect(page.getByText('Recettes nettes', { exact: true })).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);

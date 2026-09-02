@@ -25,8 +25,8 @@ export default function PharmacyReportTab() {
       <div className="pharmacy-report-scorecard" aria-label="Indicateurs pharmacie">
         <article><span>Patients servis</span><strong>{report.unique_patients}</strong><small>patients distincts</small></article>
         <article><span>Dispensations</span><strong>{report.total_dispensed}</strong><small>commandes délivrées</small></article>
-        <article className="pharmacy-report-scorecard__money"><span>Recettes encaissées</span><strong>{formatGNF(report.collected_revenue_gnf)}</strong><small>{report.collection_rate_percent}% des ventes</small></article>
-        <article><span>Reste à encaisser</span><strong>{formatGNF(report.pending_revenue_gnf)}</strong><small>sur {formatGNF(report.generated_revenue_gnf)}</small></article>
+        <article className="pharmacy-report-scorecard__money"><span>Recettes nettes</span><strong>{formatGNF(report.net_revenue_gnf)}</strong><small>{formatGNF(report.collected_revenue_gnf)} encaissés</small></article>
+        <article><span>Remboursé</span><strong>{formatGNF(report.refunded_gnf)}</strong><small>Reste à encaisser : {formatGNF(report.pending_revenue_gnf)}</small></article>
       </div>
       <div className="pharmacy-report-grid">
         <article className="pharmacy-report-card"><h3>Médicaments les plus délivrés</h3>{report.top_medications?.length ? <ol>{report.top_medications.map((item) => <li key={item.medication_name}><span>{item.medication_name}<small>{item.quantity} unité(s)</small></span><strong>{formatGNF(item.revenue_gnf)}</strong></li>)}</ol> : <p className="pharmacy-empty">Aucun médicament délivré pour ce mois.</p>}</article>
