@@ -686,6 +686,7 @@ def print_receipt(
             "quantity": i.quantity,
             "unit_price_gnf": i.unit_price_gnf,
             "amount_gnf": i.amount_gnf,
+            "unit_label": "jour(s)" if i.charge_type == "hospitalization" else None,
         }
         for i in (invoice.items or [])
     ]

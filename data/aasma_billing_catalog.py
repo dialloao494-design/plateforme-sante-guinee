@@ -49,13 +49,15 @@ CONSULTATION_SERVICES = [
     },
 ]
 
-# Hospitalization tariffs confirmed by the clinic. Pediatric prices correspond
-# to distinct accommodation types, not competing prices for the same bed.
+# Hospitalization tariffs confirmed by the clinic. The two pediatric prices are
+# distinct accommodation types; the two shared-room prices intentionally retain
+# their clinic-provided rate as the visible distinction.
 HOSPITALIZATION_SERVICES = [
-    {"code": "hospitalization_standard", "label": "Hospitalisation — lit standard", "charge_type": "hospitalization", "price_gnf": 200_000},
-    {"code": "hospitalization_private_cabin", "label": "Hospitalisation — cabine privée", "charge_type": "hospitalization", "price_gnf": 500_000},
-    {"code": "hospitalization_pediatric_cradle", "label": "Hospitalisation pédiatrique — berceau nouveau-né", "charge_type": "hospitalization", "price_gnf": 80_000},
-    {"code": "hospitalization_pediatric_bed", "label": "Hospitalisation pédiatrique — lit standard", "charge_type": "hospitalization", "price_gnf": 120_000},
+    {"code": "hospitalization_shared_room_180", "label": "Hospitalisation — lit salle commune (tarif 180 000)", "charge_type": "hospitalization", "price_gnf": 180_000},
+    {"code": "hospitalization_standard", "label": "Hospitalisation — lit salle commune (tarif 200 000)", "charge_type": "hospitalization", "price_gnf": 200_000},
+    {"code": "hospitalization_private_cabin", "label": "Hospitalisation — cabine VIP", "charge_type": "hospitalization", "price_gnf": 500_000},
+    {"code": "hospitalization_pediatric_cradle", "label": "Hospitalisation — lit pédiatrie berceau nouveau-né", "charge_type": "hospitalization", "price_gnf": 80_000},
+    {"code": "hospitalization_pediatric_bed", "label": "Hospitalisation — lit pédiatrie", "charge_type": "hospitalization", "price_gnf": 120_000},
 ]
 
 # Clinic tariff sheet (20-07-26):

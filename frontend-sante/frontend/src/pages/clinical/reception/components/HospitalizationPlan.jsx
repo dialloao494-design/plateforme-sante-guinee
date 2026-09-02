@@ -2,8 +2,9 @@ import { formatGNF } from '../../../../utils/appointmentPresentation.js';
 
 const PEDIATRIC_SPECIALTIES = new Set(['pediatrics', 'pediatric_surgery']);
 const ACCOMMODATIONS = {
-  hospitalization_standard: { type: 'standard_bed', title: 'Lit standard', guidance: 'Hospitalisation générale' },
-  hospitalization_private_cabin: { type: 'private_cabin', title: 'Cabine privée', guidance: 'Hospitalisation générale' },
+  hospitalization_shared_room_180: { type: 'shared_room_bed', title: 'Lit salle commune', guidance: 'Tarif journalier : 180 000 GNF' },
+  hospitalization_standard: { type: 'standard_bed', title: 'Lit salle commune', guidance: 'Tarif journalier : 200 000 GNF' },
+  hospitalization_private_cabin: { type: 'private_cabin', title: 'Cabine VIP', guidance: 'Chambre individuelle' },
   hospitalization_pediatric_cradle: { type: 'pediatric_cradle', title: 'Berceau nouveau-né', guidance: 'Pour un nouveau-né' },
   hospitalization_pediatric_bed: { type: 'pediatric_bed', title: 'Lit pédiatrique standard', guidance: 'Pour un enfant après la période néonatale' },
 };
@@ -13,7 +14,7 @@ export default function HospitalizationPlan({ form, specialties, options, setFor
   const availableOptions = form.specialty_code
     ? options.filter((option) => pediatric
       ? option.code.startsWith('hospitalization_pediatric_')
-      : ['hospitalization_standard', 'hospitalization_private_cabin'].includes(option.code))
+      : ['hospitalization_shared_room_180', 'hospitalization_standard', 'hospitalization_private_cabin'].includes(option.code))
     : [];
 
   const selectAccommodation = (option) => {
@@ -33,7 +34,7 @@ export default function HospitalizationPlan({ form, specialties, options, setFor
   return (
     <fieldset className="reception-his-nested-fieldset hospitalization-plan" data-testid="hospitalization-service-plan">
       <legend>Plan de séjour</legend>
-      <p className="clinical-hint">La spécialité et le type de lit déterminent le tarif journalier.</p>
+      <p className="clinical-hint">Choisissez le lit et le nombre de jours. Le total est calculé automatiquement.</p>
       <div className="hospitalization-plan__grid">
         <label>Spécialité *
           <select required value={form.specialty_code} onChange={(event) => setForm((previous) => ({
@@ -70,14 +71,14 @@ export default function HospitalizationPlan({ form, specialties, options, setFor
               <span>
                 <strong>{accommodation.title}</strong>
                 <small>{accommodation.guidance}</small>
-                <small>{formatGNF(option.price_gnf)} / jour</small>
+                <small><strong>{formatGNF(option.price_gnf)} / jour</strong></small>
               </span>
             </label>;
           })}
         </div>
       ) : <p className="clinical-hint">Choisissez d’abord la spécialité pour afficher les lits disponibles.</p>}
       <div className="hospitalization-plan__total" role="status">
-        <span>{form.quantity || 1} jour(s) facturable(s)</span>
+        <span>{form.quantity || 1} jour(s) × {form.accommodation_type ? formatGNF(form.unit_price_gnf || 0) : 'tarif à choisir'}</span>
         <strong>{form.accommodation_type
           ? formatGNF(Number(form.unit_price_gnf || 0) * Number(form.quantity || 1))
           : 'Choisissez un type de lit'}</strong>

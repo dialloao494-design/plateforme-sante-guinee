@@ -63,6 +63,7 @@ def invoice_issued_at_for_date(billing_date: date | None, *, now: datetime | Non
 
 _PEDIATRIC_HOSPITALIZATION_SPECIALTIES = {"pediatrics", "pediatric_surgery"}
 _HOSPITALIZATION_CATALOG_BY_ACCOMMODATION = {
+    "shared_room_bed": "hospitalization_shared_room_180",
     "standard_bed": "hospitalization_standard",
     "private_cabin": "hospitalization_private_cabin",
     "pediatric_cradle": "hospitalization_pediatric_cradle",
@@ -86,12 +87,12 @@ def _hospitalization_selection(
         raise HTTPException(status_code=400, detail="Spécialité d'hospitalisation invalide")
 
     pediatric = specialty_code in _PEDIATRIC_HOSPITALIZATION_SPECIALTIES
-    allowed = {"pediatric_cradle", "pediatric_bed"} if pediatric else {"standard_bed", "private_cabin"}
+    allowed = {"pediatric_cradle", "pediatric_bed"} if pediatric else {"shared_room_bed", "standard_bed", "private_cabin"}
     if accommodation not in allowed:
         detail = (
             "Choisissez un berceau nouveau-né ou un lit pédiatrique standard"
             if pediatric
-            else "Choisissez un lit standard ou une cabine privée"
+            else "Choisissez un lit salle commune à 180 000 ou 200 000 GNF, ou une cabine VIP"
         )
         raise HTTPException(status_code=400, detail=detail)
 

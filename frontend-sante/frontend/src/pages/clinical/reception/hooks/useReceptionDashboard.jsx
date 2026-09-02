@@ -682,7 +682,17 @@ export function useReceptionDashboard() {
     // Two frames guarantee that the selected print root is committed and laid
     // out before the browser snapshots the A4 document.
     window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => window.print());
+      window.requestAnimationFrame(async () => {
+        const target = document.querySelector('.clinical-print-target');
+        try {
+          const { printIsolatedDocument } = await import('../../../../utils/printIsolatedDocument.js');
+          await printIsolatedDocument(target);
+        } catch (err) {
+          setError(formatApiError(err, 'Impression impossible'));
+        } finally {
+          setActivePrintDocument('');
+        }
+      });
     });
   }, []);
 

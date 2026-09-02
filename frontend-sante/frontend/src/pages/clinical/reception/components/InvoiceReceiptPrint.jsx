@@ -51,7 +51,7 @@ export default function InvoiceReceiptPrint({ invoice, patient, user, printedAt,
             return (
               <tr key={item.id || `${item.catalog_code || item.description}-${index}`}>
                 <td>{item.description || 'Prestation'}</td>
-                <td>{quantity}</td>
+                <td>{item.charge_type === 'hospitalization' ? `${quantity} jour(s)` : quantity}</td>
                 <td>{formatGNF(unitPrice)}</td>
                 <td>{formatGNF(item.amount_gnf ?? quantity * unitPrice)}</td>
               </tr>

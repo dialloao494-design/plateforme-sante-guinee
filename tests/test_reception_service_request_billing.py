@@ -165,11 +165,63 @@ def test_hospitalization_catalog_includes_adult_and_pediatric_bed_rates(client, 
     catalog = client.get("/clinical/reception/his/billing-catalog", headers=headers).json()
     prices = {row["code"]: row["price_gnf"] for row in catalog["hospitalization_services"]}
     assert prices == {
+        "hospitalization_shared_room_180": 180_000,
         "hospitalization_standard": 200_000,
         "hospitalization_private_cabin": 500_000,
         "hospitalization_pediatric_cradle": 80_000,
         "hospitalization_pediatric_bed": 120_000,
     }
+
+
+def test_shared_room_180_multiplies_days_and_prints_daily_basis(client, db_session):
+    from io import BytesIO
+    from pypdf import PdfReader
+
+    _clinic, admin, patient = _seed_clinic_admin(db_session)
+    headers = _auth(admin)
+    created = client.post(
+        "/clinical/reception/his/service-requests",
+        json={
+            "patient_id": patient.id,
+            "service_category": "hospitalization",
+            "service_name": "Hospitalisation salle commune",
+            "catalog_code": "hospitalization_shared_room_180",
+            "duration_value": 3,
+            "duration_unit": "days",
+            "specialty_code": "medicine",
+            "accommodation_type": "shared_room_bed",
+        },
+        headers=headers,
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["unit_price_gnf"] == 180_000
+    assert created.json()["quantity"] == 3
+
+    invoice = client.post(
+        "/clinical/reception/his/invoices",
+        json={
+            "patient_id": patient.id,
+            "department": "Hospitalisation",
+            "items": [{
+                "source_type": "service_request",
+                "source_ref": created.json()["request_number"],
+                "catalog_code": created.json()["catalog_code"],
+                "quantity": 1,
+            }],
+        },
+        headers=headers,
+    )
+    assert invoice.status_code == 201, invoice.text
+    assert invoice.json()["subtotal_amount_gnf"] == 540_000
+    receipt = client.get(
+        f"/clinical/reception/his/invoices/{invoice.json()['id']}/receipt",
+        headers=headers,
+    )
+    assert receipt.status_code == 200
+    pages = PdfReader(BytesIO(receipt.content)).pages
+    assert len(pages) == 1
+    assert all((page.extract_text() or "").strip() for page in pages)
+    assert "3 jour(s)" in pages[0].extract_text()
 
 
 def test_pediatric_hospitalization_uses_selected_bed_rate(client, db_session):

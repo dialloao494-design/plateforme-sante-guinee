@@ -199,10 +199,11 @@ def build_hospital_invoice_pdf(
         qty = int(item.get("quantity") or 1)
         unit = int(item.get("unit_price_gnf") or item.get("amount_gnf") or 0)
         amt = int(item.get("amount_gnf") or item.get("total_gnf") or qty * unit)
+        quantity_text = f"{qty} {item['unit_label']}" if item.get("unit_label") else str(qty)
         item_rows.append(
             [
                 Paragraph(desc, styles["cell"]),
-                Paragraph(str(qty), styles["cell_right"]),
+                Paragraph(quantity_text, styles["cell_right"]),
                 Paragraph(_gnf(unit), styles["cell_right"]),
                 Paragraph(_gnf(amt), styles["cell_right"]),
             ]

@@ -58,6 +58,14 @@ test('service-request workspace stays coherent and creates a catalogue-backed re
 
   await page.getByLabel('Catégorie').selectOption('hospitalization');
   await expect(page.getByTestId('hospitalization-service-plan')).toBeVisible();
+  await page.getByLabel('Spécialité *').selectOption('medicine');
+  await expect(page.getByTestId('hospitalization-service-plan')).toContainText('180 000 GNF');
+  await expect(page.getByTestId('hospitalization-service-plan')).toContainText('200 000 GNF');
+  await expect(page.getByText('Cabine VIP', { exact: true })).toBeVisible();
+  await page.getByLabel('Durée *').fill('3');
+  await page.getByText('Tarif journalier : 180 000 GNF', { exact: true }).click();
+  await expect(page.getByTestId('hospitalization-service-plan')).toContainText('3 jour(s) × 180 000 GNF');
+  await expect(page.getByTestId('hospitalization-service-plan')).toContainText('540 000 GNF');
   await page.getByLabel('Spécialité *').selectOption('pediatrics');
   await expect(page.getByText('Berceau nouveau-né', { exact: true })).toBeVisible();
   await expect(page.getByText('Lit pédiatrique standard', { exact: true })).toBeVisible();
