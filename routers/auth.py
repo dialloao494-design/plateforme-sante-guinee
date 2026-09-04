@@ -594,6 +594,12 @@ def change_password(
     current_user.session_version = int(current_user.session_version or 0) + 1
     if hasattr(current_user, "must_change_password"):
         current_user.must_change_password = False
+    # Password change proves identity — clear any prior lockout so the next
+    # login cannot immediately bounce into the sticky lock loop.
+    if hasattr(current_user, "failed_login_attempts"):
+        current_user.failed_login_attempts = 0
+    if hasattr(current_user, "locked_until"):
+        current_user.locked_until = None
     bump_token_version(db, current_user)
     db.add(current_user)
     db.commit()

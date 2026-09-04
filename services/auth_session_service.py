@@ -265,8 +265,23 @@ def check_account_lockout(user: User) -> None:
 
 
 def record_login_failure(db: Session, user: User | None) -> None:
+    """Record a failed password check.
+
+    Soft failures only increment the counter and return to the caller so the
+    login endpoint can respond with a normal 401 ("wrong password"). Raising
+    429 here made clinic staff see a permanent "account locked" message after
+    only a few typos — and the production frontend mapped every 429 to lockout.
+    Hard lock still applies at LOGIN_MAX_FAILURES.
+    """
     if user is None:
         return
+    # Defensive: if a prior window already expired but counter was left hot,
+    # start a fresh budget before counting this failure.
+    locked_until = getattr(user, "locked_until", None)
+    if locked_until and locked_until <= datetime.utcnow():
+        user.locked_until = None
+        user.failed_login_attempts = 0
+
     failures = int(getattr(user, "failed_login_attempts", 0) or 0) + 1
     user.failed_login_attempts = failures
     now = datetime.utcnow()
@@ -282,12 +297,12 @@ def record_login_failure(db: Session, user: User | None) -> None:
         )
     db.add(user)
     db.commit()
+    # Soft threshold is retained for metrics/ops only — do not 429 here.
     if failures >= LOGIN_SOFT_LOCK_START:
-        delay = min(2**failures, 60)
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many failed login attempts. Slow down and try again.",
-            headers={"Retry-After": str(delay)},
+        logger.info(
+            "Soft login throttle user_id=%s failures=%s (returning 401 to client)",
+            user.id,
+            failures,
         )
 
 

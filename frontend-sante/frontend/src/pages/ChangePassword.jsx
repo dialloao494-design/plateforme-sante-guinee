@@ -27,12 +27,12 @@ export default function ChangePassword({ forced = false }) {
     event.preventDefault();
     setFormError('');
 
-    if (newPassword.length < 8) {
-      setFormError('Le nouveau mot de passe doit contenir au moins 8 caractères.');
+    if (newPassword.length < 12) {
+      setFormError('Le nouveau mot de passe doit contenir au moins 12 caractères.');
       return;
     }
-    if (!/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
-      setFormError('Le mot de passe doit contenir au moins une majuscule et un chiffre.');
+    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      setFormError('Le mot de passe doit contenir majuscule, minuscule et chiffre.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -94,7 +94,7 @@ export default function ChangePassword({ forced = false }) {
           disabled={loading}
         />
 
-        <p className="login-stat-hint">Au moins 8 caractères, une majuscule et un chiffre.</p>
+        <p className="login-stat-hint">Au moins 12 caractères, avec majuscule, minuscule et chiffre.</p>
 
         <button type="submit" className="account-submit" disabled={loading}>
           {loading ? 'Enregistrement…' : 'Mettre à jour le mot de passe'}

@@ -317,7 +317,19 @@ export const AuthProvider = ({ children }) => {
     setActionLoading(true);
     setError(null);
     try {
-      await authAPI.changePassword(currentPassword, newPassword);
+      // Server revokes prior tokens and returns a fresh session. Persist it
+      // before /auth/me or refresh will 401 and look like a failed change.
+      const payload = await authAPI.changePassword(currentPassword, newPassword);
+      persistSessionTokens(payload || {});
+      if (payload && typeof payload === 'object') {
+        const normalizedFromChange = normalizeAndStoreUser({
+          ...payload,
+          must_change_password: false,
+        });
+        if (normalizedFromChange?.id || normalizedFromChange?.email) {
+          setUser((prev) => ({ ...(prev || {}), ...normalizedFromChange, must_change_password: false }));
+        }
+      }
       invalidateCache('/auth/me');
       const updated = await refreshUser();
       return { success: true, user: updated };

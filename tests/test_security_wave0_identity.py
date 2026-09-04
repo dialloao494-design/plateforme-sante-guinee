@@ -240,7 +240,7 @@ def test_account_lockout_after_failures(client, db_session, admin_user):
     db_session.add(admin_user)
     db_session.commit()
 
-    # Soft throttle begins at LOGIN_SOFT_LOCK_START (default 3)
+    # Soft failures must stay 401 (wrong password) — not a fake "locked" 429.
     statuses = []
     for _ in range(3):
         r = client.post(
@@ -248,9 +248,10 @@ def test_account_lockout_after_failures(client, db_session, admin_user):
             json={"email": admin_user.email, "password": "WrongPass999!"},
         )
         statuses.append(r.status_code)
-    assert 429 in statuses
+    assert statuses == [401, 401, 401]
     db_session.refresh(admin_user)
     assert int(admin_user.failed_login_attempts or 0) >= 3
+    assert admin_user.locked_until is None
 
     # Force hard lock threshold
     admin_user.failed_login_attempts = 4
@@ -283,12 +284,10 @@ def test_account_lockout_after_failures(client, db_session, admin_user):
         "/auth/login-json",
         json={"email": admin_user.email, "password": "WrongPass999!"},
     )
-    # Fresh attempt budget: first wrong password after expiry is 401 (or soft
-    # 429 only once failures climb again), never an immediate hard lock.
-    assert after_expiry.status_code in (401, 429)
+    assert after_expiry.status_code == 401
     db_session.refresh(admin_user)
-    assert admin_user.locked_until is None or admin_user.locked_until <= datetime.utcnow()
-    assert int(admin_user.failed_login_attempts or 0) < 5
+    assert admin_user.locked_until is None
+    assert int(admin_user.failed_login_attempts or 0) == 1
 
     ok = client.post(
         "/auth/login-json",
@@ -296,6 +295,45 @@ def test_account_lockout_after_failures(client, db_session, admin_user):
     )
     assert ok.status_code == 200
 
+    admin_user.failed_login_attempts = 0
+    admin_user.locked_until = None
+    db_session.add(admin_user)
+    db_session.commit()
+
+
+def test_change_password_clears_lockout(client, db_session, admin_user):
+    admin_user.failed_login_attempts = 4
+    admin_user.locked_until = datetime.utcnow() + timedelta(minutes=10)
+    admin_user.must_change_password = True
+    db_session.add(admin_user)
+    db_session.commit()
+
+    token = create_access_token(
+        {
+            "sub": admin_user.email,
+            "user_id": admin_user.id,
+            "user_role": admin_user.role,
+            "role": admin_user.role,
+            "tv": int(getattr(admin_user, "token_version", 0) or 0),
+            "session_version": int(getattr(admin_user, "session_version", 0) or 0),
+        }
+    )
+    changed = client.post(
+        "/auth/change-password",
+        headers=_headers(token),
+        json={"current_password": "AdminPass12!", "new_password": "AdminPass99!"},
+    )
+    assert changed.status_code == 200, changed.text
+    db_session.refresh(admin_user)
+    assert int(admin_user.failed_login_attempts or 0) == 0
+    assert admin_user.locked_until is None
+    assert admin_user.must_change_password is False
+
+    # restore shared fixture password
+    admin_user.hashed_password = hash_password("AdminPass12!")
+    admin_user.token_version = 0
+    admin_user.session_version = 0
+    admin_user.must_change_password = False
     admin_user.failed_login_attempts = 0
     admin_user.locked_until = None
     db_session.add(admin_user)
