@@ -63,6 +63,7 @@ from services.auth_session_service import (
     revoke_all_user_refresh_tokens,
     denylist_access_jti,
     check_account_lockout,
+    clear_expired_lockout,
     record_login_failure,
     record_login_success,
     bump_token_version,
@@ -199,6 +200,9 @@ def authenticate_user(email: str, password: str, db: Session, attempt_limit: int
         verify_password(password, hash_password("dummy"))
         return None
 
+    # Expired lock windows must reset the failure counter; otherwise staff are
+    # immediately re-locked on the next wrong password after the timer ends.
+    clear_expired_lockout(db, db_user)
     try:
         check_account_lockout(db_user)
     except HTTPException:

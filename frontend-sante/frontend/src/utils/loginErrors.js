@@ -10,8 +10,18 @@ export function toUserFriendlyLoginMessage(err) {
   const detailLower = detail.toLowerCase();
   const code = String(err?.code || '').toLowerCase();
 
-  if (status === 429 || /temporarily locked|compte.*verrouill|try again later|trop de tentatives/i.test(detail)) {
+  if (/temporarily locked|compte.*verrouill/i.test(detail)) {
     return 'Compte temporairement verrouillé après plusieurs échecs. Réessayez dans quelques minutes, ou demandez une réinitialisation du mot de passe à l’administrateur.';
+  }
+
+  // Soft throttle (still 429) — short pause, not a full lock window.
+  if (/slow down|too many failed login attempts/i.test(detail)) {
+    return 'Trop de tentatives incorrectes. Attendez quelques secondes, puis réessayez avec le bon mot de passe.';
+  }
+
+  // Generic 429 (IP rate limit, etc.) — do not claim the account is locked.
+  if (status === 429 || /try again later|trop de tentatives|rate limit/i.test(detail)) {
+    return 'Trop de tentatives pour le moment. Réessayez dans une minute.';
   }
 
   if (status === 401 || status === 400) {

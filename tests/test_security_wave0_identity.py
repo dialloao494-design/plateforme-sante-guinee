@@ -271,6 +271,31 @@ def test_account_lockout_after_failures(client, db_session, admin_user):
     )
     assert locked.status_code == 429
 
+    # After the lock window expires, the failure counter must reset so the
+    # next wrong password does not immediately re-lock forever.
+    admin_user.locked_until = datetime.utcnow() - timedelta(seconds=5)
+    # Leave failed_login_attempts at/above threshold to simulate sticky state.
+    assert int(admin_user.failed_login_attempts or 0) >= 5
+    db_session.add(admin_user)
+    db_session.commit()
+
+    after_expiry = client.post(
+        "/auth/login-json",
+        json={"email": admin_user.email, "password": "WrongPass999!"},
+    )
+    # Fresh attempt budget: first wrong password after expiry is 401 (or soft
+    # 429 only once failures climb again), never an immediate hard lock.
+    assert after_expiry.status_code in (401, 429)
+    db_session.refresh(admin_user)
+    assert admin_user.locked_until is None or admin_user.locked_until <= datetime.utcnow()
+    assert int(admin_user.failed_login_attempts or 0) < 5
+
+    ok = client.post(
+        "/auth/login-json",
+        json={"email": admin_user.email, "password": "AdminPass12!"},
+    )
+    assert ok.status_code == 200
+
     admin_user.failed_login_attempts = 0
     admin_user.locked_until = None
     db_session.add(admin_user)

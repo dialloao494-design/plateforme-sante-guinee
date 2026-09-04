@@ -234,6 +234,25 @@ def is_access_jti_denied(db: Session, *, jti: str | None) -> bool:
     return row is not None
 
 
+def clear_expired_lockout(db: Session, user: User) -> None:
+    """After the lock window ends, give a fresh attempt budget.
+
+    Without this, failed_login_attempts stays at/above LOGIN_MAX_FAILURES and
+    every subsequent wrong password immediately re-locks for another window —
+    which feels like a permanent lock to clinic staff.
+    """
+    locked_until = getattr(user, "locked_until", None)
+    if not locked_until:
+        return
+    if locked_until > datetime.utcnow():
+        return
+    user.locked_until = None
+    user.failed_login_attempts = 0
+    db.add(user)
+    db.commit()
+    logger.info("Cleared expired lockout user_id=%s", getattr(user, "id", None))
+
+
 def check_account_lockout(user: User) -> None:
     locked_until = getattr(user, "locked_until", None)
     if locked_until and locked_until > datetime.utcnow():
