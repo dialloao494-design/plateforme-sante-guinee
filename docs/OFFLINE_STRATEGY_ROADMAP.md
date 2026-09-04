@@ -1,5 +1,7 @@
 # Offline Strategy & Implementation Roadmap
 
+> **Superseded for architecture (2026-07-28):** For the offline-first clinic goal (unlimited operation without Internet), see **`docs/OFFLINE_FIRST_ARCHITECTURE.md`**. For the execution plan (Phase 0 → Production), see **`docs/OFFLINE_IMPLEMENTATION_ROADMAP.md`**. This PWA/IndexedDB sketch must not drive implementation.
+
 **Context:** Centre de Santé Koloma and rural Guinea clinics face unreliable internet.  
 **Current state:** Online-first SPA + REST API (no offline support today).
 
