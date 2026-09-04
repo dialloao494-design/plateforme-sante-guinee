@@ -13,6 +13,28 @@ test('429 lockout is never a generic retry message', () => {
   assert.doesNotMatch(msg, /^Une erreur est survenue/);
 });
 
+test('soft throttle 429 is not presented as a hard account lock', () => {
+  const msg = toUserFriendlyLoginMessage({
+    response: {
+      status: 429,
+      data: { detail: 'Too many failed login attempts. Slow down and try again.' },
+    },
+  });
+  assert.match(msg, /Trop de tentatives incorrectes/i);
+  assert.doesNotMatch(msg, /verrouillé/i);
+});
+
+test('generic rate-limit 429 does not claim account lock', () => {
+  const msg = toUserFriendlyLoginMessage({
+    response: {
+      status: 429,
+      data: { detail: 'Rate limit exceeded' },
+    },
+  });
+  assert.match(msg, /Trop de tentatives/i);
+  assert.doesNotMatch(msg, /verrouillé/i);
+});
+
 test('401 shows incorrect credentials', () => {
   assert.equal(
     toUserFriendlyLoginMessage({

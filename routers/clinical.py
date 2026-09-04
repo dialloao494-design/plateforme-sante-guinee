@@ -523,6 +523,37 @@ def revoke_staff_sessions(
     return {"id": user_id, "revoked_sessions": count}
 
 
+@router.post("/staff/{user_id}/unlock")
+def unlock_staff_account(
+    user_id: int,
+    clinic_id: int = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Clear login lockout without rotating the password."""
+    assert_role(current_user, ("platform_owner", "platform_admin", "clinic_admin", "admin"))
+    assert_clinic_access(current_user, clinic_id)
+    user = (
+        db.query(models.User)
+        .filter(models.User.id == user_id, models.User.clinic_id == clinic_id)
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    if hasattr(user, "failed_login_attempts"):
+        user.failed_login_attempts = 0
+    if hasattr(user, "locked_until"):
+        user.locked_until = None
+    db.commit()
+    return {
+        "id": user.id,
+        "email": user.email,
+        "unlocked": True,
+        "failed_login_attempts": 0,
+        "locked_until": None,
+    }
+
+
 @router.post("/staff/{user_id}/reset-password")
 def reset_staff_password(
     user_id: int,
