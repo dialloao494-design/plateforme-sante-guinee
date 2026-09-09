@@ -166,6 +166,25 @@ SURGICAL_ACTS = [
     {"code": "exploration_laparo", "label": "Exploration chirurgicale", "price_gnf": 1_000_000},
 ]
 
+
+def surgical_acts_for_clinic(clinic_id: int | None) -> list[dict]:
+    """Return the surgical catalogue visible to a clinic, reconciled by code."""
+    acts = [
+        {**row, "department": "Chirurgie", "section": "Autres actes chirurgicaux"}
+        for row in SURGICAL_ACTS
+    ]
+    if clinic_id != 17:
+        return acts
+
+    from data.aasma_plastic_surgery_catalog import AASMA_PLASTIC_SURGERY_CATALOG
+
+    # Code is the stable catalogue identity. A clinic-specific tariff replaces a
+    # matching generic row instead of creating a duplicate selectable service.
+    by_code = {row["code"]: row for row in acts}
+    for row in AASMA_PLASTIC_SURGERY_CATALOG:
+        by_code[row["code"]] = dict(row)
+    return list(by_code.values())
+
 BILLING_DEPARTMENTS = [
     "Consultation urgences",
     "Consultation spécialisée",
@@ -195,6 +214,7 @@ def resolve_billing_catalog_item(
     catalog_code: str | None,
     *,
     price_variant: str | None = None,
+    clinic_id: int | None = None,
 ) -> dict | None:
     """Resolve an authoritative AASMA catalog row by code.
 
@@ -277,7 +297,7 @@ def resolve_billing_catalog_item(
                 "bucket": "prestation",
             }
 
-    for row in SURGICAL_ACTS:
+    for row in surgical_acts_for_clinic(clinic_id):
         if row.get("code") == code:
             return {
                 "code": code,

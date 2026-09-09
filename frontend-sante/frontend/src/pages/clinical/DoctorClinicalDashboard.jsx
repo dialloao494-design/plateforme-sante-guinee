@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import DischargeAuthorizationPrint from '../../components/print/DischargeAuthorizationPrint.jsx';
 import PatientSafetyStrip from '../../components/clinical/PatientSafetyStrip.jsx';
@@ -111,6 +111,17 @@ export default function DoctorClinicalDashboard() {
   const [serviceRequests, setServiceRequests] = useState([]);
 
   const [catalog, setCatalog] = useState({ specialties: [], imaging: [], lab_tests: [], surgical_acts: [] });
+  const surgicalActGroups = useMemo(() => {
+    const groups = new Map();
+    (catalog.surgical_acts || []).forEach((act) => {
+      const heading = act.department === 'Chirurgie plastique'
+        ? `Chirurgie plastique — ${act.section}`
+        : (act.section || 'Autres actes chirurgicaux');
+      if (!groups.has(heading)) groups.set(heading, []);
+      groups.get(heading).push(act);
+    });
+    return [...groups.entries()];
+  }, [catalog.surgical_acts]);
 
   // Lab request
   const [labSearch, setLabSearch] = useState('');
@@ -986,8 +997,12 @@ export default function DoctorClinicalDashboard() {
                       Acte demandé
                       <select id="doctor-surgical-act" value={selectedSurgicalAct} onChange={(e) => setSelectedSurgicalAct(e.target.value)}>
                         <option value="">— Sélectionner un acte —</option>
-                        {(catalog.surgical_acts || []).map((act) => (
-                          <option key={act.code} value={act.code}>{act.label} · {new Intl.NumberFormat('fr-FR').format(act.price_gnf)} GNF</option>
+                        {surgicalActGroups.map(([heading, acts]) => (
+                          <optgroup key={heading} label={heading}>
+                            {acts.map((act) => (
+                              <option key={act.code} value={act.code}>{act.label} · {new Intl.NumberFormat('fr-FR').format(act.price_gnf)} GNF · {act.code}</option>
+                            ))}
+                          </optgroup>
                         ))}
                       </select>
                     </label>

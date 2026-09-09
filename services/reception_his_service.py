@@ -687,12 +687,15 @@ class ReceptionHisService:
             unit = int(dsr.unit_price_gnf or 0)
             code = catalog_code or dsr.catalog_code
             if code:
-                cat = resolve_billing_catalog_item(code)
+                cat = resolve_billing_catalog_item(code, clinic_id=clinic_id)
                 if cat:
                     unit = int(cat["price_gnf"])
+            invoice_description = dsr.service_name
+            if code and dsr.service_category == "surgery":
+                invoice_description = f"{invoice_description} [{code}]"
             return {
                 "charge_type": dsr.charge_type or getattr(row, "charge_type", None) or "procedure",
-                "description": f"{dsr.service_name} [{dsr.request_number}]",
+                "description": f"{invoice_description} [{dsr.request_number}]",
                 "quantity": quantity,
                 "unit_price_gnf": unit,
                 "amount_gnf": unit * quantity,
@@ -743,10 +746,14 @@ class ReceptionHisService:
                             ),
                         )
 
-            cat = resolve_billing_catalog_item(catalog_code, price_variant=price_variant)
+            cat = resolve_billing_catalog_item(
+                catalog_code, price_variant=price_variant, clinic_id=clinic_id
+            )
             if not cat:
                 raise HTTPException(status_code=400, detail=f"Code catalogue inconnu: {catalog_code}")
             description = cat["label"]
+            if cat.get("bucket") == "surgery":
+                description = f"{description} [{catalog_code}]"
             charge_type = cat["charge_type"]
             catalog_price = int(cat["price_gnf"])
             if override_reason:
@@ -1641,7 +1648,7 @@ class ReceptionHisService:
             _hospitalization_selection(payload.specialty_code, payload.accommodation_type, catalog_code)
 
         if catalog_code:
-            cat = resolve_billing_catalog_item(catalog_code)
+            cat = resolve_billing_catalog_item(catalog_code, clinic_id=clinic_id)
             if not cat:
                 raise HTTPException(status_code=400, detail=f"Code catalogue inconnu: {catalog_code}")
             service_name = cat["label"]
@@ -1794,7 +1801,7 @@ class ReceptionHisService:
 
         if price_touch:
             if catalog_code:
-                cat = resolve_billing_catalog_item(catalog_code)
+                cat = resolve_billing_catalog_item(catalog_code, clinic_id=clinic_id)
                 if not cat:
                     raise HTTPException(status_code=400, detail=f"Code catalogue inconnu: {catalog_code}")
                 data["service_name"] = cat["label"]

@@ -236,7 +236,7 @@ def billing_catalog(
         HOSPITALIZATION_SERVICES,
         SERVICE_PRESTATIONS,
         SPECIALIZED_SPECIALTIES,
-        SURGICAL_ACTS,
+        surgical_acts_for_clinic,
     )
 
     lab_tests = []
@@ -264,7 +264,7 @@ def billing_catalog(
         "specialized_specialties": SPECIALIZED_SPECIALTIES,
         "imaging_examinations": IMAGING_EXAMINATIONS,
         "service_prestations": SERVICE_PRESTATIONS,
-        "surgical_acts": SURGICAL_ACTS,
+        "surgical_acts": surgical_acts_for_clinic(clinic.id),
         "billing_departments": BILLING_DEPARTMENTS,
         "hospitalization_services": HOSPITALIZATION_SERVICES,
         "lab_tests": lab_tests,

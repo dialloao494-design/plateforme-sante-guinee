@@ -89,6 +89,22 @@ def test_service_request_persists_pricing_and_lookup(client, db_session):
     assert lookup.json()["id"] == body["id"]
     assert lookup.json()["service_name"] == "Suture simple"
 
+    invoice = client.post(
+        "/clinical/reception/his/invoices",
+        json={
+            "patient_id": patient.id,
+            "department": "Chirurgie",
+            "items": [{
+                "source_type": "service_request",
+                "source_ref": body["request_number"],
+                "catalog_code": body["catalog_code"],
+            }],
+        },
+        headers=headers,
+    )
+    assert invoice.status_code == 201, invoice.text
+    assert "[suture_simple]" in invoice.json()["items"][0]["description"]
+
 
 def test_consultation_service_request_category_accepted(client, db_session):
     _clinic, admin, patient = _seed_clinic_admin(db_session)

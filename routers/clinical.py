@@ -1253,7 +1253,7 @@ def doctor_catalog(
     from data.aasma_billing_catalog import (
         IMAGING_EXAMINATIONS,
         SPECIALIZED_SPECIALTIES,
-        SURGICAL_ACTS,
+        surgical_acts_for_clinic,
     )
 
     lab_tests: list[dict] = []
@@ -1291,7 +1291,7 @@ def doctor_catalog(
         "specialties": SPECIALIZED_SPECIALTIES,
         "imaging": IMAGING_EXAMINATIONS,
         "lab_tests": lab_tests,
-        "surgical_acts": SURGICAL_ACTS,
+        "surgical_acts": surgical_acts_for_clinic(clinic.id),
     }
 
 
