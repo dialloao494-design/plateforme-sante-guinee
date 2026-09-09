@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   classifyRegistrationResponse,
   isCompleteRegistrationResponse,
@@ -8,9 +11,6 @@ import {
   REGISTRATION_QUEUED_MESSAGE,
   REGISTRATION_INCOMPLETE_MESSAGE,
 } from './registrationSuccess.js';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -57,12 +57,13 @@ test('queued message tells staff not to re-enter the same patient', () => {
   assert.match(REGISTRATION_INCOMPLETE_MESSAGE, /non finalisé/i);
 });
 
-test('registration surfaces browser validation failures beside the submit action', () => {
-  const source = fs.readFileSync(path.join(here, 'tabs', 'RegisterTab.jsx'), 'utf8');
-  const helper = fs.readFileSync(path.join(here, 'registrationValidation.js'), 'utf8');
-  assert.match(source, /onInvalidCapture=/);
-  assert.match(source, /import\('\.\.\/registrationValidation\.js'\)/);
-  assert.match(source, /registration-submit-error/);
-  assert.match(helper, /details:not\(\[open\]\)/);
-  assert.match(helper, /scrollIntoView/);
+test('application interaction feedback explains invalid forms and disabled actions', () => {
+  const source = fs.readFileSync(
+    path.join(here, '../../../utils/interactionFeedback.js'), 'utf8'
+  );
+  assert.match(source, /addEventListener\('invalid'/);
+  assert.match(source, /details:not\(\[open\]\)/);
+  assert.match(source, /scrollIntoView/);
+  assert.match(source, /button:disabled/);
+  assert.match(source, /disabledReason/);
 });

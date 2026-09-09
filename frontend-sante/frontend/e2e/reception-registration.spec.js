@@ -29,6 +29,10 @@ test('reception can register a new patient end to end', async ({ page }) => {
   await expect(page.getByTestId('reception-patient-number')).toContainText(/PAT-\d{3}-\d{6}/);
   await expect(page.getByTestId('reception-registration-success')).toBeVisible();
   await expect(page.getByText('Dossier créé. Imprimez la fiche ou commencez un nouvel enregistrement.')).toBeVisible();
+  const lockedSubmit = page.getByTestId('reception-register-submit');
+  await expect(lockedSubmit).toBeDisabled();
+  await lockedSubmit.dispatchEvent('pointerdown');
+  await expect(page.getByText(/Enregistrer le patient.*n’est pas disponible/)).toBeVisible();
 });
 
 test('registration reveals a hidden invalid optional field instead of appearing unresponsive', async ({ page }) => {
@@ -49,7 +53,7 @@ test('registration reveals a hidden invalid optional field instead of appearing 
   await page.getByTestId('reception-register-submit').click();
 
   await expect(optional).toHaveAttribute('open', '');
-  await expect(page.locator('.registration-submit-error')).toContainText('Email');
+  await expect(page.getByText(/Envoi non effectué.*Email/)).toBeVisible();
   await expect(page.getByLabel('Email', { exact: true })).toBeFocused();
 });
 

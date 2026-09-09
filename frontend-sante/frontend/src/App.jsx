@@ -9,6 +9,7 @@ import { ToastContainer } from 'react-toastify';
 import { getShellContext } from './utils/appShellMeta.js';
 import { portalLabel } from './utils/portalAccess.js';
 import OfflineStatusIndicator from './components/OfflineStatusIndicator.jsx';
+import { installInteractionFeedback } from './utils/interactionFeedback.js';
 import './AppLayout.css';
 import './HospitalTheme.css';
 
@@ -29,6 +30,10 @@ function App() {
 
   const role = user?.role || user?.user_role;
   const topbarTitle = user ? portalLabel(role) : 'Plateforme Santé';
+
+  useEffect(() => {
+    return installInteractionFeedback();
+  }, []);
 
   useEffect(() => {
     if (!authLoading) {
