@@ -104,6 +104,7 @@ from services.staff_lifecycle_service import (
     delete_unused_staff as lifecycle_delete_unused_staff,
     revoke_sessions as lifecycle_revoke_sessions,
     update_staff_profile as lifecycle_update_staff_profile,
+    staff_deletion_eligibility,
 )
 
 router = APIRouter(prefix="/clinical", tags=["Clinical CIS"])
@@ -121,6 +122,7 @@ def _staff_response(db: Session, user: User) -> StaffResponse:
     last_reset = db.query(models.PasswordResetToken.created_at).filter(
         models.PasswordResetToken.user_id == user.id,
     ).order_by(models.PasswordResetToken.created_at.desc()).scalar()
+    can_delete, delete_blocked_reason = staff_deletion_eligibility(db, user)
     return StaffResponse(
         id=user.id, email=user.email, role=user.role, clinic_id=user.clinic_id,
         is_active=user.is_active, first_name=user.first_name, last_name=user.last_name,
@@ -131,6 +133,7 @@ def _staff_response(db: Session, user: User) -> StaffResponse:
         failed_login_attempts=user.failed_login_attempts or 0, locked_until=user.locked_until,
         active_sessions=active_sessions,
         last_password_reset_at=last_reset,
+        can_delete=can_delete, delete_blocked_reason=delete_blocked_reason,
     )
 
 

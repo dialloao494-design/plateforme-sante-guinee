@@ -66,6 +66,8 @@ class PlatformStaffMember(BaseModel):
     invitation_expires_at: Optional[datetime] = None
     active_sessions: int = 0
     last_password_reset_at: Optional[datetime] = None
+    can_delete: bool = False
+    delete_blocked_reason: Optional[str] = None
 
 
 class PlatformClinicDetail(BaseModel):
@@ -118,6 +120,7 @@ class PlatformAccount(BaseModel):
     locked_until: Optional[datetime] = None
     active_sessions: int = 0
     can_delete: bool = False
+    delete_blocked_reason: Optional[str] = None
 
 
 class PlatformClinicConfigurationUpdate(BaseModel):

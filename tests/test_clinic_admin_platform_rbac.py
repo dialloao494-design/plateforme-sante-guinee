@@ -273,6 +273,11 @@ def test_delete_is_limited_to_unused_inactive_invitation(client, db_session):
             expires_at=datetime.utcnow() + timedelta(hours=1), delivery_status="sent",
         )); db_session.commit(); invited_id=invited.id
 
+    listing = client.get("/clinical/staff", params={"clinic_id": clinic.id}, headers=_auth(admin))
+    listed = next(item for item in listing.json() if item["id"] == invited_id)
+    assert listed["can_delete"] is True
+    assert listed["delete_blocked_reason"] is None
+
     response = client.request("DELETE", f"/clinical/staff/{invited_id}", params={"clinic_id": clinic.id}, json={"reason": "Invitation créée par erreur"}, headers=_auth(admin))
     assert response.status_code == 204, response.text
     assert db_session.query(models.User).filter_by(id=invited_id).first() is None
@@ -289,6 +294,11 @@ def test_delete_rejects_account_with_history(client, db_session):
             is_active=False, email_verified_at=datetime.utcnow(), last_login_at=datetime.utcnow(),
         )
         db_session.add(former); db_session.commit()
+    listing = client.get("/clinical/staff", params={"clinic_id": clinic.id}, headers=_auth(admin))
+    listed = next(item for item in listing.json() if item["id"] == former.id)
+    assert listed["can_delete"] is False
+    assert "traçabilité" in listed["delete_blocked_reason"]
     response = client.request("DELETE", f"/clinical/staff/{former.id}", params={"clinic_id": clinic.id}, json={"reason": "Demande de suppression"}, headers=_auth(admin))
     assert response.status_code == 409, response.text
+    assert "traçabilité" in response.json()["detail"]
     assert db_session.query(models.User).filter_by(id=former.id).first() is not None

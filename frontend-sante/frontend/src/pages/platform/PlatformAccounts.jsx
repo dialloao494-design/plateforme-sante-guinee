@@ -115,7 +115,7 @@ export default function PlatformAccounts() {
                 <td>{user.clinic_id ? <Link to={`/platform/clinics/${user.clinic_id}`}>{user.clinic_name || `#${user.clinic_id}`}</Link> : 'Non rattaché'}<span className="platform-table-sub">{user.role}</span></td>
                 <td>{formatDate(user.last_login_at)}</td>
                 <td><strong>{user.active_sessions} session(s)</strong><span className="platform-table-sub">MFA {user.mfa_enabled ? 'activée' : 'non activée'}{user.locked_until ? ' · verrouillé' : ''}</span></td>
-                <td><div className="platform-actions-cell">{user.clinic_id && <><button type="button" onClick={() => openAction(user.is_active ? 'deactivate' : 'reactivate', user)}>{user.is_active ? 'Désactiver' : 'Réactiver'}</button><button type="button" onClick={() => openAction('sessions', user)}>Déconnecter</button>{user.can_delete && <button type="button" className="platform-danger-link" onClick={() => openAction('delete', user)}>Supprimer</button>}</>}</div></td>
+                <td><div className="platform-actions-cell">{user.clinic_id && <><button type="button" onClick={() => openAction(user.is_active ? 'deactivate' : 'reactivate', user)}>{user.is_active ? 'Désactiver' : 'Réactiver'}</button><button type="button" onClick={() => openAction('sessions', user)}>Déconnecter</button>{user.can_delete ? <button type="button" className="platform-danger-link" onClick={() => openAction('delete', user)}>Supprimer définitivement</button> : <span className="platform-table-sub">{user.delete_blocked_reason || 'Identité conservée pour la traçabilité.'}</span>}</>}</div></td>
               </tr>)}</tbody>
             </table>
           </div>

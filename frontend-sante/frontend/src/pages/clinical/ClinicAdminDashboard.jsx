@@ -444,7 +444,9 @@ export default function ClinicAdminDashboard() {
                           <button type="button" className="clinical-btn clinical-btn--secondary admin-staff-actions__warning" disabled={lifecycleBusyId === u.id} onClick={() => changeStaffAccess(u, false)}>{lifecycleBusyId === u.id ? 'Désactivation…' : 'Désactiver'}</button>
                         </> : <>
                           {u.invitation_status ? <button type="button" className="clinical-btn clinical-btn--secondary" disabled={invitationBusyId === u.id || lifecycleBusyId === u.id} onClick={() => resendInvitation(u)}>{invitationBusyId === u.id ? 'Envoi…' : 'Renvoyer l’invitation'}</button> : <button type="button" className="clinical-btn" disabled={lifecycleBusyId === u.id} onClick={() => changeStaffAccess(u, true)}>{lifecycleBusyId === u.id ? 'Réactivation…' : 'Réactiver'}</button>}
-                          {u.invitation_status && <button type="button" className="clinical-btn clinical-btn--danger" disabled={lifecycleBusyId === u.id} onClick={() => deleteStaff(u)}>{lifecycleBusyId === u.id ? 'Suppression…' : 'Supprimer'}</button>}
+                          {u.can_delete
+                            ? <button type="button" className="clinical-btn clinical-btn--danger" disabled={lifecycleBusyId === u.id} onClick={() => deleteStaff(u)}>{lifecycleBusyId === u.id ? 'Suppression…' : 'Supprimer définitivement'}</button>
+                            : <span className="clinical-muted admin-cell-meta">{u.delete_blocked_reason || 'Ce compte doit être conservé pour la traçabilité.'}</span>}
                         </>}
                       </>
                     )}

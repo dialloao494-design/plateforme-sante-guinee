@@ -36,6 +36,8 @@ def test_platform_account_inventory_classifies_clinic_bound_test_accounts(client
     assert row["category"] == "test"
     assert row["clinic_id"] == clinic.id
     assert row["created_at"] is not None
+    assert row["can_delete"] is False
+    assert row["delete_blocked_reason"]
 
 
 def test_platform_lifecycle_revokes_sessions_membership_and_audits_reason(client, db_session, admin_headers):

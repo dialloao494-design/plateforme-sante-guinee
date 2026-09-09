@@ -48,15 +48,10 @@ def _active_sessions(db: Session, user_id: int) -> int:
     ).count()
 
 
-def _can_delete(db: Session, user: models.User) -> bool:
-    if user.is_active or user.role in ("platform_owner", "platform_admin"):
-        return False
-    pending = db.query(models.StaffActivationToken.id).filter(
-        models.StaffActivationToken.user_id == user.id,
-        models.StaffActivationToken.used_at.is_(None),
-    ).first()
-    authored = db.query(models.ClinicalAuditLog.id).filter(models.ClinicalAuditLog.actor_id == user.id).first()
-    return bool(pending and not authored and user.last_login_at is None and user.email_verified_at is None)
+def _deletion_eligibility(db: Session, user: models.User) -> tuple[bool, str | None]:
+    from services.staff_lifecycle_service import staff_deletion_eligibility
+
+    return staff_deletion_eligibility(db, user)
 
 
 def list_accounts(db: Session, *, category: str | None = None, clinic_id: int | None = None, role: str | None = None, search: str | None = None) -> list[PlatformAccount]:
@@ -73,6 +68,7 @@ def list_accounts(db: Session, *, category: str | None = None, clinic_id: int | 
         bucket, reasons = classify_account(user)
         if category and category != "all" and bucket != category:
             continue
+        can_delete, delete_blocked_reason = _deletion_eligibility(db, user)
         rows.append(PlatformAccount(
             id=user.id, email=user.email, role=user.role, clinic_id=user.clinic_id,
             clinic_name=clinics.get(user.clinic_id), category=bucket,
@@ -80,7 +76,7 @@ def list_accounts(db: Session, *, category: str | None = None, clinic_id: int | 
             created_at=getattr(user, "created_at", None), last_login_at=user.last_login_at,
             mfa_enabled=bool(user.mfa_enabled), failed_login_attempts=user.failed_login_attempts or 0,
             locked_until=user.locked_until, active_sessions=_active_sessions(db, user.id),
-            can_delete=_can_delete(db, user),
+            can_delete=can_delete, delete_blocked_reason=delete_blocked_reason,
         ))
     return rows
 

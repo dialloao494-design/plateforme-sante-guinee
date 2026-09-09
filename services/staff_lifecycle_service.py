@@ -51,6 +51,28 @@ def _audit(db: Session, *, actor, target, clinic_id: int, action: str, reason: s
     )
 
 
+def staff_deletion_eligibility(db: Session, user: models.User) -> tuple[bool, str | None]:
+    """Explain whether removing this identity would preserve accountability."""
+    if user.role in ("platform_owner", "platform_admin"):
+        return False, "Les comptes d’administration de la plateforme ne peuvent pas être supprimés ici."
+    if user.is_active:
+        return False, "Désactivez d’abord le compte. Seules les invitations jamais utilisées peuvent ensuite être supprimées."
+    if user.email_verified_at is not None or user.last_login_at is not None:
+        return False, "Ce compte a déjà été utilisé et doit être conservé pour la traçabilité."
+    if db.query(models.Doctor.id).filter(models.Doctor.user_id == user.id).first():
+        return False, "Ce compte possède un profil médecin et doit être conservé pour la traçabilité."
+    if db.query(models.ClinicalAuditLog.id).filter(models.ClinicalAuditLog.actor_id == user.id).first():
+        return False, "Ce compte est associé au journal d’audit et doit être conservé pour la traçabilité."
+    pending = db.query(models.StaffActivationToken.id).filter(
+        models.StaffActivationToken.user_id == user.id,
+        models.StaffActivationToken.used_at.is_(None),
+        models.StaffActivationToken.revoked_at.is_(None),
+    ).first()
+    if not pending:
+        return False, "Seule une invitation inactive, valide et jamais utilisée peut être supprimée."
+    return True, None
+
+
 def deactivate_staff(db: Session, *, clinic_id: int, user_id: int, actor, reason: str, ip: str | None = None, user_agent: str | None = None) -> models.User:
     user = _staff(db, clinic_id, user_id)
     if user.id == actor.id:
@@ -110,17 +132,9 @@ def delete_unused_staff(db: Session, *, clinic_id: int, user_id: int, actor, rea
         raise StaffLifecycleError("Vous ne pouvez pas supprimer votre propre compte.", 400)
     if not reason.strip():
         raise StaffLifecycleError("Indiquez la raison de la suppression.", 422)
-    if user.is_active:
-        raise StaffLifecycleError("Désactivez d’abord ce compte.")
-    pending = db.query(models.StaffActivationToken).filter(
-        models.StaffActivationToken.user_id == user.id,
-        models.StaffActivationToken.used_at.is_(None),
-    ).first()
-    authored = db.query(models.ClinicalAuditLog.id).filter(models.ClinicalAuditLog.actor_id == user.id).first()
-    if user.email_verified_at is not None or user.last_login_at is not None or not pending or authored:
-        raise StaffLifecycleError("Ce compte possède un historique. Il doit rester désactivé afin de préserver la traçabilité clinique.")
-    if db.query(models.Doctor).filter(models.Doctor.user_id == user.id).first():
-        raise StaffLifecycleError("Ce compte possède un profil médecin. Conservez-le désactivé.")
+    can_delete, blocked_reason = staff_deletion_eligibility(db, user)
+    if not can_delete:
+        raise StaffLifecycleError(blocked_reason or "Ce compte ne peut pas être supprimé.")
     before = _snapshot(user)
     target_id = user.id
     for model in (models.StaffActivationToken, models.PasswordResetToken, models.EmailVerificationToken, RefreshToken, AccessTokenDenylist, models.NotificationEvent):

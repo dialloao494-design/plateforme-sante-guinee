@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 import models
 from models.refresh_token import RefreshToken
 from services.platform_admin_service import clinic_configuration
+from services.staff_lifecycle_service import staff_deletion_eligibility
 from core.clinic_classification import classify_clinic
 from schemas.platform import (
     PlatformClinicDetail,
@@ -370,6 +371,7 @@ def list_clinic_staff(db: Session, clinic_id: int) -> list[PlatformStaffMember]:
     members: list[PlatformStaffMember] = []
     for user in users:
         full_name, phone = _staff_display(db, user)
+        can_delete, delete_blocked_reason = staff_deletion_eligibility(db, user)
         latest_invitation = db.query(models.StaffActivationToken).filter(
             models.StaffActivationToken.user_id == user.id,
         ).order_by(models.StaffActivationToken.created_at.desc()).first()
@@ -401,6 +403,8 @@ def list_clinic_staff(db: Session, clinic_id: int) -> list[PlatformStaffMember]:
                 invitation_expires_at=(latest_invitation.expires_at if latest_invitation and latest_invitation.used_at is None and user.last_login_at is None else None),
                 active_sessions=active_sessions,
                 last_password_reset_at=last_reset,
+                can_delete=can_delete,
+                delete_blocked_reason=delete_blocked_reason,
             )
         )
     return members

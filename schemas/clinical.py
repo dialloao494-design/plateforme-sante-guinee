@@ -62,6 +62,8 @@ class StaffResponse(BaseModel):
     locked_until: Optional[datetime] = None
     active_sessions: int = 0
     last_password_reset_at: Optional[datetime] = None
+    can_delete: bool = False
+    delete_blocked_reason: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
