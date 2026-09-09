@@ -1541,6 +1541,7 @@ export function useReceptionDashboard() {
     message,
     setMessage,
     error,
+    setError,
     stats,
     dashboardUpdatedAt,
     doctors,

@@ -2006,6 +2006,11 @@
   font-size: 0.76rem;
 }
 
+.registration-action-bar .registration-submit-error {
+  color: var(--color-danger, #b42318);
+  font-weight: 700;
+}
+
 .registration-actions {
   display: flex;
   flex-wrap: wrap;

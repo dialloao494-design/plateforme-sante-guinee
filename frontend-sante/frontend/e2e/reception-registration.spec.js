@@ -31,6 +31,28 @@ test('reception can register a new patient end to end', async ({ page }) => {
   await expect(page.getByText('Dossier créé. Imprimez la fiche ou commencez un nouvel enregistrement.')).toBeVisible();
 });
 
+test('registration reveals a hidden invalid optional field instead of appearing unresponsive', async ({ page }) => {
+  await loginAsReception(page);
+  const unique = Date.now();
+  await fillRegistrationForm(page, {
+    lastName: `ValidationNom${unique}`,
+    firstName: `ValidationPrenom${unique}`,
+    phone: `628${String(unique).slice(-6)}`,
+  });
+
+  const optional = page.locator('details.registration-optional');
+  await optional.locator('summary').click();
+  await page.getByLabel('Email', { exact: true }).fill('email-invalide');
+  await optional.locator('summary').click();
+  await expect(optional).not.toHaveAttribute('open', '');
+
+  await page.getByTestId('reception-register-submit').click();
+
+  await expect(optional).toHaveAttribute('open', '');
+  await expect(page.locator('.registration-submit-error')).toContainText('Email');
+  await expect(page.getByLabel('Email', { exact: true })).toBeFocused();
+});
+
 test('reception duplicate patient shows matches and allow confirm', async ({ page }) => {
   test.setTimeout(90_000);
   await loginAsReception(page);

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import PatientRegistrationPrint from '../../../components/print/PatientRegistrationPrint.jsx';
 import ClinicalWorkflowNav from '../../../components/clinical/ClinicalWorkflowNav.jsx';
@@ -9,10 +9,11 @@ import AdmissionTab from './tabs/AdmissionTab.jsx';
 import BillingTab from './tabs/BillingTab.jsx';
 import DashboardTab from './tabs/DashboardTab.jsx';
 import RefundTab from './tabs/RefundTab.jsx';
-import RegisterTab from './tabs/RegisterTab.jsx';
 import ServiceRequestsTab from './tabs/ServiceRequestsTab.jsx';
 import PatientSafetyStrip from '../../../components/clinical/PatientSafetyStrip.jsx';
 import { readReceptionRouteState } from './routeState.js';
+
+const RegisterTab = lazy(() => import('./tabs/RegisterTab.jsx'));
 
 export default function ReceptionDashboard() {
   const [searchParams] = useSearchParams();
@@ -145,7 +146,11 @@ export default function ReceptionDashboard() {
       />
 
       {tab === 'dashboard' && <DashboardTab {...dashboard} openPatient={openPatient} />}
-      {tab === 'register' && <RegisterTab {...dashboard} />}
+      {tab === 'register' && (
+        <Suspense fallback={<p className="clinical-hint">Chargement du formulaire d’enregistrement…</p>}>
+          <RegisterTab {...dashboard} />
+        </Suspense>
+      )}
       {tab === 'admission' && <AdmissionTab {...dashboard} />}
       {tab === 'billing' && <BillingTab {...dashboard} />}
       {tab === 'refund' && <RefundTab {...dashboard} />}

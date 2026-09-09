@@ -46,6 +46,8 @@ export default function RegisterTab({
   duplicateMatches = [],
   pendingRegPayload,
   loading,
+  error,
+  setError,
   onPhotoFile,
   printRegistrationSheet,
   regForm,
@@ -61,10 +63,9 @@ export default function RegisterTab({
   const registrationLocked = Boolean(
     !editingPatientId && (registeredPatient?.patient_number || registeredPatient?._sync_status === 'queued'),
   );
-
   return (
     <section className="reception-his-panel registration-workspace">
-      <form className="clinical-card reception-his-form-sheet registration-form" onSubmit={handleRegister}>
+      <form className="clinical-card reception-his-form-sheet registration-form" onSubmit={handleRegister} onInvalidCapture={(event) => void import('../registrationValidation.js').then(({ revealInvalidRegistrationField }) => revealInvalidRegistrationField(event.target, setError))}>
         <header className="registration-form-header">
           <div>
             <p className="registration-eyebrow">{editingPatientId ? 'Dossier patient existant' : 'Nouveau dossier patient'}</p>
@@ -233,7 +234,7 @@ export default function RegisterTab({
         )}
 
         <footer className="registration-action-bar">
-          <div><strong>{editingPatientId ? 'Modification du dossier' : registrationLocked ? 'Dossier enregistré' : 'Prêt à enregistrer'}</strong><span>{editingPatientId ? 'Le numéro de dossier restera inchangé.' : registrationLocked ? 'Vous pouvez imprimer la fiche ou saisir un autre patient.' : 'Une vérification des doublons sera effectuée avant la création.'}</span></div>
+          <div><strong>{editingPatientId ? 'Modification du dossier' : registrationLocked ? 'Dossier enregistré' : 'Prêt à enregistrer'}</strong><span>{editingPatientId ? 'Le numéro de dossier restera inchangé.' : registrationLocked ? 'Vous pouvez imprimer la fiche ou saisir un autre patient.' : 'Une vérification des doublons sera effectuée avant la création.'}</span>{error && <span className="clinical-message clinical-message--err registration-submit-error" role="alert">{error}</span>}</div>
           <div className="registration-actions">
             <button type="submit" className="clinical-btn registration-primary-action" disabled={loading || registrationLocked} data-testid="reception-register-submit">{loading ? 'Enregistrement…' : editingPatientId ? 'Enregistrer les modifications' : 'Enregistrer le patient'}</button>
             {editingPatientId && <button type="button" className="clinical-btn clinical-btn--secondary" onClick={cancelPatientEdit} disabled={loading}>Annuler</button>}
