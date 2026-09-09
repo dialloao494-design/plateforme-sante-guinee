@@ -78,6 +78,7 @@ from services.mfa_service import (
 )
 from core.auth_cookie_config import REFRESH_COOKIE_NAME
 from services.auth_cookies import clear_auth_cookies, ensure_csrf_cookie, set_auth_cookies
+from services.authentication_event_service import record_authentication_event
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -184,7 +185,13 @@ def register(
     )
 
 
-def authenticate_user(email: str, password: str, db: Session, attempt_limit: int = 1000):
+def authenticate_user(
+    email: str,
+    password: str,
+    db: Session,
+    attempt_limit: int = 1000,
+    request: Request | None = None,
+):
     """
     Authenticate user by email and password.
 
@@ -198,6 +205,7 @@ def authenticate_user(email: str, password: str, db: Session, attempt_limit: int
     if not db_user:
         logger.warning("Login failed for %s: user not found", email)
         verify_password(password, hash_password("dummy"))
+        record_authentication_event(db, email=email, succeeded=False, reason="user_not_found", request=request)
         return None
 
     # Expired lock windows must reset the failure counter; otherwise staff are
@@ -206,31 +214,34 @@ def authenticate_user(email: str, password: str, db: Session, attempt_limit: int
     try:
         check_account_lockout(db_user)
     except HTTPException:
+        record_authentication_event(db, email=email, succeeded=False, reason="account_locked", request=request, user=db_user)
         raise
 
     try:
         password_ok = verify_password(password, db_user.hashed_password)
     except Exception:
         logger.exception("Login failed for %s: stored password hash is invalid", email)
+        record_authentication_event(db, email=email, succeeded=False, reason="invalid_password_hash", request=request, user=db_user)
         record_login_failure(db, db_user)
         return None
 
     if not password_ok:
         logger.warning("Login failed for %s: invalid password", email)
+        record_authentication_event(db, email=email, succeeded=False, reason="invalid_password", request=request, user=db_user)
         record_login_failure(db, db_user)
         return None
 
     if hasattr(db_user, "is_active") and db_user.is_active is False:
         logger.warning("Login failed for %s: account disabled", email)
+        record_authentication_event(db, email=email, succeeded=False, reason="account_disabled", request=request, user=db_user)
         return None
 
     require_verify = os.getenv("REQUIRE_EMAIL_VERIFICATION", "").lower() in ("1", "true", "yes")
     if require_verify and not getattr(db_user, "email_verified_at", None):
         logger.warning("Login failed for %s: email not verified", email)
+        record_authentication_event(db, email=email, succeeded=False, reason="email_unverified", request=request, user=db_user)
         return None
 
-    record_login_success(db, db_user)
-    logger.info("Login success for %s", email)
     return db_user
 
 
@@ -333,15 +344,24 @@ def login(
             detail="Email and password are required",
         )
 
-    user = authenticate_user(form_data.username, form_data.password, db)
+    user = authenticate_user(form_data.username, form_data.password, db, request=request)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password. Please check your credentials and try again.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    _enforce_mfa_on_login(user, None)
-    return create_token_response(db, user, request=request, response=response)
+    try:
+        _enforce_mfa_on_login(user, None)
+    except HTTPException as exc:
+        reason = "mfa_required" if exc.status_code == 401 else "mfa_enrollment_required"
+        record_authentication_event(db, email=form_data.username, succeeded=False, reason=reason, request=request, user=user)
+        raise
+    payload = create_token_response(db, user, request=request, response=response)
+    record_login_success(db, user)
+    record_authentication_event(db, email=form_data.username, succeeded=True, reason="success", request=request, user=user)
+    logger.info("Login success for %s", user.email)
+    return payload
 
 
 @router.post("/login-json", response_model=Token)
@@ -358,15 +378,24 @@ def login_json(
             detail="Email and password are required",
         )
 
-    user = authenticate_user(credentials.email, credentials.password, db)
+    user = authenticate_user(credentials.email, credentials.password, db, request=request)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password. Please check your credentials and try again.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    _enforce_mfa_on_login(user, credentials.mfa_code)
-    return create_token_response(db, user, request=request, response=response)
+    try:
+        _enforce_mfa_on_login(user, credentials.mfa_code)
+    except HTTPException as exc:
+        reason = "mfa_required" if exc.status_code == 401 else "mfa_enrollment_required"
+        record_authentication_event(db, email=credentials.email, succeeded=False, reason=reason, request=request, user=user)
+        raise
+    payload = create_token_response(db, user, request=request, response=response)
+    record_login_success(db, user)
+    record_authentication_event(db, email=credentials.email, succeeded=True, reason="success", request=request, user=user)
+    logger.info("Login success for %s", user.email)
+    return payload
 
 
 @router.post("/refresh", response_model=Token)

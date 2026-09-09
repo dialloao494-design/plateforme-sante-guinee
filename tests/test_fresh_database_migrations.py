@@ -43,7 +43,7 @@ def test_alembic_upgrade_head_bootstraps_pristine_database(tmp_path):
     } <= tables
     with engine.connect() as connection:
         revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        assert revision == "20260902_0039_multiple_platform_owners"
+        assert revision == "20260909_0040_authentication_events"
     assert "uq_users_single_platform_owner" not in {
         index["name"] for index in inspector.get_indexes("users")
     }

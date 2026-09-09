@@ -50,5 +50,6 @@ from .clinic_service_request import ClinicServiceRequest
 from .api_idempotency import ApiClientIdempotencyKey
 from .staff_activation_token import StaffActivationToken
 from .clinic_operational_shift import ClinicOperationalShift
+from .authentication_event import AuthenticationEvent
 
 from . import user_hooks as _user_hooks  # noqa: F401
