@@ -786,8 +786,8 @@ and a clear escalation contact.
 
 ### 2026-11-05 — Clinic offline policy and AASMA launch cleanup
 
-**Status: CODE COMPLETE; locally regression/build and focused-browser verified.
-CI, deployment, production, and clinic workstation validation remain open.**
+**Status: CI VERIFIED; deployment and production smoke/revision/assets VERIFIED
+for application release `d9fbdd3`. Clinic workstation/field validation remains open.**
 
 The initial review rejected the first implementation despite its passing
 48-test offline and 8-test authentication suites. Local adversarial reproductions
@@ -859,10 +859,26 @@ evidence, superseded by the following corrections and regressions:
   Provider GitHub auto-deployments published code before CI completed; this is an
   observed release-gating gap, not evidence that P0's protected-release exit
   criterion has been met. Provider auto-deploy settings require operational review.
+- Final release evidence: application commit **`d9fbdd383b41b2de9c5652c2bcd7ec0de0785abf`**
+  passed all six required jobs in [CI run 42054439129](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/42054439129).
+  The browser job finished successfully with **57 clean passes and 2 cases passing
+  on retry** (clinical tenant search and the online-only connection indicator);
+  those timing flakes remain open reliability work and are not represented as
+  59 first-attempt passes. [Deployment run 42055267107](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/42055267107)
+  passed Railway backend, Vercel frontend, and post-deployment smoke. Independent
+  production verification returned the exact release SHA from `/health/build`,
+  HTTP 200 from `/health/ready` and the frontend, and served frontend assets
+  containing the offline permission/generation/ownership controls. A read-only
+  Chromium check of the real production login page rendered the expected controls
+  without page errors or HTTP 5xx responses. No production clinical workflow or
+  physical workstation acceptance is claimed from these checks. A short backend
+  502 during restart recovered before final verification. This documentation-only
+  follow-up records evidence for the tested application commit; it does not change
+  runtime code or replace that commit's CI/deployment results.
 - Operator-confirmed production scope: **CLINIQUE AASMA (17)**; delete all patient,
   clinical, and billing records, preserving staff, catalogues, and clinic settings.
-  **No production deletion has been executed.** Deployment is underway, with
-  preliminary provider deployments observed but final release gates still pending.
+  **No production deletion has been executed.** The application release is deployed
+  and CI/production-smoke verified as described above.
   Prior database access was
   traced to a legacy direct Railway database URL in deployment scripts, but
   read-only connection attempts reached a proxy that closed before a database
