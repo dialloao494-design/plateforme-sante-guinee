@@ -1,6 +1,9 @@
+import { profileEpoch } from './epoch.js';
+import { readOfflineProfile } from './sessionScope.js';
 import { offlineDb } from './db.js';
 import { buildCacheKey } from '../utils/apiCache.js';
 import { isCatalogUrl, isPatientDetailUrl, isPatientSearchUrl } from './entityTypes.js';
+import { isOfflineAllowed } from './sessionScope.js';
 import { readOfflineOwnerScope } from './sessionScope.js';
 
 const MAX_PATIENT_CACHE = 500;
@@ -38,6 +41,7 @@ export function buildOfflineCacheKey(method, url, params) {
 }
 
 async function readCachedJson(table, row) {
+  if (profileEpoch(row) !== profileEpoch(readOfflineProfile())) return undefined;
   try {
     return JSON.parse(row.payload_json);
   } catch {
@@ -51,6 +55,7 @@ async function readCachedJson(table, row) {
 
 /** Store GET response in IndexedDB for offline replay. */
 export async function cacheGetResponse(url, params, data) {
+  if (!isOfflineAllowed()) return;
   const key = buildOfflineCacheKey('get', url, params);
   const now = Date.now();
   const expiresAt = now + CACHE_TTL_MS;
@@ -63,6 +68,7 @@ export async function cacheGetResponse(url, params, data) {
   if (isPatientSearchUrl(url)) {
     const q = String(params?.q ?? '').trim().toLowerCase();
     await offlineDb.patients.put({
+      offline_data_epoch: profileEpoch(readOfflineProfile()),
       owner_key: ownerKey,
       search_key: q || '__all__',
       patient_id: null,
@@ -85,6 +91,7 @@ export async function cacheGetResponse(url, params, data) {
 
   if (isCatalogUrl(url)) {
     await offlineDb.catalogs.put({
+      offline_data_epoch: profileEpoch(readOfflineProfile()),
       owner_key: ownerKey,
       catalog_key: key,
       payload_json: JSON.stringify(data),
@@ -97,12 +104,13 @@ export async function cacheGetResponse(url, params, data) {
 
   await offlineDb.meta.put({
     key: `get:${ownerKey}:${key}`,
-    value: { data, cached_at: now, expires_at: expiresAt, owner_key: ownerKey },
+    value: { data, cached_at: now, expires_at: expiresAt, owner_key: ownerKey, offline_data_epoch: profileEpoch(readOfflineProfile()) },
     updated_at: now,
   });
 }
 
 export async function getCachedGet(url, params) {
+  if (!isOfflineAllowed()) return undefined;
   const key = buildOfflineCacheKey('get', url, params);
   const now = Date.now();
   const { ownerKey, userId } = readOfflineOwnerScope();
@@ -160,7 +168,8 @@ export async function getCachedGet(url, params) {
   }
 
   const meta = await offlineDb.meta.get(`get:${ownerKey}:${key}`);
-  if (meta?.value?.expires_at > now && meta?.value?.owner_key === ownerKey) {
+  if (meta?.value?.expires_at > now && meta?.value?.owner_key === ownerKey
+    && profileEpoch(meta.value) === profileEpoch(readOfflineProfile())) {
     if (isPatientDirectoryRequest(url, params)) {
       const directory = await readCachedPatientDirectory(ownerKey, now);
       const combined = [...(Array.isArray(meta.value.data) ? meta.value.data : []), ...directory];
@@ -179,6 +188,7 @@ export async function getCachedGet(url, params) {
 }
 
 export async function cachePatientRecord(patient) {
+  if (!isOfflineAllowed()) return;
   if (!patient?.id && !patient?.patient_id) return;
   const { ownerKey, userId } = readOfflineOwnerScope();
   if (!userId) return;
@@ -190,6 +200,7 @@ export async function cachePatientRecord(patient) {
   };
   const now = Date.now();
   await offlineDb.patients.put({
+    offline_data_epoch: profileEpoch(readOfflineProfile()),
     owner_key: ownerKey,
     patient_id: String(patientId),
     search_key: `id:${patientId}`,
@@ -200,6 +211,7 @@ export async function cachePatientRecord(patient) {
 }
 
 export async function getCachedPatient(patientId) {
+  if (!isOfflineAllowed()) return undefined;
   const { ownerKey, userId } = readOfflineOwnerScope();
   if (!userId) return undefined;
   const row = await offlineDb.patients
@@ -213,6 +225,7 @@ export async function getCachedPatient(patientId) {
 }
 
 export async function storeDomainEntity(domain, entity) {
+  if (!isOfflineAllowed()) return;
   const table = offlineDb[domain];
   if (!table) return;
   const { ownerKey, userId } = readOfflineOwnerScope();
@@ -221,6 +234,7 @@ export async function storeDomainEntity(domain, entity) {
   if (!entityId) return;
   const now = Date.now();
   await table.put({
+    offline_data_epoch: profileEpoch(readOfflineProfile()),
     owner_key: ownerKey,
     entity_id: String(entityId),
     consultation_id: entity.consultation_id ? String(entity.consultation_id) : undefined,

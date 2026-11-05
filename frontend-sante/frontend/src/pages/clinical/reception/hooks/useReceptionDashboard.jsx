@@ -51,7 +51,6 @@ import {
 import { onInvoiceReconciled } from '../../../../offline/reconcileInvoice.js';
 import { readReceptionRouteState, updateReceptionRouteState } from '../routeState.js';
 import { useConfirm } from '../../../../contexts/ConfirmContext.jsx';
-import { cachePatientRecord } from '../../../../offline/cache.js';
 
 export function useReceptionDashboard() {
   const { user } = useAuth();
@@ -286,15 +285,13 @@ export function useReceptionDashboard() {
 
   const loadDashboard = useCallback(async () => {
     try {
-      const [{ data }, patientDirectory] = await Promise.all([
+      const [{ data }] = await Promise.all([
         clinicalApi.receptionHisDashboard({ forceRefresh: true }),
         clinicalApi.receptionHisDashboardQueue('total_patients').catch(() => null),
       ]);
       setStats(data || null);
       setDashboardUpdatedAt(Date.now());
-      // Warm the clinic-scoped directory required to find and open an existing
-      // patient after network loss. The offline database caps this at 500 rows.
-      await Promise.all((patientDirectory?.data || []).map((patient) => cachePatientRecord(patient)));
+
     } catch (e) {
       setError(formatApiError(e, 'Impossible de charger le tableau de bord'));
     }

@@ -16,6 +16,14 @@ test('server probe recovers when browser connectivity state remains stale', asyn
     }),
     { timeout: 12_000 },
   ).toEqual({ browser: false, application: true });
+  // A malformed registration must reach server validation rather than return
+  // a misleading optimistic 202 from the offline queue.
+  const status = await page.evaluate(async () => {
+    const { default: http } = await import('/src/services/httpClient.js');
+    try { return (await http.post('/clinical/reception/his/patients', {})).status; }
+    catch (error) { return error.response?.status; }
+  });
+  expect(status).toBe(422);
 });
 
 test('network loss before request queues registration', async ({ page, context }) => {

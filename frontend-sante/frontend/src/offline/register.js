@@ -1,3 +1,8 @@
+import { profileEpoch } from './epoch.js';
+import { readOfflineOwnerScope, readOfflineProfile } from './sessionScope.js';
+import { isBrowserOnline, setOnlineStatus, onOnlineStatusChange } from './connectivity.js';
+export { isBrowserOnline, onOnlineStatusChange };
+import { isOfflineAllowed } from './sessionScope.js';
 import { enqueueMutation } from './outbox.js';
 import { cacheGetResponse, getCachedGet } from './cache.js';
 import { classifyRequest } from './entityTypes.js';
@@ -7,36 +12,12 @@ let requestInterceptorId = null;
 let responseInterceptorId = null;
 let initialized = false;
 
-const statusListeners = new Set();
-let onlineStatus = typeof navigator !== 'undefined' ? navigator.onLine : true;
 const OFFLINE_FALLBACK_TIMEOUT_MS = 1_500;
 const DEGRADED_NETWORK_WINDOW_MS = 15_000;
 const CONNECTIVITY_PROBE_INTERVAL_MS = 8_000;
 let networkDegradedUntil = 0;
 let connectivityProbeTimer = null;
 let connectivityProbePromise = null;
-
-export function isBrowserOnline() {
-  return onlineStatus;
-}
-
-export function onOnlineStatusChange(listener) {
-  statusListeners.add(listener);
-  listener(onlineStatus);
-  return () => statusListeners.delete(listener);
-}
-
-function setOnlineStatus(next) {
-  if (onlineStatus === next) return;
-  onlineStatus = next;
-  for (const fn of statusListeners) {
-    try {
-      fn(onlineStatus);
-    } catch {
-      /* ignore */
-    }
-  }
-}
 
 /**
  * Browsers can leave navigator.onLine=false after Wi-Fi has recovered. Prove
@@ -53,7 +34,7 @@ export function probeServerConnectivity(httpClient) {
     headers: { 'Cache-Control': 'no-cache' },
     params: { connectivity_probe: Date.now() },
   }).then(async () => {
-    const recovered = !onlineStatus;
+    const recovered = !isBrowserOnline() || Date.now() < networkDegradedUntil;
     networkDegradedUntil = 0;
     setOnlineStatus(true);
     if (recovered) {
@@ -95,7 +76,16 @@ export function attachOfflineInterceptors(httpClient) {
   requestInterceptorId = httpClient.interceptors.request.use(async (config) => {
     const method = String(config.method || 'get').toLowerCase();
     const url = config.url || '';
-    if (shouldSkipOffline(url)) return config;
+    config.__offlineEpoch ??= profileEpoch(readOfflineProfile());
+    config.__offlineOwner ??= readOfflineOwnerScope().ownerKey;
+    if (String(url).includes('/clinical/') && config.__offlineOwner !== readOfflineOwnerScope().ownerKey) {
+      throw Object.assign(new Error('Session modifiée; requête annulée.'), { code: 'ERR_CANCELED', config });
+    }
+    if (isMutationMethod(method) && String(url).includes('/clinical/') && !config.__offlineReplay) {
+      config.headers = config.headers || {};
+      config.headers['X-Offline-Data-Epoch'] = String(config.__offlineEpoch);
+    }
+    if (shouldSkipOffline(url) || !isOfflineAllowed() || config.__connectivityProbe || config.__offlineReplay) return config;
 
     const classified = classifyRequest(url, method);
 
@@ -110,7 +100,7 @@ export function attachOfflineInterceptors(httpClient) {
       config.__offlineFallback = true;
     }
 
-    const useOfflinePath = !navigator.onLine || Date.now() < networkDegradedUntil;
+    const useOfflinePath = !isBrowserOnline() || Date.now() < networkDegradedUntil;
 
     if (method === 'get' && useOfflinePath && classified.cacheable) {
       const cached = await getCachedGet(url, config.params);
@@ -131,6 +121,7 @@ export function attachOfflineInterceptors(httpClient) {
     if (isMutationMethod(method) && useOfflinePath && classified.queueable) {
       const { optimistic, client_request_id } = await enqueueMutation({
         method,
+        offlineDataEpoch: config.__offlineEpoch,
         url,
         data: config.data,
         params: config.params,
@@ -169,14 +160,22 @@ export function attachOfflineInterceptors(httpClient) {
       if (!response?.data?._offline_queued && !response?.headers?.['x-offline-cache']) {
         networkDegradedUntil = 0;
       }
-      if (method === 'get' && !shouldSkipOffline(url)) {
+      if (method === 'get' && !shouldSkipOffline(url) && isOfflineAllowed() && !config.__connectivityProbe
+        && config.__offlineEpoch === profileEpoch(readOfflineProfile())
+        && config.__offlineOwner === readOfflineOwnerScope().ownerKey) {
         await cacheOnlineGet(url, config.params, response.data);
       }
       return response;
     },
     async (error) => {
       const config = error?.config;
-      if (!config || shouldSkipOffline(config.url)) {
+      if (config?.__offlineOwner && config.__offlineOwner !== readOfflineOwnerScope().ownerKey) {
+        return Promise.reject(error);
+      }
+      if (config && !shouldSkipOffline(config.url) && isNetworkError(error)) {
+        setOnlineStatus(false);
+      }
+      if (!config || shouldSkipOffline(config.url) || !isOfflineAllowed() || config.__connectivityProbe || config.__offlineReplay) {
         return Promise.reject(error);
       }
 
@@ -184,6 +183,7 @@ export function attachOfflineInterceptors(httpClient) {
       const classified = classifyRequest(config.url, method);
 
       if (isNetworkError(error)) {
+        setOnlineStatus(false);
         networkDegradedUntil = Date.now() + DEGRADED_NETWORK_WINDOW_MS;
       }
 
@@ -204,6 +204,7 @@ export function attachOfflineInterceptors(httpClient) {
       if (isMutationMethod(method) && isNetworkError(error) && classified.queueable) {
         const { optimistic, client_request_id } = await enqueueMutation({
           method,
+          offlineDataEpoch: config.__offlineEpoch,
           url: config.url,
           data: config.data,
           params: config.params,
@@ -280,7 +281,7 @@ function hookBrowserConnectivity(httpClient) {
   };
   const handleOffline = () => setOnlineStatus(false);
   const probeWhenNeeded = () => {
-    if (!onlineStatus || Date.now() < networkDegradedUntil) {
+    if (!isBrowserOnline() || Date.now() < networkDegradedUntil) {
       void probeServerConnectivity(httpClient);
     }
   };

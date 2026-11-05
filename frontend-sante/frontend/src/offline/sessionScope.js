@@ -21,3 +21,18 @@ export function readOfflineOwnerScope() {
     ownerKey: buildOwnerKey(userId, clinicId),
   };
 }
+
+/** Legacy profiles retain offline support until the server supplies a policy. */
+export function isOfflineAllowed(profile) {
+  if (profile !== undefined) return profile?.offline_workstations_enabled !== false;
+  try {
+    return JSON.parse(getAuthItem('sg_auth_profile') || '{}').offline_workstations_enabled !== false;
+  } catch {
+    return false;
+  }
+}
+
+export function readOfflineProfile() {
+  try { return JSON.parse(getAuthItem('sg_auth_profile') || '{}'); }
+  catch { return {}; }
+}

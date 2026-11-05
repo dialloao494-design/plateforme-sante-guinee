@@ -1,3 +1,6 @@
+import { profileEpoch } from './epoch.js';
+import { readOfflineProfile } from './sessionScope.js';
+import { isBrowserOnline, setOnlineStatus } from './connectivity.js';
 import { getMeta, setMeta } from './db.js';
 import {
   getPendingOutbox,
@@ -88,6 +91,10 @@ export async function replayOutboxItem(item, client) {
     return 'skipped';
   }
 
+  if (profileEpoch(item) !== profileEpoch(readOfflineProfile())) {
+    throw Object.assign(new Error('Ancienne opération après remise à zéro; export uniquement.'), { code: 'OFFLINE_EPOCH_MISMATCH' });
+  }
+
   // Dependents queued against offline_* patient ids must wait until the
   // registration row reconciles and rewrites their foreign keys.
   const resolved = await resolveOutboxItemPatientRefs(item);
@@ -102,10 +109,11 @@ export async function replayOutboxItem(item, client) {
     ...parseJson(playable.headers_json),
     'X-Client-Request-Id': playable.client_request_id,
     'X-Record-Version': String(playable.record_version || 1),
+    'X-Offline-Data-Epoch': String(profileEpoch(playable)),
   };
 
   const method = String(playable.method || 'POST').toLowerCase();
-  const config = { headers, params: params || undefined };
+  const config = { headers, params: params || undefined, __offlineReplay: true };
 
   let response;
   if (method === 'post') {
@@ -121,6 +129,9 @@ export async function replayOutboxItem(item, client) {
   }
 
   const serverData = response?.data;
+  if (serverData?._offline_queued || response?.headers?.['x-offline-queued']) {
+    throw Object.assign(new Error("Serveur indisponible; opération conservée."), { code: 'ERR_NETWORK' });
+  }
   const localOptimistic = parseJson(playable.optimistic_json);
 
   if (response?.status === 409 || serverData?.conflict) {
@@ -164,7 +175,7 @@ async function performFlush(client = httpClientRef, { forceRetry = false, assume
   if (!client) {
     return { synced: 0, failed: 0, conflicts: 0, skipped: true };
   }
-  if (typeof navigator !== 'undefined' && !navigator.onLine && !assumeOnline) {
+  if (!isBrowserOnline() && !assumeOnline) {
     return { synced: 0, failed: 0, conflicts: 0, offline: true };
   }
 
@@ -211,6 +222,11 @@ async function performFlush(client = httpClientRef, { forceRetry = false, assume
           await markOutboxFailed(item.id, new Error('owner mismatch'), 12);
         } else failed += 1;
       } catch (error) {
+        if (error?.code === 'OFFLINE_EPOCH_MISMATCH' || error?.response?.data?.detail?.code === 'offline_epoch_mismatch') {
+          await markOutboxCorrupted(item.id, 'Clinique remise à zéro : export uniquement, envoi interdit.');
+          failed += 1;
+          continue;
+        }
         if (error?.code === 'OFFLINE_CORRUPTED_PAYLOAD') {
           await markOutboxCorrupted(item.id, error.message);
           failed += 1;
@@ -218,6 +234,7 @@ async function performFlush(client = httpClientRef, { forceRetry = false, assume
         }
         const attempt = Number(item.attempt_count || 0) + 1;
         if (isNetworkError(error)) {
+          setOnlineStatus(false);
           await markOutboxFailed(item.id, error, attempt);
           failed += 1;
           break;
@@ -296,7 +313,7 @@ export function startAutoSync(client = httpClientRef) {
   stopAutoSync();
 
   const tick = async () => {
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
+    if (isBrowserOnline()) {
       await flushOutbox(httpClientRef);
     }
   };

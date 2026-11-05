@@ -5,7 +5,7 @@ Santé Guinée. This document is written for maintainers and coding agents worki
 toward a safe, coherent, hospital-grade product.
 
 **Owner:** repository maintainers  
-**Last evidence update:** 2026-09-09
+**Last evidence update:** 2026-11-05 (local offline-policy corrections; remote gates unchanged)
 **Current branch:** `main`  
 **Original assessment baseline:** approximately **7.5/10 as a supervised pilot**
 and **6/10 for broad production deployment**.
@@ -782,6 +782,72 @@ and a clear escalation contact.
 | 2026-09-09 | Staff deletion policy is now explicit and consistent across clinic and platform administration. The backend computes one authoritative eligibility decision: only inactive, valid, never-used invitations without login, verification, doctor-profile, or audit history can be permanently deleted. Eligible rows expose “Supprimer définitivement”; every retained identity displays a specific French explanation and remains available for deactivation/reactivation. The delete service reuses the same decision, preserving self-delete, tenant, session, clinical-attribution, and audit safeguards. Focused governance/lifecycle tests pass **18/18**; frontend unit tests pass **55/55** and lint is green. | Guarded staff deletion UX is code-complete and locally unit/regression verified. CI, deployment, production verification, and observed administrator acceptance remain open. |
 | 2026-09-09 | The clinic-supplied AASMA plastic-surgery tariff was transcribed into a clinic-17-only catalogue of **102** coded services across Générale, Reconstruction, Esthétique, and Brûlés. Four document entries without printed codes use approved internal codes; the two clinically distinct spontaneous-healing hospitalization choices remain separately visible at **50,000 GNF** (`QAASMA-HospCD`) and **150,000 GNF** (`QAASMA-HospCD2`). Catalogue composition reconciles by code, the physician selector exposes section/code/tariff, and service-request/invoice resolution re-resolves the clinic-scoped authoritative price server-side while retaining surgical codes in printed line descriptions. Focused backend workflow/catalogue tests pass **21/21**; frontend unit tests pass **55/55**, with lint, production PWA build, and all performance budgets green. | AASMA plastic-surgery catalogue integration is code-complete and locally regression/build verified. CI, deployment, production catalogue verification, and physician/Reception field validation remain open; prices become operational only after deployment. |
 | 2026-09-09 | Native browser constraint validation could stop form submissions before page handlers ran, making actions appear inert—especially when the invalid field was inside a collapsed section. Application-wide interaction feedback now identifies, reveals, centers, and focuses the first invalid field, while pointer/touch attempts on disabled buttons explain that the action is unavailable (with an optional workflow-specific `data-disabled-reason`). The Reception registration form is separately loaded to preserve route performance. Chromium verifies both hidden-invalid-field and disabled-action feedback within the registration file **4/4**, and the complete cross-role browser matrix passes **55/55**. Frontend tests pass **56/56**, offline tests **45/45**, lint/build and all budgets pass, with Reception at **94.59/115 KiB**. The same review ran the full backend at **483 passed / 1 skipped** and a clean migration through head `0040`. | Shared interaction feedback is code-complete and locally unit-, full-surface real-browser-, offline-, build-, performance-, and backend-regression-verified. CI, deployment, production-log correlation, and confirmation across representative clinic workstations remain open. |
+
+
+### 2026-11-05 — Clinic offline policy and AASMA launch cleanup
+
+**Status: CODE COMPLETE; locally regression/build and focused-browser verified.
+CI, deployment, production, and clinic workstation validation remain open.**
+
+The initial review rejected the first implementation despite its passing
+48-test offline and 8-test authentication suites. Local adversarial reproductions
+showed a background authentication failure deleting an unsent outbox row, a late
+profile response restoring identity after logout, a stale browser connectivity
+flag stranding the 26th queued operation, and nullable configuration causing the
+new auth-profile lookup to raise `TypeError`. These are historical failure
+evidence, superseded by the following corrections and regressions:
+
+- `/auth/me` returns the authenticated clinic's offline permission and data epoch
+  using an isolated, defensive configuration parser. Malformed or unrelated null
+  settings cannot break profile retrieval; administration numeric settings have
+  valid fallbacks. API/schema regressions cover nulls, invalid values, and clinics
+  with different epochs.
+- Background policy checks are non-destructive and cannot trigger token-refresh
+  failure logout or privacy purge. They bypass the auth-profile response cache,
+  cancel superseded requests, and validate session generation and request order
+  before applying results. Logout and identity transitions invalidate pending
+  profile/token responses. Explicit logout retains its existing privacy purge.
+- Routing, connectivity indicators, and the automatic replay scheduler share one
+  connectivity state. A successful first-party probe overrides stale browser
+  flags for subsequent batches as well as new requests. Network failures reset
+  that state; replay bypasses offline fallback and never treats a locally queued
+  response as server persistence. The 26-operation regression drains completely.
+- Online-only clinics reject disconnected cached bootstrap and offline fallback;
+  shared cache writers/readers respect the policy, including Reception directory
+  warming and reconciliation caches. Existing durable mutations remain available
+  for recovery and authorized replay; disabling offline does not delete them.
+- Reset generation is enforced at the authenticated server boundary before
+  clinical mutations and before cached idempotency responses. New requests and
+  durable outbox rows retain their originating epoch; legacy rows/requests default
+  to epoch 1, so post-reset servers reject them. On profile refresh, owner-scoped
+  obsolete caches/mappings are cleared and old work is quarantined, preserving
+  original payloads for recovery export. Requests failing after a reset retain
+  their original generation when persisted and are quarantined instead of being
+  restamped with the new generation. Manual retry cannot bypass generation
+  checks. Cache reads also check each row's epoch, protecting against local cleanup
+  failure without making online login depend on IndexedDB availability.
+- Local verification: full backend **494 passed / 1 skipped**; focused backend
+  authentication/governance/policy **24/24**; frontend unit **58/58** plus nursing
+  pretests **3/3**; offline **54/54**; lint, production PWA build, all six performance
+  budgets, and diff checks pass. Focused Chromium **6/6** verifies background 401
+  queue preservation, in-flight profile logout, active-session policy enforcement,
+  reset quarantine, stale connectivity server validation, and real offline
+  registration/recovery. Full Chromium matrix **59/59** passed before the final
+  originating-request generation guard; affected flows were rerun on the final
+  source: **11/11** focused Chromium tests pass, including offline admission,
+  invoice/print, restart recovery, and concurrent registration. Browser plugin
+  unavailable; repository Playwright used against disposable SQLite and local
+  servers at `127.0.0.1:5173` / `127.0.0.1:8000`. Screenshot evidence is retained
+  outside the repository at `/private/tmp/sante-online-only-policy.png`.
+- Operator-confirmed production scope: **CLINIQUE AASMA (17)**; delete all patient,
+  clinical, and billing records, preserving staff, catalogues, and clinic settings.
+  **No production deletion or deployment has been executed.** Prior access was
+  traced to a legacy direct Railway database URL in deployment scripts, but
+  read-only connection attempts reached a proxy that closed before a database
+  session opened. Current production access, a verified backup, inventory preview,
+  actual reset, and post-commit verification remain pending. Deploy both backend
+  and frontend generation enforcement before reset; reconcile/export workstation
+  test queues and refresh each workstation before admitting real patients.
 
 ## Related evidence
 

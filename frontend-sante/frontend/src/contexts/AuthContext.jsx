@@ -1,3 +1,5 @@
+import { prepareOfflineEpoch } from '../offline/epoch.js';
+import { createProfileRequestGuard, getAuthGeneration, invalidateAuthGeneration } from '../utils/authGeneration.js';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api.js';
@@ -23,6 +25,8 @@ import { toUserFriendlyLoginMessage as loginErrorMessage } from '../utils/loginE
 import { useSessionTimeout } from '../hooks/useSessionTimeout.js';
 import SessionTimeoutModal from '../components/SessionTimeoutModal.jsx';
 import { startAutoSync, stopAutoSync } from '../offline/sync.js';
+
+import { isOfflineAllowed } from '../offline/sessionScope.js';
 
 const AUTH_PROFILE_STORAGE_KEY = 'sg_auth_profile';
 
@@ -77,6 +81,7 @@ export const AuthProvider = ({ children }) => {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState(null);
   const bootstrapStartedRef = useRef(false);
+  const profileRequestGuard = useRef(createProfileRequestGuard());
 
   const clearPasswordResetFlags = () => {
     removeAuthItem('password_reset_required');
@@ -108,6 +113,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const logout = useCallback(async () => {
+    invalidateAuthGeneration();
     // Stop offline replay before clearing identity-bound IndexedDB/PHI caches.
     stopAutoSync();
     // Wait for server-side family/JTI/session invalidation before exposing the
@@ -125,10 +131,10 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const fetchCurrentUser = useCallback(async ({ allowRefresh = false } = {}) => {
+  const fetchCurrentUser = useCallback(async ({ allowRefresh = false, background = false, signal } = {}) => {
     try {
       return await withTimeout(
-        authAPI.me({ forceRefresh: true }),
+        authAPI.me({ forceRefresh: true, background, signal }),
         AUTH_BOOTSTRAP_TIMEOUT_MS,
         '/auth/me'
       );
@@ -136,7 +142,7 @@ export const AuthProvider = ({ children }) => {
       if (allowRefresh && err?.response?.status === 401) {
         await withTimeout(authAPI.refresh(), AUTH_BOOTSTRAP_TIMEOUT_MS, '/auth/refresh');
         return await withTimeout(
-          authAPI.me({ forceRefresh: true }),
+          authAPI.me({ forceRefresh: true, background, signal }),
           AUTH_BOOTSTRAP_TIMEOUT_MS,
           '/auth/me'
         );
@@ -145,11 +151,15 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const refreshUser = useCallback(async () => {
-    const data = await fetchCurrentUser({ allowRefresh: true });
+  const refreshUser = useCallback(async ({ background = false, signal } = {}) => {
+    const isCurrent = profileRequestGuard.current();
+    const data = await fetchCurrentUser({ allowRefresh: !background, background, signal });
+    if (!isCurrent() || signal?.aborted) return null;
     if (!data) {
       throw new Error('Profil utilisateur vide');
     }
+    await prepareOfflineEpoch(data);
+    if (!isCurrent() || signal?.aborted) return null;
     const normalizedUser = normalizeAndStoreUser(data);
     setUser(normalizedUser);
     setAuthInitError(null);
@@ -161,6 +171,7 @@ export const AuthProvider = ({ children }) => {
       return;
     }
     bootstrapStartedRef.current = true;
+    const generation = getAuthGeneration();
     setAuthSessionReady(false);
     const cachedProfile = readCachedProfile();
     if (cachedProfile) {
@@ -175,7 +186,7 @@ export const AuthProvider = ({ children }) => {
     // immediately instead of blocking every cold start on the 15-second auth
     // request timeout. Server validation resumes on reconnect through auto
     // sync, and logout still purges the identity-bound offline stores.
-    if (cachedProfile && typeof navigator !== 'undefined' && navigator.onLine === false) {
+    if (cachedProfile && isOfflineAllowed(cachedProfile) && typeof navigator !== 'undefined' && navigator.onLine === false) {
       startAutoSync(httpClient);
       setAuthLoading(false);
       setAuthSessionReady(true);
@@ -185,15 +196,19 @@ export const AuthProvider = ({ children }) => {
     try {
       // Use refresh when the short-lived access cookie expired but refresh is still valid.
       const data = await fetchCurrentUser({ allowRefresh: true });
+      if (generation !== getAuthGeneration()) return;
       if (!data) {
         throw new Error('Profil utilisateur vide');
       }
+      await prepareOfflineEpoch(data);
+      if (generation !== getAuthGeneration()) return;
       const normalizedUser = normalizeAndStoreUser(data);
       setUser(normalizedUser);
       setAuthInitError(null);
       clearLegacySharedAuth();
       startAutoSync(httpClient);
     } catch (err) {
+      if (generation !== getAuthGeneration()) return;
       logAuthSessionFailure('bootstrap', err);
       const status = err?.response?.status;
       if (status === 401 || status === 403) {
@@ -203,7 +218,7 @@ export const AuthProvider = ({ children }) => {
         setAuthInitError(null);
       } else {
         setAuthInitError(toBootstrapErrorMessage(err));
-        if (cachedProfile) {
+        if (cachedProfile && isOfflineAllowed(cachedProfile)) {
           // A clinic may open or refresh the installed app while disconnected.
           // Keep the reconnect listener alive so queued work starts replaying as
           // soon as the network/API becomes reachable again.
@@ -218,6 +233,27 @@ export const AuthProvider = ({ children }) => {
     }
   }, [fetchCurrentUser, normalizeAndStoreUser]);
 
+  // Refresh clinic policy for already-open workstations; network failures retain
+  // the last authenticated policy and never discard unsynchronized work.
+  useEffect(() => {
+    if (!user?.id || authLoading) return undefined;
+    let controller;
+    const refreshPolicy = () => {
+      controller?.abort();
+      controller = new AbortController();
+      void refreshUser({ background: true, signal: controller.signal }).catch(() => {});
+    };
+    const timer = window.setInterval(refreshPolicy, 60_000);
+    window.addEventListener('focus', refreshPolicy);
+    window.addEventListener('online', refreshPolicy);
+    return () => {
+      controller?.abort();
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refreshPolicy);
+      window.removeEventListener('online', refreshPolicy);
+    };
+  }, [user?.id, authLoading, refreshUser]);
+
   const retrySessionBootstrap = useCallback(async () => {
     bootstrapStartedRef.current = false;
     await bootstrapSession({ force: true });
@@ -229,6 +265,8 @@ export const AuthProvider = ({ children }) => {
 
   const establishSession = useCallback(
     async (loginPayload) => {
+      invalidateAuthGeneration();
+      const generation = getAuthGeneration();
       await waitForOfflinePrivacyPurge();
       authDebug('establishSession: start', loginPayload?.role || loginPayload?.user_role);
       clearPasswordResetFlags();
@@ -253,10 +291,13 @@ export const AuthProvider = ({ children }) => {
         }
         throw err;
       }
+      if (generation !== getAuthGeneration()) throw new Error('Session modifiée pendant la connexion');
       authDebug('establishSession: /auth/me ok', meResponse?.email, meResponse?.role);
       if (!meResponse) {
         throw new Error('Profil utilisateur vide après connexion');
       }
+      await prepareOfflineEpoch(meResponse);
+      if (generation !== getAuthGeneration()) throw new Error('Session modifiée pendant la connexion');
       const normalizedUser = normalizeAndStoreUser(meResponse);
       setUser(normalizedUser);
       startAutoSync(httpClient);

@@ -157,3 +157,18 @@ def test_logout_revokes_previously_issued_token(client, db_session, admin_user):
   admin_user.session_version = old_session_version
   db_session.add(admin_user)
   db_session.commit()
+
+
+def test_auth_me_reports_current_clinic_offline_policy(client, db_session, admin_user):
+  import json
+  clinic = models.Clinic(name="Online clinic", city="Conakry", is_active=True,
+                         configuration_json=json.dumps({"offline_workstations_enabled": False}))
+  db_session.add(clinic)
+  db_session.commit()
+  admin_user.clinic_id = clinic.id
+  db_session.commit()
+  headers = _auth_headers(admin_user)
+  assert client.get("/auth/me", headers=headers).json()["offline_workstations_enabled"] is False
+  clinic.configuration_json = json.dumps({"offline_workstations_enabled": True})
+  db_session.commit()
+  assert client.get("/auth/me", headers=headers).json()["offline_workstations_enabled"] is True

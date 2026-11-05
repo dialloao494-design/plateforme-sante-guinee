@@ -1,3 +1,4 @@
+import { getAuthGeneration } from '../utils/authGeneration.js';
 import axios from 'axios';
 
 /** Localhost or private LAN (RFC1918) — never force HTTPS upgrade in dev. */
@@ -257,11 +258,13 @@ let authRefreshPromise = null;
 export function refreshAuthSession() {
   if (!authRefreshPromise) {
     authRefreshPromise = (async () => {
+      const generation = getAuthGeneration();
       const storedRefreshToken = getRefreshToken();
       const refreshBody = storedRefreshToken ? { refresh_token: storedRefreshToken } : {};
       const response = await httpClient.post('/auth/refresh', refreshBody, {
         __skipAuthRefresh: true,
       });
+      if (generation !== getAuthGeneration()) throw new Error('Session modifiée pendant le renouvellement');
       persistSessionTokens(response?.data || {});
       return response?.data || {};
     })().finally(() => {

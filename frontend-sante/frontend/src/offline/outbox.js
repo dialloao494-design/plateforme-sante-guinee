@@ -1,6 +1,8 @@
 import { offlineDb } from './db.js';
 import { classifyRequest } from './entityTypes.js';
 import { sortOutboxForPatientDependencies } from './remapPatientRefs.js';
+import { profileEpoch } from './epoch.js';
+import { readOfflineProfile } from './sessionScope.js';
 import { readOfflineOwnerScope } from './sessionScope.js';
 
 export const OUTBOX_STATUS = {
@@ -70,8 +72,10 @@ export async function enqueueMutation({
   operation,
   recordVersion = 1,
   optimisticData,
+  offlineDataEpoch = profileEpoch(readOfflineProfile()),
 }) {
   const reqId = clientRequestId || generateClientRequestId();
+  const staleEpoch = offlineDataEpoch !== profileEpoch(readOfflineProfile());
   const classified = classifyRequest(url, method);
   const type = entityType || classified.entityType;
   const op = operation || classified.operation;
@@ -81,6 +85,10 @@ export async function enqueueMutation({
     .equals(reqId)
     .first();
   if (existing) {
+    if (staleEpoch || profileEpoch(existing) !== profileEpoch(readOfflineProfile())) {
+      await markOutboxCorrupted(existing.id, 'Clinique remise à zéro : export uniquement, envoi interdit.');
+      throw Object.assign(new Error('Ancienne opération conservée pour export.'), { code: 'OFFLINE_EPOCH_MISMATCH' });
+    }
     return {
       client_request_id: reqId,
       optimistic: existing.optimistic_json ? JSON.parse(existing.optimistic_json) : null,
@@ -101,6 +109,7 @@ export async function enqueueMutation({
 
   await offlineDb.outbox.add({
     client_request_id: reqId,
+    offline_data_epoch: offlineDataEpoch,
     owner_key: scope.ownerKey,
     user_id: scope.userId,
     clinic_id: scope.clinicId,
@@ -113,14 +122,17 @@ export async function enqueueMutation({
     headers_json: JSON.stringify(headers),
     record_version: recordVersion,
     optimistic_json: JSON.stringify(optimistic),
-    status: OUTBOX_STATUS.PENDING,
-    attempt_count: 0,
+    status: staleEpoch ? OUTBOX_STATUS.DEAD : OUTBOX_STATUS.PENDING,
+    attempt_count: staleEpoch ? 12 : 0,
     created_at: now,
     updated_at: now,
-    next_retry_at: now,
-    last_error: null,
+    next_retry_at: staleEpoch ? null : now,
+    last_error: staleEpoch ? 'Clinique remise à zéro : export uniquement, envoi interdit.' : null,
   });
 
+  if (staleEpoch) {
+    throw Object.assign(new Error('Clinique remise à zéro : opération conservée pour export, envoi interdit.'), { code: 'OFFLINE_EPOCH_MISMATCH' });
+  }
   // Cache provisional patient so offline search/select can use the temp id
   // before connectivity returns; remap rewrites this row after sync.
   if (type === 'patient' && optimistic?.id) {

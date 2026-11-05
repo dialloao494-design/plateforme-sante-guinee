@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 
-from fastapi import Response
+from fastapi import Response, HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -44,6 +44,20 @@ class ClientRequestIdempotencyMiddleware:
         if not req_id:
             await self.app(scope, receive, send)
             return
+
+        # Validate authentication and reset generation before any cached response
+        # can bypass route dependencies. This also covers legacy replay headers.
+        from security import get_current_user
+        auth_db = SessionLocal()
+        try:
+            authorization = headers.get("authorization", "")
+            bearer = authorization[7:] if authorization.lower().startswith("bearer ") else None
+            get_current_user(Request(scope), token=bearer, db=auth_db)
+        except HTTPException as exc:
+            await JSONResponse(status_code=exc.status_code, content={"detail": exc.detail}, headers=exc.headers)(scope, receive, send)
+            return
+        finally:
+            auth_db.close()
 
         body = bytearray()
         while True:

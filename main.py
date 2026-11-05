@@ -116,6 +116,7 @@ if _is_deployed:
         "X-CSRF-Token",
         "X-Client-Request-Id",
         "X-Record-Version",
+        "X-Offline-Data-Epoch",
     ]
 else:
     from services.network_dev import TUNNEL_ORIGIN_REGEX

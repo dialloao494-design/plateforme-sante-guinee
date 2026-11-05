@@ -1,3 +1,5 @@
+import { profileEpoch } from './epoch.js';
+import { isOfflineAllowed, readOfflineProfile } from './sessionScope.js';
 /**
  * Temp → server patient ID / dossier-number reconciliation after outbox replay.
  */
@@ -63,8 +65,9 @@ export async function cacheReconciledPatient(serverPatient, { tempId, clientRequ
   const scope = readOfflineOwnerScope();
   if (!scope.userId || !serverPatient?.id) return;
   const now = Date.now();
-  await offlineDb.patients.put({
+  if (isOfflineAllowed()) await offlineDb.patients.put({
     owner_key: scope.ownerKey,
+    offline_data_epoch: profileEpoch(readOfflineProfile()),
     patient_id: serverPatient.id,
     search_key: String(serverPatient.patient_number || serverPatient.id).toLowerCase(),
     payload_json: JSON.stringify(serverPatient),

@@ -1,3 +1,4 @@
+import { useAuth } from '../contexts/AuthContext.jsx';
 import { useCallback, useEffect, useState } from 'react';
 import {
   countPendingOutbox,
@@ -23,6 +24,8 @@ function formatRelativeTime(ts) {
 }
 
 export default function OfflineStatusIndicator() {
+  const { user } = useAuth();
+  const offlineAllowed = user?.offline_workstations_enabled !== false;
   const [online, setOnline] = useState(isBrowserOnline());
   const [pending, setPending] = useState(0);
   const [syncing, setSyncing] = useState(false);
@@ -166,7 +169,9 @@ export default function OfflineStatusIndicator() {
       ? pending > 0
         ? `En ligne · ${pending} en attente`
         : 'En ligne'
-      : `Hors ligne${pending > 0 ? ` · ${pending} en file` : ''}`;
+      : offlineAllowed
+        ? `Hors ligne${pending > 0 ? ` · ${pending} en file` : ''}`
+        : 'Connexion requise · mode hors ligne désactivé';
 
   const dockLabel = syncFeedback?.text || label;
 
@@ -206,6 +211,7 @@ export default function OfflineStatusIndicator() {
             <span>{online ? 'Connecté' : 'Hors ligne'}</span>
           </div>
 
+          {!offlineAllowed && <p role="status">Le mode hors ligne est désactivé pour cette clinique. Une connexion au serveur est nécessaire pour enregistrer. Les anciennes opérations en attente sont conservées.</p>}
           {storageError ? <p className="offline-status__recovery-message" role="alert">{storageError}</p> : null}
           <div className="offline-status__row">
             <span className="offline-status__label">File d&apos;attente</span>

@@ -81,21 +81,41 @@ def list_accounts(db: Session, *, category: str | None = None, clinic_id: int | 
     return rows
 
 
-def clinic_configuration(clinic: models.Clinic) -> dict:
+def _stored_clinic_configuration(clinic: models.Clinic) -> dict:
     try:
         stored = json.loads(clinic.configuration_json or "{}")
     except (TypeError, ValueError):
-        stored = {}
+        return {}
+    return stored if isinstance(stored, dict) else {}
+
+
+def clinic_offline_policy(clinic: models.Clinic) -> dict:
+    stored = _stored_clinic_configuration(clinic)
+    return {
+        "offline_workstations_enabled": stored.get("offline_workstations_enabled", True) is not False,
+        "offline_data_epoch": _positive_configuration_int(stored.get("offline_data_epoch"), 1),
+    }
+
+
+def _positive_configuration_int(value, default: int) -> int:
+    try:
+        result = int(value)
+        return result if result > 0 else default
+    except (TypeError, ValueError, OverflowError):
+        return default
+
+
+def clinic_configuration(clinic: models.Clinic) -> dict:
+    stored = _stored_clinic_configuration(clinic)
     return {
         "enabled_modules": stored.get("enabled_modules", ["reception", "billing", "doctor", "nursing", "laboratory", "pharmacy"]),
         "payment_methods": stored.get("payment_methods", ["cash", "orange_money", "bank_transfer", "insurance"]),
         "receipt_template": stored.get("receipt_template", "aasma_standard"),
         "catalogue_version": stored.get("catalogue_version", "current"),
-        "offline_workstations_enabled": bool(stored.get("offline_workstations_enabled", True)),
-        "offline_data_epoch": int(stored.get("offline_data_epoch", 1)),
-        "data_retention_days": int(stored.get("data_retention_days", 3650)),
+        **clinic_offline_policy(clinic),
+        "data_retention_days": _positive_configuration_int(stored.get("data_retention_days"), 3650),
         "mfa_policy": stored.get("mfa_policy", "administrators"),
-        "trusted_workstation_days": int(stored.get("trusted_workstation_days", 30)),
+        "trusted_workstation_days": 0 if stored.get("trusted_workstation_days") == 0 else _positive_configuration_int(stored.get("trusted_workstation_days"), 30),
     }
 
 

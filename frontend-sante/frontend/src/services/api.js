@@ -28,9 +28,11 @@ export const login = async (email, password) => {
 
 export const getAuthenticatedUser = async (opts = {}) => {
   const { data } = await cachedGet('/auth/me', {
-    cacheTtlMs: CACHE_TTL.authProfile,
+    cacheTtlMs: opts.forceRefresh ? 0 : CACHE_TTL.authProfile,
     cachePersist: true,
     forceRefresh: opts.forceRefresh,
+    __skipAuthRefresh: Boolean(opts.background),
+    signal: opts.signal,
   });
   return data;
 };

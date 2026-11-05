@@ -254,6 +254,8 @@ class UserResponse(BaseModel):
     last_name: Optional[str] = None
     clinic_id: Optional[int] = None
     clinic_name: Optional[str] = None
+    offline_workstations_enabled: bool = True
+    offline_data_epoch: int = 1
     email_verified: bool = False
     must_change_password: bool = False
     mfa_enabled: bool = False

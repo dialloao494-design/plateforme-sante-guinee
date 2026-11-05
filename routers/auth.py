@@ -542,7 +542,15 @@ def build_user_response(db: Session, user: User) -> dict:
             if clinic:
                 clinic_name = clinic.name
 
+    from services.platform_admin_service import clinic_offline_policy
+    offline_policy = {"offline_workstations_enabled": False, "offline_data_epoch": 1}
+    if clinic_id:
+        scoped_clinic = db.query(models.Clinic).filter(models.Clinic.id == clinic_id).first()
+        if scoped_clinic:
+            offline_policy = clinic_offline_policy(scoped_clinic)
+
     return {
+        **offline_policy,
         "id": user.id,
         "email": user.email,
         "role": canonical_role,

@@ -221,6 +221,9 @@ def get_current_user(
                 headers={"X-Password-Change-Required": "1"},
             )
 
+    from core.offline_policy import enforce_offline_epoch
+    enforce_offline_epoch(request, user, db)
+
     return user
 
 

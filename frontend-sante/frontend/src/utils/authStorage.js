@@ -1,3 +1,4 @@
+import { invalidateAuthGeneration } from './authGeneration.js';
 /** Per-tab auth persistence — sessionStorage isolates each browser tab. */
 
 import { invalidateCache } from './apiCache.js';
@@ -143,6 +144,7 @@ export function waitForOfflinePrivacyPurge() {
 }
 
 export function clearAllClientStorage() {
+  invalidateAuthGeneration();
   if (typeof window === 'undefined') return Promise.resolve();
   for (const key of AUTH_STORAGE_KEYS) removeAuthItem(key);
   invalidateCache();
