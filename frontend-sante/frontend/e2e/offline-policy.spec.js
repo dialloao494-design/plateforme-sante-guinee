@@ -79,7 +79,7 @@ test('online-only policy reaches an open workstation and blocks offline writes a
   });
   expect(result).toBe('failed');
   await expect(page.getByText('Connexion requise · mode hors ligne désactivé', { exact: true })).toBeVisible();
-  await page.screenshot({ path: '/private/tmp/sante-online-only-policy.png' });
+  await test.info().attach('online-only-policy', { body: await page.screenshot(), contentType: 'image/png' });
 });
 
 test('reset policy quarantines pre-reset work in an open workstation', async ({ page }) => {

@@ -850,7 +850,12 @@ evidence, superseded by the following corrections and regressions:
   frontend unit/offline/lint/build/performance checks pass after the updates.
   The updated dependencies also pass full backend **494 passed / 1 skipped**
   and the affected Chromium flows **11/11** locally.
-  Fresh remote CI and the final deployed revision remain to be verified.
+  [CI run 42053498856](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/42053498856)
+  then passed both dependency audits, backend, clinic regression, and frontend
+  checks, but its browser job failed only on a macOS-specific screenshot path
+  (`/private/tmp`) missing on Linux (57 passed, one failed, one serial follow-up
+  not run). Screenshots now use Playwright attachments rather than an absolute
+  host path. A fresh all-green remote CI run and deployment smoke remain required.
   Provider GitHub auto-deployments published code before CI completed; this is an
   observed release-gating gap, not evidence that P0's protected-release exit
   criterion has been met. Provider auto-deploy settings require operational review.
