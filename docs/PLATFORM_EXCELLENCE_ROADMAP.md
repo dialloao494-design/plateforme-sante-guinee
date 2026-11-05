@@ -839,9 +839,26 @@ evidence, superseded by the following corrections and regressions:
   unavailable; repository Playwright used against disposable SQLite and local
   servers at `127.0.0.1:5173` / `127.0.0.1:8000`. Screenshot evidence is retained
   outside the repository at `/private/tmp/sante-online-only-policy.png`.
+- Release follow-through (2026-11-05): application changes were pushed as
+  `19ba36c`; `5e897bd` added the offline regression file omitted from the first
+  staging operation. [CI run 42052628948](https://github.com/dialloao494-design/plateforme-sante-guinee/actions/runs/42052628948)
+  passed backend, clinic regression, and secret-file checks but correctly rejected
+  the existing Axios/PyJWT dependency pins. This run must not be reported green.
+  Axios is now pinned to **1.21.0**, its compatible `follow-redirects` lock updated
+  to **1.16.2**, and PyJWT pinned to **2.15.0**. Local production `npm audit` and
+  strict `pip-audit -r requirements-prod.txt` both report no known vulnerabilities;
+  frontend unit/offline/lint/build/performance checks pass after the updates.
+  The updated dependencies also pass full backend **494 passed / 1 skipped**
+  and the affected Chromium flows **11/11** locally.
+  Fresh remote CI and the final deployed revision remain to be verified.
+  Provider GitHub auto-deployments published code before CI completed; this is an
+  observed release-gating gap, not evidence that P0's protected-release exit
+  criterion has been met. Provider auto-deploy settings require operational review.
 - Operator-confirmed production scope: **CLINIQUE AASMA (17)**; delete all patient,
   clinical, and billing records, preserving staff, catalogues, and clinic settings.
-  **No production deletion or deployment has been executed.** Prior access was
+  **No production deletion has been executed.** Deployment is underway, with
+  preliminary provider deployments observed but final release gates still pending.
+  Prior database access was
   traced to a legacy direct Railway database URL in deployment scripts, but
   read-only connection attempts reached a proxy that closed before a database
   session opened. Current production access, a verified backup, inventory preview,
