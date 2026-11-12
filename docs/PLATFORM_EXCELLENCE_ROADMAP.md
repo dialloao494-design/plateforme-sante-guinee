@@ -5,7 +5,7 @@ Santé Guinée. This document is written for maintainers and coding agents worki
 toward a safe, coherent, hospital-grade product.
 
 **Owner:** repository maintainers  
-**Last evidence update:** 2026-11-05 (local offline-policy corrections; remote gates unchanged)
+**Last evidence update:** 2026-11-12 (AASMA production reset and backup restore verified; workstation validation open)
 **Current branch:** `main`  
 **Original assessment baseline:** approximately **7.5/10 as a supervised pilot**
 and **6/10 for broad production deployment**.
@@ -877,15 +877,69 @@ evidence, superseded by the following corrections and regressions:
   runtime code or replace that commit's CI/deployment results.
 - Operator-confirmed production scope: **CLINIQUE AASMA (17)**; delete all patient,
   clinical, and billing records, preserving staff, catalogues, and clinic settings.
-  **No production deletion has been executed.** The application release is deployed
-  and CI/production-smoke verified as described above.
+  At the 2026-11-05 release checkpoint no production deletion had been executed.
+  **Superseded on 2026-11-12 by the production-verified reset below.** The software
+  release remains CI/production-smoke verified as described above.
   Prior database access was
   traced to a legacy direct Railway database URL in deployment scripts, but
   read-only connection attempts reached a proxy that closed before a database
-  session opened. Current production access, a verified backup, inventory preview,
-  actual reset, and post-commit verification remain pending. Deploy both backend
-  and frontend generation enforcement before reset; reconcile/export workstation
-  test queues and refresh each workstation before admitting real patients.
+  session opened. Current Railway account authentication and SSH access were
+  established on 2026-11-12, enabling the verified backup, reset, and independent
+  checks documented below. Workstation test queues still require supervised
+  refresh/reconciliation before real patient intake.
+
+### 2026-11-12 — AASMA test-data reset executed
+
+**Status: PRODUCTION VERIFIED — database reset, preservation, backup/restore, and
+live generation guard. Physical clinic workstation validation remains OPEN.**
+
+- The operator reconfirmed the previously authorized clinic-17 scope and explicitly
+  included **9 pharmacy stock orders** and **1 operational shift**. Staff, service
+  catalogues, pharmacy inventory items/quantities, and other clinic settings were
+  preserved. No other clinic was selected for deletion.
+- A PostgreSQL **18.6** custom-format production backup was created on the database
+  service's persistent volume, restored into a distinct `_restore_verify` database,
+  and independently checked for the expected clinic, **28 patients**, **37 staff**,
+  **175 lab catalogue entries**, and migration head `20260909_0040_authentication_events`.
+  The complete cleanup transaction was rehearsed on this restored copy before live
+  execution. A second owner-readable-only copy was downloaded into the ignored
+  `backups/aasma-reset-20261112T161344Z/` directory; SHA-256 matched the cloud copy.
+- Production operation `aasma-reset-20261112T161344Z` committed at
+  **2026-11-12 16:20:49 UTC**. It deleted **28 patients, 34 invoices, 35 invoice
+  payment records, 70 invoice items, 13 consultations, 13 appointments, 3 admissions,
+  13 prescriptions/59 items, 13 pharmacy orders, 13 charges/8 charge payments,
+  1 refund, 1 clinical visit, 28 medical records**, and the approved stock/shift
+  history. All clinic-scoped patient/clinical/billing transaction domains checked
+  zero before commit and in independent post-commit queries.
+- Content checksums confirmed that **37 staff accounts/memberships, 3 doctors,
+  175 lab catalogue entries, and 39 pharmacy inventory items including their
+  quantities** were unchanged within the transaction. Other-clinic row counts
+  were unchanged. Existing clinical audit history was retained with deleted
+  patient references detached; reset audit **3163** records authorization, actor
+  attribution, backup SHA, scope, deletion counts, and preservation evidence.
+- Clinic configuration advanced only `offline_data_epoch` from **1 to 2**. Read-only
+  checks of the deployed enforcement function against the live database returned
+  **409 / offline_epoch_mismatch** for legacy/epoch-1 requests and accepted epoch 2.
+  No production clinical record was created for verification. The API readiness
+  endpoint returned `ready` / `database: ok` after cleanup.
+- The isolated restore database was dropped after verification; both private
+  backup copies were retained. Task SSH sessions were closed, the temporary key
+  revoked and deleted locally, and the unused SSH registration added during setup
+  removed. Existing local user private keys were not changed.
+- Detailed non-PHI evidence: [`evidence/clinic-reset/aasma-2026-11-12.json`](../evidence/clinic-reset/aasma-2026-11-12.json).
+  Backup: **653,122 bytes**, SHA-256
+  `223c0224200068725c3524ebf4552aa79cd11db35418ac225d58cb24efb435fb`.
+  This proves this database reset and restore, not full disaster recovery,
+  attachment recovery, encrypted off-site backup policy, or hospital-wide readiness.
+- **OPEN operational defect:** the production cloud database has no
+  `clinic_node_backup_records` table, although the platform data-reset API queries
+  it. A cloud-compatible backup registry/reset path needs its own migration and
+  regression coverage. This reset used the existing cleanup service through
+  authenticated Railway database maintenance, with a verified physical backup;
+  no backup waiver or application-owner impersonation was used.
+- **Remaining clinic action:** refresh/reopen each workstation before real patient
+  intake so it obtains epoch 2. Old test queues must stay quarantined/export-only.
+  Staff acceptance on the physical clinic computers remains unverified.
 
 ## Related evidence
 
