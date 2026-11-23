@@ -1078,3 +1078,18 @@ remain OPEN. These repairs do not establish hospital-wide readiness.
 
 The older “Production Ready: YES” report is a dated module/clinic validation
 snapshot. It does not override the broader hospital-wide readiness gate here.
+
+### Senior pre-landing follow-up (2026-11-23)
+
+State: **CODE-COMPLETE; LOCALLY VERIFIED; final-head CI pending**.
+The review additionally fixed installer signing-alias conflicts and implicit host
+permission, missing/weak dedicated Node signing secrets, lab/imaging archive/audit
+transaction atomicity and validation replay behavior, and production deployment
+seeding/mutating verification. Every corrected defect has regression coverage.
+Two opt-in PostgreSQL refresh/revocation concurrency tests passed on a synthetic
+local database. See `SECURITY_RECOVERY_2026-11-23.md` for operational limits.
+No production/field validation or key rotation was performed. Existing seeded
+accounts and uncertain-commit archive orphans require separate operator review.
+
+Final full local backend suite: **616 passed, 1 skipped**, including both synthetic
+PostgreSQL races; expanded installer suite **17/17**. No production or field claim.

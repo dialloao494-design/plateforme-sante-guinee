@@ -11,6 +11,7 @@ Or set ENABLE_STAGING_E2E_SEED=true in backend env (runs at container start).
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -192,6 +193,10 @@ def _ensure_clinic_staff(db, key: str, clinics: dict[str, models.Clinic]) -> mod
 
 
 def main() -> int:
+    if (os.getenv("ENVIRONMENT", "").strip().lower() != "staging"
+            or os.getenv("ENABLE_STAGING_E2E_SEED", "").strip().lower() != "true"):
+        logger.error("Staging E2E seeding requires ENVIRONMENT=staging and explicit ENABLE_STAGING_E2E_SEED=true")
+        return 2
     db = SessionLocal()
     try:
         clinics = {

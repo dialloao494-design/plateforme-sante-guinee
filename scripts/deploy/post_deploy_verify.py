@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Post-deploy smoke tests for Railway + Vercel staging."""
+"""Read-only deployment smoke; mutating synthetic checks require explicit staging mode."""
 
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import uuid
 
@@ -92,14 +93,18 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--backend", required=True, help="Railway backend base URL")
     parser.add_argument("--frontend", default="", help="Optional Vercel frontend URL")
+    parser.add_argument("--staging-e2e", action="store_true", help="Run synthetic login/patient checks on an explicitly designated staging target")
     args = parser.parse_args()
+    if args.staging_e2e and os.getenv("DEPLOY_VERIFICATION_ENVIRONMENT", "").strip().lower() != "staging":
+        parser.error("--staging-e2e requires DEPLOY_VERIFICATION_ENVIRONMENT=staging; never use on production")
 
     try:
         check_health(args.backend)
         check_ready(args.backend)
-        for email, password in DEFAULT_ACCOUNTS:
-            check_auth(args.backend, email, password)
-        check_clinic_isolation(args.backend)
+        if args.staging_e2e:
+            for email, password in DEFAULT_ACCOUNTS:
+                check_auth(args.backend, email, password)
+            check_clinic_isolation(args.backend)
         if args.frontend:
             r = httpx.get(args.frontend.rstrip("/") + "/", timeout=30.0, follow_redirects=True)
             r.raise_for_status()

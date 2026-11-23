@@ -47,6 +47,17 @@ def _apply_valid_clinic_node_env(monkeypatch) -> None:
 
 
 class TestClinicNodeSettings:
+    @pytest.mark.parametrize("name", ["CLINIC_NODE_LICENSE_SECRET", "CLINIC_NODE_UPDATE_SECRET"])
+    @pytest.mark.parametrize("value", [None, "", "too-short"])
+    def test_clinic_node_requires_dedicated_license_and_update_secrets(self, monkeypatch, name, value):
+        _apply_valid_clinic_node_env(monkeypatch)
+        if value is None:
+            monkeypatch.delenv(name)
+        else:
+            monkeypatch.setenv(name, value)
+        with pytest.raises(RuntimeError, match=name):
+            AppSettings().enforce_production_boot()
+
     @pytest.mark.parametrize("key", [None, "invalid-fernet-key"])
     def test_clinic_node_requires_valid_explicit_attachment_key(self, monkeypatch, key):
         _apply_valid_clinic_node_env(monkeypatch)

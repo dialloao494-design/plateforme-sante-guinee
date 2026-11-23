@@ -348,6 +348,9 @@ class AppSettings:
         if self.is_clinic_node:
             from core.clinic_node_security import assert_clinic_node_secret_separation
 
+            for name in ("CLINIC_NODE_LICENSE_SECRET", "CLINIC_NODE_UPDATE_SECRET"):
+                if is_insecure_secret((os.getenv(name) or "").strip(), min_length=32):
+                    failures.append(f"{name} must be a dedicated strong secret (32+ chars) on clinic-node")
             try:
                 assert_clinic_node_secret_separation(
                     jwt_secret=jwt_secret,
