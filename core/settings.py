@@ -87,9 +87,29 @@ def get_settings() -> "AppSettings":
     return AppSettings()
 
 
+def resolve_signing_key() -> str:
+    """Resolve aliases without allowing signing and boot validation to disagree."""
+    primary = (os.getenv("SECRET_KEY") or "").strip()
+    alias = (os.getenv("JWT_SECRET") or "").strip()
+    if primary and alias and primary != alias:
+        raise RuntimeError("SECRET_KEY and JWT_SECRET must match when both are configured")
+    return primary or alias
+
+
 class AppSettings:
     def __init__(self) -> None:
-        self.environment = (os.getenv("ENVIRONMENT") or "development").lower().strip()
+        raw_environment = (os.getenv("ENVIRONMENT") or "").lower().strip()
+        hosted = any(os.getenv(name) for name in (
+            "RAILWAY_ENVIRONMENT", "RAILWAY_PROJECT_ID", "RENDER", "RENDER_SERVICE_ID",
+            "DYNO", "FLY_APP_NAME", "VERCEL",
+        ))
+        valid = {"development", "test", "staging", "production", "clinic-node", "clinic_node"}
+        if raw_environment and raw_environment not in valid:
+            raise RuntimeError("ENVIRONMENT must name a supported environment")
+        if hosted and raw_environment not in {"staging", "production"}:
+            raise RuntimeError("Hosted services require explicit ENVIRONMENT=staging or production")
+        self.environment = raw_environment or "development"
+        self.signing_key = resolve_signing_key()
         self.debug = _env_flag("DEBUG", default=False)
         self.is_production = self.environment == "production"
         self.is_staging = self.environment == "staging"
@@ -195,7 +215,7 @@ class AppSettings:
         if not self.is_deployed:
             return
 
-        jwt_secret = _first_env("JWT_SECRET", "SECRET_KEY")
+        jwt_secret = self.signing_key
         # Prefer the password embedded in DATABASE_URL (Railway Postgres plugin).
         # A leftover weak POSTGRES_PASSWORD env must not override a strong URL password.
         url_password = _password_from_database_url()

@@ -71,10 +71,19 @@ class UserLogin(BaseModel):
     mfa_code: Optional[str] = None
 
 
+class MfaSetupRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    password: str
+    current_code: Optional[str] = None
+
+
 class MfaSetupConfirmRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     code: str
+    password: Optional[str] = None
+    current_code: Optional[str] = None
 
 
 class MfaVerifyLoginRequest(BaseModel):

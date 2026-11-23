@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from database import SessionLocal
 import models
@@ -14,7 +14,7 @@ from routers import users, appointments, doctor_dashboard, ws, clinical, medical
 from routers import unified_billing, discharge, radiology, reminders, clinical_reports, platform, platform_setup
 from routers import nutrition, immunization, nursing_care, visit_workflow, clinical_phase2, lab_phase2, pharmacy_phase2, reception_his, nurse_assessment
 from routers import clinic_node_ops
-from security import hash_password, verify_password
+from security import get_current_platform_admin, hash_password, verify_password
 from services.user_provisioning import register_public_user
 import os
 import logging
@@ -431,9 +431,6 @@ from pydantic import BaseModel
 class HealthResponse(BaseModel):
     """Health check response"""
     status: str
-    version: str
-    debug: bool
-    database: str
 
 
 def _deployed_git_sha() -> str | None:
@@ -464,30 +461,11 @@ def _deploy_marker_id() -> str | None:
 
 @app.get("/health", response_model=HealthResponse, tags=["Monitoring"])
 def health_check():
-    """
-    API Health Check Endpoint
-    
-    Returns:
-    - status: 'ok' if API is healthy
-    - version: API version
-    - debug: Debug mode status
-    - database: Database URL (masked for security)
-    
-    Use this endpoint for monitoring and uptime checks
-    """
-    db_url = os.getenv("DATABASE_URL", "sqlite:///./sante.db")
-    # Mask sensitive info
-    db_url_masked = "***" if "://" in db_url else db_url
-    
-    return {
-        "status": "ok",
-        "version": "1.0.0",
-        "debug": _settings.debug,
-        "database": db_url_masked,
-    }
+    """Public liveness probe; operational details require platform authorization."""
+    return {"status": "ok"}
 
 
-@app.get("/health/build", tags=["Monitoring"])
+@app.get("/health/build", tags=["Monitoring"], dependencies=[Depends(get_current_platform_admin)])
 def health_build():
     """Deployment identity probe — proves which Git commit Railway is serving."""
     return {
@@ -499,7 +477,7 @@ def health_build():
     }
 
 
-@app.get("/health/email", tags=["Monitoring"])
+@app.get("/health/email", tags=["Monitoring"], dependencies=[Depends(get_current_platform_admin)])
 def health_email():
     """Email channel readiness (SMTP or Resend) — no credentials exposed."""
     from services.email_service import email_config_status
@@ -565,20 +543,20 @@ def health_ready():
         db = SessionLocal()
         try:
             db.execute(text("SELECT 1"))
-            return {"status": "ready", "database": "ok"}
+            return {"status": "ready"}
         finally:
             db.close()
     except Exception as exc:
         logger.error("Readiness check failed: %s", exc)
-        raise HTTPException(status_code=503, detail="Database not ready")
+        return JSONResponse(status_code=503, content={"status": "not_ready"})
 
 
-@app.get("/health/database", tags=["Monitoring"])
+@app.get("/health/database", tags=["Monitoring"], dependencies=[Depends(get_current_platform_admin)])
 def health_database():
     """
-    Non-secret PostgreSQL identity for proving shared production DB.
+    Private PostgreSQL identity for authorized platform diagnostics.
 
-    Never returns username/password. Safe for dual-frontend verification.
+    Never returns username/password. Requires platform administrator access.
     """
     try:
         fp = _database_fingerprint()
@@ -767,9 +745,8 @@ def _run_schema_and_seed_startup() -> None:
     else:
         logger.info("Startup test user seed skipped (ENABLE_STARTUP_TEST_USER not set).")
 
-    # Pilot accounts — off by default in production AND clinic-node (use ENABLE_PILOT_SEED explicitly)
-    _default_pilot = not _is_production and not _settings.is_clinic_node
-    if _env_flag("ENABLE_PILOT_SEED", default=_default_pilot):
+    # Pilot accounts require explicit opt-in in every environment.
+    if _env_flag("ENABLE_PILOT_SEED", default=False):
         try:
             from services.pilot_seed import seed_pilot_accounts
 

@@ -26,14 +26,16 @@ def test_alembic_only_schema_true_for_production(monkeypatch):
     assert main._alembic_only_schema() is True
 
 
-def test_alembic_only_schema_true_for_railway_without_environment(monkeypatch):
+def test_railway_rejects_non_hardened_environment(monkeypatch):
+    import pytest
     import main
     from core.settings import get_settings
 
     monkeypatch.setenv("ENVIRONMENT", "development")
     monkeypatch.setenv("RAILWAY_ENVIRONMENT", "production")
     get_settings.cache_clear()
-    assert main._alembic_only_schema() is True
+    with pytest.raises(RuntimeError, match="ENVIRONMENT"):
+        main._alembic_only_schema()
 
 
 def test_run_schema_startup_skips_create_all_when_alembic_only():
@@ -83,3 +85,23 @@ def test_run_schema_startup_skips_create_all_when_alembic_only():
 
     create_all.assert_not_called()
     alembic_upgrade.assert_called_once_with(fail_closed=True)
+
+
+def test_unset_pilot_seed_does_not_create_demo_accounts(monkeypatch):
+    import main
+    monkeypatch.delenv("ENABLE_PILOT_SEED", raising=False)
+    monkeypatch.setenv("ENABLE_STARTUP_SEED", "false")
+    monkeypatch.setenv("ENABLE_DEMO_CLINIC_SEED", "false")
+    monkeypatch.setenv("ENABLE_MEDICAL_HISTORY_SEED", "false")
+    monkeypatch.setenv("ENABLE_REMINDER_CRON", "false")
+    # A synthetic schema failure skips unrelated initialization, then exercises
+    # the actual startup seed branch against mocked seeders.
+    with (
+        patch.object(main, "_alembic_only_schema", return_value=False),
+        patch("database.Base.metadata.create_all", side_effect=RuntimeError("synthetic schema")),
+        patch("services.pilot_seed.seed_pilot_accounts") as telehealth,
+        patch("services.clinic_pilot_seed.seed_clinic_pilot_accounts") as clinic,
+    ):
+        main._run_schema_and_seed_startup()
+    telehealth.assert_not_called()
+    clinic.assert_not_called()

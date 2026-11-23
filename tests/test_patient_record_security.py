@@ -260,3 +260,47 @@ class TestPatientDocuments:
         )
         assert response.status_code == 200
         assert b"%PDF" in response.content
+
+
+@pytest.mark.parametrize("role", ["receptionist", "lab_technician", "pharmacist"])
+@pytest.mark.parametrize("suffix", ["notes", "summaries", "documents", "timeline", "timeline-grouped", "medical-history"])
+def test_operational_roles_cannot_read_full_clinical_content(
+    client, db_session, dossier_context, role, suffix
+):
+    from core.provisioning_context import provisioning_channel
+    from models.user import User
+    from security import hash_password
+    ctx = dossier_context
+    with provisioning_channel("test_fixture"):
+        user = User(email=f"notes-{uuid.uuid4().hex}@example.test", role=role,
+                    hashed_password=hash_password("SyntheticPass456!"),
+                    clinic_id=ctx["patient"].clinic_id)
+        db_session.add(user)
+        db_session.commit()
+    response = client.get(f"/patients/{ctx['patient'].id}/{suffix}", headers=_auth_headers(user))
+    assert response.status_code == 403
+
+
+@pytest.mark.parametrize("role", ["doctor", "clinic_admin"])
+@pytest.mark.parametrize("suffix", ["notes", "summaries", "timeline", "documents", "timeline-grouped"])
+def test_full_clinical_content_respects_clinic_boundary(
+    client, db_session, dossier_context, role, suffix
+):
+    from core.provisioning_context import provisioning_channel
+    from models.user import User
+    from models.clinic import Clinic
+    from security import hash_password
+    foreign_clinic = Clinic(name=f"Synthetic foreign {uuid.uuid4().hex}", city="Conakry")
+    db_session.add(foreign_clinic)
+    db_session.flush()
+    with provisioning_channel("test_fixture"):
+        user = User(email=f"foreign-notes-{uuid.uuid4().hex}@example.test", role=role,
+                    hashed_password=hash_password("SyntheticPass456!"), clinic_id=foreign_clinic.id)
+        db_session.add(user)
+        db_session.flush()
+        if role == "doctor":
+            db_session.add(Doctor(user_id=user.id, first_name="Synthetic", last_name="Doctor",
+                                  specialty="General", city="Conakry", phone="000000000", clinic_id=foreign_clinic.id))
+        db_session.commit()
+    response = client.get(f"/patients/{dossier_context['patient'].id}/{suffix}", headers=_auth_headers(user))
+    assert response.status_code == 403

@@ -209,9 +209,8 @@ class TestProductionStartupIntegration:
         monkeypatch.setenv("ENABLE_PILOT_SEED", "true")
         monkeypatch.setenv("BYPASS_AVAILABILITY_VALIDATION", "true")
         monkeypatch.setenv("SECRET_KEY", "change-me")
-        settings = AppSettings()
         with pytest.raises(RuntimeError):
-            settings.enforce_production_boot()
+            AppSettings().enforce_production_boot()
 
 
 class TestAttachmentEncryptionBoot:

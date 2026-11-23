@@ -874,6 +874,8 @@ def ensure_user_session_security_columns(engine: Engine) -> None:
     _add_nullable("password_changed_at", "TIMESTAMP" if dialect == "postgresql" else "DATETIME")
     _add_nullable("last_login_at", "TIMESTAMP" if dialect == "postgresql" else "DATETIME")
     _add_nullable("mfa_secret", "VARCHAR")
+    _add_nullable("mfa_pending_secret", "VARCHAR")
+    _add_nullable("mfa_pending_expires_at", "TIMESTAMP")
 
     # Final verification — raise so entrypoint/startup can fail closed.
     insp = inspect(engine)

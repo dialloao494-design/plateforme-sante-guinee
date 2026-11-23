@@ -43,7 +43,7 @@ def test_alembic_upgrade_head_bootstraps_pristine_database(tmp_path):
     } <= tables
     with engine.connect() as connection:
         revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        assert revision == "20260909_0040_authentication_events"
+        assert revision == "20261123_0041_pending_mfa"
     assert "uq_users_single_platform_owner" not in {
         index["name"] for index in inspector.get_indexes("users")
     }
@@ -53,4 +53,5 @@ def test_alembic_upgrade_head_bootstraps_pristine_database(tmp_path):
     patient_columns = {column["name"] for column in inspector.get_columns("patients")}
     assert {"clinic_id", "patient_number", "user_id"} <= patient_columns
     user_columns = {column["name"] for column in inspector.get_columns("users")}
-    assert {"session_version", "token_version", "must_change_password"} <= user_columns
+    assert {"session_version", "token_version", "must_change_password",
+            "mfa_pending_secret", "mfa_pending_expires_at"} <= user_columns

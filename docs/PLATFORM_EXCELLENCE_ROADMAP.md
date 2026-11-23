@@ -5,7 +5,7 @@ Santé Guinée. This document is written for maintainers and coding agents worki
 toward a safe, coherent, hospital-grade product.
 
 **Owner:** repository maintainers  
-**Last evidence update:** 2026-11-12 (AASMA production reset and backup restore verified; workstation validation open)
+**Last evidence update:** 2026-11-23 (defensive authentication/configuration source changes; local verification only)
 **Current branch:** `main`  
 **Original assessment baseline:** approximately **7.5/10 as a supervised pilot**
 and **6/10 for broad production deployment**.
@@ -502,6 +502,47 @@ reviewed by the accountable operator and clinic lead.
   `1.45.1`, and then reported no known vulnerabilities.
 - Maintain the zero-high/critical production npm policy.
 - Enforce and test privileged MFA according to deployment policy.
+
+Defensive source tranche (2026-11-23): **CODE COMPLETE and LOCALLY VERIFIED;
+CI, production and field validation OPEN.**
+
+- MFA replacement now checks a freshly submitted password and existing factor,
+  stages enrollment separately for ten minutes, retains the active factor until
+  confirmation, and atomically invalidates prior access/refresh sessions when
+  activating the new factor. Additive migration `20261123_0041_pending_mfa`
+  preserves existing active factors. Refresh rotation and administrator session
+  revocation use the same user-before-refresh lock order.
+- JWT signing and boot validation use the same cached resolved key; conflicting
+  aliases fail closed. Attachment encryption derivation and existing explicit
+  keys are preserved; no rotation or production configuration changes occurred.
+- Anonymous health/readiness responses contain only status. Build, database and
+  email diagnostics require platform authorization. Hosted environments require
+  explicit staging/production configuration; pilot seeding defaults off.
+- Full clinical content follows `DOSSIER_PATIENT.md`'s role restriction; reception,
+  lab and pharmacy roles cannot read full notes/timelines through dossier or
+  medical-history APIs. Existing operational intake/allergy writes remain governed
+  by their workflow roles and clinic scope. Same-clinic doctor authorization is
+  preserved: the older appointment-link rule conflicts with current clinic
+  authorization and remains an explicit clinical-owner decision. A narrower
+  history subset for operational roles also requires owner approval.
+- Local evidence: full backend **562 passed / 3 skipped** (one existing optional
+  case and two opt-in PostgreSQL cases); focused session/governance **80/80**;
+  separate real PostgreSQL concurrency **2/2** on disposable synthetic data;
+  frontend lint, unit/offline suites, production build and all six performance
+  budgets pass. The main-version refresh control fails the new PostgreSQL
+  lock-wait assertion; the fixed implementation passes. Migration/rollback and
+  existing attachment decryption are covered. Static review's lock-order finding
+  was corrected and re-reviewed with no remaining actionable introduced defect.
+  These are local results, not CI or production evidence. Broader PostgreSQL
+  enrollment concurrency, authenticated monitoring-script migration, operational
+  access review and clinic acceptance remain open.
+- Authorized administrators must confirm password invalidation/reset, revoke
+  affected sessions and preserve/review sign-in evidence. No live login, patient
+  record access, account changes, deployment or Git history rewrite was performed.
+
+Implementation and safe administrator review procedure:
+[`DEFENSIVE_AUTH_CONFIGURATION.md`](DEFENSIVE_AUTH_CONFIGURATION.md).
+
 - Verify secret rotation, access review, audit retention, attachment storage,
   WebSocket authentication, and webhook settlement procedures.
 - Exercise session invalidation and suspected-account-compromise response.
