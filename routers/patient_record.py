@@ -17,8 +17,9 @@ from services.patient_record_service import PatientRecordService
 
 router = APIRouter(prefix="/patients", tags=["Patient Dossier"])
 
-DOSSIER_READ_ROLES = ["admin", "doctor", "patient", "receptionist", "lab_technician", "pharmacist"]
-DOSSIER_WRITE_ROLES = ["admin", "doctor", "lab_technician", "pharmacist", "receptionist"]
+# DOSSIER_PATIENT.md §§3–4: full clinical content is restricted to these roles.
+DOSSIER_READ_ROLES = ["admin", "doctor", "patient"]
+DOSSIER_WRITE_ROLES = ["admin", "doctor"]
 
 
 @router.get("/{patient_id}/notes", response_model=List[record_schemas.ClinicalNoteResponse])

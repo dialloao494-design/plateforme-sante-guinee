@@ -226,6 +226,7 @@ def pharmacy_charge_receipt(
         patient_name = f"{charge.patient.last_name} {charge.patient.first_name}".strip()
         patient_file = charge.patient.patient_number or str(charge.patient.id)
     now = datetime.utcnow()
+    recorded_by = db.get(models.User, charge.recorded_by_user_id) if charge.recorded_by_user_id else None
     pdf_bytes = invoice_pdf(
         f"PHARM-{charge.id}",
         patient_name,
@@ -239,6 +240,9 @@ def pharmacy_charge_receipt(
         printed_by=printed_by_label(current_user),
         printed_date=now.strftime("%d/%m/%Y"),
         printed_time=now.strftime("%H:%M"),
+        invoice_date=charge.created_at.strftime("%d/%m/%Y") if charge.created_at else "",
+        invoice_time=charge.created_at.strftime("%H:%M") if charge.created_at else "",
+        cashier_name=printed_by_label(recorded_by),
         patient_file_number=patient_file,
         document_title="REÇU PHARMACIE",
     )

@@ -87,9 +87,29 @@ def get_settings() -> "AppSettings":
     return AppSettings()
 
 
+def resolve_signing_key() -> str:
+    """Resolve aliases without allowing signing and boot validation to disagree."""
+    primary = (os.getenv("SECRET_KEY") or "").strip()
+    alias = (os.getenv("JWT_SECRET") or "").strip()
+    if primary and alias and primary != alias:
+        raise RuntimeError("SECRET_KEY and JWT_SECRET must match when both are configured")
+    return primary or alias
+
+
 class AppSettings:
     def __init__(self) -> None:
-        self.environment = (os.getenv("ENVIRONMENT") or "development").lower().strip()
+        raw_environment = (os.getenv("ENVIRONMENT") or "").lower().strip()
+        hosted = any(os.getenv(name) for name in (
+            "RAILWAY_ENVIRONMENT", "RAILWAY_PROJECT_ID", "RENDER", "RENDER_SERVICE_ID",
+            "DYNO", "FLY_APP_NAME", "VERCEL",
+        ))
+        valid = {"development", "test", "staging", "production", "clinic-node", "clinic_node"}
+        if raw_environment and raw_environment not in valid:
+            raise RuntimeError("ENVIRONMENT must name a supported environment")
+        if hosted and raw_environment not in {"staging", "production"}:
+            raise RuntimeError("Hosted services require explicit ENVIRONMENT=staging or production")
+        self.environment = raw_environment or "development"
+        self.signing_key = resolve_signing_key()
         self.debug = _env_flag("DEBUG", default=False)
         self.is_production = self.environment == "production"
         self.is_staging = self.environment == "staging"
@@ -195,7 +215,7 @@ class AppSettings:
         if not self.is_deployed:
             return
 
-        jwt_secret = _first_env("JWT_SECRET", "SECRET_KEY")
+        jwt_secret = self.signing_key
         # Prefer the password embedded in DATABASE_URL (Railway Postgres plugin).
         # A leftover weak POSTGRES_PASSWORD env must not override a strong URL password.
         url_password = _password_from_database_url()
@@ -268,8 +288,8 @@ class AppSettings:
                 "Set JITSI_SECRET (or REQUIRE_JITSI_SECRET=true to fail closed)."
             )
 
-        # PHI attachment encryption — required in production (no silent kill-switch)
-        if self.is_production:
+        # Clinic appliances require their own explicit key; retain cloud recovery policy.
+        if self.is_production or self.is_clinic_node:
             enc_key = (os.getenv("ATTACHMENT_ENCRYPTION_KEY") or "").strip()
             bypass = not _env_flag("REQUIRE_ATTACHMENT_ENCRYPTION", default=True)
             attested = (
@@ -277,7 +297,8 @@ class AppSettings:
                 == "I_ACCEPT_PRODUCTION_PHI_RISK"
             )
             if (
-                not enc_key
+                self.is_production
+                and not enc_key
                 and not bypass
                 and jwt_secret
                 and not is_insecure_secret(jwt_secret, min_length=32)
@@ -316,12 +337,35 @@ class AppSettings:
                         "ATTACHMENT_ENCRYPTION_KEY must be a valid Fernet key when set"
                     )
             else:
-                if not (bypass and attested):
+                if self.is_clinic_node or not (bypass and attested):
                     failures.append(
-                        "ATTACHMENT_ENCRYPTION_KEY must be set in production "
+                        "ATTACHMENT_ENCRYPTION_KEY must be set for PHI at rest "
                         "(to disable temporarily set REQUIRE_ATTACHMENT_ENCRYPTION=false "
-                        "AND EMERGENCY_SECURITY_BYPASS_ATTESTATION=I_ACCEPT_PRODUCTION_PHI_RISK)"
+                        "AND EMERGENCY_SECURITY_BYPASS_ATTESTATION=I_ACCEPT_PRODUCTION_PHI_RISK; "
+                        "this exception is not permitted on clinic-node)"
                     )
+
+        if self.is_clinic_node:
+            from core.clinic_node_security import assert_clinic_node_secret_separation
+
+            for name in ("CLINIC_NODE_LICENSE_SECRET", "CLINIC_NODE_UPDATE_SECRET"):
+                if is_insecure_secret((os.getenv(name) or "").strip(), min_length=32):
+                    failures.append(f"{name} must be a dedicated strong secret (32+ chars) on clinic-node")
+            try:
+                assert_clinic_node_secret_separation(
+                    jwt_secret=jwt_secret,
+                    license_secret=os.getenv("CLINIC_NODE_LICENSE_SECRET") or "",
+                    update_secret=os.getenv("CLINIC_NODE_UPDATE_SECRET") or "",
+                    attachment_key=os.getenv("ATTACHMENT_ENCRYPTION_KEY") or "",
+                )
+            except RuntimeError as exc:
+                failures.append(str(exc))
+            network = (os.getenv("CLINIC_NODE_NETWORK") or "bridge").strip().lower()
+            if network == "host" and not _env_flag("CLINIC_NODE_ALLOW_HOST_NETWORK", default=False):
+                failures.append(
+                    "CLINIC_NODE_NETWORK=host requires CLINIC_NODE_ALLOW_HOST_NETWORK=true "
+                    "to acknowledge LAN exposure; prefer bridge networking"
+                )
 
         # TLS to Postgres — reject sslmode=disable; require SSL on Railway production
         try:

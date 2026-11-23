@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 import models
 from core.clinical_access import user_clinic_id
-from core.roles import CLINICAL_STAFF_ROLES, CLINIC_ADMIN_ROLES
+from core.roles import CLINICAL_STAFF_ROLES, CLINIC_ADMIN_ROLES, effective_role
 from core.tenant import is_clinic_admin, is_platform_admin
 from models.user import User
 
@@ -65,6 +65,14 @@ def resolve_dossier_clinic_id(db: Session, current_user: User, patient: models.P
 class PatientRecordAccessPolicy:
     @staticmethod
     def assert_can_read_dossier(db: Session, current_user: User, patient_id: int) -> models.Patient:
+        if effective_role(current_user.role) not in {
+            "admin", "clinic_admin", "platform_admin", "platform_owner", "doctor", "patient"
+        }:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Clinical dossier access denied")
+        return PatientRecordAccessPolicy._assert_patient_scope(db, current_user, patient_id)
+
+    @staticmethod
+    def _assert_patient_scope(db: Session, current_user: User, patient_id: int) -> models.Patient:
         patient = _get_patient_or_404(db, patient_id)
 
         if is_platform_admin(current_user):
@@ -101,7 +109,9 @@ class PatientRecordAccessPolicy:
     def assert_can_write_clinical(
         db: Session, current_user: User, patient_id: int
     ) -> tuple[models.Patient, models.Doctor | None]:
-        patient = PatientRecordAccessPolicy.assert_can_read_dossier(db, current_user, patient_id)
+        # Intake/allergy updates retain their existing workflow-specific authority;
+        # permission to update those fields does not grant full-note read access.
+        patient = PatientRecordAccessPolicy._assert_patient_scope(db, current_user, patient_id)
 
         if is_platform_admin(current_user) or current_user.role in CLINIC_ADMIN_ROLES:
             return patient, None

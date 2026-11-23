@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-23",
+  "base": "a0241660b1ec87a71b538ef2eec26cf4d49e30df",
+  "pr": 46,
+  "state": "locally_verified_ci_pending",
+  "backend": {
+    "passed": 616,
+    "skipped": 1,
+    "postgres_concurrency_included": 2
+  },
+  "final_installer": {
+    "passed": 17,
+    "deployment_commands": "fake"
+  },
+  "production_verified": false,
+  "field_validated": false,
+  "report": "docs/PRE_LANDING_REVIEW_2026-11-23.md"
+}

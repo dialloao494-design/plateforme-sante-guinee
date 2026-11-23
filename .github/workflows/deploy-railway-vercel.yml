@@ -81,10 +81,6 @@ jobs:
       - name: Wait for backend ready
         run: pip install httpx && python scripts/deploy/wait_for_backend.py --url "$BACKEND_URL" --timeout 600
 
-      - name: Run staging E2E seed
-        if: env.RAILWAY_TOKEN != '' && env.SVC_ID != ''
-        run: railway run --service="$SVC_ID" python scripts/deploy/staging_e2e_seed.py
-
   deploy-frontend:
     name: Vercel frontend
     runs-on: ubuntu-latest

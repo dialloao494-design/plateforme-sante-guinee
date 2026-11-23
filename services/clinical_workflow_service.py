@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time
+import logging
 import uuid
 
 from fastapi import HTTPException, status
@@ -1082,7 +1083,8 @@ class ClinicalWorkflowService:
             raise HTTPException(status_code=404, detail="Lab order not found")
 
         existing = (
-            db.query(models.LabResult).filter(models.LabResult.lab_order_id == order_id).first()
+            db.query(models.LabResult).filter(models.LabResult.lab_order_id == order_id)
+            .with_for_update(of=models.LabResult).populate_existing().first()
         )
         if existing:
             existing.result_summary = payload.result_summary
@@ -1091,6 +1093,10 @@ class ClinicalWorkflowService:
             existing.interpretation = payload.interpretation
             existing.recorded_by_user_id = user.id
             existing.updated_at = datetime.utcnow()
+            # Edited findings are a new draft, not the previously archived validation.
+            existing.status = "draft"
+            existing.validated_at = None
+            existing.validated_by_user_id = None
             result = existing
         else:
             result = models.LabResult(
@@ -1133,29 +1139,49 @@ class ClinicalWorkflowService:
             db.query(models.LabResult)
             .join(models.LabOrder)
             .filter(models.LabResult.id == result_id, models.LabOrder.clinic_id == clinic_id)
+            .with_for_update(of=models.LabResult)
+            .populate_existing()
             .first()
         )
         if not result:
             raise HTTPException(status_code=404, detail="Lab result not found")
-        result.status = "validated"
-        result.validated_at = datetime.utcnow()
-        result.validated_by_user_id = user.id
-        result.lab_order.status = "completed"
-        db.commit()
+        from services.clinical_audit_service import ClinicalAuditService
+        from services.secure_attachment_storage import SecureAttachmentStorage
+
+        # A successful validation already archived its result. Replays must not
+        # create another document; legacy partial validations without an audit retry.
+        if result.status == "validated" and db.query(models.ClinicalAuditLog.id).filter_by(
+            clinic_id=clinic_id, resource_type="lab_result_validate", resource_id=result.id
+        ).first():
+            return result
+        storage_key = None
+        committing = False
+        try:
+            result.status = "validated"
+            result.validated_at = datetime.utcnow()
+            result.validated_by_user_id = user.id
+            result.lab_order.status = "completed"
+            storage_key = ClinicalWorkflowService.attach_lab_result_document(
+                db, order=result.lab_order, result=result, user=user
+            )
+            ClinicalAuditService.log(
+                db, actor=user, clinic_id=clinic_id, patient_id=result.lab_order.patient_id,
+                action="update", resource_type="lab_result_validate", resource_id=result.id,
+                client_ip=client_ip, commit=False,
+            )
+            committing = True
+            db.commit()
+        except Exception:
+            db.rollback()
+            # Before commit the archive is definitely unreferenced. A connection
+            # failure during commit has an uncertain outcome: retain its blob.
+            if storage_key and not committing:
+                try:
+                    SecureAttachmentStorage._absolute_path(storage_key).unlink(missing_ok=True)
+                except OSError:
+                    logging.getLogger(__name__).exception("Unreferenced lab archive cleanup failed")
+            raise
         db.refresh(result)
-        ClinicalWorkflowService.attach_lab_result_document(
-            db, order=result.lab_order, result=result, user=user
-        )
-        log_cis(
-            db,
-            actor=user,
-            clinic_id=clinic_id,
-            patient_id=result.lab_order.patient_id,
-            action="update",
-            resource_type="lab_result_validate",
-            resource_id=result.id,
-            client_ip=client_ip,
-        )
         return result
 
     @staticmethod
@@ -1165,8 +1191,8 @@ class ClinicalWorkflowService:
         order: models.LabOrder,
         result: models.LabResult,
         user: User,
-    ) -> None:
-        """Persist validated lab result as a patient document (text archive)."""
+    ) -> str:
+        """Stage the text archive; the validation caller owns the database commit."""
         from services.secure_attachment_storage import SecureAttachmentStorage
 
         body = (
@@ -1186,7 +1212,7 @@ class ClinicalWorkflowService:
             file_path=stored.storage_key,
         )
         db.add(doc)
-        db.commit()
+        return stored.storage_key
 
     @staticmethod
     def create_prescription(

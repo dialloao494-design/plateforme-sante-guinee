@@ -79,6 +79,18 @@ def rotate_refresh_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Serialize refresh with MFA activation's user lock. Reload the token after
+    # waiting: activation may have revoked it while this request was in flight.
+    user = db.query(User).filter(User.id == row.user_id).with_for_update().populate_existing().first()
+    if not user or (hasattr(user, "is_active") and user.is_active is False):
+        _revoke_family(db, family_id=row.family_id, reason="inactive")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    db.refresh(row)
+
     if row.revoked_at is not None:
         # Possible token theft — revoke family
         _revoke_family(db, family_id=row.family_id, reason="reuse")
@@ -95,15 +107,6 @@ def rotate_refresh_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    user = db.query(User).filter(User.id == row.user_id).first()
-    if not user or (hasattr(user, "is_active") and user.is_active is False):
-        _revoke_family(db, family_id=row.family_id, reason="inactive")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -166,6 +169,9 @@ def revoke_refresh_token(db: Session, *, raw_token: str | None) -> None:
 
 
 def revoke_all_user_refresh_tokens(db: Session, *, user_id: int, commit: bool = True) -> int:
+    # All security mutations use user -> refresh-token lock order. Select only
+    # the identifier so callers' staged password/role/factor changes stay intact.
+    db.query(User.id).filter(User.id == user_id).with_for_update().first()
     now = datetime.utcnow()
     rows = (
         db.query(RefreshToken)

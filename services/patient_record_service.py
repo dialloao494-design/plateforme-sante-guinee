@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import HTTPException, UploadFile, status
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 import models
@@ -265,8 +266,8 @@ class PatientRecordService:
             )
 
         content = await file.read()
-        stored = SecureAttachmentStorage.store(
-            content, original_filename=filename, extension=ext
+        stored = await run_in_threadpool(
+            SecureAttachmentStorage.store, content, original_filename=filename, extension=ext
         )
 
         doc = models.PatientDocument(

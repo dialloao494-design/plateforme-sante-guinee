@@ -34,6 +34,13 @@ The installer will:
 2. On each workstation, trust **`data/pki/ca-trust.crt`** once (OS / browser)  
 3. HTTP is redirected to HTTPS automatically  
 
+Boot requires an explicit valid `ATTACHMENT_ENCRYPTION_KEY`, distinct signing,
+license and update keys, and acknowledgment for host networking. Preserve current
+key material when upgrading an existing node; changing a key without migration
+can break attachment reads or license/update validation. See
+[`SECURITY_RECOVERY_2026-11-23.md`](../../docs/SECURITY_RECOVERY_2026-11-23.md)
+for these guards and optional upload scanning requirements.
+
 ## Auto-start after reboot
 
 Services use `restart: unless-stopped`.  

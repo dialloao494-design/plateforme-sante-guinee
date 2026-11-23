@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import logging
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -161,37 +162,56 @@ class ImagingService:
                 models.ImagingResult.id == result_id,
                 models.ImagingOrder.clinic_id == clinic_id,
             )
+            .with_for_update(of=models.ImagingResult)
+            .populate_existing()
             .first()
         )
         if not result:
             raise HTTPException(status_code=404, detail="Imaging result not found")
-        result.status = "validated"
-        result.validated_by_user_id = actor.id
-        result.validated_at = datetime.utcnow()
-        result.order.status = "validated"
-        db.commit()
+        from services.clinical_audit_service import ClinicalAuditService
+        from services.secure_attachment_storage import SecureAttachmentStorage
+
+        if result.status == "validated" and db.query(models.ClinicalAuditLog.id).filter_by(
+            clinic_id=clinic_id, resource_type="imaging_result", resource_id=result.id, action="validate"
+        ).first():
+            return result
+        storage_key = None
+        committing = False
+        try:
+            result.status = "validated"
+            result.validated_by_user_id = actor.id
+            result.validated_at = datetime.utcnow()
+            result.order.status = "validated"
+            storage_key = ImagingService.attach_report_to_patient_record(db, result=result, actor=actor)
+            ClinicalAuditService.log(
+                db, actor=actor, clinic_id=clinic_id, patient_id=result.order.patient_id,
+                action="validate", resource_type="imaging_result", resource_id=result.id,
+                client_ip=client_ip, commit=False,
+            )
+            committing = True
+            db.commit()
+        except Exception:
+            db.rollback()
+            # Retain the blob if commit may have reached the database; never
+            # delete a possibly committed patient's archive on a lost connection.
+            if storage_key and not committing:
+                try:
+                    SecureAttachmentStorage._absolute_path(storage_key).unlink(missing_ok=True)
+                except OSError:
+                    logging.getLogger(__name__).exception("Unreferenced imaging archive cleanup failed")
+            raise
         db.refresh(result)
-        ImagingService.attach_report_to_patient_record(db, result=result, actor=actor)
-        log_cis(
-            db,
-            actor=actor,
-            clinic_id=clinic_id,
-            patient_id=result.order.patient_id,
-            action="validate",
-            resource_type="imaging_result",
-            resource_id=result.id,
-            client_ip=client_ip,
-        )
         return result
 
     @staticmethod
     def attach_report_to_patient_record(
         db: Session, *, result: models.ImagingResult, actor: User
-    ) -> None:
-        """Persist validated imaging report as a patient document."""
+    ) -> str:
+        """Stage archive and note; the validation caller owns the database commit."""
         from services.secure_attachment_storage import SecureAttachmentStorage
 
         order = result.order
+        consultation = order.consultation
         body = (
             f"Imagerie: {order.modality} — {order.body_part or 'examen'}\n"
             f"Indication: {order.clinical_indication or '—'}\n"
@@ -214,13 +234,13 @@ class ImagingService:
         db.add(
             models.ClinicalNote(
                 patient_id=order.patient_id,
-                doctor_id=order.consultation.doctor_id if order.consultation else None,
-                appointment_id=order.consultation.appointment_id if order.consultation else None,
+                doctor_id=consultation.doctor_id if consultation else None,
+                appointment_id=consultation.appointment_id if consultation else None,
                 note_type="imaging",
                 contenu=body.decode("utf-8"),
             )
         )
-        db.commit()
+        return stored.storage_key
 
     @staticmethod
     def _get_order(db: Session, clinic_id: int, order_id: int) -> models.ImagingOrder:

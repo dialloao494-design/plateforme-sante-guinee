@@ -44,8 +44,10 @@ def verify_password(plain_password: str, hashed_password: str):
 # JWT CONFIG
 # ==============================
 
-# Prefer SECRET_KEY; accept JWT_SECRET as alias (architecture / Railway templates).
-SECRET_KEY = (os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET") or "").strip()
+from core.settings import get_settings
+
+# The same cached settings instance supplies signing and startup validation.
+SECRET_KEY = get_settings().signing_key
 ALGORITHM = (os.getenv("ALGORITHM") or "HS256").strip() or "HS256"
 if ALGORITHM.upper() not in {"HS256"}:
     # Wave 0 keeps HS256 for backward compatibility; asymmetric is a later wave.

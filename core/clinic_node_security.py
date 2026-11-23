@@ -30,7 +30,7 @@ def assert_clinic_node_secret_separation(
     update_secret: str = "",
     attachment_key: str = "",
 ) -> None:
-    """Reject reuse of JWT as license/update/attachment material."""
+    """Reject shared signing/license/update/attachment material without logging secrets."""
     jwt = (jwt_secret or "").strip()
     failures: list[str] = []
     if license_secret and license_secret.strip() == jwt:
@@ -45,6 +45,15 @@ def assert_clinic_node_secret_separation(
         )
     if attachment_key and attachment_key.strip() == jwt:
         failures.append("ATTACHMENT_ENCRYPTION_KEY must not equal JWT_SECRET")
+    configured = [
+        ("CLINIC_NODE_LICENSE_SECRET", license_secret),
+        ("CLINIC_NODE_UPDATE_SECRET", update_secret),
+        ("ATTACHMENT_ENCRYPTION_KEY", attachment_key),
+    ]
+    for index, (name, value) in enumerate(configured):
+        for other_name, other_value in configured[:index]:
+            if value.strip() and value.strip() == other_value.strip():
+                failures.append(f"{name} must not equal {other_name}")
     if failures:
         raise RuntimeError("; ".join(failures))
 

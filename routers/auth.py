@@ -23,6 +23,7 @@ from schemas.user import (
     ResendVerificationRequest,
     RefreshTokenRequest,
     LogoutRequest,
+    MfaSetupRequest,
     MfaSetupConfirmRequest,
     MfaVerifyLoginRequest,
     MfaDisableRequest,
@@ -734,38 +735,69 @@ def resend_verification_email(
     return {"message": "Si cet email est enregistré et non vérifié, un nouveau lien a été envoyé."}
 
 
+def _lock_mfa_user(db: Session, user: User) -> User:
+    # Serialize enrollment changes and reload state after acquiring the row lock.
+    return db.query(User).filter(User.id == user.id).with_for_update().populate_existing().one()
+
+
+def _verify_mfa_replacement(user: User, password: str | None, code: str | None) -> None:
+    if not password or not verify_password(password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password required")
+    if user.mfa_enabled and not verify_totp(user.mfa_secret or "", code or ""):
+        raise HTTPException(status_code=400, detail="Current MFA code required")
+
+
 @router.post("/mfa/setup")
+@limiter.limit("5/minute")
 def mfa_setup(
+    request: Request,
+    body: MfaSetupRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Begin TOTP enrollment; returns secret + otpauth URI (confirm to enable)."""
+    """Stage enrollment without changing the active login factor."""
+    current_user = _lock_mfa_user(db, current_user)
+    _verify_mfa_replacement(current_user, body.password, body.current_code)
     secret = generate_mfa_secret()
-    current_user.mfa_secret = secret
-    current_user.mfa_enabled = False
+    current_user.mfa_pending_secret = secret
+    current_user.mfa_pending_expires_at = datetime.utcnow() + timedelta(minutes=10)
     db.add(current_user)
     db.commit()
     return {
         "secret": secret,
         "otpauth_uri": provisioning_uri(email=current_user.email, secret=secret),
-        "enabled": False,
+        "enabled": bool(current_user.mfa_enabled),
     }
 
 
 @router.post("/mfa/confirm")
+@limiter.limit("5/minute")
 def mfa_confirm(
+    request: Request,
+    response: Response,
     body: MfaSetupConfirmRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if not current_user.mfa_secret:
-        raise HTTPException(status_code=400, detail="MFA setup not started")
-    if not verify_totp(current_user.mfa_secret, body.code):
+    current_user = _lock_mfa_user(db, current_user)
+    if (not current_user.mfa_pending_secret or not current_user.mfa_pending_expires_at
+            or current_user.mfa_pending_expires_at <= datetime.utcnow()):
+        raise HTTPException(status_code=400, detail="MFA setup missing or expired")
+    if current_user.mfa_enabled:
+        _verify_mfa_replacement(current_user, body.password, body.current_code)
+    if not verify_totp(current_user.mfa_pending_secret, body.code):
         raise HTTPException(status_code=400, detail="Invalid MFA code")
+    current_user.mfa_secret = current_user.mfa_pending_secret
+    current_user.mfa_pending_secret = None
+    current_user.mfa_pending_expires_at = None
     current_user.mfa_enabled = True
+    # Invalidate prior access and refresh tokens atomically with activation.
+    current_user.token_version = int(current_user.token_version or 0) + 1
+    revoke_all_user_refresh_tokens(db, user_id=current_user.id, commit=False)
     db.add(current_user)
     db.commit()
-    return {"mfa_enabled": True}
+    fresh = create_token_response(db, current_user, request=request, response=response)
+    return {"mfa_enabled": True, **fresh}
 
 
 @router.post("/mfa/disable")
@@ -774,12 +806,15 @@ def mfa_disable(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    current_user = _lock_mfa_user(db, current_user)
     if not verify_password(body.password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Mot de passe incorrect")
     if current_user.mfa_enabled and not verify_totp(current_user.mfa_secret or "", body.code):
         raise HTTPException(status_code=400, detail="Invalid MFA code")
     current_user.mfa_enabled = False
     current_user.mfa_secret = None
+    current_user.mfa_pending_secret = None
+    current_user.mfa_pending_expires_at = None
     db.add(current_user)
     db.commit()
     return {"mfa_enabled": False}

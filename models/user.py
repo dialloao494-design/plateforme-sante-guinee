@@ -38,6 +38,8 @@ class User(Base):
     password_changed_at = Column(DateTime, nullable=True)
     last_login_at = Column(DateTime, nullable=True)
     mfa_secret = Column(String, nullable=True)
+    mfa_pending_secret = Column(String, nullable=True)
+    mfa_pending_expires_at = Column(DateTime, nullable=True)
     mfa_enabled = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 

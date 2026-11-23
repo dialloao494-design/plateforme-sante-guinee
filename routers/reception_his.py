@@ -708,6 +708,7 @@ def print_receipt(
     ]
     subtotal = int(getattr(invoice, "subtotal_amount_gnf", None) or invoice.total_amount_gnf or 0)
     now = datetime.now()
+    issued_at = invoice_issued_at(invoice)
     pdf_bytes = build_invoice_pdf(
         invoice.invoice_number,
         patient_name,
@@ -722,6 +723,9 @@ def print_receipt(
         printed_by=printed_by_label(current_user),
         printed_date=now.strftime("%d/%m/%Y"),
         printed_time=now.strftime("%H:%M"),
+        invoice_date=issued_at.strftime("%d/%m/%Y") if issued_at else "",
+        invoice_time=issued_at.strftime("%H:%M") if issued_at else "",
+        cashier_name=printed_by_label(invoice.created_by_user),
         patient_file_number=patient_file,
     )
     return Response(

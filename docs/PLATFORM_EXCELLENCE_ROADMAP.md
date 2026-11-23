@@ -5,7 +5,7 @@ Santé Guinée. This document is written for maintainers and coding agents worki
 toward a safe, coherent, hospital-grade product.
 
 **Owner:** repository maintainers  
-**Last evidence update:** 2026-11-12 (AASMA production reset and backup restore verified; workstation validation open)
+**Last evidence update:** 2026-11-23 (authentication and selective security/receipt recovery; local verification only)
 **Current branch:** `main`  
 **Original assessment baseline:** approximately **7.5/10 as a supervised pilot**
 and **6/10 for broad production deployment**.
@@ -502,6 +502,47 @@ reviewed by the accountable operator and clinic lead.
   `1.45.1`, and then reported no known vulnerabilities.
 - Maintain the zero-high/critical production npm policy.
 - Enforce and test privileged MFA according to deployment policy.
+
+Defensive source tranche (2026-11-23): **CODE COMPLETE and LOCALLY VERIFIED;
+CI, production and field validation OPEN.**
+
+- MFA replacement now checks a freshly submitted password and existing factor,
+  stages enrollment separately for ten minutes, retains the active factor until
+  confirmation, and atomically invalidates prior access/refresh sessions when
+  activating the new factor. Additive migration `20261123_0041_pending_mfa`
+  preserves existing active factors. Refresh rotation and administrator session
+  revocation use the same user-before-refresh lock order.
+- JWT signing and boot validation use the same cached resolved key; conflicting
+  aliases fail closed. Attachment encryption derivation and existing explicit
+  keys are preserved; no rotation or production configuration changes occurred.
+- Anonymous health/readiness responses contain only status. Build, database and
+  email diagnostics require platform authorization. Hosted environments require
+  explicit staging/production configuration; pilot seeding defaults off.
+- Full clinical content follows `DOSSIER_PATIENT.md`'s role restriction; reception,
+  lab and pharmacy roles cannot read full notes/timelines through dossier or
+  medical-history APIs. Existing operational intake/allergy writes remain governed
+  by their workflow roles and clinic scope. Same-clinic doctor authorization is
+  preserved: the older appointment-link rule conflicts with current clinic
+  authorization and remains an explicit clinical-owner decision. A narrower
+  history subset for operational roles also requires owner approval.
+- Local evidence: full backend **562 passed / 3 skipped** (one existing optional
+  case and two opt-in PostgreSQL cases); focused session/governance **80/80**;
+  separate real PostgreSQL concurrency **2/2** on disposable synthetic data;
+  frontend lint, unit/offline suites, production build and all six performance
+  budgets pass. The main-version refresh control fails the new PostgreSQL
+  lock-wait assertion; the fixed implementation passes. Migration/rollback and
+  existing attachment decryption are covered. Static review's lock-order finding
+  was corrected and re-reviewed with no remaining actionable introduced defect.
+  These are local results, not CI or production evidence. Broader PostgreSQL
+  enrollment concurrency, authenticated monitoring-script migration, operational
+  access review and clinic acceptance remain open.
+- Authorized administrators must confirm password invalidation/reset, revoke
+  affected sessions and preserve/review sign-in evidence. No live login, patient
+  record access, account changes, deployment or Git history rewrite was performed.
+
+Implementation and safe administrator review procedure:
+[`DEFENSIVE_AUTH_CONFIGURATION.md`](DEFENSIVE_AUTH_CONFIGURATION.md).
+
 - Verify secret rotation, access review, audit retention, attachment storage,
   WebSocket authentication, and webhook settlement procedures.
 - Exercise session invalidation and suspected-account-compromise response.
@@ -941,6 +982,90 @@ live generation guard. Physical clinic workstation validation remains OPEN.**
   intake so it obtains epoch 2. Old test queues must stay quarantined/export-only.
   Staff acceptance on the physical clinic computers remains unverified.
 
+### 2026-11-23 — Historical branch reconciliation
+
+**Status: source/history review complete; newly identified recovery items OPEN.
+No new behavioral, CI, production, or field verification is claimed.**
+
+Owner-authorized cleanup removed 48 remote branches: 33 proven integrated through
+ancestry, patch equivalence, exact historical trees or identical changed-file
+content, plus 15 superseded/historical Cursor branches removed after the owner's
+follow-up approval. Three old branches remain for selective recovery: document
+security (Wave2), Clinic Node startup guards (Wave4), and backend receipt provenance
+(clinical-regression-pilot). Today's `fix/defensive-auth-configuration` branch and
+remote `main` are unchanged.
+An ignored, verified local Git bundle preserves all 51 historical branch tips.
+See [the dated branch review](BRANCH_REVIEW_2026-11-23.md) for commit identities,
+cleanup proofs, preserved evidence and per-branch dispositions.
+
+The original comparison found these follow-ups. The subsequent repair state is
+recorded below; old optimistic reports do not establish current protection:
+
+- **Attachment controls:** Wave2 contains upload malware-scanner invocation
+  missing from current storage runtime, application-level digest handling and
+  document-response hygiene differences. Fernet still authenticates encrypted
+  ciphertext. Recover appropriate integrations with regression tests; evaluate
+  middleware before asserting a download cache defect.
+- **Clinic Node boot policy:** Wave4 helper/deployment files remain, but settings
+  omit some encryption/key-separation/host-network guard wiring. Restore the
+  appropriate startup checks and regressions before claiming node boot policy
+  parity. No deployed node was inspected during this review.
+- **Historical credential exposure:** a retained legacy deployment/login script
+  contains embedded clinic credentials. Their current validity is unknown; no
+  login was attempted and values are excluded from this report. Review exposure
+  and revoke/rotate if applicable; branch deletion is not credential revocation
+  or history erasure. Keep the local recovery bundle private.
+- **Backend receipt provenance:** the old pilot branch distinguishes invoice
+  issuance/cashier from printing time/operator, while current backend PDF labels
+  can conflate them. Verify and port the narrow PDF correction with assertions;
+  later browser-print fixes do not prove backend PDF parity.
+- **Doctor consultation focus:** old queue-collapse/consultation-first changes
+  remain useful candidates against the current queue-first workspace. This
+  requires targeted UX work and browser verification, not an old branch merge.
+
+Do not restore old demo-purge heuristics, obsolete migration revisions, old
+Railway deployment configuration or historical readiness claims wholesale.
+No clinical records, application code, deployment settings or session policy
+were changed as part of the cleanup/review itself. The subsequent source repairs
+are recorded separately below.
+
+### 2026-11-23 — Selective security and receipt recovery
+
+**Status: CODE COMPLETE and LOCALLY VERIFIED — full backend suite 583 passed,
+3 skipped. CI, deployment, physical printing and Clinic Node field validation
+remain OPEN.**
+
+- Attachment storage invokes the existing scanner before encryption or durable
+  writes. Async message and patient-document uploads offload storage/scanning
+  while retaining database work in their original handlers. Scanner configuration
+  typos, unavailable scanners and CLI timeout/error cases fail closed. Scanning
+  remains opt-in (`ATTACHMENT_VIRUS_SCAN=clamav` requires an operational scanner);
+  no live environment was changed. Stored digest metadata and broader response
+  hygiene remain distinct follow-ups.
+- Cipher initialization/reset share a lock, and construction failures cannot
+  publish an initialized empty cipher that makes retries write plaintext.
+  Failed-retry and concurrent encrypted round-trip regressions cover this repair.
+  The existing ciphertext format and legacy reads are preserved; no key rotation.
+- Clinic Node requires its explicit Fernet key and rejects shared configured
+  signing/license/update/attachment secrets and unacknowledged host networking.
+  Existing cloud key derivation and PostgreSQL recovery behavior remain intact.
+- Reception PDFs separate stored invoice issuance/cashier from printing time and
+  operator, reuse legacy-midnight recovery and retain clinic access checks.
+  Pharmacy's shared PDF caller now supplies charge creation/recording metadata.
+  Unknown original issuers remain unknown; no financial record is rewritten.
+- Defect regressions were reproduced before repairs. Source review found and
+  corrected the async scan blocking issue and a bounded-wait issue in its test.
+  Full local `.venv/bin/python -m pytest tests/ -q` passed **583 / 3 skipped**.
+  Two skips require an opt-in synthetic PostgreSQL database; the third is the
+  existing owner-already-present bootstrap case. The test-bound executor wait
+  adjustment was included in this run. Generated historical Wave6 evidence JSON
+  was restored rather than relabeled as new verification.
+  Deployment/upgrade requirements and remaining operational limits are documented
+  in [the recovery note](SECURITY_RECOVERY_2026-11-23.md).
+
+The historical credential-exposure follow-up and doctor consultation-focus work
+remain OPEN. These repairs do not establish hospital-wide readiness.
+
 ## Related evidence
 
 - [`STABILIZATION_FINDINGS_MATRIX.md`](STABILIZATION_FINDINGS_MATRIX.md)
@@ -953,3 +1078,18 @@ live generation guard. Physical clinic workstation validation remains OPEN.**
 
 The older “Production Ready: YES” report is a dated module/clinic validation
 snapshot. It does not override the broader hospital-wide readiness gate here.
+
+### Senior pre-landing follow-up (2026-11-23)
+
+State: **CODE-COMPLETE; LOCALLY VERIFIED; final-head CI pending**.
+The review additionally fixed installer signing-alias conflicts and implicit host
+permission, missing/weak dedicated Node signing secrets, lab/imaging archive/audit
+transaction atomicity and validation replay behavior, and production deployment
+seeding/mutating verification. Every corrected defect has regression coverage.
+Two opt-in PostgreSQL refresh/revocation concurrency tests passed on a synthetic
+local database. See `SECURITY_RECOVERY_2026-11-23.md` for operational limits.
+No production/field validation or key rotation was performed. Existing seeded
+accounts and uncertain-commit archive orphans require separate operator review.
+
+Final full local backend suite: **616 passed, 1 skipped**, including both synthetic
+PostgreSQL races; expanded installer suite **17/17**. No production or field claim.

@@ -28,7 +28,7 @@ def _staff(db: Session, clinic_id: int, user_id: int) -> models.User:
     user = db.query(models.User).filter(
         models.User.id == user_id,
         or_(models.User.clinic_id == clinic_id, models.User.id.in_(membership_ids)),
-    ).first()
+    ).with_for_update().populate_existing().first()
     if not user:
         raise StaffLifecycleError("Membre du personnel introuvable.", 404)
     if user.role in ("platform_owner", "platform_admin", "patient"):

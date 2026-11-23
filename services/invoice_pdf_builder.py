@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from io import BytesIO
 from pathlib import Path
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
@@ -132,6 +133,9 @@ def build_hospital_invoice_pdf(
     printed_by: str = "",
     printed_date: str = "",
     printed_time: str = "",
+    invoice_date: str = "",
+    invoice_time: str = "",
+    cashier_name: str = "",
     document_title: str = "FACTURE",
 ) -> bytes:
     remaining = max(0, int(total) - int(paid))
@@ -154,14 +158,14 @@ def build_hospital_invoice_pdf(
 
     # Meta block
     meta_left = [
-        f"<b>N° facture :</b> {invoice_number or '—'}",
-        f"<b>Patient :</b> {patient_name or '—'}",
-        f"<b>N° dossier :</b> {patient_file_number or '—'}",
+        f"<b>N° facture :</b> {escape(invoice_number or '—')}",
+        f"<b>Patient :</b> {escape(patient_name or '—')}",
+        f"<b>N° dossier :</b> {escape(patient_file_number or '—')}",
     ]
     meta_right = [
-        f"<b>Date :</b> {printed_date or '—'}",
-        f"<b>Heure :</b> {printed_time or '—'}",
-        f"<b>Caissier :</b> {printed_by or '—'}",
+        f"<b>Date :</b> {escape(invoice_date or '—')}",
+        f"<b>Heure :</b> {escape(invoice_time or '—')}",
+        f"<b>Caissier :</b> {escape(cashier_name or '—')}",
     ]
     meta_table = Table(
         [
