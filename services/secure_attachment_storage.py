@@ -27,6 +27,7 @@ from core.attachment_policy import (
     SECURE_ATTACHMENT_ROOT,
 )
 from core.attachment_encryption import decrypt_blob, encrypt_blob
+from core.attachment_malware import scan_attachment_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -108,11 +109,13 @@ class SecureAttachmentStorage:
     @staticmethod
     def store(content: bytes, *, original_filename: str, extension: str) -> StoredAttachment:
         mime = SecureAttachmentStorage.validate_upload(content, extension)
+        safe_name = SecureAttachmentStorage.sanitize_filename(original_filename)
+        # Scan plaintext before encryption or any filesystem/database side effect.
+        scan_attachment_bytes(content, filename=safe_name)
         storage_key = secrets.token_urlsafe(32)
         target = SecureAttachmentStorage._absolute_path(storage_key)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(encrypt_blob(content))
-        safe_name = SecureAttachmentStorage.sanitize_filename(original_filename)
         logger.info(
             "Attachment stored storage_key=%s size=%s mime=%s",
             storage_key[:8] + "...",

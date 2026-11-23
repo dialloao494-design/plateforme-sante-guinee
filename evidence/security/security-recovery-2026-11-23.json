@@ -1,0 +1,42 @@
+{
+  "date": "2026-11-23",
+  "base_main": "a0241660b1ec87a71b538ef2eec26cf4d49e30df",
+  "branch": "fix/defensive-auth-configuration",
+  "existing_auth_commit": "d4a1b75873e894f9253559f317737950406a4333",
+  "candidate": "working tree containing selective security and receipt recovery",
+  "verification": {
+    "command": ".venv/bin/python -m pytest tests/ -q",
+    "exit_code": 0,
+    "passed": 583,
+    "skipped": 3,
+    "duration_seconds": 88.24,
+    "skip_limits": [
+      "Two opt-in PostgreSQL concurrency cases require synthetic local database",
+      "Existing bootstrap case skips when owner is already present"
+    ],
+    "regression_before_repair": [
+      "Scanner rejection and unavailability not enforced by storage",
+      "Clinic Node accepts invalid/missing encryption, shared keys and unacknowledged host networking",
+      "Receipt labels reprint operator/time as original issuance",
+      "Unknown scanner mode silently disables scanning; CLI timeout is not an HTTP 503",
+      "Async upload callers block event loop during scan",
+      "Cipher initialization failure permits plaintext on retry"
+    ],
+    "review": "Independent source review; async blocking and executor-wait findings corrected; final encryption delta cleared",
+    "diff_check": "passed"
+  },
+  "not_verified": [
+    "CI",
+    "Production deployment",
+    "Live ClamAV integration",
+    "Physical Clinic Node boot",
+    "Clinic printer/field acceptance"
+  ],
+  "preserved": [
+    "Current signing/attachment keys and ciphertext format",
+    "Clinic access controls",
+    "Existing financial and clinical records",
+    "Dated historical Wave6 JSON snapshots"
+  ],
+  "scanner_activation": "opt-in; live environment unchanged"
+}

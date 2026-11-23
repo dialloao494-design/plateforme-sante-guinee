@@ -288,8 +288,8 @@ class AppSettings:
                 "Set JITSI_SECRET (or REQUIRE_JITSI_SECRET=true to fail closed)."
             )
 
-        # PHI attachment encryption — required in production (no silent kill-switch)
-        if self.is_production:
+        # Clinic appliances require their own explicit key; retain cloud recovery policy.
+        if self.is_production or self.is_clinic_node:
             enc_key = (os.getenv("ATTACHMENT_ENCRYPTION_KEY") or "").strip()
             bypass = not _env_flag("REQUIRE_ATTACHMENT_ENCRYPTION", default=True)
             attested = (
@@ -297,7 +297,8 @@ class AppSettings:
                 == "I_ACCEPT_PRODUCTION_PHI_RISK"
             )
             if (
-                not enc_key
+                self.is_production
+                and not enc_key
                 and not bypass
                 and jwt_secret
                 and not is_insecure_secret(jwt_secret, min_length=32)
@@ -336,12 +337,32 @@ class AppSettings:
                         "ATTACHMENT_ENCRYPTION_KEY must be a valid Fernet key when set"
                     )
             else:
-                if not (bypass and attested):
+                if self.is_clinic_node or not (bypass and attested):
                     failures.append(
-                        "ATTACHMENT_ENCRYPTION_KEY must be set in production "
+                        "ATTACHMENT_ENCRYPTION_KEY must be set for PHI at rest "
                         "(to disable temporarily set REQUIRE_ATTACHMENT_ENCRYPTION=false "
-                        "AND EMERGENCY_SECURITY_BYPASS_ATTESTATION=I_ACCEPT_PRODUCTION_PHI_RISK)"
+                        "AND EMERGENCY_SECURITY_BYPASS_ATTESTATION=I_ACCEPT_PRODUCTION_PHI_RISK; "
+                        "this exception is not permitted on clinic-node)"
                     )
+
+        if self.is_clinic_node:
+            from core.clinic_node_security import assert_clinic_node_secret_separation
+
+            try:
+                assert_clinic_node_secret_separation(
+                    jwt_secret=jwt_secret,
+                    license_secret=os.getenv("CLINIC_NODE_LICENSE_SECRET") or "",
+                    update_secret=os.getenv("CLINIC_NODE_UPDATE_SECRET") or "",
+                    attachment_key=os.getenv("ATTACHMENT_ENCRYPTION_KEY") or "",
+                )
+            except RuntimeError as exc:
+                failures.append(str(exc))
+            network = (os.getenv("CLINIC_NODE_NETWORK") or "bridge").strip().lower()
+            if network == "host" and not _env_flag("CLINIC_NODE_ALLOW_HOST_NETWORK", default=False):
+                failures.append(
+                    "CLINIC_NODE_NETWORK=host requires CLINIC_NODE_ALLOW_HOST_NETWORK=true "
+                    "to acknowledge LAN exposure; prefer bridge networking"
+                )
 
         # TLS to Postgres — reject sslmode=disable; require SSL on Railway production
         try:

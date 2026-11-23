@@ -237,6 +237,9 @@ def invoice_pdf(
     printed_at: str = "",
     printed_date: str = "",
     printed_time: str = "",
+    invoice_date: str = "",
+    invoice_time: str = "",
+    cashier_name: str = "",
     patient_file_number: str = "",
     document_title: str = "FACTURE",
 ) -> bytes:
@@ -262,6 +265,9 @@ def invoice_pdf(
         printed_by=printed_by,
         printed_date=footer_date,
         printed_time=footer_time,
+        invoice_date=invoice_date,
+        invoice_time=invoice_time,
+        cashier_name=cashier_name,
         document_title=document_title,
     )
 

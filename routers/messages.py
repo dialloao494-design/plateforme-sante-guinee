@@ -4,6 +4,7 @@ import os
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 import models
@@ -109,8 +110,8 @@ async def send_message(
     if attachment is not None:
         extension = Path(attachment.filename or "").suffix.lower()
         file_bytes = await attachment.read()
-        stored = SecureAttachmentStorage.store(
-            file_bytes,
+        stored = await run_in_threadpool(
+            SecureAttachmentStorage.store, file_bytes,
             original_filename=attachment.filename or f"file{extension}",
             extension=extension,
         )

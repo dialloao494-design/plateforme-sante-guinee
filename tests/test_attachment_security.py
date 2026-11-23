@@ -331,6 +331,88 @@ class TestSecureStorageHardening:
 
 
 class TestAttachmentUploadValidation:
+    @pytest.mark.parametrize("surface", ["message", "patient-document"])
+    def test_slow_scan_does_not_block_upload_event_loop(
+        self, db_session, messaging_context, secure_attachment_root, monkeypatch, surface
+    ):
+        import asyncio
+        import threading
+        from fastapi import UploadFile
+        from routers.messages import send_message
+        from services.patient_record_service import PatientRecordService
+
+        started, released = threading.Event(), threading.Event()
+        loop_thread = threading.get_ident()
+
+        def scan(content, *, filename):
+            started.set()
+            assert released.wait(5), "Upload scanner blocked the event loop"
+            assert threading.get_ident() != loop_thread
+
+        monkeypatch.setattr("services.secure_attachment_storage.scan_attachment_bytes", scan)
+        ctx = messaging_context
+        file = UploadFile(filename="clean.pdf", file=io.BytesIO(b"%PDF-1.4\nclean"))
+
+        async def upload():
+            if surface == "message":
+                return await send_message(
+                    ctx["appointment"].id, content="synthetic", attachment=file,
+                    db=db_session, current_user=ctx["doctor_user"],
+                )
+            return await PatientRecordService.upload_document(
+                db_session, ctx["patient"].id, type_document="autre", file=file,
+                current_user=ctx["doctor_user"],
+            )
+
+        async def run():
+            task = asyncio.create_task(upload())
+            try:
+                assert await asyncio.wait_for(asyncio.to_thread(started.wait, 5), timeout=6)
+                # This coroutine must run while the scanner is still waiting.
+                released.set()
+                return await task
+            finally:
+                released.set()
+
+        assert asyncio.run(run()) is not None
+
+    def test_malware_rejected_before_message_or_blob_is_created(
+        self, client, db_session, messaging_context, secure_attachment_root, monkeypatch
+    ):
+        from core.attachment_malware import EICAR_SIGNATURE
+
+        monkeypatch.setenv("ATTACHMENT_VIRUS_SCAN", "stub")
+        ctx = messaging_context
+        before = db_session.query(Message).count()
+        response = client.post(
+            f"/messages/{ctx['appointment'].id}",
+            headers=ctx["doctor_headers"],
+            data={"content": "synthetic scanner regression"},
+            files={"attachment": ("scan.pdf", io.BytesIO(b"%PDF-1.4\n" + EICAR_SIGNATURE), "application/pdf")},
+        )
+        assert response.status_code == 400, response.text
+        assert db_session.query(Message).count() == before
+        assert not list(secure_attachment_root.rglob("*"))
+
+    def test_required_scanner_failure_creates_no_blob(self, secure_attachment_root, monkeypatch):
+        from fastapi import HTTPException
+
+        monkeypatch.setenv("ATTACHMENT_VIRUS_SCAN", "clamav")
+        monkeypatch.setattr("core.attachment_malware.shutil.which", lambda _: None)
+        # Exercise the CLI path without depending on whether a daemon client is installed.
+        import sys
+        monkeypatch.setitem(sys.modules, "pyclamd", None)
+        with pytest.raises(HTTPException) as exc:
+            SecureAttachmentStorage.store(b"%PDF-1.4\nclean", original_filename="clean.pdf", extension=".pdf")
+        assert exc.value.status_code == 503
+        assert not list(secure_attachment_root.rglob("*"))
+
+    def test_clean_scanned_attachment_round_trips(self, encrypted_attachment_root, monkeypatch):
+        monkeypatch.setenv("ATTACHMENT_VIRUS_SCAN", "stub")
+        content = b"%PDF-1.4\nclean synthetic attachment"
+        stored = SecureAttachmentStorage.store(content, original_filename="clean.pdf", extension=".pdf")
+        assert SecureAttachmentStorage.read(stored.storage_key)[0] == content
+
     def test_disallowed_extension_rejected(self, client, messaging_context, secure_attachment_root):
         ctx = messaging_context
         files = {"attachment": ("malware.exe", io.BytesIO(b"MZ"), "application/octet-stream")}

@@ -10,10 +10,12 @@ Production requires ATTACHMENT_ENCRYPTION_KEY (enforced at boot via settings).
 from __future__ import annotations
 
 import os
+from threading import Lock
 
 _ENCRYPTION_MAGIC = b"\x00ATTENC\x01"
 _fernet = None
 _initialized = False
+_initialization_lock = Lock()
 
 
 def encryption_enabled() -> bool:
@@ -23,27 +25,31 @@ def encryption_enabled() -> bool:
 def reset_encryption_cache() -> None:
     """Clear cached Fernet instance (tests / key rotation)."""
     global _fernet, _initialized
-    _fernet = None
-    _initialized = False
+    with _initialization_lock:
+        _fernet = None
+        _initialized = False
 
 
 def _get_fernet():
     global _fernet, _initialized
-    if _initialized:
+    with _initialization_lock:
+        if _initialized:
+            return _fernet
+        key = os.getenv("ATTACHMENT_ENCRYPTION_KEY", "").strip()
+        if not key:
+            _fernet = None
+            _initialized = True
+            return None
+        try:
+            from cryptography.fernet import Fernet
+        except ImportError as exc:
+            raise RuntimeError(
+                "ATTACHMENT_ENCRYPTION_KEY is set but the 'cryptography' package is not installed."
+            ) from exc
+        # Publish only a fully constructed cipher; failures must remain failures on retry.
+        _fernet = Fernet(key.encode("utf-8"))
+        _initialized = True
         return _fernet
-    _initialized = True
-    key = os.getenv("ATTACHMENT_ENCRYPTION_KEY", "").strip()
-    if not key:
-        _fernet = None
-        return None
-    try:
-        from cryptography.fernet import Fernet
-    except ImportError as exc:
-        raise RuntimeError(
-            "ATTACHMENT_ENCRYPTION_KEY is set but the 'cryptography' package is not installed."
-        ) from exc
-    _fernet = Fernet(key.encode("utf-8") if isinstance(key, str) else key)
-    return _fernet
 
 
 def encrypt_blob(plaintext: bytes) -> bytes:

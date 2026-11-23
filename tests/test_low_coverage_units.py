@@ -34,9 +34,11 @@ def test_malware_clamav_mode_fails_closed_without_scanner(monkeypatch):
     assert raised.value.status_code == 503
 
 
-def test_unknown_malware_mode_does_not_block_upload(monkeypatch):
+def test_unknown_malware_mode_fails_closed(monkeypatch):
     monkeypatch.setenv("ATTACHMENT_VIRUS_SCAN", "future-scanner")
-    scan_attachment_bytes(b"content")
+    with pytest.raises(HTTPException) as raised:
+        scan_attachment_bytes(b"content")
+    assert raised.value.status_code == 503
 
 
 def test_mobile_money_rail_flags_follow_environment(monkeypatch):
